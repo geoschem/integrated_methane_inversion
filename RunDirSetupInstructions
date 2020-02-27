@@ -1,0 +1,152 @@
+This file contains instructions for setting up run directories for methane
+analytical inversions (mps, 2/20/2020)
+
+Setting up code and run directories:
+====================================
+1. In your personal space on the $SCRATCH disk, create a directory where you
+   want to store these files.
+
+2. Copy /n/seasasfs02/CH4_inversion/RunDirScripts/setup_ch4_inversion.sh
+   to the directory created in Step 1.
+
+3. Open setup_ch4_inversion.sh in a text editor and modify the following:
+
+   # File paths
+   MY_PATH  : Set it to the file path created in Step 1.
+   DATA_PATH: Path to non-emissions data that will replate {DATA_ROOT} token
+              in input.geos and HEMCO_Config.rc. The default is path is
+	      /n/holylfs/EXTERNAL_REPOS/GEOS-CHEM/gcgrid/data/ExtData. The
+	      emissions data path is set in HEMCO_Config.rc and by default is
+	      set to /n/seasasfs02/CH4_Inversion/HEMCO.
+   RESTART_FILE: Path to the initial restart file. Sample restart files may be
+                 found in /n/seasasfs02/CH4_inversion/InputData/Restarts.
+   BC_FILES: Path to boundary condition files to be used for nested grid
+             simulations. This will replace the file path in HEMCO_Config.rc.
+
+   # Grid settings
+   RES      : Options are "4x5", "2x2.5", "0.5x0.625", and "0.25x0.3125".
+   MET      : Options are "merra2" or "geosfp".
+   LONS     : Enter the min and max longitude edges of your domain.
+              e.g. For global      simulations use "-180.0 180.0"
+	           For nested NA   simulations use "-140.0 -40.0" (0.5x0.625)
+		                                   "-130.0 -60.0" (0.25x0.3125)
+		   For nested Asia simulations use "  60.0 150.0" (0.5x0.625)
+		                                   "  70.0 140.0" (0.25x0.3125)
+   LATS     : Enter the min and max latitude edges of your domain.
+              e.g. For global      simulations use "-90.0 90.0"
+	           For nested NA   simulations use " 10.0 70.0" (0.5x0.625)
+		                                   " 9.75 60.0" (0.25x0.3125)
+		   For nested Asia simulations use " 15.0 55.0" (0.5x0.625)
+		                                   "-11.0 55.0" (0.25x0.3125)
+   HPOLAR   : Set to "T" for global simulations to use half polar boxes. Set to
+              "F" for nested grid simulations.
+   LEVS     : Set to 47 to use the reduced 47-level grid recommended for CH4
+              simulations.
+   NEST     : Set to "F" for global simulations or "T" for nested simulations.
+   BUFFER   : Set to "0 0 0 0" for global simulations. For nested simulations,
+              the recommendation is to use "3 3 3 3" to use 3 grid cells along
+	      the nested-grid domain for your buffer zone.
+
+   # Jacobian settings
+   START_I  : Starting value for your Jacobian runs (usually 0).
+   END_I    : Ending value for your Jacobian runs (i.e. number of clusters to
+              perturb).
+     **NOTE: Set both START_I and END_I to 0 for base run only (no perturb)**
+   pPERT    : Perturbation value to apply to clusters in analytical inversion.
+   RUN_NAME : This can be changed to whatever you like, by default it is
+              "CH4_Jacobian"
+   RUN_TEMPLATE : This is the template run directory that will be created and
+             is traditionally named for the resolution you choose.
+
+   # Additional settings (change options in input.geos)
+   GOSAT    : Set to true to use GOSAT observation operator.
+   TCCON    : Set to true to use TCCON observation operator.
+   UseEmisSF: Set to true to use emission scale factors from a previous
+              analytical inversion.
+   UseSeparateWetlandsSF: Set to true to use separate scale factors for
+              wetland and nonwetland emissions.
+   UseOHSF  : Set to true to use OH scale factors from a previous analytical
+              inversion.
+   PLANEFLIGHT: Set to true to use the planeflight diagnostic.
+
+   START_DATE: Start date of your simulations in YYYYMMDD format.
+   END_DATE  : End   date of your simulations in YYYYMMDD format.
+
+4. Save and close setup_ch4_inversion.sh.
+
+5. Load your fortran compiler if you haven't already. You may use the
+   init scripts found in the ACMG env repository. For example:
+
+      # Clone ACMG startup scripts if you haven't already
+      cd ~
+      git clone https://msulprizio@bitbucket.org/gcst/env.git
+
+      # Load ifort17 compiler and companion modules
+      source ~/env/init/init.gc-classic.ifort17.centos7 
+
+
+6. Navigate back to the directory created in Step 1. At the command line type
+
+      ./setup_ch4_inversion.sh
+
+7. Submit runs
+
+   - If running just the base simulation (run #0000, e.g. for prior or
+     posterior), you can submit your run using the RUN_NAME_0000.run script
+     in your run_dirs/RUN_NAME_0000 run directory. You will first need to
+     uncomment the #SBATCH lines in that file and make any necessary changes to
+     those options in order to submit to the queue. Then, at the command line,
+     type "sbatch RUN_NAME_0000.run" at the command line (replacing RUN_NAME
+     with the string you defined in setup_ch4_inversion.sh.
+
+  - If running the full set of runs to construct the Jacobian, open and modify
+    run_dirs/submit_array_jobs to use the desired #SBATCH options. Then, at
+    the command line, type "sbatch submit_array_jobs"
+
+
+Making changes to your code and run directory
+=============================================
+
+Modify your local copy of Code.CH4_Inv and the run directories in your local
+UnitTester.CH4_In for any special options or new science that you want to
+add for your research. If your changes are mature and/or will be useful for the
+larger group, then they can be pulled into the standard repositories currently 
+stored in /n/seasasfs02/CH4_Inversion (contact Melissa for help).
+
+   - To add new options in input.geos:
+     1. Modify the input.geos files in the CH4 run directories.
+     2. Add logical fields to Input_Opt for your new switches. These can
+        be added in Code.CH4_Inv/Headers/input_opt_mod.F90. Make sure to both
+	define and initialize the fields (see other CH4 options for examples).
+     3. Add code to read the new lines in in subroutine READ_CH4_MENU (found in
+        Code.CH4_Inv/GeosCore/input_mod.F). Also add code to print out the
+	value of those options at the end of that subroutine.
+     4. Modify the areas of code where this new option will impact and surround
+        with "IF ( Input_Opt%NewOption ) THEN ... ENDIF". This is generally
+        done in global_ch4_mod.F.
+
+   - To change emissions, cluster files, scale factor files or other input
+     files used in your simulations:
+     1. Modify the HEMCO configuration files in
+        UnitTester.CH4_Inv/runs/shared_inputs/CH4/ (both HEMCO_Config.template
+	and HEMCO_Config.template.na). Add or modify the entry for your
+	new file, changing the file path, variable name, dates, etc. as needed.
+     2. If you modify an emissions file, HEMCO should handle it automatically,
+        but if you add or modify cluster files, scale factor files, etc. then
+	you will need to modify or add code in global_ch4_mod.F:
+	 a. If necessary, add a new pointer at the top of the module (before
+	    the line "CONTAINS") for your new field.
+         b. Add/modify code to CALL Hco_GetPtr to ensure it points to the right
+	    field name. This should match the name provided in HEMCO_Config.rc.
+	 c. In appropriate area of the code (e.g. subroutine EMISSCH4 or
+	    CHEMCH4), add code to utilize the new/modified field.
+	 **As always, look at the existing code for other cluster files, scale
+	   factors, etc. for examples on how to set up or modify your code.**
+
+Set up a new set of run directories using your updates. Open your copy of
+setup_ch4_inversion.sh in a text editor. Comment out the lines for copying
+the code and unit tester directories. Modify the RUN_NAME (to avoid overwriting
+past runs) and any other input fields. Then execute "./setup_ch4_inversion.sh".
+
+
+	

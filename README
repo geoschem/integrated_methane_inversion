@@ -1,0 +1,80 @@
+README -- Describes the contents of /n/seasasfs02/CH4_Inversion
+20 Feb 2020
+
+Overview:
+===============================================================================
+
+This directory contains the GEOS-Chem source code, run directories, input
+data files, preprocessing, and post-processing scripts used to run CH4
+analytical inversions. This is a shared space meant to unify the CH4
+inversion workflow among Jacob Group members.
+
+Feel free to contribute to this directory, but we ask that you document your
+additions in the Revision History section of this README file below. If
+you provide new data files, please include a README file within the directory
+that those files are stored with details about the contents, references, and
+how the files were created (including scripts when possible).
+
+Contents:
+===============================================================================
+
+Code.CH4_Inv
+------------
+   GEOS-Chem source code containing updates for running analytical inversions
+   of methane. These updates are stored in the 'CH4_Analytical_Inversion' branch
+   (navigate to the code directory and type 'gitk --all' to view the
+   complete revision history).
+
+InputData/ClusterFiles
+----------------------
+   Contains cluster files used in previous studies to perturb emissions for
+   analytical inversions. Where possible, the scripts used to create those
+   cluster files are provided.
+
+InputData/HEMCO
+---------------
+   Contains CH4 emission files (in the CH4/ subdirectory) that are commonly
+   used in the methane inversions, but may not necessarily be included in the
+   standard GEOS-Chem methane simulation.
+
+InputData/Posterior
+-------------------
+   Contains scale factor files from previous analytical inversions. Directories
+   are named for the lead author and in cases where an author has more than
+   one set of scale factor files, the files are separated into subdirectories
+   by date.
+
+InputData/Restarts
+------------------
+   Contains restart files used to initialize methane simulations. See the README
+   in that directory for details on how each restart file was generated.
+
+PostprocessingScripts
+---------------------
+   Includes any scripts used to postprocess files used to construct the
+   Jacobian, compare GEOS-Chem output to satellites, etc.
+			    
+PreprocessingScripts
+--------------------
+   Includes any scripts needed to preprocess files used in methane analytical
+   inversions.
+
+RunDirScripts
+-------------
+   Contains scripts used to set up CH4 analytical inversion run directories, to
+   submit the runs, and to check that the runs finished successfully. See
+   'RunDirSetupInstructions' for detailed steps on setting up your run
+   directories.
+
+UnitTester.CH4_Inv
+------------------
+   GEOS-Chem unit tester containing run directory updates for running
+   analytical inversions of methane. These updates are stored in the
+   'CH4_Analytical_Inversion' branch (navigate to the code directory and
+   type 'gitk --all' to view the complete revision history).
+
+Revision History:
+===============================================================================
+
+20 Feb 2020 - M. Sulprizio- Initial setup using latest updates from J.D.
+                            Maasakkers et al. (2019) and Y. Zhang et al. (2020)
