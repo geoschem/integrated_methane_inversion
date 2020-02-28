@@ -19,7 +19,7 @@ DATA_PATH="/n/holylfs/EXTERNAL_REPOS/GEOS-CHEM/gcgrid/data/ExtData"
 RESTART_FILE="/n/seasasfs02/CH4_inversion/InputData/Restarts/GEOSChem.Restart.20090101_0000z.nc4"
 
 # Path to boundary condition files (for nested grid simulations)
-BC_FILES="n/holyscratch01/jacob_lab/hnesser/GC_TROPOMI_bias_rundirs/Nested_NA/run_dirs/rundir_LSinv/BCs_nc/BC.$YYYY$MM$DD.nc"
+BC_FILES="/n/holyscratch01/jacob_lab/hnesser/GC_TROPOMI_bias_rundirs/Nested_NA/run_dirs/rundir_LSinv/BCs_nc/BC.$YYYY$MM$DD.nc"
 
 # Start and end date fo the simulations
 START_DATE=20180501
@@ -33,8 +33,8 @@ LATS=" -90.0  90.0"
 HPOLAR="T"
 LEVS="47"
 NEST="F"
+REGION=""  # Nested grid region (NA,AS,CH,EU); Leave blank for global or custom
 BUFFER="0 0 0 0"
-gridDir="${RES}" # for use METDIR in HEMCO_Config.rc
 
 # Jacobian settings
 START_I=0
@@ -79,9 +79,9 @@ mkdir -p $RUN_NAME
 cd $RUN_NAME
 mkdir -p run_dirs
 cp ${RUN_SCRIPTS}/submit_array_jobs run_dirs/
-sed -e "s:{RunName}:${RUN_NAME}:g" run_dirs/submit_array_jobs
+sed -i -e "s:{RunName}:${RUN_NAME}:g" run_dirs/submit_array_jobs
 cp ${RUN_SCRIPTS}/run_array_job run_dirs/
-sed -e "s:{START}:${START_I}:g" -e "s:{END}:${END_I}:g" run_dirs/run_array_job
+sed -i -e "s:{START}:${START_I}:g" -e "s:{END}:${END_I}:g" run_dirs/run_array_job
 cp ${RUN_SCRIPTS}/rundir_check.sh run_dirs/
 mkdir -p bin
 if [ "$NEST" == "T" ]; then
@@ -107,6 +107,19 @@ elif [ "$MET" == "merra2" ]; then
   metDir="MERRA2"
   native="0.5x0.625"
 fi
+if [ "$RES" = "4x5" ]; then
+    gridRes="4.0x5.0"
+elif [ "$RES" == "2x2.5" ]; then
+    gridRes="2.0x2.5"
+else
+    gridRes="$RES"
+fi
+if [ -z "$REGION" ]; then
+    gridDir="$RES"
+else
+    gridDir="${RES}_${REGION}"
+fi
+    
 
 ##=======================================================================
 ##  Create run directories
@@ -156,7 +169,7 @@ while [ $x -le $stop ];do
        -e "s:{MET}:${MET}:g" \
        -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
        -e "s:{SIM}:CH4:g" \
-       -e "s:{RES}:${RES}:g" \
+       -e "s:{RES}:${gridRes}:g" \
        -e "s:{LON_RANGE}:${LONS}:g" \
        -e "s:{LAT_RANGE}:${LATS}:g" \
        -e "s:{HALF_POLAR}:${HPOLAR}:g" \
@@ -215,10 +228,13 @@ while [ $x -le $stop ];do
        -e "s:{GRID_DIR}:${gridDir}:g" \
        -e "s:{MET_DIR}:${metDir}:g" \
        -e "s:{NATIVE_RES}:${native}:g" \
-       -e "s:$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.$YYYY$MM$DD_$HH$MNz.nc4:${BC_FILES}:g" \
+       -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" \
        HEMCO_Config.template > HEMCO_Config.rc
    rm HEMCO_Config.template
-
+   if [ ! -z "REGION" ]; then
+       sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
+   fi
+       
    ### Set up HISTORY.rc
    ### use monthly output for now
    sed -e "s:{FREQUENCY}:00000100 000000:g" \
