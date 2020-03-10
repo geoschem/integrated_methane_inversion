@@ -249,7 +249,7 @@ while [ $x -le $stop ];do
    ### Compile code when creating first run directory
    if [ $x -eq $START_I ]; then
        make realclean CODE_DIR=$MY_PATH/Code.CH4_Inv
-       make -j4 build TIMERS=1 CODE_DIR=$MY_PATH/Code.CH4_Inv
+       make -j4 build TIMERS=1 BPCH_DIAG=y CODE_DIR=$MY_PATH/Code.CH4_Inv
        cp -av geos ../../bin/
    fi
 
