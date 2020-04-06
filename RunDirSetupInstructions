@@ -68,6 +68,7 @@ Setting up code and run directories:
    UseOHSF  : Set to true to use OH scale factors from a previous analytical
               inversion.
    PLANEFLIGHT: Set to true to use the planeflight diagnostic.
+   HourlyCH4: Set to true to save out hourly CH4 concentrations and pressure edges
 
    START_DATE: Start date of your simulations in YYYYMMDD format.
    END_DATE  : End   date of your simulations in YYYYMMDD format.

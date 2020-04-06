@@ -50,6 +50,7 @@ UseEmisSF=false
 UseSeparateWetlandSF=false
 UseOHSF=false
 PLANEFLIGHT=false
+HourlyCH4=true
 
 ### Number of Clusters
 start=$START_I
@@ -239,8 +240,24 @@ while [ $x -le $stop ];do
    ### use monthly output for now
    sed -e "s:{FREQUENCY}:00000100 000000:g" \
        -e "s:{DURATION}:00000100 000000:g" \
+       -e 's:'\''CH4:#'\''CH4:g' \
        HISTORY.rc.template > HISTORY.rc
    rm HISTORY.rc.template
+
+   # If turned on, save out hourly CH4 concentrations and pressure fields to
+   # daily files
+   if "$HourlyCH4"; then
+       sed -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
+	   -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
+	   -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' \
+	   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+	   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+	   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+	   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
+	   -e 's/'\''Met_CMFMC/#'\''Met_CMFMC:/g' \
+	   -e 's/'\''Met_PF/#'\''Met_PF/g' HISTORY.rc > HISTORY.temp
+       mv HISTORY.temp HISTORY.rc
+   fi
    
    ### Create run script from template
    sed -e "s:namename:${name}:g" run.template > ${name}.run
