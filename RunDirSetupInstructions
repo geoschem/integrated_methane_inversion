@@ -15,9 +15,9 @@ Setting up code and run directories:
    MY_PATH  : Set it to the file path created in Step 1.
    DATA_PATH: Path to non-emissions data that will replate {DATA_ROOT} token
               in input.geos and HEMCO_Config.rc. The default is path is
-	      /n/holylfs/EXTERNAL_REPOS/GEOS-CHEM/gcgrid/data/ExtData. The
-	      emissions data path is set in HEMCO_Config.rc and by default is
-	      set to /n/seasasfs02/CH4_Inversion/HEMCO.
+	      /n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData.
+	      The emissions data path is set in HEMCO_Config.rc and by default
+	      is set to /n/seasasfs02/CH4_Inversion/HEMCO.
    RESTART_FILE: Path to the initial restart file. Sample restart files may be
                  found in /n/seasasfs02/CH4_inversion/InputData/Restarts.
    BC_FILES: Path to boundary condition files to be used for nested grid

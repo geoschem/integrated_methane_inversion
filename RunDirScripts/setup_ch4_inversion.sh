@@ -13,7 +13,7 @@ GC_VERSION=12.7.1
 MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
 
 # Path to find non-emissions input data
-DATA_PATH="/n/holylfs/EXTERNAL_REPOS/GEOS-CHEM/gcgrid/data/ExtData"
+DATA_PATH="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 # Path to initial restart file
 RESTART_FILE="/n/seasasfs02/CH4_inversion/InputData/Restarts/GEOSChem.Restart.20090101_0000z.nc4"
