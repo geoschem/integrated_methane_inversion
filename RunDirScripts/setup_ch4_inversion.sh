@@ -232,7 +232,7 @@ while [ $x -le $stop ];do
        -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" \
        HEMCO_Config.template > HEMCO_Config.rc
    rm HEMCO_Config.template
-   if [ ! -z "REGION" ]; then
+   if [ ! -z "$REGION" ]; then
        sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
    fi
        
