@@ -78,3 +78,15 @@ Revision History:
 
 20 Feb 2020 - M. Sulprizio- Initial setup using latest updates from J.D.
                             Maasakkers et al. (2019) and Y. Zhang et al. (2020)
+
+27 May 2020 - H. Nesser - Added two scripts to PostprocessingScripts:
+       	      	 	  inversion.py: contains an Inversion class (and several			  inherited subclasses) for solving and plotting 
+			  analytic inversion results. 
+			  format_plots.py: needed for the plots in the 
+			  Inversion class.
+			  These scripts and others for post-processing (though
+			  with fewer comments) can be found on 
+			  https://github.com/hannahnesser/reduced_rank_jacobian/
+			  Please feel free to create your own fork and create 
+			  pull requests for any desired changes! (And I will 
+                          update these copies on a regular basis.)

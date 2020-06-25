@@ -19,7 +19,8 @@ DATA_PATH="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 RESTART_FILE="/n/seasasfs02/CH4_inversion/InputData/Restarts/GEOSChem.Restart.20090101_0000z.nc4"
 
 # Path to boundary condition files (for nested grid simulations)
-BC_FILES="/n/holyscratch01/jacob_lab/hnesser/GC_TROPOMI_bias_rundirs/Nested_NA/run_dirs/rundir_LSinv/BCs_nc/BC.$YYYY$MM$DD.nc"
+# Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
+BC_FILES="/n/holyscratch01/jacob_lab/hnesser/GC_TROPOMI_bias_rundirs/Nested_NA/run_dirs/rundir_LSinv/BCs_nc/BC.\$YYYY\$MM\$DD.nc"
 
 # Start and end date fo the simulations
 START_DATE=20180501
