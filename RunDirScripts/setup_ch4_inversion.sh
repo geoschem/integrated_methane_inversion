@@ -34,7 +34,7 @@ LATS=" -90.0  90.0"
 HPOLAR="T"
 LEVS="47"
 NEST="F"
-REGION=""  # Nested grid region (NA,AS,CH,EU); Leave blank for global or custom
+REGION=""  # Nested grid region - choose NA,AS,CH,EU; Leave blank for global
 BUFFER="0 0 0 0"
 
 # Jacobian settings
@@ -43,6 +43,9 @@ END_I=0
 pPERT="1.5"
 RUN_NAME="CH4_Jacobian"
 RUN_TEMPLATE="${RES}_template"
+
+# Copy clean UT and Code directory? Only needed on first setup
+CopyDirs=true
 
 # Turn on observation operators and planeflight diagnostics?
 GOSAT=false
@@ -60,22 +63,24 @@ x=$start
 
 ##=======================================================================
 ## Get source code and run directories
+if "$CopyDirs"; then
+    # Copy source code with CH4 analytical inversion updates to your space
+    # Make sure branch with latest CH4 inversion updates is checked out
+    cp -r /n/seasasfs02/CH4_inversion/Code.CH4_Inv .
+    cd Code.CH4_Inv
+    git checkout CH4_Analytical_Inversion
+    cd ..
 
-# Copy source code with CH4 analytical inversion updates to your space
-# Make sure branch with latest CH4 inversion updates is checked out
-cp -r /n/seasasfs02/CH4_inversion/Code.CH4_Inv .
-cd Code.CH4_Inv
-git checkout CH4_Analytical_Inversion
-cd ..
+    # Copy Unit Tester to create run directory to your space
+    # Make sure branch with latest CH4 inversion updates is checked out
+    cp -r /n/seasasfs02/CH4_inversion/UnitTester.CH4_Inv .
+    cd UnitTester.CH4_Inv
+    git checkout CH4_Analytical_Inversion
+    cd ..
+fi
 
-# Copy Unit Tester to create run directory to your space
-# Make sure branch with latest CH4 inversion updates is checked out
-cp -r /n/seasasfs02/CH4_inversion/UnitTester.CH4_Inv .
-cd UnitTester.CH4_Inv
-git checkout CH4_Analytical_Inversion
-cd ..
-
-# Copy run directory with template files directly from unit tester
+##=======================================================================
+## Copy run directory with template files directly from unit tester
 RUN_SCRIPTS="/n/seasasfs02/CH4_inversion/RunDirScripts"
 mkdir -p $RUN_NAME
 cd $RUN_NAME
@@ -121,7 +126,6 @@ if [ -z "$REGION" ]; then
 else
     gridDir="${RES}_${REGION}"
 fi
-    
 
 ##=======================================================================
 ##  Create run directories
@@ -156,7 +160,6 @@ while [ $x -le $stop ];do
    mkdir -p ${runDir}
    mkdir -p ${runDir}/Plane_Logs
    mkdir -p ${runDir}/Restarts
-   ln -s ${MY_PATH}/Code.CH4_Inv CodeDir
 
    ### Copy and point to the necessary data
    cp -r ${RUN_TEMPLATE}/*  ${runDir}
@@ -214,10 +217,10 @@ while [ $x -le $stop ];do
        NEW="Turn on plane flt diag? : T"
        sed -i "s/$OLD/$NEW/g" input.geos
        OLD="Flight track info file  : Planeflight.dat.YYYYMMDD"
-       NEW="Flight track info file  : Planeflights/Planeflight.dat.YYYYMMDD"
+       NEW="Flight track info file  : Planeflights\/Planeflight.dat.YYYYMMDD"
        sed -i "s/$OLD/$NEW/g" input.geos
        OLD="Output file name        : plane.log.YYYYMMDD"
-       NEW="Output file name        : Plane_Logs/plane.log.YYYYMMDD"
+       NEW="Output file name        : Plane_Logs\/plane.log.YYYYMMDD"
        sed -i "s/$OLD/$NEW/g" input.geos
    fi
 
@@ -267,6 +270,8 @@ while [ $x -le $stop ];do
        make realclean CODE_DIR=$MY_PATH/Code.CH4_Inv
        make -j4 build BPCH_DIAG=y CODE_DIR=$MY_PATH/Code.CH4_Inv
        cp -av geos ../../bin/
+   else
+       ln -s ../../bin/geos .
    fi
 
    ### Navigate back to top-level directory
