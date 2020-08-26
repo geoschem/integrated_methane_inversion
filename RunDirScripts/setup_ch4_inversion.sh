@@ -186,6 +186,11 @@ while [ $x -le $stop ];do
        $InputFile > input.geos.temp
    mv input.geos.temp input.geos
    rm input.geos.template
+
+   # For CH4 inversions always turn analytical inversion on
+   OLD="Do analytical inversion?: F"
+   NEW="Do analytical inversion?: T"
+   sed -i "s/$OLD/$NEW/g" input.geos
    
    if "$GOSAT"; then
        OLD="Use GOSAT obs operator? : F"
