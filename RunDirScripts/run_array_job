@@ -1,5 +1,0 @@
-#!/bin/bash
-
-sbatch --array={START}-{END}submit_array_jobs
-
-exit 0

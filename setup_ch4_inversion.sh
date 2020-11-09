@@ -7,7 +7,8 @@
 ##=======================================================================
 ## Set variables
 
-GC_VERSION=12.7.1
+# Path to inversion setup
+INV_PATH=$(pwd -P)
 
 # Path where you want to set up CH4 inversion code and run directories
 MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
@@ -44,9 +45,6 @@ pPERT="1.5"
 RUN_NAME="CH4_Jacobian"
 RUN_TEMPLATE="${RES}_template"
 
-# Copy clean UT and Code directory? Only needed on first setup
-CopyDirs=true
-
 # Turn on observation operators and planeflight diagnostics?
 GOSAT=false
 TCCON=false
@@ -62,46 +60,30 @@ stop=$END_I
 x=$start
 
 ##=======================================================================
-## Get source code and run directories
-if "$CopyDirs"; then
-    # Copy source code with CH4 analytical inversion updates to your space
-    # Make sure branch with latest CH4 inversion updates is checked out
-    cp -r /n/seasasfs02/CH4_inversion/Code.CH4_Inv .
-    cd Code.CH4_Inv
-    git checkout CH4_Analytical_Inversion
-    cd ..
-
-    # Copy Unit Tester to create run directory to your space
-    # Make sure branch with latest CH4 inversion updates is checked out
-    cp -r /n/seasasfs02/CH4_inversion/UnitTester.CH4_Inv .
-    cd UnitTester.CH4_Inv
-    git checkout CH4_Analytical_Inversion
-    cd ..
-fi
-
-##=======================================================================
 ## Copy run directory with template files directly from unit tester
-RUN_SCRIPTS="/n/seasasfs02/CH4_inversion/RunDirScripts"
+GCC_RUN_FILES="GEOS-Chem/run/GCClassic/"
 mkdir -p $RUN_NAME
 cd $RUN_NAME
 mkdir -p run_dirs
-cp ${RUN_SCRIPTS}/submit_array_jobs run_dirs/
+cp ${GCC_RUN_FILES}/submit_array_jobs run_dirs/
 sed -i -e "s:{RunName}:${RUN_NAME}:g" run_dirs/submit_array_jobs
-cp ${RUN_SCRIPTS}/run_array_job run_dirs/
+cp ${GCC_RUN_FILES}/run_array_job run_dirs/
 sed -i -e "s:{START}:${START_I}:g" -e "s:{END}:${END_I}:g" run_dirs/run_array_job
-cp ${RUN_SCRIPTS}/rundir_check.sh run_dirs/
+cp ${GCC_RUN_FILES}/rundir_check.sh run_dirs/
 mkdir -p bin
+cp -RLv ${GCC_RUN_FILES}/input.geos.CH4 ${RUN_TEMPLATE}/input.geos
+cp -RLv ${GCC_RUN_FILES}/HISTORY.rc.CH4 ${RUN_TEMPLATE}/HISTORY.rc
+cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
+cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
+cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO/Diagn.rc
 if [ "$NEST" == "T" ]; then
-  cp -rLv ${MY_PATH}/UnitTester.CH4_Inv/runs/${MET}_*_CH4_na $RUN_TEMPLATE
+    cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.CH4_na ${RUN_TEMPLATE}/HEMCO_Config.rc
 else
-  cp -rLv ${MY_PATH}/UnitTester.CH4_Inv/runs/${RES}_CH4 $RUN_TEMPLATE
+    cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
 fi
 
 # Set up template run directory
 cd $RUN_TEMPLATE
-cp ${MY_PATH}/UnitTester.CH4_Inv/runs/shared_inputs/Makefiles/Makefile .
-cp ${MY_PATH}/UnitTester.CH4_Inv/perl/getRunInfo .
-cp ${RUN_SCRIPTS}/run.template .
 ln -s $RESTART_FILE .
 mkdir OutputDir
 cd ..
@@ -165,27 +147,23 @@ while [ $x -le $stop ];do
    cp -r ${RUN_TEMPLATE}/*  ${runDir}
    cd $runDir
 
-   ### Create input.geos file from template
-   InputFile="input.geos.template"
-   sed -e "s:{DATE1}:${START_DATE}:g" \
-       -e "s:{DATE2}:${END_DATE}:g" \
-       -e "s:{TIME1}:000000:g" \
-       -e "s:{TIME2}:000000:g" \
-       -e "s:{MET}:${MET}:g" \
-       -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
-       -e "s:{SIM}:CH4:g" \
-       -e "s:{RES}:${gridRes}:g" \
-       -e "s:{LON_RANGE}:${LONS}:g" \
-       -e "s:{LAT_RANGE}:${LATS}:g" \
-       -e "s:{HALF_POLAR}:${HPOLAR}:g" \
-       -e "s:{NLEV}:${LEVS}:g" \
-       -e "s:{NESTED_SIM}:${NEST}:g" \
-       -e "s:{BUFFER_ZONE}:${BUFFER}:g" \
-       -e "s:pertpert:${PERT}:g" \
-       -e "s:clustnumclustnum:${xUSE}:g" \
-       $InputFile > input.geos.temp
-   mv input.geos.temp input.geos
-   rm input.geos.template
+   ### Update settings in input.geos
+   sed -i -e "s:{DATE1}:${START_DATE}:g" \
+          -e "s:{DATE2}:${END_DATE}:g" \
+          -e "s:{TIME1}:000000:g" \
+          -e "s:{TIME2}:000000:g" \
+          -e "s:{MET}:${MET}:g" \
+          -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
+          -e "s:{SIM}:CH4:g" \
+          -e "s:{RES}:${gridRes}:g" \
+          -e "s:{LON_RANGE}:${LONS}:g" \
+          -e "s:{LAT_RANGE}:${LATS}:g" \
+          -e "s:{HALF_POLAR}:${HPOLAR}:g" \
+          -e "s:{NLEV}:${LEVS}:g" \
+          -e "s:{NESTED_SIM}:${NEST}:g" \
+          -e "s:{BUFFER_ZONE}:${BUFFER}:g" \
+          -e "s:pertpert:${PERT}:g" \
+          -e "s:clustnumclustnum:${xUSE}:g" input.geos
 
    # For CH4 inversions always turn analytical inversion on
    OLD="Do analytical inversion?: F"
@@ -231,39 +209,34 @@ while [ $x -le $stop ];do
 
    ### Set up HEMCO_Config.rc
    ### Use monthly emissions diagnostic output for now
-   sed -e "s:End:Monthly:g" \
-       -e "s:{VERBOSE}:0:g" \
-       -e "s:{WARNINGS}:1:g" \
-       -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
-       -e "s:{GRID_DIR}:${gridDir}:g" \
-       -e "s:{MET_DIR}:${metDir}:g" \
-       -e "s:{NATIVE_RES}:${native}:g" \
-       -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" \
-       HEMCO_Config.template > HEMCO_Config.rc
-   rm HEMCO_Config.template
+   sed -i -e "s:End:Monthly:g" \
+          -e "s:{VERBOSE}:0:g" \
+          -e "s:{WARNINGS}:1:g" \
+          -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
+          -e "s:{GRID_DIR}:${gridDir}:g" \
+          -e "s:{MET_DIR}:${metDir}:g" \
+          -e "s:{NATIVE_RES}:${native}:g" \
+          -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" HEMCO_Config.rc
    if [ ! -z "$REGION" ]; then
        sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
    fi
        
    ### Set up HISTORY.rc
    ### use monthly output for now
-   sed -e "s:{FREQUENCY}:00000100 000000:g" \
-       -e "s:{DURATION}:00000100 000000:g" \
-       -e 's:'\''CH4:#'\''CH4:g' \
-       HISTORY.rc.template > HISTORY.rc
-   rm HISTORY.rc.template
+   sed -i -e "s:{FREQUENCY}:00000100 000000:g" \
+          -e "s:{DURATION}:00000100 000000:g" \
+          -e 's:'\''CH4:#'\''CH4:g' HISTORY.rc
 
    # If turned on, save out hourly CH4 concentrations and pressure fields to
    # daily files
    if "$HourlyCH4"; then
-       sed -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
-	   -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
-	   -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' \
-	   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-	   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-	   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-	   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc > HISTORY.temp
-       mv HISTORY.temp HISTORY.rc
+       sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
+	      -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
+	      -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' \
+	      -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+	      -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+	      -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+	      -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
    fi
    
    ### Create run script from template
@@ -272,8 +245,8 @@ while [ $x -le $stop ];do
 
    ### Compile code when creating first run directory
    if [ $x -eq $START_I ]; then
-       make realclean CODE_DIR=$MY_PATH/Code.CH4_Inv
-       make -j4 build BPCH_DIAG=y CODE_DIR=$MY_PATH/Code.CH4_Inv
+       make realclean CODE_DIR=$INV_PATH/GEOS-Chem
+       make -j4 build BPCH_DIAG=y CODE_DIR=$Inb_PATH/GEOS-Chem
        cp -av geos ../../bin/
    else
        ln -s ../../bin/geos .
