@@ -3,16 +3,15 @@ analytical inversions (mps, 2/20/2020)
 
 Setting up code and run directories:
 ====================================
-1. In your personal space on the $SCRATCH disk, create a directory where you
-   want to store these files.
 
-2. Copy /n/seasasfs02/CH4_inversion/RunDirScripts/setup_ch4_inversion.sh
-   to the directory created in Step 1.
+1. Open setup_ch4_inversion.sh in a text editor and modify the following:
 
-3. Open setup_ch4_inversion.sh in a text editor and modify the following:
-
-   # File paths
-   MY_PATH  : Set it to the file path created in Step 1.
+   File paths
+   ------------
+   RUN_NAME : Specify a name for your simulations.
+   MY_PATH  : Set it to the file path where you want to setup the CH4 inversion
+              run directories. It is recommended you put this in $SCRATCH but
+	      be aware of the 90-day retention applied to that space.
    DATA_PATH: Path to non-emissions data that will replate {DATA_ROOT} token
               in input.geos and HEMCO_Config.rc. The default is path is
 	      /n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData.
@@ -23,7 +22,17 @@ Setting up code and run directories:
    BC_FILES: Path to boundary condition files to be used for nested grid
              simulations. This will replace the file path in HEMCO_Config.rc.
 
-   # Grid settings
+   Simulation settings
+   ---------------------
+   DO_SPINUP   : Set to true to run a spinup simulation to generate a new
+                 restart file representative of your model setup.
+   SPINUP_START: Start date of your spinup period in YYYYMMDD format.
+   SPINUP_END  : End   date of your spinup period in YYYYMMDD format.
+   START_DATE  : Start date of your production runs in YYYYMMDD format.
+   END_DATE    : End   date of your production runs in YYYYMMDD format.
+
+   Grid settings
+   ---------------
    RES      : Options are "4x5", "2x2.5", "0.5x0.625", and "0.25x0.3125".
    MET      : Options are "merra2" or "geosfp".
    LONS     : Enter the min and max longitude edges of your domain.
@@ -43,22 +52,21 @@ Setting up code and run directories:
    LEVS     : Set to 47 to use the reduced 47-level grid recommended for CH4
               simulations.
    NEST     : Set to "F" for global simulations or "T" for nested simulations.
+   REGION   : Set to "" for global or "NA", "AS", "CH", "EU" for default domains
    BUFFER   : Set to "0 0 0 0" for global simulations. For nested simulations,
               the recommendation is to use "3 3 3 3" to use 3 grid cells along
 	      the nested-grid domain for your buffer zone.
 
-   # Jacobian settings
-   START_I  : Starting value for your Jacobian runs (usually 0).
-   END_I    : Ending value for your Jacobian runs (i.e. number of clusters to
-              perturb).
-     **NOTE: Set both START_I and END_I to 0 for base run only (no perturb)**
+   Jacobian settings
+   -------------------
+   nClusters : Number of clusters to include in constructing your Jacobian. This
+               will be equal to the number of GEOS-Chem runs - 1. Set this value
+	       to 0 to run the prior simulation with no perturbations applied.
    pPERT    : Perturbation value to apply to clusters in analytical inversion.
-   RUN_NAME : This can be changed to whatever you like, by default it is
               "CH4_Jacobian"
-   RUN_TEMPLATE : This is the template run directory that will be created and
-             is traditionally named for the resolution you choose.
 
-   # Additional settings (change options in input.geos)
+   Additional settings (change options in input.geos)
+   ---------------------
    GOSAT    : Set to true to use GOSAT observation operator.
    TCCON    : Set to true to use TCCON observation operator.
    UseEmisSF: Set to true to use emission scale factors from a previous
@@ -68,29 +76,41 @@ Setting up code and run directories:
    UseOHSF  : Set to true to use OH scale factors from a previous analytical
               inversion.
    PLANEFLIGHT: Set to true to use the planeflight diagnostic.
-   HourlyCH4: Set to true to save out hourly CH4 concentrations and pressure edges
+   HourlyCH4: Set to true to save out hourly CH4 concentrations and pressure
+              edges
 
-   START_DATE: Start date of your simulations in YYYYMMDD format.
-   END_DATE  : End   date of your simulations in YYYYMMDD format.
 
-4. Save and close setup_ch4_inversion.sh.
+2. Save and close setup_ch4_inversion.sh.
 
-5. Load your fortran compiler if you haven't already. You may use the
+3. Load your fortran compiler if you haven't already. You may use the
    init scripts found in the ACMG env repository. For example:
 
       # Clone ACMG startup scripts if you haven't already
       cd ~
-      git clone https://msulprizio@bitbucket.org/gcst/env.git
+      git clone https://bitbucket.org/gcst/env.git
 
       # Load ifort17 compiler and companion modules
-      source ~/env/init/init.gc-classic.ifort17.centos7 
+      source ~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env
 
+   NOTE: If you change terminal windows or open a new session on Cannon, you
+         will need to resource the same file to run your simulations.
 
-6. Navigate back to the directory created in Step 1. At the command line type
+4. Navigate back to the directory containing setup_ch4_inversion.sh and type:
 
       ./setup_ch4_inversion.sh
 
-7. Submit runs
+5. Navigate to ${MY_PATH}/${RUN_NAME} as as specified in setup_ch4_inverison.sh.
+
+5. If you set DO_SPINUP to true, change into the spinup_run directory.
+
+   5a. Open ${RUN_NAME}_Spinup.run and modify the #SBATCH commands at the top
+       as needed. See https://docs.rc.fas.harvard.edu/kb/running-jobs/ for
+       details.
+
+   5b. Submit the spinup run to the SLURM scheduler using:
+          sbatch ${RUN_NAME}_Spinup.run
+
+6. Navigate into the jacobian_runs directory
 
    - If running just the base simulation (run #0000, e.g. for prior or
      posterior), you can submit your run using the RUN_NAME_0000.run script
@@ -101,8 +121,9 @@ Setting up code and run directories:
      with the string you defined in setup_ch4_inversion.sh.
 
   - If running the full set of runs to construct the Jacobian, open and modify
-    run_dirs/submit_array_jobs to use the desired #SBATCH options. Then, at
-    the command line, type "sbatch submit_array_jobs"
+    run_dirs/run_jacobian_simulations.sh to use the desired #SBATCH options.
+    Then, at the command line, type "./submit_jacobian_simulations_array.sh" to
+    submit the array of jobs for all perturbation runs.
 
 
 Making changes to your code and run directory

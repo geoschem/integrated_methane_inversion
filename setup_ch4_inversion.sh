@@ -11,7 +11,7 @@
 INV_PATH=$(pwd -P)
 
 # Name for this run
-RUN_NAME="Test_NA"
+RUN_NAME="Test_Permian"
 
 # Path where you want to set up CH4 inversion code and run directories
 MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
@@ -33,7 +33,7 @@ SPINUP_END=20180501
 
 # Start and end date fo the production simulations
 START_DATE=20180501
-END_DATE=20180601
+END_DATE=20180508
 
 # Grid settings (Global 4x5)
 #RES="4x5"
@@ -47,10 +47,10 @@ END_DATE=20180601
 #BUFFER="0 0 0 0"
 
 # Grid settings (Nested NA)
-RES="0.5x0.625"
-MET="merra2"
-LONS="-140.0 -40.0"
-LATS="  10.0  70.0"
+RES="0.25x0.3125"
+MET="geosfp"
+LONS="-111.0 -95.0"
+LATS="  24.0  39.0"
 HPOLAR="F"
 LEVS="47"
 NEST="T"
@@ -98,17 +98,16 @@ GCC_RUN_FILES="${INV_PATH}/GEOS-Chem/run/GCClassic"
 mkdir -p ${MY_PATH}/${RUN_NAME}
 cd ${MY_PATH}/$RUN_NAME
 mkdir -p jacobian_runs
-cp ${GCC_RUN_FILES}/runScriptSamples/submit_array_jobs jacobian_runs/
-sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/submit_array_jobs
-cp ${GCC_RUN_FILES}/runScriptSamples/run_array_job jacobian_runs/
-sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/run_array_job
-cp ${GCC_RUN_FILES}/runScriptSamples/rundir_check.sh jacobian_runs/
+cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
+sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/run_jacobian_simulations.sh
+cp ${GCC_RUN_FILES}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
+sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
 RUN_TEMPLATE="template_run"
 mkdir -p ${RUN_TEMPLATE}
 cp -RLv ${GCC_RUN_FILES}/input.geos.templates/input.geos.CH4 ${RUN_TEMPLATE}/input.geos
 cp -RLv ${GCC_RUN_FILES}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RUN_TEMPLATE}/HISTORY.rc
-cp -RLv ${GCC_RUN_FILES}/runScriptSamples/run.template ${RUN_TEMPLATE}
+cp -RLv ${GCC_RUN_FILES}/runScriptSamples/ch4_run.template ${RUN_TEMPLATE}
 cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
 cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
 cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Diagn.rc
@@ -222,9 +221,8 @@ if "$HourlyCH4"; then
 fi
 
 ### Compile GEOS-Chem and store executable in template run directory
-#make realclean CODE_DIR=${INV_PATH}/GEOS-Chem
-#make -j4 build BPCH_DIAG=y CODE_DIR=${INV_PATH}/GEOS-Chem
-#fi
+make realclean CODE_DIR=${INV_PATH}/GEOS-Chem
+make -j4 build BPCH_DIAG=y CODE_DIR=${INV_PATH}/GEOS-Chem
 
 ### Navigate back to top-level directory
 cd ..
@@ -246,7 +244,7 @@ if "$DO_SPINUP"; then
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf geos
-    ln -s ../../${RUN_TEMPLATE}/geos .
+    ln -s ../${RUN_TEMPLATE}/geos .
 
     # Link to restart file
     ln -s $RESTART_FILE GEOSChem.Restart.${SPINUP_START}_0000z.nc4
@@ -259,7 +257,8 @@ if "$DO_SPINUP"; then
            -e "s|clustnumclustnum|0|g" input.geos
 
     ### Create run script from template
-    sed -e "s:namename:${spinup_name}:g" run.template > ${spinup_name}.run
+    sed -e "s:namename:${spinup_name}:g" \
+	-e "s:##:#:g" ch4_run.template > ${spinup_name}.run
     chmod 755 ${spinup_name}.run
 
     ### Print diagnostics
@@ -310,7 +309,7 @@ while [ $x -le $nClusters ];do
 
    # Link to restart file
    if "$DO_SPINUP"; then
-       ln -s ../../spinup_run/GEOS_Chem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
+       ln -s ../../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
    else
        ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
    fi
@@ -320,7 +319,7 @@ while [ $x -le $nClusters ];do
           -e "s:clustnumclustnum:${xUSE}:g" input.geos
 
    ### Create run script from template
-   sed -e "s:namename:${name}:g" run.template > ${name}.run
+   sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
    chmod 755 ${name}.run
 
    ### Navigate back to top-level directory
