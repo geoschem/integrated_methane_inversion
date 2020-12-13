@@ -1,5 +1,14 @@
 Contents & Revisions
 
+CH4_TROPOMI_INV:        Contains scripts for post-processing GEOS-Chem output
+                        for comparison with TROPOMI observations, building the
+                        Jacobian, and performing an inversion. Scripts were
+                        originally provided by Lu Shen and modified by Daniel
+                        Varon. This directory is currently a Git submodule
+                        linked to https://github.com/ACMG-CH4/CH4_TROPOMI_INV.
+                        DATE            PERSON          DESCRIPTION
+                        2020/12/13      M. Sulprizio    Initial upload
+
 inversion.py:		Contains an Inversion class (and several inherited 
 		        subclasses) for solving and plotting analytic 
 			inversion results. The inherited classes allow for
