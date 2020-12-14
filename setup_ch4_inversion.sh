@@ -1,11 +1,19 @@
 #!/bin/bash
 
-# ------------------------------------------------------------------
-### Set up GEOS-Chem for Jacobian run (mps, 2/20/2020)
-# ------------------------------------------------------------------
+# This script will set up CH4 analytical inversions with GEOS-Chem. See
+# setup_ch4_inversion_instructions.txt for details (mps, 2/20/2020)
 
 ##=======================================================================
-## Set variables
+## User settings **MODIFY AS NEEDED**
+##=======================================================================
+
+# Turn on/off different steps. This will allow you to come back to this
+# script and set up different stages later.
+SetupTemplateRundir=false
+SetupSpinupRun=false
+SetupJacobianRuns=false
+SetupInversion=true
+SetupPosteriorRun=false
 
 # Path to inversion setup
 INV_PATH=$(pwd -P)
@@ -26,12 +34,12 @@ RESTART_FILE="${MY_PATH}/input_data_permian/GEOSChem.Restart.fromBC.20180401_000
 # Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
 BC_FILES="${MY_PATH}/input_data_permian/Lu_BC_CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
 
-# Do spinup simulation?
+# Start and end date for the spinup simulation
 DO_SPINUP=true
 SPINUP_START=20180401
 SPINUP_END=20180501
 
-# Start and end date fo the production simulations
+# Start and end date for the production simulations
 START_DATE=20180501
 END_DATE=20180508
 
@@ -72,6 +80,7 @@ HourlyCH4=true
 
 ##=======================================================================
 ## Define met and grid fields for HEMCO_Config.rc
+##=======================================================================
 if [ "$MET" == "geosfp" ]; then
   metDir="GEOS_FP"
   native="0.25x0.3125"
@@ -93,10 +102,14 @@ else
 fi
 
 ##=======================================================================
-## Copy run directory files directly from GEOS-Chem repository
+## Set up template run directory
+##=======================================================================
+if "$SetupTemplateRundir"; then
+
+# Copy run directory files directly from GEOS-Chem repository
 GCC_RUN_FILES="${INV_PATH}/GEOS-Chem/run/GCClassic"
 mkdir -p ${MY_PATH}/${RUN_NAME}
-cd ${MY_PATH}/$RUN_NAME
+cd ${MY_PATH}/${RUN_NAME}
 mkdir -p jacobian_runs
 cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
 sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/run_jacobian_simulations.sh
@@ -117,8 +130,6 @@ else
     cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
 fi
 
-##=======================================================================
-## Set up template run directory
 cd $RUN_TEMPLATE
 mkdir -p OutputDir
 mkdir -p Restarts
@@ -227,9 +238,12 @@ make -j4 build BPCH_DIAG=y CODE_DIR=${INV_PATH}/GEOS-Chem
 ### Navigate back to top-level directory
 cd ..
 
+fi # SetupTemplateRunDir
+
 ##=======================================================================
-##  Setup spinup run directory
-if "$DO_SPINUP"; then
+##  Set up spinup run directory
+##=======================================================================
+if  "$SetupSpinupRun"; then
 
     ### Define the run directory name
     spinup_name="${RUN_NAME}_Spinup"
@@ -266,10 +280,59 @@ if "$DO_SPINUP"; then
     
     ### Navigate back to top-level directory
     cd ..
-fi
+    
+fi # SetupSpinupRun
 
 ##=======================================================================
-##  Create Jacobian run directories
+##  Set up posterior run directory
+##=======================================================================
+if  "$SetupPosteriorRun"; then
+
+    ### Define the run directory name
+    posterior_name="${RUN_NAME}_Posterior"
+
+    ### Make the directory
+    runDir="posterior_run"
+    mkdir -p ${runDir}
+
+    ### Copy and point to the necessary data
+    cp -r ${RUN_TEMPLATE}/*  ${runDir}
+    cd $runDir
+
+    ### Link to GEOS-Chem executable instead of having a copy in each run dir
+    rm -rf geos
+    ln -s ../${RUN_TEMPLATE}/geos .
+
+    # Link to restart file
+    if "$DO_SPINUP"; then
+       ln -s ../../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
+    else
+       ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
+    fi
+    
+    ### Update settings in input.geos
+    sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
+	   -e "s|pertpert|1.0|g" \
+           -e "s|clustnumclustnum|0|g" input.geos
+
+    ### Create run script from template
+    sed -e "s:namename:${spinup_name}:g" \
+	-e "s:##:#:g" ch4_run.template > ${posterior_name}.run
+    chmod 755 ${posterior_name}.run
+
+    ### Print diagnostics
+    echo "CREATED: ${runDir}"
+    echo "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors."
+    
+    ### Navigate back to top-level directory
+    cd ..
+    
+fi # SetupPosteriorRun
+
+##=======================================================================
+##  Set up Jacobian run directories
+##=======================================================================
+if "$SetupJacobianRuns"; then
 
 # Initialize (x=0 is base run, i.e. no perturbation; x=1 is cluster=1; etc.)
 x=0
@@ -334,5 +397,31 @@ while [ $x -le $nClusters ];do
 done
 
 echo "=== DONE CREATING JACOBIAN RUN DIRECTORIES ==="
+
+fi  # SetupJacobianRuns
+
+##=======================================================================
+##  Setup inversion directory
+##=======================================================================
+if "$SetupInversion"; then
+
+    cd ${MY_PATH}/$RUN_NAME
+    mkdir -p inversion
+    mkdir -p inversion/data_converted
+    mkdir -p inversion/data_GC
+    mkdir -p inversion/Sensi
+    ln -s /n/holylfs/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
+    cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
+    cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
+    sed -i -e "s:{CLUSTERS}:${nClusters}:g" \
+	   -e "s:{START}:${START_DATE}:g" \
+           -e "s:{END}:${END_DATE}:g" \
+	   -e "s:{RUNDIRS}:${MY_PATH}/${RUN_NAME}/jacobian_runs:g" \
+	   -e "s:{RUNNAME}:${RUN_NAME}:g" \
+	   -e "s:{MYPATH}:${MY_PATH}:g" inversion/run_inversion.sh
+	   
+    echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
+
+fi #SetupInversion
 
 exit 0

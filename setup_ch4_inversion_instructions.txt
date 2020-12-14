@@ -1,11 +1,28 @@
-This file contains instructions for setting up run directories for methane
-analytical inversions (mps, 2/20/2020)
+This file contains instructions for setting up GEOS-Chem run directories for use
+in methane analytical inversions (mps, 2/20/2020)
 
+===============================================================================
 Setting up code and run directories:
-====================================
+===============================================================================
 
 1. Open setup_ch4_inversion.sh in a text editor and modify the following:
 
+   Setup settings
+   ---------------------
+   SetupTemplateRundir : Copy run directory files from GEOS-Chem and
+                         replace text in input files according to settings in
+                         setup_ch4_inversion.sh. The template run directory is
+                         needed to set up the spinup, Jacobian, and posterior
+                         run directories. It only needs to be generated once.
+   SetupSpinupRun      : Create a run directory to spinup a new restart file
+                         representative of your model setup.
+   SetupJacobianRunDirectories : Setup run directories for each of your
+                         perturbation clusters. The output from these
+                         simulations will be used to construct the Jacobian.
+   SetupInversion      : Copy scripts used to post-process GEOS-Chem data,
+                         build the Jacobian, and run the inversion.
+   SetupPosteriorRun:  : Create a run directory to submit a posterior run.
+   
    File paths
    ------------
    RUN_NAME : Specify a name for your simulations.
@@ -99,49 +116,64 @@ Setting up code and run directories:
 
       ./setup_ch4_inversion.sh
 
-5. Navigate to ${MY_PATH}/${RUN_NAME} as as specified in setup_ch4_inverison.sh.
+5. Navigate to ${MY_PATH}/${RUN_NAME} as as specified in setup_ch4_inversion.sh.
 
-5. If you set DO_SPINUP to true, change into the spinup_run directory.
+5. If you set DO_SPINUP to true, submit the spinup simulation.
 
-   5a. Open ${RUN_NAME}_Spinup.run and modify the #SBATCH commands at the top
+   5a. Navigate into the spinup_run directory.
+
+   5b. Open ${RUN_NAME}_Spinup.run and modify the #SBATCH commands at the top
        as needed. See https://docs.rc.fas.harvard.edu/kb/running-jobs/ for
        details.
 
-   5b. Submit the spinup run to the SLURM scheduler using:
+   5c. Submit the spinup run to the SLURM scheduler using:
           sbatch ${RUN_NAME}_Spinup.run
 
-6. Navigate into the jacobian_runs directory
+6. Submit the Jacobian runs.
 
-   - If running just the base simulation (run #0000, e.g. for prior or
-     posterior), you can submit your run using the RUN_NAME_0000.run script
-     in your run_dirs/RUN_NAME_0000 run directory. You will first need to
-     uncomment the #SBATCH lines in that file and make any necessary changes to
-     those options in order to submit to the queue. Then, at the command line,
-     type "sbatch RUN_NAME_0000.run" at the command line (replacing RUN_NAME
-     with the string you defined in setup_ch4_inversion.sh.
+   6a. Navigate into the jacobian_runs directory
 
-  - If running the full set of runs to construct the Jacobian, open and modify
-    run_dirs/run_jacobian_simulations.sh to use the desired #SBATCH options.
-    Then, at the command line, type "./submit_jacobian_simulations_array.sh" to
-    submit the array of jobs for all perturbation runs.
+   6b. If running just the base simulation (run #0000, e.g. for prior or
+       posterior), you can submit your run using the RUN_NAME_0000.run script
+       in your run_dirs/RUN_NAME_0000 run directory. You will first need to
+       uncomment the #SBATCH lines in that file and make any necessary changes
+       to those options in order to submit to the queue. Then, at the command
+       line, type "sbatch RUN_NAME_0000.run" at the command line (replacing
+       RUN_NAME with the string you defined in setup_ch4_inversion.sh.
 
+   6c. If running the full set of runs to construct the Jacobian, open and
+       modify run_dirs/run_jacobian_simulations.sh to use the desired #SBATCH
+       options. Then submit the array of jobs for all perturbation
+       runs by typing "./submit_jacobian_simulations_array.sh".
 
+7. Run the inversion.
+
+   7a. Navigate into the inversion directory
+
+   7b. Open run_inversion.sh in a text editor and modify the SBATCH settings
+       as necessary.
+
+   7c. Load your python environment.
+
+   7d. Type "./run_inversion.sh" at the command line.
+   
+===============================================================================
 Making changes to your code and run directory
-=============================================
+===============================================================================
 
-Modify your local copy of Code.CH4_Inv and the run directories in your local
-UnitTester.CH4_In for any special options or new science that you want to
-add for your research. If your changes are mature and/or will be useful for the
+Modify your local copy of GEOS-Chem source code and the run directories files
+within for any special options or new science that you want to include
+for your research. If your changes are mature and/or will be useful for the
 larger group, then they can be pulled into the standard repositories currently 
 stored in /n/seasasfs02/CH4_Inversion (contact Melissa for help).
 
    - To add new options in input.geos:
      1. Modify the input.geos files in the CH4 run directories.
      2. Add logical fields to Input_Opt for your new switches. These can
-        be added in Code.CH4_Inv/Headers/input_opt_mod.F90. Make sure to both
+        be added in GEOS-Chem/Headers/input_opt_mod.F90. Make sure to both
 	define and initialize the fields (see other CH4 options for examples).
      3. Add code to read the new lines in in subroutine READ_CH4_MENU (found in
-        Code.CH4_Inv/GeosCore/input_mod.F). Also add code to print out the
+        GEOS-Chem/GeosCore/input_mod.F). Also add code to print out the
 	value of those options at the end of that subroutine.
      4. Modify the areas of code where this new option will impact and surround
         with "IF ( Input_Opt%NewOption ) THEN ... ENDIF". This is generally
@@ -150,9 +182,9 @@ stored in /n/seasasfs02/CH4_Inversion (contact Melissa for help).
    - To change emissions, cluster files, scale factor files or other input
      files used in your simulations:
      1. Modify the HEMCO configuration files in
-        UnitTester.CH4_Inv/runs/shared_inputs/CH4/ (both HEMCO_Config.template
-	and HEMCO_Config.template.na). Add or modify the entry for your
-	new file, changing the file path, variable name, dates, etc. as needed.
+        GEOS-Chem/runs/GCClassic/HEMCO_Config.rc.templates/. Add or modify the
+	entry for your new file, changing the file path, variable name, dates,
+	etc. as needed.
      2. If you modify an emissions file, HEMCO should handle it automatically,
         but if you add or modify cluster files, scale factor files, etc. then
 	you will need to modify or add code in global_ch4_mod.F:
@@ -166,9 +198,9 @@ stored in /n/seasasfs02/CH4_Inversion (contact Melissa for help).
 	   factors, etc. for examples on how to set up or modify your code.**
 
 Set up a new set of run directories using your updates. Open your copy of
-setup_ch4_inversion.sh in a text editor. Comment out the lines for copying
-the code and unit tester directories. Modify the RUN_NAME (to avoid overwriting
-past runs) and any other input fields. Then execute "./setup_ch4_inversion.sh".
+setup_ch4_inversion.sh in a text editor. Modify the RUN_NAME (to avoid
+overwriting past runs) and any other input fields. Then execute
+"./setup_ch4_inversion.sh".
 
 
 	
