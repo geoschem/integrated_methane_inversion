@@ -7,6 +7,12 @@ Overview:
 This directory contains the GEOS-Chem source code and post-processing scripts
 used to run CH4 analytical inversions.
 
+When first downloading this repository or when updating, you will need to type the
+following command to fetch the git submodules:
+
+     git submodule update --init --recursive
+
+
 Contents:
 ===============================================================================
 
@@ -17,13 +23,15 @@ GEOS-Chem
    (navigate to the code directory and type 'gitk --all' to view the
    complete revision history).
 
-   This directory is a Git submodule within the UMI_workflow repository.
+   This directory is a Git submodule within the CH4_inversion_workflow repository.
    
 
 PostprocessingScripts
 ---------------------
    Includes any scripts used to postprocess files used to construct the
-   Jacobian, compare GEOS-Chem output to satellites, etc.
+   Jacobian, compare GEOS-Chem output to satellites, etc. It contains the
+   CH4_TROPOMI_INV repository which is a Git submodule in the CH4_inversion_workflow
+   repository.
 			    
 
 Revision History:
