@@ -9,11 +9,11 @@
 
 # Turn on/off different steps. This will allow you to come back to this
 # script and set up different stages later.
-SetupTemplateRundir=false
-SetupSpinupRun=false
-SetupJacobianRuns=false
+SetupTemplateRundir=true
+SetupSpinupRun=true
+SetupJacobianRuns=true
 SetupInversion=true
-SetupPosteriorRun=false
+SetupPosteriorRun=true
 
 # Path to inversion setup
 INV_PATH=$(pwd -P)
@@ -66,7 +66,7 @@ REGION="NA"  # NA,AS,CH,EU
 BUFFER="3 3 3 3"
 
 # Jacobian settings
-nClusters=2 #243
+nClusters=243
 pPERT="1.5"
 
 # Turn on observation operators and planeflight diagnostics?
@@ -233,7 +233,7 @@ fi
 
 ### Compile GEOS-Chem and store executable in template run directory
 make realclean CODE_DIR=${INV_PATH}/GEOS-Chem
-make -j4 build BPCH_DIAG=y CODE_DIR=${INV_PATH}/GEOS-Chem
+make -j4 build CODE_DIR=${INV_PATH}/GEOS-Chem
 
 ### Navigate back to top-level directory
 cd ..
