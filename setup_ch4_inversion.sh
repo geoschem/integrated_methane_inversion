@@ -245,6 +245,8 @@ fi # SetupTemplateRunDir
 ##=======================================================================
 if  "$SetupSpinupRun"; then
 
+    cd ${MY_PATH}/${RUN_NAME}
+    
     ### Define the run directory name
     spinup_name="${RUN_NAME}_Spinup"
 
@@ -274,6 +276,7 @@ if  "$SetupSpinupRun"; then
     sed -e "s:namename:${spinup_name}:g" \
 	-e "s:##:#:g" ch4_run.template > ${spinup_name}.run
     chmod 755 ${spinup_name}.run
+    rm -f ch4_run.template
 
     ### Print diagnostics
     echo "CREATED: ${runDir}"
@@ -288,6 +291,8 @@ fi # SetupSpinupRun
 ##=======================================================================
 if  "$SetupPosteriorRun"; then
 
+    cd ${MY_PATH}/${RUN_NAME}
+    
     ### Define the run directory name
     posterior_name="${RUN_NAME}_Posterior"
 
@@ -305,7 +310,7 @@ if  "$SetupPosteriorRun"; then
 
     # Link to restart file
     if "$DO_SPINUP"; then
-       ln -s ../../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
+       ln -s ../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
     else
        ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
     fi
@@ -319,6 +324,7 @@ if  "$SetupPosteriorRun"; then
     sed -e "s:namename:${spinup_name}:g" \
 	-e "s:##:#:g" ch4_run.template > ${posterior_name}.run
     chmod 755 ${posterior_name}.run
+    rm -f ch4_run.template
 
     ### Print diagnostics
     echo "CREATED: ${runDir}"
@@ -334,69 +340,72 @@ fi # SetupPosteriorRun
 ##=======================================================================
 if "$SetupJacobianRuns"; then
 
-# Initialize (x=0 is base run, i.e. no perturbation; x=1 is cluster=1; etc.)
-x=0
+    cd ${MY_PATH}/${RUN_NAME}
+    
+    # Initialize (x=0 is base run, i.e. no perturbation; x=1 is cluster=1; etc.)
+    x=0
 
-# Create run directory for each cluster so we can apply perturbation to each
-while [ $x -le $nClusters ];do
+    # Create run directory for each cluster so we can apply perturbation to each
+    while [ $x -le $nClusters ];do
 
-   ### Positive or negative perturbation
-   PERT=$pPERT
-   xUSE=$x
+	### Positive or negative perturbation
+	PERT=$pPERT
+	xUSE=$x
 
-   ### Add zeros to string name
-   if [ $x -lt 10 ]; then
-      xstr="000${x}"
-   elif [ $x -lt 100 ]; then
-      xstr="00${x}"
-   elif [ $x -lt 1000 ]; then
-      xstr="0${x}"
-   else
-      xstr="${x}"
-   fi
+	### Add zeros to string name
+	if [ $x -lt 10 ]; then
+	    xstr="000${x}"
+	elif [ $x -lt 100 ]; then
+	    xstr="00${x}"
+	elif [ $x -lt 1000 ]; then
+	    xstr="0${x}"
+	else
+	    xstr="${x}"
+	fi
 
-   ### Define the run directory name
-   name="${RUN_NAME}_${xstr}"
+	### Define the run directory name
+	name="${RUN_NAME}_${xstr}"
 
-   ### Make the directory
-   runDir="./jacobian_runs/${name}"
-   mkdir -p ${runDir}
+	### Make the directory
+	runDir="./jacobian_runs/${name}"
+	mkdir -p ${runDir}
 
-   ### Copy and point to the necessary data
-   cp -r ${RUN_TEMPLATE}/*  ${runDir}
-   cd $runDir
+	### Copy and point to the necessary data
+	cp -r ${RUN_TEMPLATE}/*  ${runDir}
+	cd $runDir
 
-   ### Link to GEOS-Chem executable instead of having a copy in each run dir
-   rm -rf geos
-   ln -s ../../${RUN_TEMPLATE}/geos .
+	### Link to GEOS-Chem executable instead of having a copy in each rundir
+	rm -rf geos
+	ln -s ../../${RUN_TEMPLATE}/geos .
 
-   # Link to restart file
-   if "$DO_SPINUP"; then
-       ln -s ../../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
-   else
-       ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
-   fi
+	# Link to restart file
+	if "$DO_SPINUP"; then
+	    ln -s ../../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
+	else
+	    ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
+	fi
    
-   ### Update settings in input.geos
-   sed -i -e "s:pertpert:${PERT}:g" \
-          -e "s:clustnumclustnum:${xUSE}:g" input.geos
+	### Update settings in input.geos
+	sed -i -e "s:pertpert:${PERT}:g" \
+               -e "s:clustnumclustnum:${xUSE}:g" input.geos
 
-   ### Create run script from template
-   sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
-   chmod 755 ${name}.run
+	### Create run script from template
+	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
+	rm -f ch4_run.template
+	chmod 755 ${name}.run
 
-   ### Navigate back to top-level directory
-   cd ../..
+	### Navigate back to top-level directory
+	cd ../..
 
-   ### Increment
-   x=$[$x+1]
+	### Increment
+	x=$[$x+1]
 
-   ### Print diagnostics
-   echo "CREATED: ${runDir}"
+	### Print diagnostics
+	echo "CREATED: ${runDir}"
 
-done
+    done
 
-echo "=== DONE CREATING JACOBIAN RUN DIRECTORIES ==="
+    echo "=== DONE CREATING JACOBIAN RUN DIRECTORIES ==="
 
 fi  # SetupJacobianRuns
 
@@ -404,7 +413,7 @@ fi  # SetupJacobianRuns
 ##  Setup inversion directory
 ##=======================================================================
 if "$SetupInversion"; then
-
+    
     cd ${MY_PATH}/$RUN_NAME
     mkdir -p inversion
     mkdir -p inversion/data_converted
@@ -416,10 +425,9 @@ if "$SetupInversion"; then
     sed -i -e "s:{CLUSTERS}:${nClusters}:g" \
 	   -e "s:{START}:${START_DATE}:g" \
            -e "s:{END}:${END_DATE}:g" \
-	   -e "s:{RUNDIRS}:${MY_PATH}/${RUN_NAME}/jacobian_runs:g" \
-	   -e "s:{RUNNAME}:${RUN_NAME}:g" \
-	   -e "s:{MYPATH}:${MY_PATH}:g" inversion/run_inversion.sh
-	   
+	   -e "s:{MY_PATH}:${MY_PATH}:g" \
+	   -e "s:{RUN_NAME}:${RUN_NAME}:g" inversion/run_inversion.sh
+    
     echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
 
 fi #SetupInversion
