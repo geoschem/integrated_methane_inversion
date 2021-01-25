@@ -124,11 +124,7 @@ cp -RLv ${GCC_RUN_FILES}/runScriptSamples/ch4_run.template ${RUN_TEMPLATE}
 cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
 cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
 cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Diagn.rc
-if [ "$NEST" == "T" ]; then
-    cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4_na ${RUN_TEMPLATE}/HEMCO_Config.rc
-else
-    cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
-fi
+cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
 
 cd $RUN_TEMPLATE
 mkdir -p OutputDir
@@ -212,6 +208,11 @@ sed -i -e "s:End:Monthly:g" \
 if [ ! -z "$REGION" ]; then
     sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
 fi
+if [ "$NEST" == "T" ]; then
+    OLD="--> GC_BCs                 :       false"
+    NEW="--> GC_BCs                 :       true"
+    sed -i -e "s:$OLD:$NEW:g" HEMCO_Config.rc
+else
        
 ### Set up HISTORY.rc
 ### Use monthly output for now
