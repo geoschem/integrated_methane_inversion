@@ -24,20 +24,26 @@ Instructions
 
 3. Clone GEOS-Chem source code
 
-     git clone -b CH4_Analytical_Inversion https://github.com/ACMG-CH4/geos-chem.git GEOS-Chem
+     git clone -b 13.0.0+CH4_Inv https://github.com/ACMG-CH4/GCClassic.git
+     cd GCClassic
+     git submodule update --init --recursive
 
-   Note: You may also link to your own clone or fork of the GEOS-Chem source code, but
-   please ensure your code contains the latest updates in the CH4_Analytical_Inversion
-   branch for the scripts in this repository to work properly.
+   Updating the submodules will automatically use the GEOS-Chem science code
+   from https://github.com/ACMG-CH4/geos-chem.git in the branch '13.0.0+CH4_Inv'
+
+   Note: You may also link to your own clone or fork of the GEOS-Chem source
+   code, but please ensure your code contains the latest updates in the
+   CH4_Analytical_Inversion branch for the scripts in this repository to work
+   properly.
 
 
 Contents:
 ===============================================================================
 
-GEOS-Chem
+GCClassic
 ------------
    GEOS-Chem source code containing updates for running analytical inversions
-   of methane. These updates are stored in the 'CH4_Analytical_Inversion' branch
+   of methane. These updates are stored in the '13.0.0+CH4_Inv' branch
    (navigate to the code directory and type 'gitk --all' to view the
    complete revision history).
    
@@ -46,8 +52,8 @@ PostprocessingScripts
 ---------------------
    Includes any scripts used to postprocess files used to construct the
    Jacobian, compare GEOS-Chem output to satellites, etc. It contains the
-   CH4_TROPOMI_INV repository which is a Git submodule in the CH4_inversion_workflow
-   repository.
+   CH4_TROPOMI_INV repository which is a Git submodule in the
+   CH4_inversion_workflow repository.
 			    
 
 Revision History:
@@ -79,5 +85,6 @@ Revision History:
 			   - Added run_inversion.sh script modified from Daniel
 			     Varon's inversion_script.sh.
 
-24 Jan 2021 - M. Sulprizio - Removed GEOS-Chem as a Git submodule and use a clone of
-                             the GEOS-Chem source code (or link to local fork instead)
+24 Jan 2021 - M. Sulprizio - Removed GEOS-Chem as a Git submodule and use a
+                             clone of the GEOS-Chem source code (or link to
+                             local fork instead)
