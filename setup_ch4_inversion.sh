@@ -22,26 +22,30 @@ INV_PATH=$(pwd -P)
 RUN_NAME="Test_Permian"
 
 # Path where you want to set up CH4 inversion code and run directories
-MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
+MY_PATH="/home/ubuntu/CH4_Workflow"
 
 # Path to find non-emissions input data
-DATA_PATH="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+DATA_PATH="/home/ubuntu/ExtData"
 
 # Path to initial restart file
-RESTART_FILE="${MY_PATH}/input_data_permian/GEOSChem.Restart.fromBC.20180401_0000z.nc4"
+# This will be fetched from BC bucket eventually
+RESTART_FILE="${DATA_PATH}/GEOSChem.Restart.fromBC.20180401_0000z.nc4"
 
 # Path to boundary condition files (for nested grid simulations)
 # Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
-BC_FILES="${MY_PATH}/input_data_permian/Lu_BC_CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
+# These will be in a bucket eventually
+BC_FILES="${DATA_PATH}/BoundaryConditions"
 
 # Start and end date for the spinup simulation
 DO_SPINUP=true
 SPINUP_START=20180401
-SPINUP_END=20180501
+SPINUP_END=20180430
+SPINUP_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
 
 # Start and end date for the production simulations
 START_DATE=20180501
-END_DATE=20180508
+END_DATE=20180502
+PROD_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
 
 # Grid settings (Global 4x5)
 #RES="4x5"
@@ -107,7 +111,7 @@ fi
 if "$SetupTemplateRundir"; then
 
 # Copy run directory files directly from GEOS-Chem repository
-GCC_RUN_FILES="${INV_PATH}/GEOS-Chem/run/GCClassic"
+GCC_RUN_FILES="${INV_PATH}/GCClassic/run/"
 mkdir -p ${MY_PATH}/${RUN_NAME}
 cd ${MY_PATH}/${RUN_NAME}
 mkdir -p jacobian_runs
@@ -125,6 +129,8 @@ cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
 cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
 cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Diagn.rc
 cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
+cp -RLv ${GCC_RUN_FILES}/../shared/download_data.py ${RUN_TEMPLATE}/
+cp -RLv ${GCC_RUN_FILES}/../shared/species_database.yml ${RUN_TEMPLATE}/
 
 cd $RUN_TEMPLATE
 mkdir -p OutputDir
@@ -213,7 +219,8 @@ if [ "$NEST" == "T" ]; then
     NEW="--> GC_BCs                 :       true"
     sed -i -e "s:$OLD:$NEW:g" HEMCO_Config.rc
 else
-       
+    echo "This is broken?"
+fi
 ### Set up HISTORY.rc
 ### Use monthly output for now
 sed -i -e "s:{FREQUENCY}:00000100 000000:g" \
@@ -233,8 +240,12 @@ if "$HourlyCH4"; then
 fi
 
 ### Compile GEOS-Chem and store executable in template run directory
-make realclean CODE_DIR=${INV_PATH}/GEOS-Chem
-make -j4 build CODE_DIR=${INV_PATH}/GEOS-Chem
+ln -s ${INV_PATH}/GCClassic CodeDir
+mkdir -p build
+cd build
+cmake ../CodeDir -DRUNDIR=.. #-DRUNDIR=IGNORE CODE_DIR=${INV_PATH}/GCClassic
+make -j install #CODE_DIR=${INV_PATH}/GCClassic
+cd ..
 
 ### Navigate back to top-level directory
 cd ..
@@ -260,8 +271,8 @@ if  "$SetupSpinupRun"; then
     cd $runDir
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf geos
-    ln -s ../${RUN_TEMPLATE}/geos .
+    rm -rf gcclassic
+    ln -s ../${RUN_TEMPLATE}/gcclassic .
 
     # Link to restart file
     ln -s $RESTART_FILE GEOSChem.Restart.${SPINUP_START}_0000z.nc4
@@ -281,6 +292,13 @@ if  "$SetupSpinupRun"; then
 
     ### Print diagnostics
     echo "CREATED: ${runDir}"
+
+    ### Perform dry run if requested
+    if "$SPINUP_DRYRUN"; then
+       echo "Executing dry-run for spinup run..."
+       ./gcclassic --dryrun &> log.dryrun
+       ./download_data.py --aws log.dryrun
+    fi
     
     ### Navigate back to top-level directory
     cd ..
@@ -306,8 +324,8 @@ if  "$SetupPosteriorRun"; then
     cd $runDir
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf geos
-    ln -s ../${RUN_TEMPLATE}/geos .
+    rm -rf gcclassic
+    ln -s ../${RUN_TEMPLATE}/gcclassic .
 
     # Link to restart file
     if "$DO_SPINUP"; then
@@ -330,6 +348,14 @@ if  "$SetupPosteriorRun"; then
     ### Print diagnostics
     echo "CREATED: ${runDir}"
     echo "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors."
+
+    ### Perform dry run if requested
+    if "$PROD_DRYRUN"; then
+	echo "Executing dry-run for production runs..."
+	./gcclassic --dryrun &> log.dryrun
+	./download_data.py --aws log.dryrun
+    fi
+
     
     ### Navigate back to top-level directory
     cd ..
@@ -376,8 +402,8 @@ if "$SetupJacobianRuns"; then
 	cd $runDir
 
 	### Link to GEOS-Chem executable instead of having a copy in each rundir
-	rm -rf geos
-	ln -s ../../${RUN_TEMPLATE}/geos .
+	rm -rf gcclassic
+	ln -s ../../${RUN_TEMPLATE}/gcclassic .
 
 	# Link to restart file
 	if "$DO_SPINUP"; then
