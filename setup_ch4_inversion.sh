@@ -19,7 +19,7 @@ SetupPosteriorRun=true
 INV_PATH=$(pwd -P)
 
 # Name for this run
-RUN_NAME="Test_Permian"
+RUN_NAME="Test_Permian3"
 
 # Path where you want to set up CH4 inversion code and run directories
 MY_PATH="/home/ubuntu/CH4_Workflow"
@@ -30,11 +30,13 @@ DATA_PATH="/home/ubuntu/ExtData"
 # Path to initial restart file
 # This will be fetched from BC bucket eventually
 RESTART_FILE="${DATA_PATH}/GEOSChem.Restart.fromBC.20180401_0000z.nc4"
+RESTART_DOWNLOAD=true
 
 # Path to boundary condition files (for nested grid simulations)
 # Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
 # These will be in a bucket eventually
 BC_FILES="${DATA_PATH}/BoundaryConditions"
+BC_DRYRUN=true # download missing Boundary Condition input data from AWS (you will be charged)
 
 # Start and end date for the spinup simulation
 DO_SPINUP=true
@@ -81,6 +83,28 @@ UseSeparateWetlandSF=false
 UseOHSF=false
 PLANEFLIGHT=false
 HourlyCH4=true
+
+##=======================================================================
+## Download Boundary Conditions files if requested
+##=======================================================================
+if "$BC_DRYRUN"; then
+    if "$DO_SPINUP"; then
+	START=${SPINUP_START}
+    else
+	START=${START_DATE}
+    fi
+    echo "Downloading boundary condition data for $START to $END_DATE"
+    python download_bc.py ${START} ${END_DATE} ${BC_FILES}
+fi
+
+##=======================================================================
+## Download initial restart file if requested
+##=======================================================================
+if "$RESTART_DOWNLOAD"; then
+    if [ ! -f "$RESTART_FILE" ]; then
+	aws s3 cp --request-payer=requester s3://umi-bc-test/GEOSChem.Restart.fromBC.20180401_0000z.nc4 $RESTART_FILE
+    fi
+fi    
 
 ##=======================================================================
 ## Define met and grid fields for HEMCO_Config.rc
