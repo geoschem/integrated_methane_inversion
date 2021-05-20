@@ -19,7 +19,7 @@ SetupPosteriorRun=true
 INV_PATH=$(pwd -P)
 
 # Name for this run
-RUN_NAME="Test_Permian3"
+RUN_NAME="Test_Permian"
 
 # Path where you want to set up CH4 inversion code and run directories
 MY_PATH="/home/ubuntu/CH4_Workflow"
