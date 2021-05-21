@@ -21,19 +21,6 @@ INV_PATH=$(pwd -P)
 # Name for this run
 RUN_NAME="Test_Permian"
 
-# Path where you want to set up CH4 inversion code and run directories
-MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
-
-# Path to find non-emissions input data
-DATA_PATH="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
-
-# Path to initial restart file
-RESTART_FILE="${MY_PATH}/input_data_permian/GEOSChem.Restart.fromBC.20180401_0000z.nc4"
-
-# Path to boundary condition files (for nested grid simulations)
-# Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
-BC_FILES="${MY_PATH}/input_data_permian/Lu_BC_CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
-
 # Start and end date for the spinup simulation
 DO_SPINUP=true
 SPINUP_START=20180401
@@ -42,6 +29,20 @@ SPINUP_END=20180501
 # Start and end date for the production simulations
 START_DATE=20180501
 END_DATE=20180508
+
+# Path where you want to set up CH4 inversion code and run directories
+MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
+
+# Path to find non-emissions input data
+DATA_PATH="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+
+# Path to initial restart file
+USE_BC4RESTART=true
+RESTART_FILE="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SPINUP_START}_0000z.nc4"
+
+# Path to boundary condition files (for nested grid simulations)
+# Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
+BC_FILES="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
 
 # Grid settings (Global 4x5)
 #RES="4x5"
@@ -72,6 +73,7 @@ pPERT="1.5"
 # Turn on observation operators and planeflight diagnostics?
 GOSAT=false
 TCCON=false
+AIRS=false
 UseEmisSF=false
 UseSeparateWetlandSF=false
 UseOHSF=false
@@ -101,143 +103,154 @@ else
     gridDir="${RES}_${REGION}"
 fi
 
+# Define path to GEOS-Chem run directory files
+GCC_CODE="${INV_PATH}/GCClassic"
+GCC_RUN_FILES="${GCC_CODE}/run"
+RUN_TEMPLATE="template_run"
+
 ##=======================================================================
 ## Set up template run directory
 ##=======================================================================
 if "$SetupTemplateRundir"; then
 
-# Copy run directory files directly from GEOS-Chem repository
-GCC_RUN_FILES="${INV_PATH}/GEOS-Chem/run/GCClassic"
-mkdir -p ${MY_PATH}/${RUN_NAME}
-cd ${MY_PATH}/${RUN_NAME}
-mkdir -p jacobian_runs
-cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
-sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/run_jacobian_simulations.sh
-cp ${GCC_RUN_FILES}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
-sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    mkdir -p ${MY_PATH}/${RUN_NAME}
+    cd ${MY_PATH}/${RUN_NAME}
 
-RUN_TEMPLATE="template_run"
-mkdir -p ${RUN_TEMPLATE}
-cp -RLv ${GCC_RUN_FILES}/input.geos.templates/input.geos.CH4 ${RUN_TEMPLATE}/input.geos
-cp -RLv ${GCC_RUN_FILES}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RUN_TEMPLATE}/HISTORY.rc
-cp -RLv ${GCC_RUN_FILES}/runScriptSamples/ch4_run.template ${RUN_TEMPLATE}
-cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
-cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
-cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Diagn.rc
-cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
+    ### Create template run directory
+    mkdir -p ${RUN_TEMPLATE}
 
-cd $RUN_TEMPLATE
-mkdir -p OutputDir
-mkdir -p Restarts
+    ### Copy run directory files directly from GEOS-Chem repository
+    cp -RLv ${GCC_RUN_FILES}/input.geos.templates/input.geos.CH4 ${RUN_TEMPLATE}/input.geos
+    cp -RLv ${GCC_RUN_FILES}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RUN_TEMPLATE}/HISTORY.rc
+    cp -RLv ${GCC_RUN_FILES}/runScriptSamples/ch4_run.template ${RUN_TEMPLATE}
+    cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
+    cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
+    cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Diagn.rc
+    cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
+    cp -RLv ${GCC_CODE}/src/GEOS-Chem/run/shared/species_database.yml ${RUN_TEMPLATE}/
 
-### Update settings in input.geos
-sed -i -e "s:{DATE1}:${START_DATE}:g" \
-       -e "s:{DATE2}:${END_DATE}:g" \
-       -e "s:{TIME1}:000000:g" \
-       -e "s:{TIME2}:000000:g" \
-       -e "s:{MET}:${MET}:g" \
-       -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
-       -e "s:{SIM}:CH4:g" \
-       -e "s:{RES}:${gridRes}:g" \
-       -e "s:{LON_RANGE}:${LONS}:g" \
-       -e "s:{LAT_RANGE}:${LATS}:g" \
-       -e "s:{HALF_POLAR}:${HPOLAR}:g" \
-       -e "s:{NLEV}:${LEVS}:g" \
-       -e "s:{NESTED_SIM}:${NEST}:g" \
-       -e "s:{BUFFER_ZONE}:${BUFFER}:g" input.geos
-if [ "$NEST" == "T" ]; then
-    echo "Replacing timestep"
-    sed -i -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
-           -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
-fi
+    cd $RUN_TEMPLATE
+    mkdir -p OutputDir
+    mkdir -p Restarts
 
-# For CH4 inversions always turn analytical inversion on
-OLD="Do analytical inversion?: F"
-NEW="Do analytical inversion?: T"
-sed -i "s/$OLD/$NEW/g" input.geos
+    ### Update settings in input.geos
+    sed -i -e "s:{DATE1}:${START_DATE}:g" \
+           -e "s:{DATE2}:${END_DATE}:g" \
+           -e "s:{TIME1}:000000:g" \
+           -e "s:{TIME2}:000000:g" \
+           -e "s:{MET}:${MET}:g" \
+           -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
+           -e "s:{SIM}:CH4:g" \
+           -e "s:{RES}:${gridRes}:g" \
+           -e "s:{LON_RANGE}:${LONS}:g" \
+           -e "s:{LAT_RANGE}:${LATS}:g" \
+           -e "s:{HALF_POLAR}:${HPOLAR}:g" \
+           -e "s:{NLEV}:${LEVS}:g" \
+           -e "s:{NESTED_SIM}:${NEST}:g" \
+           -e "s:{BUFFER_ZONE}:${BUFFER}:g" input.geos
+    if [ "$NEST" == "T" ]; then
+	echo "Replacing timestep"
+	sed -i -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
+            -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
+	echo "done"
+    fi
 
-# Turn other options on/off according to settings above
-if "$GOSAT"; then
-    OLD="Use GOSAT obs operator? : F"
-    NEW="Use GOSAT obs operator? : T"
+    # For CH4 inversions always turn analytical inversion on
+    OLD="Do analytical inversion?: F"
+    NEW="Do analytical inversion?: T"
     sed -i "s/$OLD/$NEW/g" input.geos
-fi
-if "$TCCON"; then
-    OLD="Use TCCON obs operator? : F"
-    NEW="Use TCCON obs operator? : T"
-    sed -i "s/$OLD/$NEW/g" input.geos
-fi
-if "$UseEmisSF"; then
-    OLD=" => Use emis scale factr: F"
-    NEW=" => Use emis scale factr: T"
-    sed -i "s/$OLD/$NEW/g" input.geos
-fi
-if "$UseSeparateWetlandSF"; then
-    OLD=" => Use sep. wetland SFs: F"
-    NEW=" => Use sep. wetland SFs: T"
-    sed -i "s/$OLD/$NEW/g" input.geos
-fi
-if "$UseOHSF"; then
-    OLD=" => Use OH scale factors: F"
-    NEW=" => Use OH scale factors: T"
-    sed -i "s/$OLD/$NEW/g" input.geos
-fi
-if "$PLANEFLIGHT"; then
-    mkdir -p Plane_Logs
-    OLD="Turn on plane flt diag? : F"
-    NEW="Turn on plane flt diag? : T"
-    sed -i "s/$OLD/$NEW/g" input.geos
-    OLD="Flight track info file  : Planeflight.dat.YYYYMMDD"
-    NEW="Flight track info file  : Planeflights\/Planeflight.dat.YYYYMMDD"
-    sed -i "s/$OLD/$NEW/g" input.geos
-    OLD="Output file name        : plane.log.YYYYMMDD"
-    NEW="Output file name        : Plane_Logs\/plane.log.YYYYMMDD"
-    sed -i "s/$OLD/$NEW/g" input.geos
-fi
 
-### Set up HEMCO_Config.rc
-### Use monthly emissions diagnostic output for now
-sed -i -e "s:End:Monthly:g" \
-       -e "s:{VERBOSE}:0:g" \
-       -e "s:{WARNINGS}:1:g" \
-       -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
-       -e "s:{GRID_DIR}:${gridDir}:g" \
-       -e "s:{MET_DIR}:${metDir}:g" \
-       -e "s:{NATIVE_RES}:${native}:g" \
-       -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" HEMCO_Config.rc
-if [ ! -z "$REGION" ]; then
-    sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
-fi
-if [ "$NEST" == "T" ]; then
-    OLD="--> GC_BCs                 :       false"
-    NEW="--> GC_BCs                 :       true"
-    sed -i -e "s:$OLD:$NEW:g" HEMCO_Config.rc
-else
-       
-### Set up HISTORY.rc
-### Use monthly output for now
-sed -i -e "s:{FREQUENCY}:00000100 000000:g" \
-       -e "s:{DURATION}:00000100 000000:g" \
-       -e 's:'\''CH4:#'\''CH4:g' HISTORY.rc
+    # Turn other options on/off according to settings above
+    if "$GOSAT"; then
+	OLD="Use GOSAT obs operator? : F"
+	NEW="Use GOSAT obs operator? : T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
+    if "$TCCON"; then
+	OLD="Use TCCON obs operator? : F"
+	NEW="Use TCCON obs operator? : T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
+    if "$AIRS"; then
+	OLD="Use AIRS obs operator?  : F"
+	NEW="Use AIRS obs operator?  : T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
+    if "$UseEmisSF"; then
+	OLD=" => Use emis scale factr: F"
+	NEW=" => Use emis scale factr: T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
+    if "$UseSeparateWetlandSF"; then
+	OLD=" => Use sep. wetland SFs: F"
+	NEW=" => Use sep. wetland SFs: T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
+    if "$UseOHSF"; then
+	OLD=" => Use OH scale factors: F"
+	NEW=" => Use OH scale factors: T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
+    if "$PLANEFLIGHT"; then
+	mkdir -p Plane_Logs
+	OLD="Turn on plane flt diag? : F"
+	NEW="Turn on plane flt diag? : T"
+	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="Flight track info file  : Planeflight.dat.YYYYMMDD"
+	NEW="Flight track info file  : Planeflights\/Planeflight.dat.YYYYMMDD"
+	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="Output file name        : plane.log.YYYYMMDD"
+	NEW="Output file name        : Plane_Logs\/plane.log.YYYYMMDD"
+	sed -i "s/$OLD/$NEW/g" input.geos
+    fi
 
-# If turned on, save out hourly CH4 concentrations and pressure fields to
-# daily files
-if "$HourlyCH4"; then
-    sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
-	   -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
-           -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' \
-	   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-	   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-	   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-	   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
-fi
+    ### Set up HEMCO_Config.rc
+    ### Use monthly emissions diagnostic output for now
+    sed -i -e "s:End:Monthly:g" \
+           -e "s:{VERBOSE}:0:g" \
+           -e "s:{WARNINGS}:1:g" \
+           -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
+           -e "s:{GRID_DIR}:${gridDir}:g" \
+           -e "s:{MET_DIR}:${metDir}:g" \
+           -e "s:{NATIVE_RES}:${native}:g" \
+           -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" HEMCO_Config.rc
+    if [ ! -z "$REGION" ]; then
+        sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
+    fi
+    if [ "$NEST" == "T" ]; then
+        OLD="--> GC_BCs                 :       false "
+        NEW="--> GC_BCs                 :       true  "
+        sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
+    fi
 
-### Compile GEOS-Chem and store executable in template run directory
-make realclean CODE_DIR=${INV_PATH}/GEOS-Chem
-make -j4 build CODE_DIR=${INV_PATH}/GEOS-Chem
+    ### Set up HISTORY.rc
+    ### Use monthly output for now
+    sed -i -e "s:{FREQUENCY}:00000100 000000:g" \
+           -e "s:{DURATION}:00000100 000000:g" \
+           -e 's:'\''CH4:#'\''CH4:g' HISTORY.rc
+    
+    # If turned on, save out hourly CH4 concentrations and pressure fields to
+    # daily files
+    if "$HourlyCH4"; then
+        sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
+    	   -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
+               -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' \
+    	   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+    	   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+    	   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+    	   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+    fi
 
-### Navigate back to top-level directory
-cd ..
+    ### Compile GEOS-Chem and store executable in template run directory
+    mkdir build; cd build
+    cmake ${INV_PATH}/GCClassic
+    cmake . -DRUNDIR=..
+    make -j install
+    cd ..
+    rm -rf build
+
+    ### Navigate back to top-level directory
+    cd ..
 
 fi # SetupTemplateRunDir
 
@@ -260,11 +273,14 @@ if  "$SetupSpinupRun"; then
     cd $runDir
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf geos
-    ln -s ../${RUN_TEMPLATE}/geos .
-
+    rm -rf gcclassic
+    ln -s ../${RUN_TEMPLATE}/gcclassic .
+    
     # Link to restart file
     ln -s $RESTART_FILE GEOSChem.Restart.${SPINUP_START}_0000z.nc4
+    if "$USE_BC4RESTART"; then
+	sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+    fi
     
     ### Update settings in input.geos
     sed -i -e "s|${START_DATE}|${SPINUP_START}|g" \
@@ -306,14 +322,18 @@ if  "$SetupPosteriorRun"; then
     cd $runDir
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf geos
-    ln -s ../${RUN_TEMPLATE}/geos .
+    rm -rf gcclassic
+    ln -s ../${RUN_TEMPLATE}/gcclassic .
 
     # Link to restart file
     if "$DO_SPINUP"; then
        ln -s ../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
     else
        ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
+       if "$USE_BC4RESTART"; then
+	   sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+	   printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+       fi
     fi
     
     ### Update settings in input.geos
@@ -342,7 +362,16 @@ fi # SetupPosteriorRun
 if "$SetupJacobianRuns"; then
 
     cd ${MY_PATH}/${RUN_NAME}
-    
+
+    ### Create directory that will contain all Jacobian run directories
+    mkdir -p jacobian_runs
+
+    ### Copy run scripts
+    cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/run_jacobian_simulations.sh
+    cp ${GCC_RUN_FILES}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
+    sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is cluster=1; etc.)
     x=0
 
@@ -376,8 +405,8 @@ if "$SetupJacobianRuns"; then
 	cd $runDir
 
 	### Link to GEOS-Chem executable instead of having a copy in each rundir
-	rm -rf geos
-	ln -s ../../${RUN_TEMPLATE}/geos .
+	rm -rf gcclassic
+	ln -s ../../${RUN_TEMPLATE}/gcclassic .
 
 	# Link to restart file
 	if "$DO_SPINUP"; then
