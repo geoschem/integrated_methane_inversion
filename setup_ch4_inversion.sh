@@ -46,7 +46,7 @@ SPINUP_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be
 
 # Start and end date for the production simulations
 START_DATE=20180501
-END_DATE=20180502
+END_DATE=20180508
 PROD_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
 
 # Grid settings (Global 4x5)
