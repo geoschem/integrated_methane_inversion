@@ -1,0 +1,328 @@
+<head>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Load plotly.js into the DOM -->
+   <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjs/7.1.0/math.min.js'></script>
+   <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>  
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/14.6.1/nouislider.min.css" rel="stylesheet">
+   <style>   
+   .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 95%;
+      max-width: 980px;
+      align-items: center;
+      justify-content: center;
+   }
+
+   
+   .sg-figure {
+      order: 1;
+      flex-grow: 1;
+      width: 100%;
+      max-width: 980px;
+      height: 100%;
+      justify-content: center;
+      overflow: hidden;
+      padding: 0;
+      margin: 0;
+   }
+
+   .parameter-slider  {
+      order: 2;
+      width: 100%;
+      max-width: 980px;
+      border: 1px #ccc solid;
+      padding: 1em;
+      margin: 0.2em;
+   }
+
+   input {
+      padding-left: 0.5em;
+   }
+
+   .slider-wrapper {
+      margin-top: 0.5em;
+   }
+
+   .slider-wrapper .noUi-connect {
+      background: #636363;
+   }
+   </style>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/14.6.1/nouislider.min.js"></script>
+
+</head>
+<body>
+   <div class="container">
+         <div class="sg-figure">
+            <div id='myDiv'></div>
+         </div>
+         <div class="parameter-slider">
+            <label for="SF">Stretch factor: </label>
+            <input type="number" id="SF" value="3.0" name="SF" min="1.0" max="15.0" oninput="update_plot()">
+            <div class="slider-wrapper">
+               <div id="SF-slider"></div>
+            </div>
+         </div>
+         <div class="parameter-slider">
+            <label for="TX">Target longitude: </label>
+            <input type="number" id="TX" value="273.00" name="TX" min="0.0" max="360.0" oninput="update_plot()">
+            <div class="slider-wrapper">
+               <div id="TX-slider"></div>
+            </div>
+         </div>
+         <div class="parameter-slider">
+            <label for="TY">Target latitude: </label>
+            <input type="number" id="TY" value="37.50" name="TY" min="-90.0" max="90.0" oninput="update_plot()">
+            <div class="slider-wrapper">
+               <div id="TY-slider"></div>
+            </div>
+         </div>
+   </div>
+   <script>
+   function unpack(rows, key) {
+      return rows.map(function (row) { return row[key]; });
+   }
+
+   function rotate_vector(v, k, theta) {
+      var t1 = math.multiply(v, math.cos(theta));
+      var t2 = math.multiply(math.cross(k, v), math.sin(theta));
+      var t3 = math.multiply(k, math.dot(k, v) * (1.0-math.cos(theta)));
+      return math.add(t1, t2, t3)._data;
+   }
+
+   function cartesian_to_spherical(v) {
+      var y_sph = math.asin(v[2]);
+      var x_sph = math.atan2(v[1], v[0]);
+      return [x_sph, y_sph];
+   }
+
+   function spherical_to_cartesian(v) {
+      var x_car = math.cos(v[1]) * math.cos(v[0]);
+      var y_car = math.cos(v[1]) * math.sin(v[0]);
+      var z_car = math.sin(v[1]);
+      return [x_car, y_car, z_car];
+
+   }
+
+   function deg2rad(v) {
+      for(var i = 0; i < v.length; ++i) {
+         v[i] = v[i] * math.pi/180;
+      }
+      return v;
+   }
+
+   function rad2deg(v) {
+      for(var i = 0; i < v.length; ++i) {
+         v[i] = v[i] * 180/math.pi;
+      }
+      return v;
+   }
+
+   function schmidt_transform(v, s) {
+      var D = (1 - s*s) / (1 + s*s);
+      v[1] = math.asin((D + math.sin(v[1])) / (1 + D * math.sin(v[1])));
+      return v;
+   }
+
+   function sg_transform(x, y, s, tx, ty) {
+      // Convert xy to radians
+      x = x * math.pi / 180;
+      y = y * math.pi / 180;
+      tx = tx * math.pi / 180;
+      ty = ty * math.pi / 180;
+      // Calculate rotation about x, and z axes
+      x0 = math.pi;
+      y0 = -math.pi/2;
+      theta_x = ty - y0;
+      theta_z = tx - x0;
+      // Apply schmidt transform
+      var v = schmidt_transform([x, y], s);
+      // Convert to cartesian coordinates
+      v = spherical_to_cartesian(v);
+      // Rotate about y axis
+      yaxis = math.matrix([0, 1, 0]);
+      v = rotate_vector(math.matrix(v), yaxis, theta_x);
+      // Rotate about z axis
+      zaxis = math.matrix([0, 0, 1]);
+      v = rotate_vector(math.matrix(v), zaxis, theta_z);
+      // Convert back to spherical coordinates
+      v = cartesian_to_spherical(v);
+      // Convert back to degrees and return
+      x = v[0] * 180 / math.pi;
+      y = v[1] * 180 / math.pi;
+      return [x, y];
+   }
+
+
+   function create_sg_data(sf, tx, ty) {
+      var data = [];
+
+      var cs_table = [
+         [-55.0, -48.53540802286467, -41.59979318868607, -34.20342833932976, -26.398120477217244, -18.28298505985221, -9.999999999999988, -1.7170149401478112, 6.398120477217223, 14.203428339329768, 21.599793188686025, 28.53540802286464, 35.000000000000014],
+         [-35.26438968275467, -38.03334585043359, -40.421993720970114, -42.36780515862268, -43.81067497331048, -44.69959875364784, -44.99999999999999, -44.69959875364784, -43.81067497331048, -42.36780515862268, -40.421993720970114, -38.03334585043359, -35.26438968275467],
+         [-55.0, -48.53540802286467, -41.59979318868607, -34.20342833932976, -26.398120477217244, -18.28298505985221, -9.999999999999988, -1.7170149401478112, 6.398120477217223, 14.203428339329768, 21.599793188686025, 28.53540802286464, 35.000000000000014],
+         [35.26438968275467, 38.03334585043359, 40.421993720970114, 42.36780515862268, 43.81067497331048, 44.69959875364784, 44.99999999999999, 44.69959875364784, 43.81067497331048, 42.36780515862268, 40.421993720970114, 38.03334585043359, 35.26438968275467],
+         [-55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0, -55.0],
+         [-35.26438968275467, -29.38699140229555, -23.509593121836446, -17.632194841377334, -11.754796560918223, -5.877398280459113, 0.0, 5.877398280459113, 11.754796560918223, 17.63219484137734, 23.509593121836446, 29.38699140229555, 35.26438968275467],
+         [35.000000000000014, 35.0, 35.0, 35.0, 35.000000000000014, 35.000000000000014, 35.000000000000014, 35.000000000000014, 35.000000000000014, 35.0, 35.0, 35.0, 35.000000000000014],
+         [-35.26438968275467, -29.38699140229555, -23.509593121836446, -17.632194841377338, -11.754796560918223, -5.877398280459113, 0.0, 5.877398280459113, 11.754796560918223, 17.632194841377338, 23.509593121836446, 29.38699140229555, 35.26438968275467],
+         [35.00000000000003, 41.46459197713539, 48.40020681131399, 55.796571660670246, 63.60187952278279, 71.71701494014782, 80.00000000000001, 88.28298505985221, 96.39812047721722, 104.20342833932976, 111.59979318868602, 118.53540802286464, 125.00000000000001],
+         [-35.26438968275467, -38.03334585043359, -40.421993720970114, -42.36780515862268, -43.81067497331048, -44.69959875364784, -44.99999999999999, -44.69959875364784, -43.81067497331048, -42.36780515862269, -40.421993720970114, -38.03334585043359, -35.26438968275467],
+         [35.00000000000003, 41.46459197713539, 48.40020681131399, 55.796571660670246, 63.60187952278279, 71.71701494014782, 80.00000000000001, 88.28298505985221, 96.39812047721722, 104.20342833932976, 111.59979318868602, 118.53540802286464, 125.00000000000001],
+         [35.26438968275467, 38.03334585043359, 40.421993720970114, 42.36780515862268, 43.81067497331048, 44.69959875364784, 44.99999999999999, 44.69959875364784, 43.81067497331048, 42.36780515862269, 40.421993720970114, 38.03334585043359, 35.26438968275467],
+         [125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001, 125.00000000000001],
+         [-35.26438968275467, -29.38699140229555, -23.509593121836446, -17.632194841377338, -11.754796560918223, -5.877398280459113, 0.0, 5.877398280459113, 11.754796560918223, 17.632194841377338, 23.509593121836446, 29.38699140229555, 35.26438968275467],
+         [125.00000000000001, 131.46459197713534, 138.400206811314, 145.79657166067025, 153.60187952278275, 161.71701494014783, 170.0, 178.28298505985217, 186.39812047721728, 194.20342833932978, 201.59979318868605, 208.53540802286466, 215.0],
+         [35.264389682754654, 38.0333458504336, 40.421993720970114, 42.36780515862268, 43.81067497331049, 44.69959875364784, 45.00000000000001, 44.69959875364784, 43.81067497331049, 42.36780515862268, 40.421993720970114, 38.0333458504336, 35.264389682754654],
+         [125.00000000000001, 131.46459197713534, 138.400206811314, 145.79657166067025, 153.60187952278275, 161.71701494014783, 170.0, 178.28298505985217, 186.3981204772172, 194.20342833932975, 201.59979318868602, 208.5354080228646, 214.99999999999997],
+         [-35.26438968275464, -38.03334585043357, -40.421993720970086, -42.367805158622645, -43.81067497331046, -44.699598753647805, -44.999999999999986, -44.699598753647805, -43.81067497331046, -42.367805158622645, -40.421993720970086, -38.03334585043357, -35.26438968275464],
+         [-145.00000000000003, -138.5354080228647, -131.59979318868602, -124.20342833932976, -116.39812047721726, -108.28298505985221, -100.0, -91.7170149401478, -83.60187952278277, -75.79657166067024, -68.40020681131399, -61.46459197713532, -55.0],
+         [35.26438968275464, 38.03334585043359, 40.4219937209701, 42.36780515862265, 43.81067497331048, 44.69959875364784, 44.99999999999999, 44.69959875364784, 43.81067497331048, 42.36780515862265, 40.4219937209701, 38.03334585043359, 35.26438968275464],
+         [-145.00000000000003, -138.5354080228647, -131.59979318868602, -124.20342833932982, -116.39812047721726, -108.28298505985221, -100.0, -91.7170149401478, -83.60187952278277, -75.79657166067024, -68.40020681131399, -61.46459197713532, -55.0],
+         [-35.26438968275464, -38.03334585043358, -40.4219937209701, -42.36780515862265, -43.81067497331048, -44.69959875364784, -44.99999999999999, -44.69959875364784, -43.81067497331048, -42.36780515862265, -40.4219937209701, -38.03334585043359, -35.264389682754654],
+         [-145.00000000000003, -145.0, -145.00000000000003, -145.00000000000003, -145.00000000000003, -145.00000000000003, -145.0, -145.00000000000003, -145.0, -145.00000000000003, -145.00000000000003, -145.0, -145.00000000000003],
+         [35.26438968275464, 29.386991402295543, 23.509593121836435, 17.632194841377334, 11.754796560918209, 5.877398280459112, 0.0, -5.877398280459103, -11.7547965609182, -17.63219484137732, -23.509593121836417, -29.386991402295532, -35.26438968275464],
+      ]
+
+      for (var i = 0; i < 12; i++) {
+         x = cs_table[2 * i];
+         y = cs_table[2 * i + 1];
+         var x2 = [];
+         var y2 = [];
+      
+         for(var j = 0; j < x.length; j++) {
+               
+               var t = [x[j], y[j]]
+               t = deg2rad(t)
+               t = spherical_to_cartesian(t)
+               t = rotate_vector(t, math.matrix([0, 0, 1]), 30)
+               t = cartesian_to_spherical(t)
+               t = rad2deg(t)
+      
+               var xy = sg_transform(t[0], t[1], sf, tx, ty);
+               x2.push(xy[0]);
+               y2.push(xy[1]);
+         }
+         console.log(x2)
+         data.push({
+               type: 'scattergeo',
+               lon: x2,
+               lat: y2,
+               mode: 'lines',
+               line: {
+                  width: 3,
+                  color: "#000000"
+               },
+               showlegend: false,
+         })
+      }
+      return data;    
+   }
+
+   var myDiv = document.getElementById('myDiv');
+
+   var layout = {
+      geo: {
+         projection: {
+               type: 'orthographic',
+               rotation: {
+                  lon: -60,
+                  lat: 10
+               },
+         },
+         showocean: true,
+         oceancolor: '#f0f0f0',
+         showland: true,
+         landcolor: '#bdbdbd',
+         showlakes: true,
+         lakecolor: '#f0f0f0',
+         showcountries: true,
+         lonaxis: {
+               showgrid: true,
+               gridcolor: '#636363'
+         },
+         lataxis: {
+               showgrid: true,
+               gridcolor: '#636363'
+         }
+      },
+      autosize: true,
+   };
+
+   var SF = 3.0;
+   var TX= 273.0;
+   var TY= 37.5;
+
+   var config = {responsive: true, showLink: false};
+
+   var data = create_sg_data(SF, TX, TY);
+   Plotly.newPlot("myDiv", data, layout, config);
+
+   function update_plot() {
+      var data = create_sg_data(document.getElementById('SF').value, document.getElementById('TX').value, document.getElementById('TY').value);
+      Plotly.react("myDiv", data, layout, { showLink: false });
+   }
+
+   var SF_slider = document.getElementById('SF-slider');
+   var TX_slider = document.getElementById('TX-slider');
+   var TY_slider = document.getElementById('TY-slider');
+
+   noUiSlider.create(SF_slider, {
+      start: [SF],
+      connect: 'lower',
+      step: 0.1,
+      range: {
+         'min': 1.0,
+         'max': 15.0
+      }
+   });
+
+   noUiSlider.create(TX_slider, {
+      start: [TX],
+      connect: 'lower',
+      step: 0.1,
+      range: {
+         'min': 0,
+         'max': 360
+      }
+   });
+
+   noUiSlider.create(TY_slider, {
+      start: [TY],
+      connect: 'lower',
+      step: 0.1,
+      range: {
+         'min': -90.0,
+         'max': 90.0
+      }
+   });
+
+   SF_slider.noUiSlider.on('update', function (values, handle) {
+      SF = values[handle];
+      document.getElementById('SF').value = values[handle];
+      var data = create_sg_data(SF, TX, TY);
+      Plotly.react("myDiv", data, layout, config);
+   });
+
+   TX_slider.noUiSlider.on('update', function (values, handle) {
+      TX = values[handle];
+      document.getElementById('TX').value = values[handle];
+      var data = create_sg_data(SF, TX, TY);
+      Plotly.react("myDiv", data, layout, config);
+   });
+
+   TY_slider.noUiSlider.on('update', function (values, handle) {
+      TY = values[handle];
+      document.getElementById('TY').value = values[handle];
+      var data = create_sg_data(SF, TX, TY);
+      Plotly.react("myDiv", data, layout, config);
+   });
+
+
+   // setTimeout(update_plot, 5000);
+
+   </script>
+</body>
