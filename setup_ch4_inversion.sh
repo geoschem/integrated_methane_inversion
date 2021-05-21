@@ -148,6 +148,7 @@ RUN_TEMPLATE="template_run"
 mkdir -p ${RUN_TEMPLATE}
 cp -RLv ${GCC_RUN_FILES}/input.geos.templates/input.geos.CH4 ${RUN_TEMPLATE}/input.geos
 cp -RLv ${GCC_RUN_FILES}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RUN_TEMPLATE}/HISTORY.rc
+sed -i -e "'Metrics'#'Metrics':g" ${RUN_TEMPLATE}/HISTORY.rc
 cp -RLv ${GCC_RUN_FILES}/runScriptSamples/ch4_run.template ${RUN_TEMPLATE}
 sed -i -e "s:./geos:./gcclassic:g" ${RUN_TEMPLATE}/ch4_run.template
 cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
