@@ -140,7 +140,7 @@ mkdir -p ${MY_PATH}/${RUN_NAME}
 cd ${MY_PATH}/${RUN_NAME}
 mkdir -p jacobian_runs
 cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
-sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/run_jacobian_simulations.sh
+sed -i -e "s:{RunName}:${RUN_NAME}:g" -e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" jacobian_runs/run_jacobian_simulations.sh
 cp ${GCC_RUN_FILES}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
 sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
@@ -310,7 +310,8 @@ if  "$SetupSpinupRun"; then
 
     ### Create run script from template
     sed -e "s:namename:${spinup_name}:g" \
-	-e "s:##:#:g" ch4_run.template > ${spinup_name}.run
+	-e "s:##:#:g" \
+	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" ch4_run.template > ${spinup_name}.run
     chmod 755 ${spinup_name}.run
     rm -f ch4_run.template
 
@@ -365,7 +366,8 @@ if  "$SetupPosteriorRun"; then
 
     ### Create run script from template
     sed -e "s:namename:${spinup_name}:g" \
-	-e "s:##:#:g" ch4_run.template > ${posterior_name}.run
+	-e "s:##:#:g" \
+	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" ch4_run.template > ${posterior_name}.run
     chmod 755 ${posterior_name}.run
     rm -f ch4_run.template
 
