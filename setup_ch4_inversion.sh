@@ -19,7 +19,7 @@ SetupPosteriorRun=true
 INV_PATH=$(pwd -P)
 
 # Name for this run
-RUN_NAME="2Test_Permian"
+RUN_NAME="Test_Permian"
 
 # Start and end date for the spinup simulation
 DO_SPINUP=true
