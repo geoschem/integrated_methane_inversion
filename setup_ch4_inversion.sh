@@ -19,7 +19,7 @@ SetupPosteriorRun=true
 INV_PATH=$(pwd -P)
 
 # Name for this run
-RUN_NAME="Test_Permian"
+RUN_NAME="2Test_Permian"
 
 # Start and end date for the spinup simulation
 DO_SPINUP=true
@@ -253,7 +253,10 @@ if "$SetupTemplateRundir"; then
            -e "s:{GRID_DIR}:${gridDir}:g" \
            -e "s:{MET_DIR}:${metDir}:g" \
            -e "s:{NATIVE_RES}:${native}:g" \
-           -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" HEMCO_Config.rc
+           -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" \
+           -e "s:#\* CH4_:\* CH4_:g" \
+	   -e "s:Clusters_:\$ROOT/Clusters_:g" HEMCO_Config.rc
+
     if [ ! -z "$REGION" ]; then
         sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
     fi
