@@ -1,0 +1,7 @@
+#!/bin/bash
+cp /home/ubuntu/setup_CH4/base_slurm.conf /home/ubuntu/setup_CH4/new_slurm.conf
+/home/ubuntu/miniconda/bin/python /home/ubuntu/setup_CH4/configure_slurm.py
+cp /home/ubuntu/setup_CH4/new_slurm.conf /etc/slurm-llnl/slurm.conf
+rm /home/ubuntu/setup_CH4/new_slurm.conf
+/usr/sbin/service slurmd restart
+/usr/sbin/service slurmctld restart
