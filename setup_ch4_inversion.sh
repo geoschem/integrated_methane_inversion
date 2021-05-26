@@ -98,6 +98,9 @@ HourlyCH4=true
 ##=======================================================================
 ## Download Boundary Conditions files if requested
 ##=======================================================================
+
+mkdir -p ${BC_FILES}
+
 if "$BC_DRYRUN"; then
     if "$DO_SPINUP"; then
 	START=${SPINUP_START}
