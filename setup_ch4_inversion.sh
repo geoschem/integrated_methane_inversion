@@ -512,7 +512,8 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_TROPOMI
     cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
-    cp -rfP /home/ubuntu/input_data_permian/ ${MY_PATH}/
+    #AWS
+    cp -rfP /home/ubuntu/backup_files/input_data_permian/ ${MY_PATH}/
     sed -i -e "s:{CLUSTERS}:${nClusters}:g" \
 	   -e "s:{START}:${START_DATE}:g" \
            -e "s:{END}:${END_DATE}:g" \
@@ -522,5 +523,8 @@ if "$SetupInversion"; then
     echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
 
 fi #SetupInversion
+
+# AWS: Copy sample cluster files
+cp -rfP /home/ubuntu/backup_files/cluster_files/* /home/ubuntu/ExtData/HEMCO/
 
 exit 0
