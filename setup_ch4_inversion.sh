@@ -21,15 +21,6 @@ INV_PATH=$(pwd -P)
 # Name for this run
 RUN_NAME="Test_Permian"
 
-# Start and end date for the spinup simulation
-DO_SPINUP=true
-SPINUP_START=20180401
-SPINUP_END=20180501
-
-# Start and end date for the production simulations
-START_DATE=20180501
-END_DATE=20180508
-
 # Path where you want to set up CH4 inversion code and run directories
 MY_PATH="/home/ubuntu/CH4_Workflow"
 
