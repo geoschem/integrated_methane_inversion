@@ -507,7 +507,7 @@ if "$SetupInversion"; then
     cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
     #AWS
-    cp -rfP /home/ubuntu/backup_files/input_data_permian/ ${MY_PATH}/
+    cp -rfP /home/ubuntu/backup_files/input_data/ ${MY_PATH}/
     sed -i -e "s:{CLUSTERS}:${nClusters}:g" \
 	   -e "s:{START}:${START_DATE}:g" \
            -e "s:{END}:${END_DATE}:g" \
