@@ -294,6 +294,13 @@ fi # SetupTemplateRunDir
 ##=======================================================================
 ##  Set up spinup run directory
 ##=======================================================================
+
+#get max process count for spinup, production, and run_inversion scripts
+output=$(echo $(slurmd -C))
+array=($output)
+cpu_str=$(echo ${array[1]})
+cpu_count=$(echo ${cpu_str:5})
+
 if  "$SetupSpinupRun"; then
 
     cd ${MY_PATH}/${RUN_NAME}
@@ -331,7 +338,8 @@ if  "$SetupSpinupRun"; then
 	-e "s:##:#:g" \
 	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
 	-e "s:#SBATCH -t:##SBATCH -t:g" \
-	-e "s:#SBATCH --mem:##SBATCH --mem:g" ch4_run.template > ${spinup_name}.run
+	-e "s:#SBATCH --mem:##SBATCH --mem:g" \
+	-e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ch4_run.template > ${spinup_name}.run
     chmod 755 ${spinup_name}.run
     rm -f ch4_run.template
 
@@ -393,7 +401,8 @@ if  "$SetupPosteriorRun"; then
 	-e "s:##:#:g" \
 	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
 	-e "s:#SBATCH -t:##SBATCH -t:g" \
-	-e "s:#SBATCH --mem:##SBATCH --mem:g" ch4_run.template > ${posterior_name}.run
+	-e "s:#SBATCH --mem:##SBATCH --mem:g" \
+	-e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ch4_run.template > ${posterior_name}.run
     chmod 755 ${posterior_name}.run
     rm -f ch4_run.template
 
@@ -519,7 +528,8 @@ if "$SetupInversion"; then
 	   -e "s:{MY_PATH}:${MY_PATH}:g" \
 	   -e "s:{RUN_NAME}:${RUN_NAME}:g" \
 	   -e "s:#SBATCH -t:##SBATCH -t:g" \
-	   -e "s:#SBATCH --mem:##SBATCH --mem:g" inversion/run_inversion.sh
+	   -e "s:#SBATCH --mem:##SBATCH --mem:g" \
+	   -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" inversion/run_inversion.sh
     
     echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
 
