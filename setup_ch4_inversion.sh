@@ -329,7 +329,8 @@ if  "$SetupSpinupRun"; then
     ### Create run script from template
     sed -e "s:namename:${spinup_name}:g" \
 	-e "s:##:#:g" \
-	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" ch4_run.template > ${spinup_name}.run
+	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
+	-e "s:#SBATCH -t:##SBATCH -t:g" ch4_run.template > ${spinup_name}.run
     chmod 755 ${spinup_name}.run
     rm -f ch4_run.template
 
@@ -389,7 +390,8 @@ if  "$SetupPosteriorRun"; then
     ### Create run script from template
     sed -e "s:namename:${spinup_name}:g" \
 	-e "s:##:#:g" \
-	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" ch4_run.template > ${posterior_name}.run
+	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
+	-e "s:#SBATCH -t:##SBATCH -t:g" ch4_run.template > ${posterior_name}.run
     chmod 755 ${posterior_name}.run
     rm -f ch4_run.template
 
@@ -422,7 +424,8 @@ if "$SetupJacobianRuns"; then
 
     ### Copy run scripts
     cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RUN_NAME}:g" -e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" jacobian_runs/run_jacobian_simulations.sh
+    sed -i -e "s:{RunName}:${RUN_NAME}:g" -e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
+	-e "s:#SBATCH -t:##SBATCH -t:g" jacobian_runs/run_jacobian_simulations.sh
     cp ${GCC_RUN_FILES}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
     
@@ -512,7 +515,8 @@ if "$SetupInversion"; then
 	   -e "s:{START}:${START_DATE}:g" \
            -e "s:{END}:${END_DATE}:g" \
 	   -e "s:{MY_PATH}:${MY_PATH}:g" \
-	   -e "s:{RUN_NAME}:${RUN_NAME}:g" inversion/run_inversion.sh
+	   -e "s:{RUN_NAME}:${RUN_NAME}:g" \
+	   -e "s:#SBATCH -t:##SBATCH -t:g" inversion/run_inversion.sh
     
     echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
 
