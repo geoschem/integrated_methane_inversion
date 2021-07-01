@@ -330,7 +330,8 @@ if  "$SetupSpinupRun"; then
     sed -e "s:namename:${spinup_name}:g" \
 	-e "s:##:#:g" \
 	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
-	-e "s:#SBATCH -t:##SBATCH -t:g" ch4_run.template > ${spinup_name}.run
+	-e "s:#SBATCH -t:##SBATCH -t:g" \
+	-e "s:#SBATCH --mem:##SBATCH --mem:g" ch4_run.template > ${spinup_name}.run
     chmod 755 ${spinup_name}.run
     rm -f ch4_run.template
 
@@ -391,7 +392,8 @@ if  "$SetupPosteriorRun"; then
     sed -e "s:namename:${spinup_name}:g" \
 	-e "s:##:#:g" \
 	-e "s:#SBATCH -p huce_intel:##SBATCH -p huce_intel:g" \
-	-e "s:#SBATCH -t:##SBATCH -t:g" ch4_run.template > ${posterior_name}.run
+	-e "s:#SBATCH -t:##SBATCH -t:g" \
+	-e "s:#SBATCH --mem:##SBATCH --mem:g" ch4_run.template > ${posterior_name}.run
     chmod 755 ${posterior_name}.run
     rm -f ch4_run.template
 
@@ -516,7 +518,8 @@ if "$SetupInversion"; then
            -e "s:{END}:${END_DATE}:g" \
 	   -e "s:{MY_PATH}:${MY_PATH}:g" \
 	   -e "s:{RUN_NAME}:${RUN_NAME}:g" \
-	   -e "s:#SBATCH -t:##SBATCH -t:g" inversion/run_inversion.sh
+	   -e "s:#SBATCH -t:##SBATCH -t:g" \
+	   -e "s:#SBATCH --mem:##SBATCH --mem:g" inversion/run_inversion.sh
     
     echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
 
