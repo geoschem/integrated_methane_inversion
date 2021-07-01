@@ -530,7 +530,7 @@ if "$SetupInversion"; then
 	   -e "s:{RUN_NAME}:${RUN_NAME}:g" \
 	   -e "s:#SBATCH -t:##SBATCH -t:g" \
 	   -e "s:#SBATCH --mem:##SBATCH --mem:g" \
-	   -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" inversion/run_inversion.sh
+	   -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
     
     echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
 
