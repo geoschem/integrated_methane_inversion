@@ -27,6 +27,17 @@ MY_PATH="/home/ubuntu/CH4_Workflow"
 # Path to find non-emissions input data
 DATA_PATH="/home/ubuntu/ExtData"
 
+# Start and end date for the spinup simulation
+DO_SPINUP=true
+SPINUP_START=20180401
+SPINUP_END=20180501
+SPINUP_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
+
+# Start and end date for the production simulations
+START_DATE=20180501
+END_DATE=20180508
+PROD_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
+
 # Path to initial restart file
 #RESTART_FILE="${DATA_PATH}/GEOSChem.Restart.fromBC.20180401_0000z.nc4"
 USE_BC4RESTART=true
@@ -39,16 +50,6 @@ RESTART_DOWNLOAD=true #automatically download restart file
 BC_FILES="${DATA_PATH}/BoundaryConditions"
 BC_DRYRUN=true # download missing Boundary Condition input data from AWS (you will be charged)
 
-# Start and end date for the spinup simulation
-DO_SPINUP=true
-SPINUP_START=20180401
-SPINUP_END=20180501
-SPINUP_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
-
-# Start and end date for the production simulations
-START_DATE=20180501
-END_DATE=20180508
-PROD_DRYRUN=true # download missing GEOS-Chem input data from AWS (you will be charged)
 
 # Grid settings (Global 4x5)
 #RES="4x5"
