@@ -9,3 +9,6 @@ cp /home/ubuntu/setup_CH4/new_slurm.conf /etc/slurm-llnl/slurm.conf
 rm /home/ubuntu/setup_CH4/new_slurm.conf
 /usr/sbin/service slurmd restart
 /usr/sbin/service slurmctld restart
+
+#fix issue when switching instance types where node claims to be drained
+scontrol update nodename=$HOSTNAME state=idle
