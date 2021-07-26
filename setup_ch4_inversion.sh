@@ -7,68 +7,69 @@
 ## User settings **MODIFY AS NEEDED**
 ##=======================================================================
 
+# Path to inversion setup
+UMIpath=$(pwd -P)
+
+# Environment files (specific to Harvard's Cannon cluster)
+NCOEnv="${UMIpath}/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
+GCCEnv="${UMIpath}/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
+CondaEnv="ch4_inv" # See envs/README to create this environment
+
 # Turn on/off different steps. This will allow you to come back to this
 # script and set up different stages later.
+CreateClusterFile=true    # If false, set ClusterFile below
 SetupTemplateRundir=true
 SetupSpinupRun=true
 SetupJacobianRuns=true
 SetupInversion=true
 SetupPosteriorRun=true
 
-# Path to inversion setup
-INV_PATH=$(pwd -P)
-
 # Name for this run
-RUN_NAME="Test_Permian"
+RunName="Test_Permian"
 
 # Start and end date for the spinup simulation
-DO_SPINUP=true
-SPINUP_START=20180401
-SPINUP_END=20180501
+DoSpinup=true
+SpinupStart=20180401
+SpinupEnd=20180501
 
 # Start and end date for the production simulations
-START_DATE=20180501
-END_DATE=20180508
+StartDate=20180501
+EndDate=20180508
 
 # Path where you want to set up CH4 inversion code and run directories
-MY_PATH="/n/holyscratch01/jacob_lab/msulprizio/CH4"
+MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
 
 # Path to find non-emissions input data
-DATA_PATH="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+DataPath="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+
+# Path to cluster file
+ClusterFile="Clusters.nc"
 
 # Path to initial restart file
-USE_BC4RESTART=true
-RESTART_FILE="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SPINUP_START}_0000z.nc4"
+UseBCsForRestart=true
+RestartFile="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
 
 # Path to boundary condition files (for nested grid simulations)
 # Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
-BC_FILES="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
+BCfiles="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
 
-# Grid settings (Global 4x5)
-#RES="4x5"
-#MET="merra2"
-#LONS="-180.0 180.0"
-#LATS=" -90.0  90.0"
-#HPOLAR="T"
-#LEVS="47"
-#NEST="F"
-#REGION=""
-#BUFFER="0 0 0 0"
-
-# Grid settings (Nested NA)
-RES="0.25x0.3125"
-MET="geosfp"
-LONS="-111.0 -95.0"
-LATS="  24.0  39.0"
-HPOLAR="F"
-LEVS="47"
-NEST="T"
-REGION="NA"  # NA,AS,CH,EU
-BUFFER="3 3 3 3"
+# Grid settings (Permian Basin example)
+Res="0.25x0.3125"
+Met="geosfp"
+LonMin=-111.0
+LonMax=-95.0
+Lons="${LonMin} ${LonMax}"
+LatMin=24.0
+LatMax=39.0
+Lats="${LatMin} ${LatMax}"
+HalfPolar="F"
+Levs="47"
+NestedGrid="T"
+Region="NA"  # NA,AS,CH,EU
+Buffer="3 3 3 3"
 
 # Jacobian settings
-nClusters=243
-pPERT="1.5"
+PerturbValue="1.5"
 
 # Turn on observation operators and planeflight diagnostics?
 GOSAT=false
@@ -83,76 +84,141 @@ HourlyCH4=true
 ##=======================================================================
 ## Define met and grid fields for HEMCO_Config.rc
 ##=======================================================================
-if [ "$MET" == "geosfp" ]; then
-  metDir="GEOS_FP"
-  native="0.25x0.3125"
-elif [ "$MET" == "merra2" ]; then
-  metDir="MERRA2"
-  native="0.5x0.625"
+if [ "$Met" == "geosfp" ]; then
+    metUC="GEOSFP"
+    metDir="GEOS_FP"
+    native="0.25x0.3125"
+    constYr="2011"
+elif [ "$Met" == "merra2" ]; then
+    metUC="MERRA2"
+    metDir="MERRA2"
+    native="0.5x0.625"
+    constYr="2015"
 fi
-if [ "$RES" = "4x5" ]; then
-    gridRes="4.0x5.0"
-elif [ "$RES" == "2x2.5" ]; then
-    gridRes="2.0x2.5"
-else
-    gridRes="$RES"
+if [ "$Res" = "4x5" ]; then
+    gridRes="${Res}"
+    gridResLong="4.0x5.0"
+elif [ "$Res" == "2x2.5" ]; then
+    gridRes="2x25"
+    gridResLong="2.0x2.5"
+elif [ "$Res" == "0.5x0.625" ]; then
+    gridRes="05x0625"
+    gridResLong="${Res}"
+elif [ "$Res" == "0.25x0.3125" ]; then
+    gridRes="025x03125"
+    gridResLong="${Res}"
 fi
 if [ -z "$REGION" ]; then
-    gridDir="$RES"
+    gridDir="$Res"
 else
-    gridDir="${RES}_${REGION}"
+    gridDir="${Res}_${REGION}"
 fi
 
 # Define path to GEOS-Chem run directory files
-GCC_CODE="${INV_PATH}/GCClassic"
-GCC_RUN_FILES="${GCC_CODE}/run"
-RUN_TEMPLATE="template_run"
+GCClassicPath="${UMIpath}/GCClassic"
+RunFilesPath="${GCClassicPath}/run"
+
+# Create working directory if it doesn't exist yet
+mkdir -p -v ${MyPath}/$RunName
+
+##=======================================================================
+## Create cluster file
+##=======================================================================
+if "$CreateClusterFile"; then
+
+    printf "\n=== CREATING CLUSTER FILE ===\n"
+    
+    # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
+    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.nc"
+    LandThreshold=0.25
+
+    # Output path and filename for cluster file
+    ClusterFile="Clusters.nc"
+
+    # Width of k-means buffer area in degrees (default=5, approx 500 km)
+    BufferDeg=5
+
+    # Number of clusters for k-means (default=8)
+    kClusters=8
+
+    # Create cluster file
+    cd ${MyPath}/$RunName
+    mkdir -p -v ClusterFile
+    cd ClusterFile
+
+    # Copy cluster creation script to working directory
+    cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/make_cluster_file.py .
+    chmod 755 make_cluster_file.py
+
+    # Activate Conda environment
+    printf "Activating conda environment: ${CondaEnv}\n"
+    source activate $CondaEnv
+    
+    printf "Calling make_cluster_file.py\n"
+    python make_cluster_file.py $LandCoverFile $ClusterFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $kClusters
+
+    conda deactivate
+    
+    printf "=== DONE CREATING CLUSTER FILE ===\n"
+
+fi
+
+# Load environment with NCO
+source ${NCOEnv}
+
+# Determine number of clusters from file
+function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+nClusters=$(ncmax Clusters $ClusterFile)
+printf "\n Number of clusters in this inversion= ${nClusters}\n"
+
+# Purge software modules
+module purge
 
 ##=======================================================================
 ## Set up template run directory
 ##=======================================================================
 if "$SetupTemplateRundir"; then
 
-    mkdir -p ${MY_PATH}/${RUN_NAME}
-    cd ${MY_PATH}/${RUN_NAME}
+    printf "\n=== CREATING TEMPLATE RUN DIRECTORY ===\n"
+
+    cd ${MyPath}/${RunName}
 
     ### Create template run directory
-    mkdir -p ${RUN_TEMPLATE}
+    RunTemplate="template_run"
+    mkdir -p -v ${RunTemplate}
 
     ### Copy run directory files directly from GEOS-Chem repository
-    cp -RLv ${GCC_RUN_FILES}/input.geos.templates/input.geos.CH4 ${RUN_TEMPLATE}/input.geos
-    cp -RLv ${GCC_RUN_FILES}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RUN_TEMPLATE}/HISTORY.rc
-    cp -RLv ${GCC_RUN_FILES}/runScriptSamples/ch4_run.template ${RUN_TEMPLATE}
-    cp -RLv ${GCC_RUN_FILES}/getRunInfo ${RUN_TEMPLATE}/
-    cp -RLv ${GCC_RUN_FILES}/Makefile ${RUN_TEMPLATE}/
-    cp -RLv ${GCC_RUN_FILES}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Diagn.rc
-    cp -RLv ${GCC_RUN_FILES}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RUN_TEMPLATE}/HEMCO_Config.rc
-    cp -RLv ${GCC_CODE}/src/GEOS-Chem/run/shared/species_database.yml ${RUN_TEMPLATE}/
+    cp -RLv ${RunFilesPath}/input.geos.templates/input.geos.CH4 ${RunTemplate}/input.geos
+    cp -RLv ${RunFilesPath}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RunTemplate}/HISTORY.rc
+    cp -RLv ${RunFilesPath}/runScriptSamples/ch4_run.template ${RunTemplate}
+    cp -RLv ${RunFilesPath}/getRunInfo ${RunTemplate}/
+    cp -RLv ${RunFilesPath}/Makefile ${RunTemplate}/
+    cp -RLv ${RunFilesPath}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RunTemplate}/HEMCO_Diagn.rc
+    cp -RLv ${RunFilesPath}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RunTemplate}/HEMCO_Config.rc
+    cp -RLv ${GCClassicPath}/src/GEOS-Chem/run/shared/species_database.yml ${RunTemplate}/
 
-    cd $RUN_TEMPLATE
+    cd $RunTemplate
     mkdir -p OutputDir
     mkdir -p Restarts
 
     ### Update settings in input.geos
-    sed -i -e "s:{DATE1}:${START_DATE}:g" \
-           -e "s:{DATE2}:${END_DATE}:g" \
+    sed -i -e "s:{DATE1}:${StartDate}:g" \
+           -e "s:{DATE2}:${EndDate}:g" \
            -e "s:{TIME1}:000000:g" \
            -e "s:{TIME2}:000000:g" \
-           -e "s:{MET}:${MET}:g" \
-           -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
+           -e "s:{MET}:${Met}:g" \
+           -e "s:{DATA_ROOT}:${DataPath}:g" \
            -e "s:{SIM}:CH4:g" \
-           -e "s:{RES}:${gridRes}:g" \
-           -e "s:{LON_RANGE}:${LONS}:g" \
-           -e "s:{LAT_RANGE}:${LATS}:g" \
-           -e "s:{HALF_POLAR}:${HPOLAR}:g" \
-           -e "s:{NLEV}:${LEVS}:g" \
-           -e "s:{NESTED_SIM}:${NEST}:g" \
-           -e "s:{BUFFER_ZONE}:${BUFFER}:g" input.geos
-    if [ "$NEST" == "T" ]; then
-	echo "Replacing timestep"
+           -e "s:{RES}:${gridResLong}:g" \
+           -e "s:{LON_RANGE}:${Lons}:g" \
+           -e "s:{LAT_RANGE}:${Lats}:g" \
+           -e "s:{HALF_POLAR}:${HalfPolar}:g" \
+           -e "s:{NLEV}:${Levs}:g" \
+           -e "s:{NESTED_SIM}:${NestedGrid}:g" \
+           -e "s:{BUFFER_ZONE}:${Buffer}:g" input.geos
+    if [ "$NestedGrid" == "T" ]; then
 	sed -i -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
             -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
-	echo "done"
     fi
 
     # For CH4 inversions always turn analytical inversion on
@@ -209,15 +275,15 @@ if "$SetupTemplateRundir"; then
     sed -i -e "s:End:Monthly:g" \
            -e "s:{VERBOSE}:0:g" \
            -e "s:{WARNINGS}:1:g" \
-           -e "s:{DATA_ROOT}:${DATA_PATH}:g" \
+           -e "s:{DATA_ROOT}:${DataPath}:g" \
            -e "s:{GRID_DIR}:${gridDir}:g" \
            -e "s:{MET_DIR}:${metDir}:g" \
            -e "s:{NATIVE_RES}:${native}:g" \
-           -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BC_FILES}:g" HEMCO_Config.rc
+           -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BCfiles}:g" HEMCO_Config.rc
     if [ ! -z "$REGION" ]; then
-        sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
+        sed -i -e "s:\$Res:\$Res.${REGION}:g" HEMCO_Config.rc
     fi
-    if [ "$NEST" == "T" ]; then
+    if [ "$NestedGrid" == "T" ]; then
         OLD="--> GC_BCs                 :       false "
         NEW="--> GC_BCs                 :       true  "
         sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
@@ -241,16 +307,24 @@ if "$SetupTemplateRundir"; then
     	   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
     fi
 
+    # Load environment with modules for compiling GEOS-Chem Classic
+    source ${GCCEnv}
+    
     ### Compile GEOS-Chem and store executable in template run directory
     mkdir build; cd build
-    cmake ${INV_PATH}/GCClassic
+    cmake ${UMIpath}/GCClassic
     cmake . -DRUNDIR=..
     make -j install
     cd ..
     rm -rf build
 
+    # Purge software modules
+    module purge
+    
     ### Navigate back to top-level directory
     cd ..
+
+    printf "=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
 
 fi # SetupTemplateRunDir
 
@@ -259,48 +333,49 @@ fi # SetupTemplateRunDir
 ##=======================================================================
 if  "$SetupSpinupRun"; then
 
-    cd ${MY_PATH}/${RUN_NAME}
+    printf "\n=== CREATING SPINUP RUN DIRECTORY ===\n"
+    
+    cd ${MyPath}/${RunName}
     
     ### Define the run directory name
-    spinup_name="${RUN_NAME}_Spinup"
+    SpinupName="${RunName}_Spinup"
 
     ### Make the directory
     runDir="spinup_run"
-    mkdir -p ${runDir}
+    mkdir -p -v ${runDir}
 
     ### Copy and point to the necessary data
-    cp -r ${RUN_TEMPLATE}/*  ${runDir}
+    cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
-    ln -s ../${RUN_TEMPLATE}/gcclassic .
+    ln -s ../${RunTemplate}/gcclassic .
     
     # Link to restart file
-    ln -s $RESTART_FILE GEOSChem.Restart.${SPINUP_START}_0000z.nc4
-    if "$USE_BC4RESTART"; then
+    ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    if "$UseBCsForRestart"; then
 	sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
     
     ### Update settings in input.geos
-    sed -i -e "s|${START_DATE}|${SPINUP_START}|g" \
-           -e "s|${END_DATE}|${SPINUP_END}|g" \
+    sed -i -e "s|${StartDate}|${SpinupStart}|g" \
+           -e "s|${EndDate}|${SpinupEnd}|g" \
 	   -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
 	   -e "s|pertpert|1.0|g" \
            -e "s|clustnumclustnum|0|g" input.geos
 
     ### Create run script from template
-    sed -e "s:namename:${spinup_name}:g" \
-	-e "s:##:#:g" ch4_run.template > ${spinup_name}.run
-    chmod 755 ${spinup_name}.run
+    sed -e "s:namename:${SpinupName}:g" \
+	-e "s:##:#:g" ch4_run.template > ${SpinupName}.run
+    chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
-
-    ### Print diagnostics
-    echo "CREATED: ${runDir}"
     
     ### Navigate back to top-level directory
     cd ..
-    
+
+    printf "=== DONE CREATING SPINUP RUN DIRECTORY ===\n"
+
 fi # SetupSpinupRun
 
 ##=======================================================================
@@ -308,29 +383,31 @@ fi # SetupSpinupRun
 ##=======================================================================
 if  "$SetupPosteriorRun"; then
 
-    cd ${MY_PATH}/${RUN_NAME}
+    printf "\n=== CREATING POSTERIOR RUN DIRECTORY ===\n"
+    
+    cd ${MyPath}/${RunName}
     
     ### Define the run directory name
-    posterior_name="${RUN_NAME}_Posterior"
+    PosteriorName="${RunName}_Posterior"
 
     ### Make the directory
     runDir="posterior_run"
-    mkdir -p ${runDir}
+    mkdir -p -v ${runDir}
 
     ### Copy and point to the necessary data
-    cp -r ${RUN_TEMPLATE}/*  ${runDir}
+    cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
     ### Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
-    ln -s ../${RUN_TEMPLATE}/gcclassic .
+    ln -s ../${RunTemplate}/gcclassic .
 
     # Link to restart file
-    if "$DO_SPINUP"; then
-       ln -s ../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
+    if "$DoSpinup"; then
+       ln -s ../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
     else
-       ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
-       if "$USE_BC4RESTART"; then
+       ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
+       if "$UseBCsForRestart"; then
 	   sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
 	   printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
        fi
@@ -342,17 +419,18 @@ if  "$SetupPosteriorRun"; then
            -e "s|clustnumclustnum|0|g" input.geos
 
     ### Create run script from template
-    sed -e "s:namename:${spinup_name}:g" \
-	-e "s:##:#:g" ch4_run.template > ${posterior_name}.run
-    chmod 755 ${posterior_name}.run
+    sed -e "s:namename:${SpinupName}:g" \
+	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
+    chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
 
-    ### Print diagnostics
-    echo "CREATED: ${runDir}"
-    echo "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors."
+    ### Print messages
+    printf "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors.\n"
     
     ### Navigate back to top-level directory
     cd ..
+
+    printf "=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
     
 fi # SetupPosteriorRun
 
@@ -361,15 +439,17 @@ fi # SetupPosteriorRun
 ##=======================================================================
 if "$SetupJacobianRuns"; then
 
-    cd ${MY_PATH}/${RUN_NAME}
+    printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
+    
+    cd ${MyPath}/${RunName}
 
     ### Create directory that will contain all Jacobian run directories
-    mkdir -p jacobian_runs
+    mkdir -p -v jacobian_runs
 
     ### Copy run scripts
-    cp ${GCC_RUN_FILES}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RUN_NAME}:g" jacobian_runs/run_jacobian_simulations.sh
-    cp ${GCC_RUN_FILES}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
+    cp ${RunFilesPath}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
+    cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is cluster=1; etc.)
@@ -378,8 +458,7 @@ if "$SetupJacobianRuns"; then
     # Create run directory for each cluster so we can apply perturbation to each
     while [ $x -le $nClusters ];do
 
-	### Positive or negative perturbation
-	PERT=$pPERT
+	# Current cluster
 	xUSE=$x
 
 	### Add zeros to string name
@@ -394,29 +473,29 @@ if "$SetupJacobianRuns"; then
 	fi
 
 	### Define the run directory name
-	name="${RUN_NAME}_${xstr}"
+	name="${RunName}_${xstr}"
 
 	### Make the directory
 	runDir="./jacobian_runs/${name}"
-	mkdir -p ${runDir}
+	mkdir -p -v ${runDir}
 
 	### Copy and point to the necessary data
-	cp -r ${RUN_TEMPLATE}/*  ${runDir}
+	cp -r ${RunTemplate}/*  ${runDir}
 	cd $runDir
 
 	### Link to GEOS-Chem executable instead of having a copy in each rundir
 	rm -rf gcclassic
-	ln -s ../../${RUN_TEMPLATE}/gcclassic .
+	ln -s ../../${RunTemplate}/gcclassic .
 
 	# Link to restart file
-	if "$DO_SPINUP"; then
-	    ln -s ../../spinup_run/GEOSChem.Restart.${SPINUP_END}_0000z.nc4 GEOSChem.Restart.${START_DATE}_0000z.nc4
+	if "$DoSpinup"; then
+	    ln -s ../../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
-	    ln -s $RESTART_FILE GEOSChem.Restart.${START_DATE}_0000z.nc4
+	    ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
 	fi
    
 	### Update settings in input.geos
-	sed -i -e "s:pertpert:${PERT}:g" \
+	sed -i -e "s:pertpert:${PerturbValue}:g" \
                -e "s:clustnumclustnum:${xUSE}:g" input.geos
 
 	### Create run script from template
@@ -430,12 +509,9 @@ if "$SetupJacobianRuns"; then
 	### Increment
 	x=$[$x+1]
 
-	### Print diagnostics
-	echo "CREATED: ${runDir}"
-
     done
 
-    echo "=== DONE CREATING JACOBIAN RUN DIRECTORIES ==="
+    printf "=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
 
 fi  # SetupJacobianRuns
 
@@ -443,22 +519,24 @@ fi  # SetupJacobianRuns
 ##  Setup inversion directory
 ##=======================================================================
 if "$SetupInversion"; then
+
+    printf "\n=== SETTING UP INVERSION DIRECTORY ===\n"
     
-    cd ${MY_PATH}/$RUN_NAME
-    mkdir -p inversion
+    cd ${MyPath}/$RunName
+    mkdir -p -v inversion
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_GC
     mkdir -p inversion/Sensi
     ln -s /n/holylfs/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
-    cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
-    cp ${INV_PATH}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
+    cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
+    cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
     sed -i -e "s:{CLUSTERS}:${nClusters}:g" \
-	   -e "s:{START}:${START_DATE}:g" \
-           -e "s:{END}:${END_DATE}:g" \
-	   -e "s:{MY_PATH}:${MY_PATH}:g" \
-	   -e "s:{RUN_NAME}:${RUN_NAME}:g" inversion/run_inversion.sh
+	   -e "s:{START}:${StartDate}:g" \
+           -e "s:{END}:${EndDate}:g" \
+	   -e "s:{MY_PATH}:${MyPath}:g" \
+	   -e "s:{RUN_NAME}:${RunName}:g" inversion/run_inversion.sh
     
-    echo "=== DONE SETTING UP INVERSION DIRECTORY ==="
+    printf "=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 
 fi #SetupInversion
 

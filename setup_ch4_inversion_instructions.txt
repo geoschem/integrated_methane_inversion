@@ -9,6 +9,10 @@ Setting up code and run directories:
 
    Setup settings
    ---------------------
+   CreateClusterFile   : Create a netCDF cluster file containing the grid
+                         boxes or regions where emissions will be
+                         perturbed. If this is set to false, the
+                         ClusterFile option must be specified further down.
    SetupTemplateRundir : Copy run directory files from GEOS-Chem and
                          replace text in input files according to settings in
                          setup_ch4_inversion.sh. The template run directory is
@@ -23,64 +27,75 @@ Setting up code and run directories:
                          build the Jacobian, and run the inversion.
    SetupPosteriorRun:  : Create a run directory to submit a posterior run.
    
+   Environment files:
+   ---------------------
+   NCOEnv   : Bash script to load NCO software package
+   GCCEnv   : Bash script to load software packages needed to compile
+              and run  GEOS-Chem Classic
+   CondaEnv : Name of conda environment containing python packages
+              needed to execute the scripts in CH4_TROPOMI_INV. See
+              the example in envs/Harvard-Cannon/ch4_inv.yml. 
+
    File paths
    ------------
-   RUN_NAME : Specify a name for your simulations.
-   MY_PATH  : Set it to the file path where you want to setup the CH4 inversion
+   RunName  : Specify a name for your simulations.
+   MyPath   : Set it to the file path where you want to setup the CH4 inversion
               run directories. It is recommended you put this in $SCRATCH but
 	      be aware of the 90-day retention applied to that space.
-   DATA_PATH: Path to non-emissions data that will replate {DATA_ROOT} token
+   DataPath : Path to non-emissions data that will replate {DATA_ROOT} token
               in input.geos and HEMCO_Config.rc. The default is path is
 	      /n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData.
 	      The emissions data path is set in HEMCO_Config.rc and by default
 	      is set to /n/seasasfs02/CH4_Inversion/HEMCO.
-   RESTART_FILE: Path to the initial restart file. Sample restart files may be
+   ClusterFile : Path to netCDF file containing clusters to perturb.
+   UseBCsForRestart : Logical to determine whether boundary condition
+                      files should be used in place of a restart file.
+   RestartFile : Path to the initial restart file. Sample restart files may be
                  found in /n/seasasfs02/CH4_inversion/InputData/Restarts.
-   BC_FILES: Path to boundary condition files to be used for nested grid
-             simulations. This will replace the file path in HEMCO_Config.rc.
+   BCfiles     : Path to boundary condition files to be used for nested grid
+                 simulations. This will replace the path in HEMCO_Config.rc.
 
    Simulation settings
    ---------------------
-   DO_SPINUP   : Set to true to run a spinup simulation to generate a new
+   DoSpinup    : Set to true to run a spinup simulation to generate a new
                  restart file representative of your model setup.
-   SPINUP_START: Start date of your spinup period in YYYYMMDD format.
-   SPINUP_END  : End   date of your spinup period in YYYYMMDD format.
-   START_DATE  : Start date of your production runs in YYYYMMDD format.
-   END_DATE    : End   date of your production runs in YYYYMMDD format.
+   SpinupStart : Start date of your spinup period in YYYYMMDD format.
+   SpinupEnd   : End   date of your spinup period in YYYYMMDD format.
+   StartDate   : Start date of your production runs in YYYYMMDD format.
+   EndDate     : End   date of your production runs in YYYYMMDD format.
 
    Grid settings
    ---------------
-   RES      : Options are "4x5", "2x2.5", "0.5x0.625", and "0.25x0.3125".
-   MET      : Options are "merra2" or "geosfp".
-   LONS     : Enter the min and max longitude edges of your domain.
-              e.g. For global      simulations use "-180.0 180.0"
-	           For nested NA   simulations use "-140.0 -40.0" (0.5x0.625)
-		                                   "-130.0 -60.0" (0.25x0.3125)
-		   For nested Asia simulations use "  60.0 150.0" (0.5x0.625)
-		                                   "  70.0 140.0" (0.25x0.3125)
-   LATS     : Enter the min and max latitude edges of your domain.
-              e.g. For global      simulations use "-90.0 90.0"
-	           For nested NA   simulations use " 10.0 70.0" (0.5x0.625)
-		                                   " 9.75 60.0" (0.25x0.3125)
-		   For nested Asia simulations use " 15.0 55.0" (0.5x0.625)
-		                                   "-11.0 55.0" (0.25x0.3125)
-   HPOLAR   : Set to "T" for global simulations to use half polar boxes. Set to
+   Res      : Options are "4x5", "2x2.5", "0.5x0.625", and "0.25x0.3125".
+   Met      : Options are "merra2" or "geosfp".
+   LonMin   : Minimum longitude edge of your domain.
+   LonMax   : Maximum longitude edge of your domain.
+              e.g. For global      simulations use -180.0, 180.0
+	           For nested NA   simulations use -140.0, -40.0 (0.5x0.625)
+		                                   -130.0, -60.0 (0.25x0.3125)
+		   For nested Asia simulations use   60.0, 150.0 (0.5x0.625)
+		                                     70.0, 140.0 (0.25x0.3125)
+   LatMin   : Minimum latitude edge of your domain.
+   LatMax   : Maximum latitude edge of your domain.
+              e.g. For global      simulations use -90.0, 90.0
+	           For nested NA   simulations use  10.0, 70.0 (0.5x0.625)
+		                                    9.75, 60.0 (0.25x0.3125)
+		   For nested Asia simulations use  15.0, 55.0 (0.5x0.625)
+		                                   -11.0, 55.0 (0.25x0.3125)
+   HalfPolar: Set to "T" for global simulations to use half polar boxes. Set to
               "F" for nested grid simulations.
-   LEVS     : Set to 47 to use the reduced 47-level grid recommended for CH4
+   Levs     : Set to 47 to use the reduced 47-level grid recommended for CH4
               simulations.
-   NEST     : Set to "F" for global simulations or "T" for nested simulations.
-   REGION   : Set to "" for global or "NA", "AS", "CH", "EU" for default domains
-   BUFFER   : Set to "0 0 0 0" for global simulations. For nested simulations,
+   NestedGrid: Set to "F" for global simulations or "T" for nested simulations.
+   Region   : Set to "" for global or "NA", "AS", "CH", "EU" for default domains
+   Buffer   : Set to "0 0 0 0" for global simulations. For nested simulations,
               the recommendation is to use "3 3 3 3" to use 3 grid cells along
 	      the nested-grid domain for your buffer zone.
 
    Jacobian settings
    -------------------
-   nClusters : Number of clusters to include in constructing your Jacobian. This
-               will be equal to the number of GEOS-Chem runs - 1. Set this value
-	       to 0 to run the prior simulation with no perturbations applied.
-   pPERT    : Perturbation value to apply to clusters in analytical inversion.
-              "CH4_Jacobian"
+   PerturbValue : Perturbation value to apply to clusters in
+                  analytical inversion.
 
    Additional settings (change options in input.geos)
    ---------------------
