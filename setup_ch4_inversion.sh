@@ -226,6 +226,21 @@ if "$SetupTemplateRundir"; then
     NEW="Do analytical inversion?: T"
     sed -i "s/$OLD/$NEW/g" input.geos
 
+    # Turn on analytical inversion option in HEMCO_Config.rc also
+    OLD="--> AnalyticalInv          :       false"
+    NEW="--> AnalyticalInv          :       true "
+    sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
+
+    ### Modify path to cluster file in HEMCO_Config.rc
+    OLD=" Clusters.nc"
+    if "$CreateClusterFile"; then
+	NEW=" ${MyPath}/${RunName}/ClusterFile/${ClusterFile}"
+    else
+	NEW=" ${ClusterFile}"
+    fi
+    echo $NEW
+    sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
+
     # Turn other options on/off according to settings above
     if "$GOSAT"; then
 	OLD="Use GOSAT obs operator? : F"
