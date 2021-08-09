@@ -27,6 +27,7 @@ running the workflow on the AWS Cloud, but most steps in the workflow do not rel
 
 
    getting-started/quick-start.rst
+   getting-started/manual-running.rst
 
 .. toctree::
    :maxdepth: 1

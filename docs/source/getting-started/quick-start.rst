@@ -138,23 +138,94 @@ Navigate to the UMI Workflow setup directory::
 Open the ``setup_ch4_inversion.sh`` script::
 
   $ emacs setup_ch4_inversion.sh
-  
+
+
+This script contains many settings you can modify according to your scientific needs. You should not need to modify
+certain settings if you are using an instance generated from the AMI to run the workflow. These settings are italicized in the list below.
+
+Setup settings
+~~~~~~~~~~~~~~
+
+- CreateClusterFile: Create a netCDF cluster file containing the gridboxes or regions where emissions will be perturbed. If this is set to false, the ClusterFile option must be specified further down.
+- SetupTemplateRundir: Copy run directory files from GEOS-Chem and replace text in input files according to settings in setup_ch4_inversion.sh. The template run directory is needed to set up the spinup, 
+  Jacobian, and posterior run directories. It only needs to be generated once.
+- SetupSpinupRun: Create a run directory to spinup a new restart file representative of your model setup.
+- SetupJacobianRunDirectories: Setup run directories for each of your perturbation clusters. The output from these simulations will be used to construct the Jacobian.
+- SetupInversion: Copy scripts used to post-process GEOS-Chem data, build the Jacobian, and run the inversion.
+- SetupPosteriorRun: Create a run directory to submit a posterior run.
+
+Environment files
+~~~~~~~~~~~~~~~~~
+
+- *NCOEnv: Bash script to load NCO software package*
+- *GCCEnv: Bash script to load software packages needed to compileand run  GEOS-Chem Classic*
+- *CondaEnv: Name of conda environment containing python packages needed to execute the scripts in CH4_TROPOMI_INV. See the example in envs/Harvard-Cannon/ch4_inv.yml.*
+
+File paths
+~~~~~~~~~~
+- RunName: Specify a name for your simulations.
+- MyPath: Set it to the file path where you want to setup the CH4 inversion run directories.
+- *DataPath: Path to non-emissions data that will replate {DATA_ROOT} token in input.geos and HEMCO_Config.rc. The default is path is ``/home/ubuntu/ExtData/``.*
+  *The emissions data path is set in HEMCO_Config.rc and by default is set to ``/home/ubuntu/ExtData/HEMCO/``.*
+- ClusterFile: Path to netCDF file containing clusters to perturb.
+- UseBCsForRestart: Logical to determine whether boundary condition files should be used in place of a restart file.
+- RestartFile: Path to the initial restart file. Sample restart files may be found in TODO.
+- BCfiles: Path to boundary condition files to be used for nested grid simulations. This will replace the path in HEMCO_Config.rc.
+
+Data download settings
+~~~~~~~~~~~~~~~~~~~~~~
+
+Your instance created from the AMI does not include much of the required input data for even a very short simulation, so it is recommended you set each of these to true
+to automatically fetch required input data. Note that for each of these settings (except RestartDownload) files will not be redownloaded if they already exist at the requested path on your instance, 
+so it is safe to leave these set to "true" in successive runs of the workflow. 
+
+- SpinupDryrun: Set to "true" to automatically fetch all required GEOS-Chem meteorology and emissions input files for the spinup run from Amazon S3 (your account will incur small charges).
+- ProdDryrun: Set to "true" to automatically fetch all required GEOS-Chem meteorology and emissions input files for the production runs from Amazon S3 (your account will incur small charges).
+- RestartDownload: Set to "true" to automatically fetch a default restart file from Amazon S3 (your account will incur a small charge).
+- BCDryrun: Set to "true" to automatically fetch default required boundary conditions files from Amazon S3 (your account will incur small charges).
+
+Grid settings
+~~~~~~~~~~~~~
+- Res: Options are "4x5", "2x2.5", "0.5x0.625", and "0.25x0.3125".
+- Met: Options are "merra2" or "geosfp".
+- LonMin: Minimum longitude edge of your domain.
+- LonMax: Maximum longitude edge of your domain. e.g. For global simulations use -180.0, 180.0. For nested NA simulations use -140.0, -40.0 (0.5x0.625); -130.0, -60.0 (0.25x0.3125).
+  For nested Asia simulations use   60.0, 150.0 (0.5x0.625); 70.0, 140.0 (0.25x0.3125)
+- LatMin: Minimum latitude edge of your domain.
+- LatMax: Maximum latitude edge of your domain. e.g. For global simulations use -90.0, 90.0. For nested NA simulations use 10.0, 70.0 (0.5x0.625); 9.75, 60.0 (0.25x0.3125).
+  For nested Asia simulations use  15.0, 55.0 (0.5x0.625); -11.0, 55.0 (0.25x0.3125).
+- HalfPolar: Set to "T" for global simulations to use half polar boxes. Set to "F" for nested grid simulations.
+- Levs: Set to 47 to use the reduced 47-level grid recommended for CH4 simulations.
+- NestedGrid: Set to "F" for global simulations or "T" for nested simulations.
+- Region: Set to "" for global or "NA", "AS", "CH", "EU" for default domains
+- Buffer: Set to "0 0 0 0" for global simulations. For nested simulations, the recommendation is to use "3 3 3 3" to use 3 grid cells along the nested-grid domain for your buffer zone.
+
+Jacobian settings
+~~~~~~~~~~~~~~~~~
+- PerturbValue: Perturbation value to apply to clusters in analytical inversion.
+
+Additional settings (change options in input.geos)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- GOSAT: Set to true to use GOSAT observation operator.
+- TCCON: Set to true to use TCCON observation operator.
+- UseEmisSF: Set to true to use emission scale factors from a previous analytical inversion.
+- UseSeparateWetlandsSF: Set to true to use separate scale factors for wetland and nonwetland emissions.
+- UseOHSF: Set to true to use OH scale factors from a previous analytical inversion.
+- PLANEFLIGHT: Set to true to use the planeflight diagnostic.
+- HourlyCH4: Set to true to save out hourly CH4 concentrations and pressure edges.
+
+
+Save and close setup_ch4_inversion.sh when you're done editing configuration settings.
+
+TODO: Add instructions for using automated workflow
+
+`Click here <manual-running>`__ for instructions on manually running each step of the workflow (an alternative to using the automated workflow run script).
+
 TODO: Add instructions from README.MD to describe different customization options and using the workflow.
 
-There are some AWS-specific configuration options that you should leave alone. ``DATA_PATH`` points to an existing folder on your instance containing a small quantity of GEOS-Chem input data.
-More data will be downloaded to this folder. You can point ``BC_FILES`` to any folder where you would like to download boundary condition files, but you should leave ``BC_DRYRUN`` set to ``true``
-if you plan on using default boundary conditions files so that this script automatically downloads missing BC files.
-``SPINUP_DRYRUN`` and ``PROD_DRYRUN`` determine whether the workflow scripts will attempt to automatically download other required GEOS-Chem data. 
-You can always leave these options set to ``true`` because the workflow scripts will only download required data that is not already located in ``DATA_PATH``. 
 
 TODO: More workflow instructions here
 
-
-The ``FETCHTROPOMI`` variable in ``run_inversion.sh`` determines whether TROPOMI data files will be automatically downloaded for the designated inversion timeframe.
-Note that unlike the GEOS-Chem data download, **TROPOMI data files will be downloaded even if they already exist on your instance**. Set ``FETCHTROPOMI`` to ``false`` 
-if you're rerunning for a certain time period to avoid unnecessary file downloads. 
-
-TODO: More workflow instructions here
 
 
 6. Analyze output data with Python
