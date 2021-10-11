@@ -183,11 +183,11 @@ if "$SetupTemplateRundir"; then
 
     cd ${MyPath}/${RunName}
 
-    ### Create template run directory
+    # Create template run directory
     RunTemplate="template_run"
     mkdir -p -v ${RunTemplate}
 
-    ### Copy run directory files directly from GEOS-Chem repository
+    # Copy run directory files directly from GEOS-Chem repository
     cp -RLv ${RunFilesPath}/input.geos.templates/input.geos.CH4 ${RunTemplate}/input.geos
     cp -RLv ${RunFilesPath}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RunTemplate}/HISTORY.rc
     cp -RLv ${RunFilesPath}/runScriptSamples/ch4_run.template ${RunTemplate}
@@ -201,7 +201,7 @@ if "$SetupTemplateRundir"; then
     mkdir -p OutputDir
     mkdir -p Restarts
 
-    ### Update settings in input.geos
+    # Update settings in input.geos
     sed -i -e "s:{DATE1}:${StartDate}:g" \
            -e "s:{DATE2}:${EndDate}:g" \
            -e "s:{TIME1}:000000:g" \
@@ -231,7 +231,7 @@ if "$SetupTemplateRundir"; then
     NEW="--> AnalyticalInv          :       true "
     sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
 
-    ### Modify path to cluster file in HEMCO_Config.rc
+    # Modify path to cluster file in HEMCO_Config.rc
     OLD=" Clusters.nc"
     if "$CreateClusterFile"; then
 	NEW=" ${MyPath}/${RunName}/ClusterFile/${ClusterFile}"
@@ -285,8 +285,8 @@ if "$SetupTemplateRundir"; then
 	sed -i "s/$OLD/$NEW/g" input.geos
     fi
 
-    ### Set up HEMCO_Config.rc
-    ### Use monthly emissions diagnostic output for now
+    # Set up HEMCO_Config.rc
+    # Use monthly emissions diagnostic output by default
     sed -i -e "s:End:Monthly:g" \
            -e "s:{VERBOSE}:0:g" \
            -e "s:{WARNINGS}:1:g" \
@@ -304,28 +304,24 @@ if "$SetupTemplateRundir"; then
         sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
     fi
 
-    ### Set up HISTORY.rc
-    ### Use monthly output for now
+    # Set up HISTORY.rc
+    # Use monthly output by default
     sed -i -e "s:{FREQUENCY}:00000100 000000:g" \
            -e "s:{DURATION}:00000100 000000:g" \
-           -e 's:'\''CH4:#'\''CH4:g' HISTORY.rc
+           -e "s:'CH4':#'CH4':g" \
+           -e "s:'Metrics:#'Metrics:g" HISTORY.rc
     
-    # If turned on, save out hourly CH4 concentrations and pressure fields to
-    # daily files
+    # If turned on, save out hourly CH4 concentrations to daily files
     if "$HourlyCH4"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
-    	   -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
-               -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' \
-    	   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-    	   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-    	   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-    	   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+    	       -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
+               -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
     fi
 
     # Load environment with modules for compiling GEOS-Chem Classic
     source ${GCCEnv}
     
-    ### Compile GEOS-Chem and store executable in template run directory
+    # Compile GEOS-Chem and store executable in template run directory
     mkdir build; cd build
     cmake ${UMIpath}/GCClassic
     cmake . -DRUNDIR=..
@@ -336,7 +332,7 @@ if "$SetupTemplateRundir"; then
     # Purge software modules
     module purge
     
-    ### Navigate back to top-level directory
+    # Navigate back to top-level directory
     cd ..
 
     printf "=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
@@ -348,22 +344,28 @@ fi # SetupTemplateRunDir
 ##=======================================================================
 if  "$SetupSpinupRun"; then
 
+    # Make sure template run directory exists
+    if [ ! -d ${RunTemplate} ]; then
+	echo "Template run directory does not exist. Please set 'SetupTemplateRundir=true' in setup_ch4_inversion.sh" 
+	exit 9999
+    fi
+
     printf "\n=== CREATING SPINUP RUN DIRECTORY ===\n"
     
     cd ${MyPath}/${RunName}
     
-    ### Define the run directory name
+    # Define the run directory name
     SpinupName="${RunName}_Spinup"
 
-    ### Make the directory
+    # Make the directory
     runDir="spinup_run"
     mkdir -p -v ${runDir}
 
-    ### Copy and point to the necessary data
+    # Copy and point to the necessary data
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    ### Link to GEOS-Chem executable instead of having a copy in each run dir
+    # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ../${RunTemplate}/gcclassic .
     
@@ -373,20 +375,20 @@ if  "$SetupSpinupRun"; then
 	sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
     
-    ### Update settings in input.geos
+    # Update settings in input.geos
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" \
 	   -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
 	   -e "s|pertpert|1.0|g" \
            -e "s|clustnumclustnum|0|g" input.geos
 
-    ### Create run script from template
+    # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${SpinupName}.run
     chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
     
-    ### Navigate back to top-level directory
+    # Navigate back to top-level directory
     cd ..
 
     printf "=== DONE CREATING SPINUP RUN DIRECTORY ===\n"
@@ -398,22 +400,28 @@ fi # SetupSpinupRun
 ##=======================================================================
 if  "$SetupPosteriorRun"; then
 
+    # Make sure template run directory exists
+    if [ ! -d ${RunTemplate} ]; then
+	echo "Template run directory does not exist. Please set 'SetupTemplateRundir=true' in setup_ch4_inversion.sh" 
+	exit 9999
+    fi
+
     printf "\n=== CREATING POSTERIOR RUN DIRECTORY ===\n"
     
     cd ${MyPath}/${RunName}
     
-    ### Define the run directory name
+    # Define the run directory name
     PosteriorName="${RunName}_Posterior"
 
-    ### Make the directory
+    # Make the directory
     runDir="posterior_run"
     mkdir -p -v ${runDir}
 
-    ### Copy and point to the necessary data
+    # Copy and point to the necessary data
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    ### Link to GEOS-Chem executable instead of having a copy in each run dir
+    # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ../${RunTemplate}/gcclassic .
 
@@ -428,21 +436,21 @@ if  "$SetupPosteriorRun"; then
        fi
     fi
     
-    ### Update settings in input.geos
+    # Update settings in input.geos
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
 	   -e "s|pertpert|1.0|g" \
            -e "s|clustnumclustnum|0|g" input.geos
 
-    ### Create run script from template
+    # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
 
-    ### Print messages
+    # Print messages
     printf "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors.\n"
     
-    ### Navigate back to top-level directory
+    # Navigate back to top-level directory
     cd ..
 
     printf "=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
@@ -454,14 +462,20 @@ fi # SetupPosteriorRun
 ##=======================================================================
 if "$SetupJacobianRuns"; then
 
+    # Make sure template run directory exists
+    if [ ! -d ${RunTemplate} ]; then
+	echo "Template run directory does not exist. Please set 'SetupTemplateRundir=true' in setup_ch4_inversion.sh" 
+	exit 9999
+    fi
+
     printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
     
     cd ${MyPath}/${RunName}
 
-    ### Create directory that will contain all Jacobian run directories
+    # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    ### Copy run scripts
+    # Copy run scripts
     cp ${RunFilesPath}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
@@ -476,7 +490,7 @@ if "$SetupJacobianRuns"; then
 	# Current cluster
 	xUSE=$x
 
-	### Add zeros to string name
+	# Add zeros to string name
 	if [ $x -lt 10 ]; then
 	    xstr="000${x}"
 	elif [ $x -lt 100 ]; then
@@ -487,18 +501,18 @@ if "$SetupJacobianRuns"; then
 	    xstr="${x}"
 	fi
 
-	### Define the run directory name
+	# Define the run directory name
 	name="${RunName}_${xstr}"
 
-	### Make the directory
+	# Make the directory
 	runDir="./jacobian_runs/${name}"
 	mkdir -p -v ${runDir}
 
-	### Copy and point to the necessary data
+	# Copy and point to the necessary data
 	cp -r ${RunTemplate}/*  ${runDir}
 	cd $runDir
 
-	### Link to GEOS-Chem executable instead of having a copy in each rundir
+	# Link to GEOS-Chem executable instead of having a copy in each rundir
 	rm -rf gcclassic
 	ln -s ../../${RunTemplate}/gcclassic .
 
@@ -509,19 +523,30 @@ if "$SetupJacobianRuns"; then
 	    ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
 	fi
    
-	### Update settings in input.geos
+	# Update settings in input.geos
 	sed -i -e "s:pertpert:${PerturbValue}:g" \
                -e "s:clustnumclustnum:${xUSE}:g" input.geos
 
-	### Create run script from template
+	# Update settings in HISTORY.rc
+	# Only save out hourly pressure fields to daily files for base run
+	if [ $x -eq 0 ]; then
+	    if "$HourlyCH4"; then
+                sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                       -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                       -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+                       -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+	    fi
+	fi
+
+	# Create run script from template
 	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
-	### Navigate back to top-level directory
+	# Navigate back to top-level directory
 	cd ../..
 
-	### Increment
+	# Increment
 	x=$[$x+1]
 
     done
