@@ -102,6 +102,11 @@ Buffer="3 3 3 3"
 # Jacobian settings
 PerturbValue="1.5"
 
+# Inversion settings
+PriorError=0.5
+ObsError=15
+Gamma=0.25
+
 # Apply scale factors from a previous inversion?
 UseEmisSF=false
 UseSeparateWetlandSF=false
@@ -412,7 +417,7 @@ fi # SetupTemplateRunDir
 ##  Set up spinup run directory
 ##=======================================================================
 
-#get max process count for spinup, production, and run_inversion scripts
+# Get max process count for spinup, production, and run_inversion scripts
 output=$(echo $(slurmd -C))
 array=($output)
 cpu_str=$(echo ${array[1]})
@@ -679,7 +684,7 @@ if "$SetupInversion"; then
 	mkdir -p inversion/data_TROPOMI
 	cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
     else
-	ln -s /n/holylfs/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
+	ln -s /n/holylfs/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI ${MyPath}/data_TROPOMI
     fi
     cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
@@ -687,10 +692,20 @@ if "$SetupInversion"; then
 	   -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
 	   -e "s:{MY_PATH}:${MyPath}:g" \
-	   -e "s:{RUN_NAME}:${RunName}:g" inversion/run_inversion.sh
+	   -e "s:{RUN_NAME}:${RunName}:g" \
+	   -e "s:{CLUSTER_PATH}:${ClusterFile}:g" \
+	   -e "s:{LON_MIN}:${LonMin}:g" \
+	   -e "s:{LON_MAX}:${LonMax}:g" \
+	   -e "s:{LAT_MIN}:${LatMin}:g" \
+	   -e "s:{LAT_MAX}:${LatMax}:g" \
+	   -e "s:{PRIOR_ERROR}:${PriorError}:g" \
+	   -e "s:{OBS_ERROR}:${ObsError}:g" \
+	   -e "s:{GAMMA}:${Gamma}:g" \
+	   -e "s:{IS_AWS}:${IsAWS}:g" inversion/run_inversion.sh
 
     if "$isAWS"; then
-       sed -i -e "/#SBATCH -t/d" \
+       sed -i -e "/#SBATCH -p huce_intel/d" \
+	      -e "/#SBATCH -t/d" \
 	      -e "/#SBATCH --mem/d" \
 	      -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
     fi
