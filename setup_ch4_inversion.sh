@@ -8,14 +8,14 @@
 ##=======================================================================
 
 # Path to inversion setup
-UMIpath=$(pwd -P)
+InversionPath=$(pwd -P)
 
 # Run IMI on AWS? If false, a local cluster will be assumed
 isAWS=false
 
 # Turn on/off different steps. This will allow you to come back to this
 # script and set up different stages later.
-CreateClusterFile=true    # If false, set ClusterFile below
+CreateStateVectorFile=true    # If false, set StateVectorFile below
 SetupTemplateRundir=true
 SetupSpinupRun=true
 SetupJacobianRuns=true
@@ -52,8 +52,8 @@ else
     MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
 
     # Environment files (specific to Harvard's Cannon cluster)
-    NCOEnv="${UMIpath}/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
-    GCCEnv="${UMIpath}/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
+    NCOEnv="${InversionPath}/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
+    GCCEnv="${InversionPath}/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
     CondaEnv="ch4_inv" # See envs/README to create this environment
 fi
 
@@ -64,8 +64,8 @@ else
     DataPath="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 fi
 
-# Path to cluster file
-ClusterFile="Clusters.nc"
+# Path to state vector file
+StateVectorFile="StateVector.nc"
 
 # Path to initial restart file
 UseBCsForRestart=true
@@ -187,61 +187,61 @@ else
 fi
 
 # Define path to GEOS-Chem run directory files
-GCClassicPath="${UMIpath}/GCClassic"
+GCClassicPath="${InversionPath}/GCClassic"
 RunFilesPath="${GCClassicPath}/run"
 
 # Create working directory if it doesn't exist yet
 mkdir -p -v ${MyPath}/$RunName
 
 ##=======================================================================
-## Create cluster file
+## Create state vector file
 ##=======================================================================
-if "$CreateClusterFile"; then
+if "$CreateStateVectorFile"; then
 
-    printf "\n=== CREATING CLUSTER FILE ===\n"
+    printf "\n=== CREATING STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.nc"
     LandThreshold=0.25
 
-    # Output path and filename for cluster file
-    ClusterFile="Clusters.nc"
+    # Output path and filename for state vector file
+    StateVectorFile="StateVectors.nc"
 
     # Width of k-means buffer area in degrees (default=5, approx 500 km)
     BufferDeg=5
 
-    # Number of clusters for k-means (default=8)
-    kClusters=8
+    # Number of stare vector elements for k-means (default=8)
+    kElements=8
 
-    # Create cluster file
+    # Create state vector file
     cd ${MyPath}/$RunName
-    mkdir -p -v ClusterFile
-    cd ClusterFile
+    mkdir -p -v StateVectorFile
+    cd StateVectorFile
 
-    # Copy cluster creation script to working directory
-    cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/make_cluster_file.py .
-    chmod 755 make_cluster_file.py
+    # Copy state vector creation script to working directory
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
+    chmod 755 make_state_element_file.py
 
     # Activate Conda environment
     printf "Activating conda environment: ${CondaEnv}\n"
     source activate $CondaEnv
     
-    printf "Calling make_cluster_file.py\n"
-    python make_cluster_file.py $LandCoverFile $ClusterFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $kClusters
+    printf "Calling make_state_vector_file.py\n"
+    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $kElements
 
     conda deactivate
     
-    printf "=== DONE CREATING CLUSTER FILE ===\n"
+    printf "=== DONE CREATING STATE VECTOR FILE ===\n"
 
 fi
 
 # Load environment with NCO
 source ${NCOEnv}
 
-# Determine number of clusters from file
+# Determine number of elements in state vector file
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-nClusters=$(ncmax Clusters $ClusterFile)
-printf "\n Number of clusters in this inversion= ${nClusters}\n"
+nStateVectorElements=$(ncmax StateVectors $StateVectorFile)
+printf "\n Number of state vector elements in this inversion= ${nStateVectorElements}\n"
 
 # Purge software modules
 module purge
@@ -304,12 +304,12 @@ if "$SetupTemplateRundir"; then
     NEW="--> AnalyticalInv          :       true "
     sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
 
-    # Modify path to cluster file in HEMCO_Config.rc
-    OLD=" Clusters.nc"
-    if "$CreateClusterFile"; then
-	NEW=" ${MyPath}/${RunName}/ClusterFile/${ClusterFile}"
+    # Modify path to state vector file in HEMCO_Config.rc
+    OLD=" StateVectors.nc"
+    if "$CreateStateVectorFile"; then
+	NEW=" ${MyPath}/${RunName}/StateVectorFile/${StateVectorFile}"
     else
-	NEW=" ${ClusterFile}"
+	NEW=" ${StateVectorFile}"
     fi
     echo $NEW
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
@@ -397,7 +397,7 @@ if "$SetupTemplateRundir"; then
     
     # Compile GEOS-Chem and store executable in template run directory
     mkdir build; cd build
-    cmake ${UMIpath}/GCClassic
+    cmake ${InversionPath}/GCClassic
     cmake . -DRUNDIR=..
     make -j install
     cd ..
@@ -592,15 +592,16 @@ if "$SetupJacobianRuns"; then
        	       -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
-    sed -i -e "s:{START}:0:g" -e "s:{END}:${nClusters}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    sed -i -e "s:{START}:0:g" -e "s:{END}:${nStateVectorElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
-    # Initialize (x=0 is base run, i.e. no perturbation; x=1 is cluster=1; etc.)
+    # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
 
-    # Create run directory for each cluster so we can apply perturbation to each
-    while [ $x -le $nClusters ];do
+    # Create run directory for each state vector element so we can
+    # apply the perturbation to each
+    while [ $x -le $nStateVectors ];do
 
-	# Current cluster
+	# Current state vector element
 	xUSE=$x
 
 	# Add zeros to string name
@@ -686,14 +687,14 @@ if "$SetupInversion"; then
     else
 	ln -s /n/holylfs/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI ${MyPath}/data_TROPOMI
     fi
-    cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
-    cp ${UMIpath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
-    sed -i -e "s:{CLUSTERS}:${nClusters}:g" \
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
+    sed -i -e "s:{STATE_VECTOR_ELEMENTS}:${nStateVectorElements}:g" \
 	   -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
 	   -e "s:{MY_PATH}:${MyPath}:g" \
 	   -e "s:{RUN_NAME}:${RunName}:g" \
-	   -e "s:{CLUSTER_PATH}:${ClusterFile}:g" \
+	   -e "s:{STATE_VECTOR_PATH}:${StateVectorFile}:g" \
 	   -e "s:{LON_MIN}:${LonMin}:g" \
 	   -e "s:{LON_MAX}:${LonMax}:g" \
 	   -e "s:{LAT_MIN}:${LatMin}:g" \

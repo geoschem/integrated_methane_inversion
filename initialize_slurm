@@ -1,8 +1,9 @@
 #!/bin/bash
-#This script sets up slurm.conf. It is necessary because
-#instance hardware and IPs change when creating a new instance.
-#The script should be run with root permissions and is configured to run
-#automatically on system boot in the UMI AMI.
+
+# This script sets up SLURM configuration on AWS. It is necessary because
+# instance hardware and IPs change when creating a new instance.
+# The script should be run with root permissions and is configured to run
+# automatically on system boot in the Integrated Methane Inversion AMI.
 cp /home/ubuntu/setup_CH4/base_slurm.conf /home/ubuntu/setup_CH4/new_slurm.conf
 /home/ubuntu/miniconda/bin/python /home/ubuntu/setup_CH4/configure_slurm.py
 cp /home/ubuntu/setup_CH4/new_slurm.conf /etc/slurm-llnl/slurm.conf
@@ -10,5 +11,5 @@ rm /home/ubuntu/setup_CH4/new_slurm.conf
 /usr/sbin/service slurmd restart
 /usr/sbin/service slurmctld restart
 
-#fix issue when switching instance types where node claims to be drained
+# Fix issue when switching instance types where node claims to be drained
 scontrol update nodename=$HOSTNAME state=idle
