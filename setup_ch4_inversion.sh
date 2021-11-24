@@ -205,13 +205,13 @@ if "$CreateStateVectorFile"; then
     LandThreshold=0.25
 
     # Output path and filename for state vector file
-    StateVectorFile="StateVectors.nc"
+    StateVectorFile="StateVector.nc"
 
-    # Width of k-means buffer area in degrees (default=5, approx 500 km)
+    # Width of k-means buffer zone in degrees (default=5, approx 500 km)
     BufferDeg=5
 
-    # Number of stare vector elements for k-means (default=8)
-    kElements=8
+    # Number of buffer zone clusters for k-means (default=8)
+    nBufferClusters=8
 
     # Create state vector file
     cd ${MyPath}/$RunName
@@ -220,14 +220,14 @@ if "$CreateStateVectorFile"; then
 
     # Copy state vector creation script to working directory
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
-    chmod 755 make_state_element_file.py
+    chmod 755 make_state_vector_file.py
 
     # Activate Conda environment
     printf "Activating conda environment: ${CondaEnv}\n"
     source activate $CondaEnv
     
     printf "Calling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $kElements
+    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
     conda deactivate
     
@@ -240,8 +240,8 @@ source ${NCOEnv}
 
 # Determine number of elements in state vector file
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-nStateVectorElements=$(ncmax StateVectors $StateVectorFile)
-printf "\n Number of state vector elements in this inversion= ${nStateVectorElements}\n"
+nElements=$(ncmax StateVector $StateVectorFile)
+printf "\n Number of state vector elements in this inversion= ${nElements}\n"
 
 # Purge software modules
 module purge
@@ -459,9 +459,9 @@ if  "$SetupSpinupRun"; then
     # Update settings in input.geos
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" \
-	   -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-	   -e "s|pertpert|1.0|g" \
-           -e "s|clustnumclustnum|0|g" input.geos
+           -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
+           -e "s|{PERTURBATION}|1.0|g" \
+           -e "s|{ELEMENT}|0|g" input.geos
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -533,8 +533,8 @@ if  "$SetupPosteriorRun"; then
     
     # Update settings in input.geos
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-	   -e "s|pertpert|1.0|g" \
-           -e "s|clustnumclustnum|0|g" input.geos
+           -e "s|{PERTURBATION}|1.0|g" \
+           -e "s|{ELEMENT}|0|g" input.geos
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -592,7 +592,7 @@ if "$SetupJacobianRuns"; then
        	       -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
-    sed -i -e "s:{START}:0:g" -e "s:{END}:${nStateVectorElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    sed -i -e "s:{START}:0:g" -e "s:{END}:${nElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
@@ -638,8 +638,8 @@ if "$SetupJacobianRuns"; then
 	fi
    
 	# Update settings in input.geos
-	sed -i -e "s:pertpert:${PerturbValue}:g" \
-               -e "s:clustnumclustnum:${xUSE}:g" input.geos
+	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
+               -e "s:{ELEMENT}:${xUSE}:g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -689,9 +689,10 @@ if "$SetupInversion"; then
     fi
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
-    sed -i -e "s:{STATE_VECTOR_ELEMENTS}:${nStateVectorElements}:g" \
-	   -e "s:{START}:${StartDate}:g" \
+    sed -i -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
+	   -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
+	   -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
 	   -e "s:{MY_PATH}:${MyPath}:g" \
 	   -e "s:{RUN_NAME}:${RunName}:g" \
 	   -e "s:{STATE_VECTOR_PATH}:${StateVectorFile}:g" \
