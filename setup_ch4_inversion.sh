@@ -73,6 +73,7 @@ if "$isAWS"; then
     RestartDownload=true # automatically download restart file
     RestartFile="${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
 else
+    RestartDownload=false
     RestartFile="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
 fi
     
@@ -417,11 +418,13 @@ fi # SetupTemplateRunDir
 ##  Set up spinup run directory
 ##=======================================================================
 
-# Get max process count for spinup, production, and run_inversion scripts
-output=$(echo $(slurmd -C))
-array=($output)
-cpu_str=$(echo ${array[1]})
-cpu_count=$(echo ${cpu_str:5})
+if "$isAWS"; then
+    # Get max process count for spinup, production, and run_inversion scripts
+    output=$(echo $(slurmd -C))
+    array=($output)
+    cpu_str=$(echo ${array[1]})
+    cpu_count=$(echo ${cpu_str:5})
+fi
 
 if  "$SetupSpinupRun"; then
 
@@ -553,7 +556,7 @@ if  "$SetupPosteriorRun"; then
     printf "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors.\n"
 
     ### Perform dry run if requested
-    if "$ProductionDryrun"; then
+    if "$ProductionDryRun"; then
 	printf "Executing dry-run for posterior run...\n"
 	./gcclassic --dryrun &> log.dryrun
 	./download_data.py --aws log.dryrun
@@ -681,11 +684,11 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_GC
     mkdir -p inversion/Sensi
-    if "#isAWS"; then
+    if "$isAWS"; then
 	mkdir -p inversion/data_TROPOMI
 	cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
     else
-	ln -s /n/holylfs/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI ${MyPath}/data_TROPOMI
+	ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
     fi
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
