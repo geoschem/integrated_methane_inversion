@@ -468,8 +468,8 @@ if  "$SetupSpinupRun"; then
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" \
            -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|{PERTURBATION}|1.0|g" \
-           -e "s|{ELEMENT}|0|g" input.geos
+           -e "s|pertpert|1.0|g" \
+           -e "s|clustnumclustnum|0|g" input.geos
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -541,8 +541,8 @@ if  "$SetupPosteriorRun"; then
     
     # Update settings in input.geos
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|{PERTURBATION}|1.0|g" \
-           -e "s|{ELEMENT}|0|g" input.geos
+           -e "s|pertpert|1.0|g" \
+           -e "s|clustnumclustnum|0|g" input.geos
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -646,8 +646,8 @@ if "$SetupJacobianRuns"; then
 	fi
    
 	# Update settings in input.geos
-	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
-               -e "s:{ELEMENT}:${xUSE}:g" input.geos
+	sed -i -e "s:pertpert:${PerturbValue}:g" \
+               -e "s:clustnumclustnum:${xUSE}:g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
