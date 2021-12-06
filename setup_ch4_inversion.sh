@@ -11,7 +11,7 @@
 InversionPath=$(pwd -P)
 
 # Run IMI on AWS? If false, a local cluster will be assumed
-isAWS=false
+isAWS=true
 
 # Turn on/off different steps. This will allow you to come back to this
 # script and set up different stages later.
@@ -48,6 +48,7 @@ EndDate=20180508
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
     MyPath="/home/ubuntu/CH4_Workflow"
+    CondaEnv="geo"
 else
     MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
 
@@ -202,7 +203,7 @@ if "$CreateStateVectorFile"; then
     printf "\n=== CREATING STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.nc"
+    LandCoverFile="${DataPath}/GEOS_${gridDir}_NA/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.NA.nc"
     LandThreshold=0.25
 
     # Output path and filename for state vector file
@@ -225,11 +226,15 @@ if "$CreateStateVectorFile"; then
 
     # Activate Conda environment
     printf "Activating conda environment: ${CondaEnv}\n"
-    source activate $CondaEnv
+    if "$isAWS"; then
+        source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+        conda activate $CondaEnv
+    else
+        source activate $CondaEnv
+    fi
     
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
-
     conda deactivate
     
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
@@ -476,7 +481,7 @@ if  "$SetupSpinupRun"; then
 	sed -i -e "/#SBATCH -p huce_intel/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${spinup_name}.run
+               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
     fi
 
     ### Perform dry run if requested
