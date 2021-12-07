@@ -51,8 +51,8 @@ else
 fi
 
 # Start and end date for the spinup simulation
-SpinupStart=20180401 # djv: need to automate this, reading number of spinup days from config.yml
-SpinupEnd=20180501
+SpinupStart=$(date --date="${StartDate} -${SpinupMonths} month" +%Y%m%d)
+SpinupEnd=${StartDate}
 
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
