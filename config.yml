@@ -1,0 +1,67 @@
+## Configuration file for the IMI
+## (djv, 7 December 2021)
+
+## General
+isAWS: true
+RunName: "Test_Permian"
+
+## Period of interest
+StartDate: 20180501
+EndDate: 20180508
+SpinupDays: 30
+
+## Region of interest
+LonMin: -111.0
+LonMax: -95.0
+LatMin: 24.0
+LatMax: 39.0
+
+## Inversion
+PriorError: 0.5
+ObsError: 15
+Gamma: 0.25
+
+## Grid
+Res: "0.25x0.3125"
+Met: "geosfp"
+HalfPolar: "F"
+Levs: "47"
+NestedGrid: "T"
+Region: "NA"
+Buffer: "3 3 3 3"
+
+## Setup modules
+## Turn on/off different steps in setting up GEOS-Chem & inversion 
+CreateStateVectorFile: true
+SetupTemplateRundir: true
+SetupSpinupRun: true
+SetupJacobianRuns: true
+SetupInversion: true
+SetupPosteriorRun: true
+
+## Run modules
+## Turn on/off different steps in performing the inversion
+RunSetup: true
+DoSpinup: true
+DoJacobian: true
+DoInversion: true
+DoPosterior: false
+
+## State vector settings (if CreateStateVectorFile: true)
+BufferDeg: 5
+nBufferElements: 8
+LandThreshold: 0.25
+
+## Custom statevector file (if CreateStateVectorFile: false)
+StateVectorFile: {path/to/StateVector.nc}
+
+## Jacobian settings
+PerturbValue: 1.5
+
+## ======================================================================
+## Specific to Harvard's Cannon cluster
+## ======================================================================
+
+## Compute resources to request
+nCPUs: 16
+partition: "huce_cascade"

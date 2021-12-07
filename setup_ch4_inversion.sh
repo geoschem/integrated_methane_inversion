@@ -4,23 +4,40 @@
 # setup_ch4_inversion_instructions.txt for details (mps, 2/20/2020)
 
 ##=======================================================================
-## User settings **MODIFY AS NEEDED**
+## Parse config.yml file
+##=======================================================================
+
+printf "\n=== PARSING CONFIG FILE ===\n"
+
+# Function to parse yaml files from shell script
+# By Stefan Farestam via stackoverflow:
+# https://stackoverflow.com/questions/5014632/how-can-i-parse-a-yaml-file-from-a-linux-shell-script
+function parse_yaml {
+   local prefix=$2
+   local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+   sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p"  $1 |
+   awk -F$fs '{
+      indent = length($1)/2;
+      vname[indent] = $2;
+      for (i in vname) {if (i > indent) {delete vname[i]}}
+      if (length($3) > 0) {
+         vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+         printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+      }
+   }'
+}
+
+# Get configuration
+eval $(parse_yaml config.yml)
+
+##=======================================================================
+## Standard settings
 ##=======================================================================
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
-
-# Run IMI on AWS? If false, a local cluster will be assumed
-isAWS=false
-
-# Turn on/off different steps. This will allow you to come back to this
-# script and set up different stages later.
-CreateStateVectorFile=true    # If false, set StateVectorFile below
-SetupTemplateRundir=true
-SetupSpinupRun=true
-SetupJacobianRuns=true
-SetupInversion=true
-SetupPosteriorRun=true
 
 # AWS only: Download missing GEOS-Chem input data from S3 (you will be charged)
 if "$isAWS"; then
@@ -33,17 +50,9 @@ else
     BCdryrun=false
 fi
 
-# Name for this run
-RunName="Test_Permian"
-
 # Start and end date for the spinup simulation
-DoSpinup=true
-SpinupStart=20180401
+SpinupStart=20180401 # djv: need to automate this, reading number of spinup days from config.yml
 SpinupEnd=20180501
-
-# Start and end date for the production simulations
-StartDate=20180501
-EndDate=20180508
 
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
@@ -64,9 +73,6 @@ else
     DataPath="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 fi
 
-# Path to state vector file
-StateVectorFile="StateVector.nc"
-
 # Path to initial restart file
 UseBCsForRestart=true
 if "$isAWS"; then
@@ -84,29 +90,6 @@ if "$isAWS"; then
 else
     BCfiles="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
 fi
-
-# Grid settings (Permian Basin example)
-Res="0.25x0.3125"
-Met="geosfp"
-LonMin=-111.0
-LonMax=-95.0
-Lons="${LonMin} ${LonMax}"
-LatMin=24.0
-LatMax=39.0
-Lats="${LatMin} ${LatMax}"
-HalfPolar="F"
-Levs="47"
-NestedGrid="T"
-Region="NA"  # NA,AS,CH,EU
-Buffer="3 3 3 3"
-
-# Jacobian settings
-PerturbValue="1.5"
-
-# Inversion settings
-PriorError=0.5
-ObsError=15
-Gamma=0.25
 
 # Apply scale factors from a previous inversion?
 UseEmisSF=false
@@ -143,6 +126,7 @@ if "$BCdryrun"; then
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
     python download_bc.py ${Start} ${EndDate} ${BCfiles}
+
 fi
 
 ##=======================================================================
@@ -203,20 +187,13 @@ if "$CreateStateVectorFile"; then
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.nc"
-    LandThreshold=0.25
 
     # Output path and filename for state vector file
     StateVectorFile="StateVector.nc"
 
-    # Width of k-means buffer zone in degrees (default=5, approx 500 km)
-    BufferDeg=5
-
-    # Number of buffer zone clusters for k-means (default=8)
-    nBufferClusters=8
-
     # Create state vector file
     cd ${MyPath}/$RunName
-    mkdir -p -v StateVectorFile
+    mkdir -p -v StateVectorFile # djv: why is StateVectorFile a directory here, it's .nc ?
     cd StateVectorFile
 
     # Copy state vector creation script to working directory
@@ -228,7 +205,7 @@ if "$CreateStateVectorFile"; then
     source activate $CondaEnv
     
     printf "Calling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
+    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferElements
 
     conda deactivate
     
@@ -695,7 +672,7 @@ if "$SetupInversion"; then
     sed -i -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
 	   -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
-	   -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
+	   -e "s:{BUFFER_ELEMENTS}:${nBufferElements}:g" \
 	   -e "s:{MY_PATH}:${MyPath}:g" \
 	   -e "s:{RUN_NAME}:${RunName}:g" \
 	   -e "s:{STATE_VECTOR_PATH}:${StateVectorFile}:g" \
@@ -719,7 +696,7 @@ if "$SetupInversion"; then
 
 fi #SetupInversion
 
-# Copy sample cluster files
+# Copy sample cluster files (djv: remove cluster terminology)
 if "$isAWS"; then
     cp -rfP /home/ubuntu/backup_files/cluster_files/* /home/ubuntu/ExtData/HEMCO/
 fi
