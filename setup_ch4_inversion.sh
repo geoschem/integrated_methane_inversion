@@ -672,7 +672,7 @@ if "$SetupInversion"; then
     sed -i -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
 	   -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
-	   -e "s:{BUFFER_ELEMENTS}:${nBufferElements}:g" \
+	   -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
 	   -e "s:{MY_PATH}:${MyPath}:g" \
 	   -e "s:{RUN_NAME}:${RunName}:g" \
 	   -e "s:{STATE_VECTOR_PATH}:${StateVectorFile}:g" \
