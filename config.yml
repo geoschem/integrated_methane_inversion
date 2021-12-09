@@ -49,7 +49,7 @@ DoPosterior: false
 
 ## State vector settings (if CreateStateVectorFile: true)
 BufferDeg: 5
-nBufferElements: 8
+nBufferClusters: 8
 LandThreshold: 0.25
 
 ## Custom statevector file (if CreateStateVectorFile: false)

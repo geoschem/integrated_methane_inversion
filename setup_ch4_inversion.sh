@@ -31,6 +31,16 @@ function parse_yaml {
 
 # Get configuration
 eval $(parse_yaml config.yml)
+# For reference, this defines the following environment variables:
+# General: $isAWS, $RunName
+# Period of interest: $StartDate, $EndDate, $SpinupMonths
+# Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
+# Inversion: $PriorError, $ObsError, $Gamma
+# Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $Region, $Buffer
+# Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
+# Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
+# State vector: $BufferDeg, $nBufferClusters, $LandThreshold, $StateVectorFile
+# Harvard-Cannon: $nCPUs, $partition
 
 ##=======================================================================
 ## Standard settings
