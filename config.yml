@@ -55,9 +55,6 @@ LandThreshold: 0.25
 ## Custom statevector file (if CreateStateVectorFile: false)
 StateVectorFile: {path/to/StateVector.nc}
 
-## Jacobian settings
-PerturbValue: 1.5
-
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster
 ## ======================================================================

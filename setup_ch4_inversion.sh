@@ -91,6 +91,9 @@ else
     BCfiles="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
 fi
 
+## Jacobian settings
+PerturbValue: 1.5
+
 # Apply scale factors from a previous inversion?
 UseEmisSF=false
 UseSeparateWetlandSF=false
