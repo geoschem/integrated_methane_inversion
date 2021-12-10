@@ -203,7 +203,7 @@ if "$CreateStateVectorFile"; then
     printf "\n=== CREATING STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    LandCoverFile="${DataPath}/GEOS_${gridDir}_NA/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.NA.nc"
+    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.nc"
     LandThreshold=0.25
 
     # Output path and filename for state vector file
