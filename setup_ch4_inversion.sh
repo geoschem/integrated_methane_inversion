@@ -53,10 +53,12 @@ InversionPath=$(pwd -P)
 if "$isAWS"; then
     SpinupDryrun=true      # Met fields/emissions for spinup run
     ProductionDryRun=true  # Met fields/emissions for production runs
+    PosteriorDryRun=true   # Met fields/emissions for posterior run
     BCdryrun=true          # Boundary condition files
 else
     SpinupDryrun=false
     ProductionDryRun=false
+    PosteriorDryRun=false
     BCdryrun=false
 fi
 
@@ -546,10 +548,10 @@ if  "$SetupPosteriorRun"; then
     printf "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors.\n"
 
     ### Perform dry run if requested
-    if "$ProductionDryRun"; then
-	printf "Executing dry-run for posterior run...\n"
-	./gcclassic --dryrun &> log.dryrun
-	./download_data.py --aws log.dryrun
+    if "$PosteriorDryRun"; then
+	   printf "Executing dry-run for posterior run...\n"
+	   ./gcclassic --dryrun &> log.dryrun
+	   ./download_data.py --aws log.dryrun
     fi
     
     # Navigate back to top-level directory
@@ -649,6 +651,15 @@ if "$SetupJacobianRuns"; then
 	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
+
+    ### Perform dry run if requested, only for base run
+    if [ $x -eq 0 ]; then
+        if "$ProductionDryrun"; then
+            printf "Executing dry-run for production runs...\n"
+            ./gcclassic --dryrun &> log.dryrun
+            ./download_data.py --aws log.dryrun
+        fi
+    fi
 
 	# Navigate back to top-level directory
 	cd ../..
