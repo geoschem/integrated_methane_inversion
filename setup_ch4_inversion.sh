@@ -220,7 +220,7 @@ if "$CreateStateVectorFile"; then
     source activate $CondaEnv
     
     printf "Calling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferElements
+    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
     conda deactivate
     
