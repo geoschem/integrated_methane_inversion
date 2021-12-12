@@ -488,7 +488,7 @@ if  "$SetupSpinupRun"; then
 	sed -i -e "/#SBATCH -p huce_intel/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${spinup_name}.run
+               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
     fi
 
     ### Perform dry run if requested
@@ -561,7 +561,7 @@ if  "$SetupPosteriorRun"; then
 	sed -i -e "/#SBATCH -p huce_intel/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
-	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${posterior_name}.run
+	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
     fi
     
     # Print messages
