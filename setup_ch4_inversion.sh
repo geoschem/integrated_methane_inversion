@@ -230,8 +230,14 @@ if "$CreateStateVectorFile"; then
 
     conda deactivate
     
+    # Define inversion domain lat/lon bounds
+    Lons="$(( LonMin-BufferDeg )) $(( LonMax+BufferDeg ))"
+    Lats="$(( LatMin-BufferDeg )) $(( LatMax+BufferDeg ))"
+
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
 
+else
+    # Need something to define Lons, Lats from the custom state vector file!
 fi
 
 # Load environment with NCO
