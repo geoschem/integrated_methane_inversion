@@ -11,10 +11,10 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Region of interest
-LonMin: -106.0
-LonMax: -104.0
-LatMin: 29.0
-LatMax: 31.0
+LonMin: -106
+LonMax: -104
+LatMin: 29
+LatMax: 31
 
 ## Inversion
 PriorError: 0.5
