@@ -237,7 +237,7 @@ if "$CreateStateVectorFile"; then
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
 
 else
-    # Need something to define Lons, Lats from the custom state vector file!
+    echo Need something to define Lons, Lats from the custom state vector file!
 fi
 
 # Load environment with NCO
