@@ -27,7 +27,7 @@ Met: "geosfp"
 HalfPolar: "F"
 Levs: "47"
 NestedGrid: "T"
-Region: "NA"
+REGION: "NA"
 Buffer: "3 3 3 3"
 
 ## Setup modules
