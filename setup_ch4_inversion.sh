@@ -409,7 +409,9 @@ if "$SetupTemplateRundir"; then
     rm -rf build
 
     # Purge software modules
-    module purge
+    if ! "$isAWS"; then
+        module purge
+    fi
     
     # Navigate back to top-level directory
     cd ..
