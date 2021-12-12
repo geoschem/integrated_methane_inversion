@@ -69,6 +69,7 @@ SpinupEnd=${StartDate}
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
     MyPath="/home/ubuntu/CH4_Workflow"
+    CondaEnv="geo"
 else
     MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
 
@@ -215,12 +216,15 @@ if "$CreateStateVectorFile"; then
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    if ! "$isAWS"; then
-        # Activate Conda environment
-        printf "Activating conda environment: ${CondaEnv}\n"
+    # Activate Conda environment
+    printf "Activating conda environment: ${CondaEnv}\n"
+    if "$isAWS"; then
+        source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+        conda activate $CondaEnv
+    else
         source activate $CondaEnv
     fi
-    
+
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
