@@ -135,12 +135,12 @@ if "$BCdryrun"; then
     mkdir -p ${BCfiles}
 
     if "$DoSpinup"; then
-	Start=${SpinupStart}
+	START=${SpinupStart}
     else
 	START=${StartDate}
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
-    python download_bc.py ${Start} ${EndDate} ${BCfiles}
+    python download_bc.py ${START} ${EndDate} ${BCfiles}
 
 fi
 
