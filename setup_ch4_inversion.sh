@@ -235,7 +235,9 @@ if "$CreateStateVectorFile"; then
 fi
 
 # Load environment with NCO
-source ${NCOEnv}
+if ! "$isAWS"; then
+    source ${NCOEnv}
+fi
 
 # Determine number of elements in state vector file
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
@@ -243,7 +245,9 @@ nElements=$(ncmax StateVector $StateVectorFile)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
 
 # Purge software modules
-module purge
+if ! "$isAWS"; then
+    module purge
+fi
 
 ##=======================================================================
 ## Set up template run directory
