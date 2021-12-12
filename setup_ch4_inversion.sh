@@ -104,7 +104,7 @@ else
 fi
 
 ## Jacobian settings
-PerturbValue: 1.5
+PerturbValue=1.5
 
 # Apply scale factors from a previous inversion?
 UseEmisSF=false
