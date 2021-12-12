@@ -396,7 +396,9 @@ if "$SetupTemplateRundir"; then
     fi
 
     # Load environment with modules for compiling GEOS-Chem Classic
-    source ${GCCEnv}
+    if ! "$isAWS"; then
+        source ${GCCEnv}
+    fi
     
     # Compile GEOS-Chem and store executable in template run directory
     mkdir build; cd build
