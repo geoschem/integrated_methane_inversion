@@ -674,7 +674,7 @@ if "$SetupJacobianRuns"; then
 
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
-        if "$ProductionDryrun"; then
+        if "$ProductionDryRun"; then
             printf "Executing dry-run for production runs...\n"
             ./gcclassic --dryrun &> log.dryrun
             ./download_data.py --aws log.dryrun
