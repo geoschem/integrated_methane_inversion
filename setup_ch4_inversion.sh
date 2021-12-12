@@ -215,9 +215,11 @@ if "$CreateStateVectorFile"; then
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    # Activate Conda environment
-    printf "Activating conda environment: ${CondaEnv}\n"
-    source activate $CondaEnv
+    if ! "$isAWS"; then
+        # Activate Conda environment
+        printf "Activating conda environment: ${CondaEnv}\n"
+        source activate $CondaEnv
+    fi
     
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
