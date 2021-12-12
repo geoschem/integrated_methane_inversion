@@ -488,7 +488,7 @@ if  "$SetupSpinupRun"; then
 	sed -i -e "/#SBATCH -p huce_intel/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
+           -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
     fi
 
     ### Perform dry run if requested
@@ -614,7 +614,7 @@ if "$SetupJacobianRuns"; then
 
     # Create run directory for each state vector element so we can
     # apply the perturbation to each
-    while [ $x -le $nStateVectors ];do
+    while [ $x -le $nElements ]; do
 
 	# Current state vector element
 	xUSE=$x
