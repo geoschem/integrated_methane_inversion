@@ -505,7 +505,7 @@ if  "$SetupSpinupRun"; then
     if "$SpinupDryrun"; then
        printf "Executing dry-run for spinup run...\n"
        ./gcclassic --dryrun &> log.dryrun
-       ./download_data.py --aws log.dryrun
+       ./download_data.py log.dryrun aws
     fi
     
     # Navigate back to top-level directory
@@ -583,7 +583,7 @@ if  "$SetupPosteriorRun"; then
     if "$PosteriorDryRun"; then
 	   printf "Executing dry-run for posterior run...\n"
 	   ./gcclassic --dryrun &> log.dryrun
-	   ./download_data.py --aws log.dryrun
+	   ./download_data.py log.dryrun aws
     fi
     
     # Navigate back to top-level directory
@@ -691,7 +691,7 @@ if "$SetupJacobianRuns"; then
         if "$ProductionDryRun"; then
             printf "Executing dry-run for production runs...\n"
             ./gcclassic --dryrun &> log.dryrun
-            ./download_data.py --aws log.dryrun
+            ./download_data.py log.dryrun aws
         fi
     fi
 
