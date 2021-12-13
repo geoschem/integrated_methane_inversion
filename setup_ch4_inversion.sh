@@ -159,7 +159,7 @@ fi
 ##=======================================================================
 if "$RestartDownload"; then
     if [ ! -f "$RestartFile" ]; then
-	aws s3 cp --request-payer=requester s3://umi-bc-test/${RestartFile} $RestartFile
+	aws s3 cp --request-payer=requester s3://imi-boundary-conditions/${RestartFile} $RestartFile
     fi
 fi    
 
