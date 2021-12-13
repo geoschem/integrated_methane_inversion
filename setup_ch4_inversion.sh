@@ -79,6 +79,15 @@ else
     CondaEnv="ch4_inv" # See envs/README to create this environment
 fi
 
+# Activate Conda environment
+printf "Activating conda environment: ${CondaEnv}\n"
+if "$isAWS"; then
+    source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+    conda activate $CondaEnv
+else
+    source activate $CondaEnv
+fi
+
 # Path to find non-emissions input data
 if "$isAWS"; then
     DataPath="/home/ubuntu/ExtData"
@@ -214,18 +223,8 @@ if "$CreateStateVectorFile"; then
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    # Activate Conda environment
-    printf "Activating conda environment: ${CondaEnv}\n"
-    if "$isAWS"; then
-        source /home/ubuntu/miniconda/etc/profile.d/conda.sh
-        conda activate $CondaEnv
-    else
-        source activate $CondaEnv
-    fi
-
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
-    conda deactivate
 
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
 fi
@@ -274,6 +273,12 @@ if "$SetupTemplateRundir"; then
     # Define inversion domain lat/lon bounds
     Lons="$(( LonMin-BufferDeg )) $(( LonMax+BufferDeg ))"
     Lats="$(( LatMin-BufferDeg )) $(( LatMax+BufferDeg ))"
+
+    # If using custom state vector
+    if ! "$CreateStateVectorFile"; then
+        Lons="Read first/last lon from state vector file" # djv: FILL
+        Lats="Read first/last lat from state vector file" # djv: FILL
+    fi
 
     # Update settings in input.geos
     sed -i -e "s:{DATE1}:${StartDate}:g" \
