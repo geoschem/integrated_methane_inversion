@@ -375,7 +375,7 @@ if "$SetupTemplateRundir"; then
            -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BCfiles}:g" HEMCO_Config.rc
 
     if [ ! -z "$REGION" ]; then
-        sed -i -e "s:\$Res:\$Res.${REGION}:g" HEMCO_Config.rc
+        sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
     fi
     if [ "$NestedGrid" == "T" ]; then
         OLD="--> GC_BCs                 :       false "
@@ -410,6 +410,7 @@ if "$SetupTemplateRundir"; then
     cd ..
     if [[ -f gcclassic ]]; then
 	rm -rf build
+	mv build_info ../GEOSChem_build_info
     else
 	echo "GEOS-Chem build failed"
 	exit 999
