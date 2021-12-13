@@ -266,6 +266,7 @@ if "$SetupTemplateRundir"; then
     cp -RLv ${RunFilesPath}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RunTemplate}/HEMCO_Diagn.rc
     cp -RLv ${RunFilesPath}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RunTemplate}/HEMCO_Config.rc
     cp -RLv ${RunFilesPath}/../shared/download_data.py ${RunTemplate}/
+    cp -RLv ${RunFilesPath}/../shared/download_data.yml ${RunTemplate}/
     cp -RLv ${GCClassicPath}/src/GEOS-Chem/run/shared/species_database.yml ${RunTemplate}/
 
     cd $RunTemplate
