@@ -71,7 +71,7 @@ if "$isAWS"; then
     MyPath="/home/ubuntu/CH4_Workflow"
     CondaEnv="geo"
 else
-    MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
+    MyPath="/n/holyscratch01/jacob_lab/$USER"
 
     # Environment files (specific to Harvard's Cannon cluster)
     NCOEnv="${InversionPath}/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
@@ -192,7 +192,7 @@ GCClassicPath="${InversionPath}/GCClassic"
 RunFilesPath="${GCClassicPath}/run"
 
 # Create working directory if it doesn't exist yet
-mkdir -p -v ${MyPath}/$RunName
+mkdir -p -v ${MyPath}/${RunName}
 
 ##=======================================================================
 ## Create state vector file
@@ -209,8 +209,6 @@ if "$CreateStateVectorFile"; then
 
     # Create state vector file
     cd ${MyPath}/$RunName
-    mkdir -p -v StateVectorFile # djv: why is StateVectorFile a directory here, it's .nc ?
-    cd StateVectorFile
 
     # Copy state vector creation script to working directory
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
@@ -228,15 +226,8 @@ if "$CreateStateVectorFile"; then
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
     conda deactivate
-    
-    # Define inversion domain lat/lon bounds
-    Lons="$(( LonMin-BufferDeg )) $(( LonMax+BufferDeg ))"
-    Lats="$(( LatMin-BufferDeg )) $(( LatMax+BufferDeg ))"
 
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
-
-else
-    echo Need something to define Lons, Lats from the custom state vector file!
 fi
 
 # Load environment with NCO
@@ -257,6 +248,7 @@ fi
 ##=======================================================================
 ## Set up template run directory
 ##=======================================================================
+RunTemplate="${MyPath}/${RunName}/template_run"
 if "$SetupTemplateRundir"; then
 
     printf "\n=== CREATING TEMPLATE RUN DIRECTORY ===\n"
@@ -264,7 +256,6 @@ if "$SetupTemplateRundir"; then
     cd ${MyPath}/${RunName}
 
     # Create template run directory
-    RunTemplate="template_run"
     mkdir -p -v ${RunTemplate}
 
     # Copy run directory files directly from GEOS-Chem repository
@@ -279,8 +270,10 @@ if "$SetupTemplateRundir"; then
     cp -RLv ${GCClassicPath}/src/GEOS-Chem/run/shared/species_database.yml ${RunTemplate}/
 
     cd $RunTemplate
-    mkdir -p OutputDir
-    mkdir -p Restarts
+
+    # Define inversion domain lat/lon bounds
+    Lons="$(( LonMin-BufferDeg )) $(( LonMax+BufferDeg ))"
+    Lats="$(( LatMin-BufferDeg )) $(( LatMax+BufferDeg ))"
 
     # Update settings in input.geos
     sed -i -e "s:{DATE1}:${StartDate}:g" \
@@ -293,6 +286,7 @@ if "$SetupTemplateRundir"; then
            -e "s:{RES}:${gridResLong}:g" \
            -e "s:{LON_RANGE}:${Lons}:g" \
            -e "s:{LAT_RANGE}:${Lats}:g" \
+           -e "s:{CENTER_180}:T:g" \
            -e "s:{HALF_POLAR}:${HalfPolar}:g" \
            -e "s:{NLEV}:${Levs}:g" \
            -e "s:{NESTED_SIM}:${NestedGrid}:g" \
@@ -315,7 +309,7 @@ if "$SetupTemplateRundir"; then
     # Modify path to state vector file in HEMCO_Config.rc
     OLD=" StateVectors.nc"
     if "$CreateStateVectorFile"; then
-	NEW=" ${MyPath}/${RunName}/StateVectorFile/${StateVectorFile}"
+	NEW=" ${MyPath}/${RunName}/${StateVectorFile}"
     else
 	NEW=" ${StateVectorFile}"
     fi
@@ -367,6 +361,9 @@ if "$SetupTemplateRundir"; then
     fi
 
     # Set up HEMCO_Config.rc
+    sed -i -e "/### BEGIN SECTION SETTINGS/r ${GCClassicPath}/run/HEMCO_Config.rc.templates/header.gmao"                     HEMCO_Config.rc
+    sed -i -e "/# --- Meteorology fields for FlexGrid ---/r ${GCClassicPath}/run/HEMCO_Config.rc.templates/met_fields.gmao"  HEMCO_Config.rc
+
     # Use monthly emissions diagnostic output by default
     sed -i -e "s:End:Monthly:g" \
            -e "s:{VERBOSE}:0:g" \
@@ -411,7 +408,12 @@ if "$SetupTemplateRundir"; then
     cmake . -DRUNDIR=..
     make -j install
     cd ..
-    rm -rf build
+    if [[ -f gcclassic ]]; then
+	rm -rf build
+    else
+	echo "GEOS-Chem build failed"
+	exit 999
+    fi
 
     # Purge software modules
     if ! "$isAWS"; then
@@ -440,8 +442,8 @@ fi
 if  "$SetupSpinupRun"; then
 
     # Make sure template run directory exists
-    if [ ! -d ${RunTemplate} ]; then
-	echo "Template run directory does not exist. Please set 'SetupTemplateRundir=true' in setup_ch4_inversion.sh" 
+    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
 	exit 9999
     fi
 
@@ -456,13 +458,15 @@ if  "$SetupSpinupRun"; then
     runDir="spinup_run"
     mkdir -p -v ${runDir}
 
-    # Copy and point to the necessary data
-    cp -r ${RunTemplate}/*  ${runDir}
+    # Copy run directory files
+    cp ${RunTemplate}/*  ${runDir}
     cd $runDir
+    mkdir -p OutputDir
+    mkdir -p Restarts
 
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
-    ln -s ../${RunTemplate}/gcclassic .
+    ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
     ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
@@ -510,8 +514,8 @@ fi # SetupSpinupRun
 if  "$SetupPosteriorRun"; then
 
     # Make sure template run directory exists
-    if [ ! -d ${RunTemplate} ]; then
-	echo "Template run directory does not exist. Please set 'SetupTemplateRundir=true' in setup_ch4_inversion.sh" 
+    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
 	exit 9999
     fi
 
@@ -526,13 +530,15 @@ if  "$SetupPosteriorRun"; then
     runDir="posterior_run"
     mkdir -p -v ${runDir}
 
-    # Copy and point to the necessary data
-    cp -r ${RunTemplate}/*  ${runDir}
+    # Copy run directory files
+    cp ${RunTemplate}/*  ${runDir}
     cd $runDir
+    mkdir -p OutputDir
+    mkdir -p Restarts
 
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
-    ln -s ../${RunTemplate}/gcclassic .
+    ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
     if "$DoSpinup"; then
@@ -586,8 +592,8 @@ fi # SetupPosteriorRun
 if "$SetupJacobianRuns"; then
 
     # Make sure template run directory exists
-    if [ ! -d ${RunTemplate} ]; then
-	echo "Template run directory does not exist. Please set 'SetupTemplateRundir=true' in setup_ch4_inversion.sh" 
+    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
 	exit 9999
     fi
 
@@ -636,13 +642,15 @@ if "$SetupJacobianRuns"; then
 	runDir="./jacobian_runs/${name}"
 	mkdir -p -v ${runDir}
 
-	# Copy and point to the necessary data
-	cp -r ${RunTemplate}/*  ${runDir}
+	# Copy run directory files
+	cp ${RunTemplate}/*  ${runDir}
 	cd $runDir
+	mkdir -p OutputDir
+	mkdir -p Restarts
 
 	# Link to GEOS-Chem executable instead of having a copy in each rundir
 	rm -rf gcclassic
-	ln -s ../../${RunTemplate}/gcclassic .
+	ln -s ${RunTemplate}/gcclassic .
 
 	# Link to restart file
 	if "$DoSpinup"; then
