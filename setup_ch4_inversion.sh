@@ -4,46 +4,67 @@
 # setup_ch4_inversion_instructions.txt for details (mps, 2/20/2020)
 
 ##=======================================================================
-## User settings **MODIFY AS NEEDED**
+## Parse config.yml file
+##=======================================================================
+
+printf "\n=== PARSING CONFIG FILE ===\n"
+
+# Function to parse yaml files from shell script
+# By Stefan Farestam via stackoverflow:
+# https://stackoverflow.com/questions/5014632/how-can-i-parse-a-yaml-file-from-a-linux-shell-script
+function parse_yaml {
+   local prefix=$2
+   local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
+   sed -ne "s|^\($s\):|\1|" \
+        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p"  $1 |
+   awk -F$fs '{
+      indent = length($1)/2;
+      vname[indent] = $2;
+      for (i in vname) {if (i > indent) {delete vname[i]}}
+      if (length($3) > 0) {
+         vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+         printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+      }
+   }'
+}
+
+# Get configuration
+eval $(parse_yaml config.yml)
+# For reference, this defines the following environment variables:
+# General: $isAWS, $RunName
+# Period of interest: $StartDate, $EndDate, $SpinupMonths
+# Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
+# Inversion: $PriorError, $ObsError, $Gamma
+# Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $REGION, $Buffer
+# Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
+# Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
+# State vector: $BufferDeg, $nBufferClusters, $LandThreshold, $StateVectorFile
+# Harvard-Cannon: $nCPUs, $partition
+
+##=======================================================================
+## Standard settings
 ##=======================================================================
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
 
-# Run IMI on AWS? If false, a local cluster will be assumed
-isAWS=true
-
-# Turn on/off different steps. This will allow you to come back to this
-# script and set up different stages later.
-CreateStateVectorFile=true    # If false, set StateVectorFile below
-SetupTemplateRundir=true
-SetupSpinupRun=true
-SetupJacobianRuns=true
-SetupInversion=true
-SetupPosteriorRun=true
-
 # AWS only: Download missing GEOS-Chem input data from S3 (you will be charged)
 if "$isAWS"; then
     SpinupDryrun=true      # Met fields/emissions for spinup run
     ProductionDryRun=true  # Met fields/emissions for production runs
+    PosteriorDryRun=true   # Met fields/emissions for posterior run
     BCdryrun=true          # Boundary condition files
 else
     SpinupDryrun=false
     ProductionDryRun=false
+    PosteriorDryRun=false
     BCdryrun=false
 fi
 
-# Name for this run
-RunName="Test_Permian"
-
 # Start and end date for the spinup simulation
-DoSpinup=true
-SpinupStart=20180401
-SpinupEnd=20180501
-
-# Start and end date for the production simulations
-StartDate=20180501
-EndDate=20180508
+SpinupStart=$(date --date="${StartDate} -${SpinupMonths} month" +%Y%m%d)
+SpinupEnd=${StartDate}
 
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
@@ -65,9 +86,6 @@ else
     DataPath="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 fi
 
-# Path to state vector file
-StateVectorFile="StateVector.nc"
-
 # Path to initial restart file
 UseBCsForRestart=true
 if "$isAWS"; then
@@ -86,28 +104,8 @@ else
     BCfiles="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
 fi
 
-# Grid settings (Permian Basin example)
-Res="0.25x0.3125"
-Met="geosfp"
-LonMin=-111.0
-LonMax=-95.0
-Lons="${LonMin} ${LonMax}"
-LatMin=24.0
-LatMax=39.0
-Lats="${LatMin} ${LatMax}"
-HalfPolar="F"
-Levs="47"
-NestedGrid="T"
-Region="NA"  # NA,AS,CH,EU
-Buffer="3 3 3 3"
-
-# Jacobian settings
-PerturbValue="1.5"
-
-# Inversion settings
-PriorError=0.5
-ObsError=15
-Gamma=0.25
+## Jacobian settings
+PerturbValue=1.5
 
 # Apply scale factors from a previous inversion?
 UseEmisSF=false
@@ -138,12 +136,13 @@ if "$BCdryrun"; then
     mkdir -p ${BCfiles}
 
     if "$DoSpinup"; then
-	Start=${SpinupStart}
+	START=${SpinupStart}
     else
 	START=${StartDate}
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
-    python download_bc.py ${Start} ${EndDate} ${BCfiles}
+    python download_bc.py ${START} ${EndDate} ${BCfiles}
+
 fi
 
 ##=======================================================================
@@ -203,21 +202,14 @@ if "$CreateStateVectorFile"; then
     printf "\n=== CREATING STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.nc"
-    LandThreshold=0.25
+    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.nc"
 
     # Output path and filename for state vector file
     StateVectorFile="StateVector.nc"
 
-    # Width of k-means buffer zone in degrees (default=5, approx 500 km)
-    BufferDeg=5
-
-    # Number of buffer zone clusters for k-means (default=8)
-    nBufferClusters=8
-
     # Create state vector file
     cd ${MyPath}/$RunName
-    mkdir -p -v StateVectorFile
+    mkdir -p -v StateVectorFile # djv: why is StateVectorFile a directory here, it's .nc ?
     cd StateVectorFile
 
     # Copy state vector creation script to working directory
@@ -232,17 +224,25 @@ if "$CreateStateVectorFile"; then
     else
         source activate $CondaEnv
     fi
-    
+
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
     conda deactivate
     
+    # Define inversion domain lat/lon bounds
+    Lons="$(( LonMin-BufferDeg )) $(( LonMax+BufferDeg ))"
+    Lats="$(( LatMin-BufferDeg )) $(( LatMax+BufferDeg ))"
+
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
 
+else
+    echo Need something to define Lons, Lats from the custom state vector file!
 fi
 
 # Load environment with NCO
-source ${NCOEnv}
+if ! "$isAWS"; then
+    source ${NCOEnv}
+fi
 
 # Determine number of elements in state vector file
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
@@ -250,7 +250,9 @@ nElements=$(ncmax StateVector $StateVectorFile)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
 
 # Purge software modules
-module purge
+if ! "$isAWS"; then
+    module purge
+fi
 
 ##=======================================================================
 ## Set up template run directory
@@ -399,7 +401,9 @@ if "$SetupTemplateRundir"; then
     fi
 
     # Load environment with modules for compiling GEOS-Chem Classic
-    source ${GCCEnv}
+    if ! "$isAWS"; then
+        source ${GCCEnv}
+    fi
     
     # Compile GEOS-Chem and store executable in template run directory
     mkdir build; cd build
@@ -410,7 +414,9 @@ if "$SetupTemplateRundir"; then
     rm -rf build
 
     # Purge software modules
-    module purge
+    if ! "$isAWS"; then
+        module purge
+    fi
     
     # Navigate back to top-level directory
     cd ..
@@ -468,8 +474,8 @@ if  "$SetupSpinupRun"; then
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" \
            -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|pertpert|1.0|g" \
-           -e "s|clustnumclustnum|0|g" input.geos
+           -e "s|{PERTURBATION}|1.0|g" \
+           -e "s|{ELEMENT}|0|g" input.geos
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -541,8 +547,8 @@ if  "$SetupPosteriorRun"; then
     
     # Update settings in input.geos
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|pertpert|1.0|g" \
-           -e "s|clustnumclustnum|0|g" input.geos
+           -e "s|{PERTURBATION}|1.0|g" \
+           -e "s|{ELEMENT}|0|g" input.geos
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -554,17 +560,17 @@ if  "$SetupPosteriorRun"; then
 	sed -i -e "/#SBATCH -p huce_intel/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
-	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${posterior_name}.run
+	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
     fi
     
     # Print messages
     printf "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors.\n"
 
     ### Perform dry run if requested
-    if "$ProductionDryRun"; then
-	printf "Executing dry-run for posterior run...\n"
-	./gcclassic --dryrun &> log.dryrun
-	./download_data.py --aws log.dryrun
+    if "$PosteriorDryRun"; then
+	   printf "Executing dry-run for posterior run...\n"
+	   ./gcclassic --dryrun &> log.dryrun
+	   ./download_data.py --aws log.dryrun
     fi
     
     # Navigate back to top-level directory
@@ -607,7 +613,7 @@ if "$SetupJacobianRuns"; then
 
     # Create run directory for each state vector element so we can
     # apply the perturbation to each
-    while [ $x -le $nStateVectors ];do
+    while [ $x -le $nElements ]; do
 
 	# Current state vector element
 	xUSE=$x
@@ -646,8 +652,8 @@ if "$SetupJacobianRuns"; then
 	fi
    
 	# Update settings in input.geos
-	sed -i -e "s:pertpert:${PerturbValue}:g" \
-               -e "s:clustnumclustnum:${xUSE}:g" input.geos
+	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
+               -e "s:{ELEMENT}:${xUSE}:g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -664,6 +670,15 @@ if "$SetupJacobianRuns"; then
 	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
+
+    ### Perform dry run if requested, only for base run
+    if [ $x -eq 0 ]; then
+        if "$ProductionDryRun"; then
+            printf "Executing dry-run for production runs...\n"
+            ./gcclassic --dryrun &> log.dryrun
+            ./download_data.py --aws log.dryrun
+        fi
+    fi
 
 	# Navigate back to top-level directory
 	cd ../..
@@ -724,7 +739,7 @@ if "$SetupInversion"; then
 
 fi #SetupInversion
 
-# Copy sample cluster files
+# Copy sample cluster files (djv: remove cluster terminology)
 if "$isAWS"; then
     cp -rfP /home/ubuntu/backup_files/cluster_files/* /home/ubuntu/ExtData/HEMCO/
 fi
