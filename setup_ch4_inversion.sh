@@ -312,7 +312,7 @@ if "$SetupTemplateRundir"; then
     sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
 
     # Modify path to state vector file in HEMCO_Config.rc
-    OLD=" StateVectors.nc"
+    OLD=" StateVector.nc"
     if "$CreateStateVectorFile"; then
 	NEW=" ${MyPath}/${RunName}/${StateVectorFile}"
     else
