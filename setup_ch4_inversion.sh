@@ -272,14 +272,19 @@ if "$SetupTemplateRundir"; then
     cd $RunTemplate
 
     # Define inversion domain lat/lon bounds
-    Lons="$(( LonMin-BufferDeg )) $(( LonMax+BufferDeg ))"
-    Lats="$(( LatMin-BufferDeg )) $(( LatMax+BufferDeg ))"
-
+    LonMinInvDomain=$(( LonMin-BufferDeg ))
+    LonMaxInvDomain=$(( LonMax+BufferDeg ))
+    LatMinInvDomain=$(( LatMin-BufferDeg ))
+    LatMaxInvDomain=$(( LatMax+BufferDeg ))
     # If using custom state vector
     if ! "$CreateStateVectorFile"; then
-        Lons="Read first/last lon from state vector file" # djv: FILL
-        Lats="Read first/last lat from state vector file" # djv: FILL
+        LonMinInvDomain="{FILL}"
+        LonMaxInvDomain="{FILL}"
+        LatMinInvDomain="{FILL}"
+        LatMaxInvDomain="{FILL}"
     fi
+    Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
+    Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
 
     # Update settings in input.geos
     sed -i -e "s:{DATE1}:${StartDate}:g" \
@@ -734,10 +739,10 @@ if "$SetupInversion"; then
 	   -e "s:{MY_PATH}:${MyPath}:g" \
 	   -e "s:{RUN_NAME}:${RunName}:g" \
 	   -e "s:{STATE_VECTOR_PATH}:${StateVectorFile}:g" \
-	   -e "s:{LON_MIN}:${LonMin}:g" \
-	   -e "s:{LON_MAX}:${LonMax}:g" \
-	   -e "s:{LAT_MIN}:${LatMin}:g" \
-	   -e "s:{LAT_MAX}:${LatMax}:g" \
+	   -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
+	   -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
+	   -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
+	   -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
 	   -e "s:{PRIOR_ERR}:${PriorError}:g" \
 	   -e "s:{OBS_ERR}:${ObsError}:g" \
 	   -e "s:{GAMMA}:${Gamma}:g" \
