@@ -770,7 +770,7 @@ if "$SetupInversion"; then
 	   -e "s:{PRIOR_ERR}:${PriorError}:g" \
 	   -e "s:{OBS_ERR}:${ObsError}:g" \
 	   -e "s:{GAMMA}:${Gamma}:g" \
-	   -e "s:{IS_AWS}:${IsAWS}:g" inversion/run_inversion.sh
+	   -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
 
     if "$isAWS"; then
        sed -i -e "/#SBATCH -p huce_intel/d" \
