@@ -40,7 +40,8 @@ eval $(parse_yaml config.yml)
 # Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $Region, $Buffer
 # Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
 # Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
-# State vector: $BufferDeg, $nBufferClusters, $LandThreshold, $StateVectorFile
+# State vector: $BufferDeg, $nBufferClusters, $LandThreshold
+# If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
 # Harvard-Cannon: $nCPUs, $partition
 
 # My path
@@ -77,7 +78,7 @@ if "$RunSetup"; then
     fi
 
     # Run the setup script
-    ./setup_ch4_inversion.sh; wait;
+    ./setup_ch4_inversion.sh > log_setup; wait;
 
 fi
 
@@ -145,7 +146,7 @@ if "$DoInversion"; then
     fi
 
     # Execute inversion driver script
-    ./run_inversion.sh; wait;
+    sbatch run_inversion.sh; wait;
 
     conda deactivate
         

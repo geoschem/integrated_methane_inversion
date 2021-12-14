@@ -36,10 +36,11 @@ eval $(parse_yaml config.yml)
 # Period of interest: $StartDate, $EndDate, $SpinupMonths
 # Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
 # Inversion: $PriorError, $ObsError, $Gamma
-# Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $REGION, $Buffer
+# Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $Region, $Buffer
 # Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
 # Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
-# State vector: $BufferDeg, $nBufferClusters, $LandThreshold, $StateVectorFile
+# State vector: $BufferDeg, $nBufferClusters, $LandThreshold
+# If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
 # Harvard-Cannon: $nCPUs, $partition
 
 ##=======================================================================
