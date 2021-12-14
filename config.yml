@@ -54,6 +54,10 @@ LandThreshold: 0.25
 
 ## Custom statevector file (if CreateStateVectorFile: false)
 StateVectorFile: {path/to/StateVector.nc}
+LonMinCustomStateVector: -111
+LonMaxCustomStateVector: -99
+LatMinCustomStateVector: 24
+LatMaxCustomStateVector: 36
 
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster

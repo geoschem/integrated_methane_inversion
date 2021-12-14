@@ -278,10 +278,10 @@ if "$SetupTemplateRundir"; then
     LatMaxInvDomain=$(( LatMax+BufferDeg ))
     # If using custom state vector
     if ! "$CreateStateVectorFile"; then
-        LonMinInvDomain="{FILL}"
-        LonMaxInvDomain="{FILL}"
-        LatMinInvDomain="{FILL}"
-        LatMaxInvDomain="{FILL}"
+        LonMinInvDomain=${LonMinCustomStateVector}
+        LonMaxInvDomain=${LonMaxCustomStateVector}
+        LatMinInvDomain=${LatMinCustomStateVector}
+        LatMaxInvDomain=${LatMaxCustomStateVector}
     fi
     Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
@@ -503,7 +503,7 @@ if  "$SetupSpinupRun"; then
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
-	-e "s:##:#:g" ch4_run.template > ${SpinupName}.run
+	    -e "s:##:#:g" ch4_run.template > ${SpinupName}.run
     chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
 
@@ -511,7 +511,7 @@ if  "$SetupSpinupRun"; then
 	sed -i -e "/#SBATCH -p huce_intel/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
+           -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
     fi
 
     ### Perform dry run if requested
@@ -689,7 +689,7 @@ if "$SetupJacobianRuns"; then
    
 	# Update settings in input.geos
 	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
-               -e "s:{ELEMENT}:${xUSE}:g" input.geos
+           -e "s:{ELEMENT}:${xUSE}:g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -706,6 +706,13 @@ if "$SetupJacobianRuns"; then
 	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
+
+    if "$isAWS"; then
+	sed -i -e "/#SBATCH -p huce_intel/d" \
+	       -e "/#SBATCH -t/d" \
+	       -e "/#SBATCH --mem/d" \
+           -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
+    fi
 
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
