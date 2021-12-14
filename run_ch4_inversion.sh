@@ -150,8 +150,6 @@ if "$DoInversion"; then
 
     # Execute inversion driver script
     sbatch run_inversion.sh; wait;
-
-    conda deactivate
         
     printf "=== DONE RUNNING INVERSION ===\n"
 
