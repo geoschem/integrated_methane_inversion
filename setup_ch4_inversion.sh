@@ -509,7 +509,7 @@ if  "$SetupSpinupRun"; then
     rm -f ch4_run.template
 
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_intel/d" \
+	sed -i -e "/#SBATCH -p huce_cascade/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
            -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
@@ -592,7 +592,7 @@ if  "$SetupPosteriorRun"; then
     rm -f ch4_run.template
 
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_intel/d" \
+	sed -i -e "/#SBATCH -p huce_cascade/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
 	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
@@ -637,8 +637,8 @@ if "$SetupJacobianRuns"; then
     cp ${RunFilesPath}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_intel/d" \
-       	       -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
+	sed -i -e "/#SBATCH -p huce_cascade/d" \
+       	   -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" -e "s:{END}:${nElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
@@ -709,10 +709,14 @@ if "$SetupJacobianRuns"; then
 	chmod 755 ${name}.run
 
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_intel/d" \
+	sed -i -e "/#SBATCH -p huce_cascade/d" \
 	       -e "/#SBATCH -t/d" \
 	       -e "/#SBATCH --mem/d" \
            -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
+
+    sed -i -e "/#SBATCH -p huce_cascade/d" \
+	       -e "/#SBATCH --mem/d" \
+           -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ../run_jacobian_simulations.sh
     fi
 
     ### Perform dry run if requested, only for base run
