@@ -47,8 +47,11 @@ eval $(parse_yaml config.yml)
 # My path
 if "$isAWS"; then
     MyPath="/home/ubuntu/CH4_Workflow"
+    SetupPath="/home/ubuntu/setup_CH4"
 else
     MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
+    SetupPath="FILL"
+fi
 
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster
@@ -70,7 +73,7 @@ if "$RunSetup"; then
 
     printf "\n=== RUNNING SETUP SCRIPT ===\n"
 
-    cd ${MyPath}
+    cd ${SetupPath}
 
     if ! "$isAWS"; then
         # Load fortran compiler
