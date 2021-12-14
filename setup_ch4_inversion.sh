@@ -738,8 +738,8 @@ if "$SetupInversion"; then
 	   -e "s:{LON_MAX}:${LonMax}:g" \
 	   -e "s:{LAT_MIN}:${LatMin}:g" \
 	   -e "s:{LAT_MAX}:${LatMax}:g" \
-	   -e "s:{PRIOR_ERROR}:${PriorError}:g" \
-	   -e "s:{OBS_ERROR}:${ObsError}:g" \
+	   -e "s:{PRIOR_ERR}:${PriorError}:g" \
+	   -e "s:{OBS_ERR}:${ObsError}:g" \
 	   -e "s:{GAMMA}:${Gamma}:g" \
 	   -e "s:{IS_AWS}:${IsAWS}:g" inversion/run_inversion.sh
 
