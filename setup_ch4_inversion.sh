@@ -493,6 +493,14 @@ if  "$SetupSpinupRun"; then
            -e "s|{PERTURBATION}|1.0|g" \
            -e "s|{ELEMENT}|0|g" input.geos
 
+    # Turn on LevelEdgeDiags output
+    if "$HourlyCH4"; then
+        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+               -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+               -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+               -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+	fi
+
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${SpinupName}.run
@@ -567,6 +575,14 @@ if  "$SetupPosteriorRun"; then
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
            -e "s|{PERTURBATION}|1.0|g" \
            -e "s|{ELEMENT}|0|g" input.geos
+
+    # Turn on LevelEdgeDiags output
+    if "$HourlyCH4"; then
+        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+               -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+               -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+               -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+	fi
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
