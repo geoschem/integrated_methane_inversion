@@ -6,8 +6,8 @@
 
 #SBATCH -n 36
 #SBATCH -N 1
-#SBATCH -o run_inversion_%j.out
-#SBATCH -e run_inversion_%j.err
+#SBATCH -o run_ch4_inversion_%j.out
+#SBATCH -e run_ch4_inversion_%j.err
 
 ##=======================================================================
 ## Parse config.yml file
