@@ -760,6 +760,7 @@ if "$SetupInversion"; then
     fi
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/visualization_notebook.ipynb inversion/
     sed -i -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
 	   -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
