@@ -774,6 +774,7 @@ if "$SetupInversion"; then
 	   -e "s:{PRIOR_ERR}:${PriorError}:g" \
 	   -e "s:{OBS_ERR}:${ObsError}:g" \
 	   -e "s:{GAMMA}:${Gamma}:g" \
+       -e "s:{RES}:${gridResLong}:g" \
 	   -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
 
     if "$isAWS"; then
