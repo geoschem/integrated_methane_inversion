@@ -214,6 +214,10 @@ if "$CreateStateVectorFile"; then
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.nc"
 
+    # Download land cover file
+    s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.nc"
+    aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
+
     # Output path and filename for state vector file
     StateVectorFile="StateVector.nc"
 
