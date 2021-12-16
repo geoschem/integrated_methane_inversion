@@ -380,9 +380,15 @@ if "$SetupTemplateRundir"; then
     sed -i -e "/### BEGIN SECTION SETTINGS/r ${GCClassicPath}/run/HEMCO_Config.rc.templates/header.gmao"                     HEMCO_Config.rc
     sed -i -e "/# --- Meteorology fields for FlexGrid ---/r ${GCClassicPath}/run/HEMCO_Config.rc.templates/met_fields.gmao"  HEMCO_Config.rc
 
-    # Use monthly emissions diagnostic output by default
-    sed -i -e "s:End:Monthly:g" \
-           -e "s:{VERBOSE}:0:g" \
+    # Determine length of inversion period in days
+    InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
+
+    # If inversion period is < 32 days, use End diagnostic output frequency
+    if (( ${InvPeriodLength} < 32 )); then
+        sed -i -e "s:Monthly:End:g" HEMCO_Config.rc
+    fi
+    # Otherwise the Monthly diagnostic output frequency is used
+    sed -i -e "s:{VERBOSE}:0:g" \
            -e "s:{WARNINGS}:1:g" \
            -e "s:{DATA_ROOT}:${DataPath}:g" \
            -e "s:{GRID_DIR}:${gridDir}:g" \
