@@ -54,6 +54,7 @@ LandThreshold: 0.25
 
 ## Custom statevector file (if CreateStateVectorFile: false)
 StateVectorFile: {path/to/StateVector.nc}
+ShapeFile: {path/to/shapefile}
 LonMinCustomStateVector: -111
 LonMaxCustomStateVector: -99
 LatMinCustomStateVector: 24
