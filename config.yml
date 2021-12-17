@@ -45,7 +45,7 @@ RunSetup: true
 DoSpinup: true
 DoJacobian: true
 DoInversion: true
-DoPosterior: false
+DoPosterior: true
 
 ## State vector settings (if CreateStateVectorFile: true)
 BufferDeg: 5

@@ -309,7 +309,7 @@ if "$SetupTemplateRundir"; then
            -e "s:{BUFFER_ZONE}:${Buffer}:g" input.geos
     if [ "$NestedGrid" == "T" ]; then
 	sed -i -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
-            -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
+           -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
     fi
 
     # For CH4 inversions always turn analytical inversion on
@@ -584,8 +584,13 @@ if  "$SetupPosteriorRun"; then
     
     # Update settings in input.geos
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
+           -e "s|Use emis scale factr    : F|Use emis scale factr    : T|g" \
            -e "s|{PERTURBATION}|1.0|g" \
            -e "s|{ELEMENT}|0|g" input.geos
+
+    # Update settings in HEMCO_Config.rc
+    sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
+           -e "s|gridded_posterior.nc|${MyPath}/${RunName}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
@@ -596,7 +601,7 @@ if  "$SetupPosteriorRun"; then
 	fi
 
     # Create run script from template
-    sed -e "s:namename:${SpinupName}:g" \
+    sed -e "s:namename:${PosteriorName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
