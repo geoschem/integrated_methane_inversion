@@ -385,7 +385,7 @@ if "$SetupTemplateRundir"; then
 
     # If inversion period is < 32 days, use End diagnostic output frequency
     if (( ${InvPeriodLength} < 32 )); then
-        sed -i -e "s:Monthly:End:g" HEMCO_Config.rc
+        sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
     fi
     # Otherwise the Monthly diagnostic output frequency is used
     sed -i -e "s:{VERBOSE}:0:g" \

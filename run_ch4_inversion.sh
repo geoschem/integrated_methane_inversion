@@ -81,7 +81,7 @@ if "$RunSetup"; then
     fi
 
     # Run the setup script
-    ./setup_ch4_inversion.sh > log_setup; wait;
+    ./setup_ch4_inversion.sh; wait;
 
 fi
 
@@ -156,7 +156,7 @@ if "$DoInversion"; then
 fi
 
 ##=======================================================================
-##  Submit posterior simulation
+##  Submit posterior simulation and process output
 ##=======================================================================
 if "$DoPosterior"; then
 
@@ -171,7 +171,7 @@ if "$DoPosterior"; then
 
     # Submit job to job scheduler
     sbatch ${RunName}_Posterior.run; wait;
-    
+
 fi
 
 exit 0
