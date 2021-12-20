@@ -612,9 +612,6 @@ if  "$SetupPosteriorRun"; then
 	       -e "/#SBATCH --mem/d" \
 	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
     fi
-    
-    # Print messages
-    printf "\nNote: You will need to manually modify HEMCO_Config.rc to apply the appropriate scale factors.\n"
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
