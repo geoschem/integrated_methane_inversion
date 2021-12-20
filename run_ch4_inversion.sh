@@ -191,8 +191,22 @@ if "$DoPosterior"; then
     printf "DONE -- setup_GCdatadir.py\n\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
-    printf "Calling jacobian.py to sample prior simulation - no sensitivity analysis\n"
+    LonMinInvDomain=$(( LonMin-BufferDeg ))
+    LonMaxInvDomain=$(( LonMax+BufferDeg ))
+    LatMinInvDomain=$(( LatMin-BufferDeg ))
+    LatMaxInvDomain=$(( LatMax+BufferDeg ))
+    if ! "$CreateStateVectorFile"; then
+        LonMinInvDomain=${LonMinCustomStateVector}
+        LonMaxInvDomain=${LonMaxCustomStateVector}
+        LatMinInvDomain=${LatMinCustomStateVector}
+        LatMaxInvDomain=${LatMaxCustomStateVector}
+    fi
+    function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+    nElements=$(ncmax StateVector $StateVectorFile)
+    FetchTROPOMI="False"
     isPost="True"
+
+    printf "Calling jacobian.py to sample prior simulation - no sensitivity analysis\n"
     python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $FetchTROPOMI $isPost; wait
     printf " DONE -- jacobian.py\n\n"
 
