@@ -172,6 +172,30 @@ if "$DoPosterior"; then
     # Submit job to job scheduler
     sbatch ${RunName}_Posterior.run; wait;
 
+    cd ${MyPath}/${RunName}/inversion
+
+    # Fill missing data (first hour of simulation) in posterior output
+    PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
+    PrevDir="${MyPath}/${RunName}/spinup_run"
+    printf "Calling postproc_diags.py for posterior\n"
+    python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+    printf "DONE -- postproc_diags.py\n\n"
+
+    # Build directory for hourly posterior GEOS-Chem output data
+    mkdir -p data_converted_posterior
+    mkdir -p data_GC_posterior
+    GCsourcepth="${PosteriorRunDir}/OutputDir"
+    GCDir="./data_GC_posterior"
+    printf "Calling setup_GCdatadir.py for posterior\n"
+    python setup_GCdatadir.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+    printf "DONE -- setup_GCdatadir.py\n\n"
+
+    # Sample GEOS-Chem atmosphere with TROPOMI
+    printf "Calling jacobian.py to sample prior simulation - no sensitivity analysis\n"
+    isPost="True"
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $FetchTROPOMI $isPost; wait
+    printf " DONE -- jacobian.py\n\n"
+
 fi
 
 exit 0
