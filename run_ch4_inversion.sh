@@ -102,7 +102,7 @@ if  "$DoSpinup"; then
     fi
 
     # Submit job to job scheduler
-    sbatch ${RunName}_Spinup.run; wait;
+    sbatch -W ${RunName}_Spinup.run; wait;
 
     printf "\n=== DONE SPINUP SIMULATION ===\n"
     
@@ -149,7 +149,7 @@ if "$DoInversion"; then
     fi
 
     # Execute inversion driver script
-    sbatch run_inversion.sh; wait;
+    sbatch -W run_inversion.sh; wait;
         
     printf "=== DONE RUNNING INVERSION ===\n"
 
