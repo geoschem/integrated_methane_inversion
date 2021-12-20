@@ -195,14 +195,16 @@ if "$DoPosterior"; then
     LonMaxInvDomain=$(( LonMax+BufferDeg ))
     LatMinInvDomain=$(( LatMin-BufferDeg ))
     LatMaxInvDomain=$(( LatMax+BufferDeg ))
+    StateVectorFilePath="${MyPath}/${RunName}/StateVector.nc"
     if ! "$CreateStateVectorFile"; then
         LonMinInvDomain=${LonMinCustomStateVector}
         LonMaxInvDomain=${LonMaxCustomStateVector}
         LatMinInvDomain=${LatMinCustomStateVector}
         LatMaxInvDomain=${LatMaxCustomStateVector}
+        StateVectorFilePath=$StateVectorFile
     fi
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    nElements=$(ncmax StateVector $StateVectorFile)
+    nElements=$(ncmax StateVector $StateVectorFilePath)
     FetchTROPOMI="False"
     isPost="True"
 
