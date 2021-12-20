@@ -170,7 +170,9 @@ if "$DoPosterior"; then
     fi
 
     # Submit job to job scheduler
-    sbatch ${RunName}_Posterior.run; wait;
+    printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
+    sbatch -W ${RunName}_Posterior.run; wait;
+    printf "\n=== DONE SPINUP SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion
 
