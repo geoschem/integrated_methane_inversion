@@ -83,6 +83,8 @@ if "$RunSetup"; then
     # Run the setup script
     ./setup_ch4_inversion.sh; wait;
 
+    printf "=== DONE SETTING UP ===\n"
+
 fi
 
 ##=======================================================================
@@ -179,18 +181,18 @@ if "$DoPosterior"; then
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
     PrevDir="${MyPath}/${RunName}/spinup_run"
-    printf "Calling postproc_diags.py for posterior\n"
+    printf "\n=== Calling postproc_diags.py for posterior ===\n"
     python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
-    printf "DONE -- postproc_diags.py\n\n"
+    printf "=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
     mkdir -p data_GC_posterior
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_GC_posterior"
-    printf "Calling setup_GCdatadir.py for posterior\n"
+    printf "\n=== Calling setup_GCdatadir.py for posterior ===\n"
     python setup_GCdatadir.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "DONE -- setup_GCdatadir.py\n\n"
+    printf "=== DONE -- setup_GCdatadir.py\n==="
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     LonMinInvDomain=$(( LonMin-BufferDeg ))
@@ -210,9 +212,9 @@ if "$DoPosterior"; then
     FetchTROPOMI="False"
     isPost="True"
 
-    printf "Calling jacobian.py to sample prior simulation (without jacobian sensitivity analysis)\n"
+    printf "\n=== Calling jacobian.py to sample prior simulation (without jacobian sensitivity analysis) ===\n"
     python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $FetchTROPOMI $isPost; wait
-    printf "DONE sampling the posterior simulation\n\n"
+    printf "=== DONE sampling the posterior simulation ===\n\n"
 
 fi
 
