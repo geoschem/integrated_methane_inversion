@@ -4,6 +4,8 @@
 # (mps, 2/20/2021)
 # (djv, 12/7/2021)
 
+printf "\nInversion started: %s\n\n" "$(date)"
+
 ##=======================================================================
 ## Parse config.yml file
 ##=======================================================================
@@ -217,5 +219,7 @@ if "$DoPosterior"; then
     printf "=== DONE sampling the posterior simulation ===\n\n"
 
 fi
+
+printf "\nInversion ended: %s\n\n" "$(date)"
 
 exit 0
