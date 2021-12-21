@@ -85,7 +85,7 @@ if "$RunSetup"; then
     # Run the setup script
     ./setup_ch4_inversion.sh; wait;
 
-    printf "=== DONE SETTING UP ===\n"
+    printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 
 fi
 
@@ -221,7 +221,7 @@ if "$DoPosterior"; then
 fi
 
 end_time=$(date)
-printf "\nIMI started: %s\n\n" "$start_time"
-printf "\nIMI ended  : %s\n\n" "$end_time"
+printf "\nIMI started: %s" "$start_time"
+printf "\nIMI ended: %s\n\n" "$end_time"
 
 exit 0
