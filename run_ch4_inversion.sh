@@ -104,7 +104,7 @@ if  "$DoSpinup"; then
     # Submit job to job scheduler
     sbatch -W ${RunName}_Spinup.run; wait;
 
-    printf "\n=== DONE SPINUP SIMULATION ===\n"
+    printf "=== DONE SPINUP SIMULATION ===\n"
     
 fi
 
@@ -127,7 +127,7 @@ if "$DoJacobian"; then
     # Submit job to job scheduler
     ./submit_jacobian_simulations_array.sh; wait;
 
-    printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
+    printf "=== DONE JACOBIAN SIMULATIONS ===\n"
 
 fi
 
@@ -172,7 +172,7 @@ if "$DoPosterior"; then
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch -W ${RunName}_Posterior.run; wait;
-    printf "\n=== DONE SPINUP SIMULATION ===\n"
+    printf "=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion
 
