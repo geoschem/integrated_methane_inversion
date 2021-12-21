@@ -1,14 +1,14 @@
-Unified Methane Inversion Workflow
+Integrated Methane Inversion Workflow
 ==================================
 .. raw:: html
 
    <p>
-   <a href="https://umi.readthedocs.io/en/latest/"><img src="https://img.shields.io/readthedocs/umi?label=ReadTheDocs"></a>
+   <a href="https://imi.readthedocs.io/en/latest/"><img src="https://img.shields.io/readthedocs/imi?label=ReadTheDocs"></a>
    <a href="https://github.com/ACMG-CH4/CH4_inversion_workflow/releases"><img src="https://img.shields.io/github/v/release/ACMG-CH4/CH4_inversion_workflow?include_prereleases&label=Latest%20Pre-Release"></a>
    </p>
 
-.. important:: This is a prerelease of the Unified Methane Inversion Workflow user guide.
-   These pages are the most up-to-date and accurate instructions for the UMI Workflow, but they
+.. important:: This is a prerelease of the Integrated Methane Inversion Workflow user guide.
+   These pages are the most up-to-date and accurate instructions for the IMI Workflow, but they
    are still a work in progress. 
    
    Contributions (e.g., suggestions, edits, revisions) would be greatly appreciated. See
@@ -18,7 +18,7 @@ Unified Methane Inversion Workflow
 TODO: Add more about information
 
 
-This site provides instructions for setting up and running the Unified Methane Inversion (UMI) Workflow. Some instructions are specific to
+This site provides instructions for setting up and running the Integrated Methane Inversion (IMI) Workflow. Some instructions are specific to
 running the workflow on the AWS Cloud, but most steps in the workflow do not rely on using a cloud environment.
 
 .. toctree::

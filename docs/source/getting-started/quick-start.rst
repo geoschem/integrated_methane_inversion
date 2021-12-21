@@ -4,7 +4,7 @@ AMI Specifications
 TODO: Move this to its own page on the RTD site.
 
 
-The latest Amazon Machine Image (AMI) for the UMI Workflow contains the following software libraries:
+The latest Amazon Machine Image (AMI) for the IMI Workflow contains the following software libraries:
 
 - GNU Compiler Collection 8.2.0
 - NetCDF-Fortran 4.5.3
@@ -30,8 +30,8 @@ Go to http://aws.amazon.com and click on "Create an AWS Account" in the upper-ri
   :target: https://aws.amazon.com
   :width: 400 px
 
-You will need to enter some basic personal information and a credit card number. Running the UMI Workflow is relatively inexpensive (usually on the order of 10s of dollars).
-The exact cost primarily depends on the length of your simulations and how long you leave your Cloud instance running beyond the steps of the UMI Workflow.
+You will need to enter some basic personal information and a credit card number. Running the IMI Workflow is relatively inexpensive (usually on the order of 10s of dollars).
+The exact cost primarily depends on the length of your simulations and how long you leave your Cloud instance running beyond the steps of the IMI Workflow.
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
@@ -40,7 +40,7 @@ The exact cost primarily depends on the length of your simulations and how long 
 2. Add S3 user permissions so you can download input data
 ---------------------------------------------------------
 
-Most input data for the UMI Workflow are stored on the AWS Cloud, but are not included in your instance by default. Instead, relevant data
+Most input data for the IMI Workflow are stored on the AWS Cloud, but are not included in your instance by default. Instead, relevant data
 for your customized simulation are fetched automatically during the workflow. These automatically fetched fields include data GEOS-Chem meteorology and chemistry input fields,
 as well as TROPOMI methane fields. To enable this data retrieval, you need to grant S3 download permissions to a user in your AWS account.
 
@@ -52,7 +52,7 @@ https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.h
 
 
 
-3. Launch an instance with the UMI Workflow pre-installed
+3. Launch an instance with the IMI Workflow pre-installed
 ---------------------------------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and click on EC2.
@@ -70,14 +70,14 @@ where GEOS-Chem data are hosted (US East (N.Virginia)).
 .. _choose_ami-label:
 
 In the EC2 console, click on "AMIs" (Amazon Machine Images) under "IMAGES" on the left navigation bar. Then select "Public images" and search for ``TODO:AMI_ID`` or ``TODO:AMI_NAME``.
-This image contains the latest version of the UMI Workflow.
+This image contains the latest version of the IMI Workflow.
 
 .. figure:: img/search_ami.png
 
 An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
 Now it's time to specify the hardware for running your system. Hardware choices differ primarily in CPU and RAM counts. 
 
-You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. The UMI Workflow will run more quickly with a higher number of CPUs. 
+You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. The IMI Workflow will run more quickly with a higher number of CPUs. 
 TODO: choose ideal computational node (this one may be unnecessarily powerful as it is built for inter-node connection). Choose the c5n.9xlarge instance type, which includes 36 CPU cores and 96GB of RAM. 
 
 .. figure:: img/choose_instance_type.png
@@ -128,10 +128,10 @@ The Git-BASH solution should be the most painless, but these other options shoul
 Once you've followed the above instructions, you should see a "Welcome to Ubuntu" message indicating you've logged into your new EC2 instance.
 
 
-5. Configure and run the UMI Workflow
+5. Configure and run the IMI Workflow
 -------------------------------------
 
-Navigate to the UMI Workflow setup directory::
+Navigate to the IMI Workflow setup directory::
 
   $ cd ~/setup_CH4
 
@@ -254,4 +254,4 @@ You have two options now, "Stop" to shutdown or "Terminate" to completely delete
 - "Terminate" will completely remove that instance so you won't be charged for it any further.
   Unless you save your system as an AMI or transfer the data to other storage services, you will lose all your data and software.
 
-TODO: Add section (here or elsewhere) on exporting data to S3. Also add information somewhere about modifying instance type when not running UMI to save money
+TODO: Add section (here or elsewhere) on exporting data to S3. Also add information somewhere about modifying instance type when not running IMI to save money

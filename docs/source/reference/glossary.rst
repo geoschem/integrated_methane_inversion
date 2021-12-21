@@ -1,5 +1,5 @@
 
-.. _umi_glossary:
+.. _imi_glossary:
 
 Terminology (TODO: edit this page)
 ==================================
