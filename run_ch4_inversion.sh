@@ -4,7 +4,7 @@
 # (mps, 2/20/2021)
 # (djv, 12/7/2021)
 
-printf "\nInversion started: %s\n\n" "$(date)"
+start_time=$(date)
 
 ##=======================================================================
 ## Parse config.yml file
@@ -220,6 +220,8 @@ if "$DoPosterior"; then
 
 fi
 
-printf "\nInversion ended: %s\n\n" "$(date)"
+end_time=$(date)
+printf "\nIMI started: %s\n\n" "$start_time"
+printf "\nIMI ended  : %s\n\n" "$end_time"
 
 exit 0
