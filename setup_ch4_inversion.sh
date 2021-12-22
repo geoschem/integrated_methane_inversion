@@ -527,9 +527,9 @@ if  "$SetupSpinupRun"; then
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
-       printf "Executing dry-run for spinup run...\n"
-       ./gcclassic --dryrun &> log.dryrun
-       ./download_data.py log.dryrun aws
+        printf "Executing dry-run for spinup run...\n"
+        ./gcclassic --dryrun &> log.dryrun
+        ./download_data.py log.dryrun aws
     fi
     
     # Navigate back to top-level directory
@@ -649,8 +649,8 @@ if "$SetupJacobianRuns"; then
     cp ${RunFilesPath}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_cascade/d" \
-           -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
+        sed -i -e "/#SBATCH -p huce_cascade/d" \
+               -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" -e "s:{END}:${nElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
