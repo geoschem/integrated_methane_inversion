@@ -1,19 +1,3 @@
-AMI Specifications
-==================
-
-TODO: Move this to its own page on the RTD site.
-
-
-The latest Amazon Machine Image (AMI) for the IMI Workflow contains the following software libraries:
-
-- GNU Compiler Collection 8.2.0
-- NetCDF-Fortran 4.5.3
-- Slurm 20.11.0.1
-- Python 3.8.7
-- GEOS-Chem Classic 13.0.2 TODO: Update to 13.0.2
-
-
-
 .. _quick-start-label:
 
 Quick start guide for new users
@@ -41,14 +25,11 @@ The exact cost primarily depends on the length of your simulations and how long 
 ---------------------------------------------------------
 
 Most input data for the IMI Workflow are stored on the AWS Cloud, but are not included in your instance by default. Instead, relevant data
-for your customized simulation are fetched automatically during the workflow. These automatically fetched fields include data GEOS-Chem meteorology and chemistry input fields,
+for your customized simulation are fetched automatically during the workflow. These automatically fetched fields include GEOS-Chem meteorology data and chemistry input fields,
 as well as TROPOMI methane fields. To enable this data retrieval, you need to grant S3 download permissions to a user in your AWS account.
 
 
-The easiest way to enable S3-to-EC2 downloading (and uploading) is to grant S3 access to all EC2 (Elastic Compute Cloud, AWS's basic computing node service) 
-instances that are launched on your account.
-TODO: Transfer these instructions to this page. Instructions on how to do so are available at 
-https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role.
+The easiest way to enable S3-to-EC2 downloading (and uploading) is to grant S3 access to an IAM role, which when designated to an EC2 instance (Elastic Compute Cloud, AWS's basic computing node service), will give that EC2 instance full access to S3. Instructions on how to create an IAM role with full s3 access is available at `this link to the GEOS-Chem Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`. For more information on `IAM Roles check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`.
 
 
 
@@ -61,8 +42,7 @@ Once you've setup S3 permissions on your AWS account, login to the AWS console a
   :width: 600 px
 
 In the EC2 console, you can see your current selected region in the top right.
-Choosing a region closer to your physical location will improve your network connectivity, but may result in increased costs compared to using the region
-where GEOS-Chem data are hosted (US East (N.Virginia)).
+Choosing a region closer to your physical location will improve your network connectivity, but may result in increased costs compared to using the region where GEOS-Chem data are hosted (us-east-1 (N.Virginia)).
 
 .. figure:: img/region_list.png
   :width: 300 px
@@ -70,7 +50,7 @@ where GEOS-Chem data are hosted (US East (N.Virginia)).
 .. _choose_ami-label:
 
 In the EC2 console, click on "AMIs" (Amazon Machine Images) under "IMAGES" on the left navigation bar. Then select "Public images" and search for ``TODO:AMI_ID`` or ``TODO:AMI_NAME``.
-This image contains the latest version of the IMI Workflow.
+This image contains the latest version of the IMI Workflow and has all the necessary software dependencies preinstalled.
 
 .. figure:: img/search_ami.png
 
@@ -78,11 +58,15 @@ An AMI fully specifies the software side of your virtual system, including the o
 Now it's time to specify the hardware for running your system. Hardware choices differ primarily in CPU and RAM counts. 
 
 You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. The IMI Workflow will run more quickly with a higher number of CPUs. 
-TODO: choose ideal computational node (this one may be unnecessarily powerful as it is built for inter-node connection). Choose the c5n.9xlarge instance type, which includes 36 CPU cores and 96GB of RAM. 
+TODO: choose ideal computational node. Choose the c5.9xlarge instance type, which includes 36 CPU cores and 72GB of RAM. Depending on your use case you may choose to use a different instance type that provides more/less cores and memory.
 
 .. figure:: img/choose_instance_type.png
 
 .. _skip-ec2-config-label:
+
+
+Proceed to Step 3 and select the ``IAM Role`` you created in :ref:`Step 2 <2. Add S3 user permissions so you can download input data>`. All other config settings in step 3 can be left as the defaults.
+.. figure:: img/assign_iam_to_ec2.png
 
 **Then, just click on "Review and Launch".** You don't need to touch other options this time. This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
 
