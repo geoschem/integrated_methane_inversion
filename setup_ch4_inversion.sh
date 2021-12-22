@@ -701,8 +701,8 @@ if "$SetupJacobianRuns"; then
 	fi
    
 	# Update settings in input.geos
-    sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
-           -e "s:{ELEMENT}:${xUSE}:g" input.geos
+	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
+	       -e "s:{ELEMENT}:${xUSE}:g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
