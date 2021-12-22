@@ -431,11 +431,11 @@ if "$SetupTemplateRundir"; then
     make -j install
     cd ..
     if [[ -f gcclassic ]]; then
-	rm -rf build
-	mv build_info ../GEOSChem_build_info
+	    rm -rf build
+	    mv build_info ../GEOSChem_build_info
     else
-	echo "GEOS-Chem build failed"
-	exit 999
+	    echo "GEOS-Chem build failed"
+	    exit 999
     fi
 
     # Purge software modules
@@ -466,8 +466,8 @@ if  "$SetupSpinupRun"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
-	exit 9999
+	    echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+	    exit 9999
     fi
 
     printf "\n=== CREATING SPINUP RUN DIRECTORY ===\n"
@@ -494,7 +494,7 @@ if  "$SetupSpinupRun"; then
     # Link to restart file
     ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
-	sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+	    sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
     
     # Update settings in input.geos
@@ -546,8 +546,8 @@ if  "$SetupPosteriorRun"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
-	exit 9999
+	    echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+	    exit 9999
     fi
 
     printf "\n=== CREATING POSTERIOR RUN DIRECTORY ===\n"
@@ -634,8 +634,8 @@ if "$SetupJacobianRuns"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
-	exit 9999
+        echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+	    exit 9999
     fi
 
     printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
@@ -765,33 +765,33 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_GC
     mkdir -p inversion/Sensi
     if "$isAWS"; then
-	mkdir -p inversion/data_TROPOMI
-	cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
+	   mkdir -p inversion/data_TROPOMI
+	   cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
     else
-	ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
+	   ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
     fi
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/visualization_notebook.ipynb inversion/
     sed -i -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
-	   -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
-	   -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
-	   -e "s:{MY_PATH}:${MyPath}:g" \
-	   -e "s:{RUN_NAME}:${RunName}:g" \
-	   -e "s:{STATE_VECTOR_PATH}:../${StateVectorFile}:g" \
-	   -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
-	   -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
-	   -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
-	   -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-       -e "s:{RES}:${gridResLong}:g" \
-	   -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
+	       -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
+	       -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
+	       -e "s:{MY_PATH}:${MyPath}:g" \
+	       -e "s:{RUN_NAME}:${RunName}:g" \
+	       -e "s:{STATE_VECTOR_PATH}:../${StateVectorFile}:g" \
+	       -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
+	       -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
+	       -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
+	       -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
+           -e "s:{RES}:${gridResLong}:g" \
+	       -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
 
     if "$isAWS"; then
        sed -i -e "/#SBATCH -p huce_intel/d" \
-	      -e "/#SBATCH -t/d" \
-	      -e "/#SBATCH --mem/d" \
-	      -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
+	          -e "/#SBATCH -t/d" \
+	          -e "/#SBATCH --mem/d" \
+	          -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
     fi
     
     printf "=== DONE SETTING UP INVERSION DIRECTORY ===\n"

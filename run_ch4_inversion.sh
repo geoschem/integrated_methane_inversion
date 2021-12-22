@@ -194,7 +194,7 @@ if "$DoPosterior"; then
     GCDir="./data_GC_posterior"
     printf "\n=== Calling setup_GCdatadir.py for posterior ===\n"
     python setup_GCdatadir.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "=== DONE -- setup_GCdatadir.py\n==="
+    printf "=== DONE -- setup_GCdatadir.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     LonMinInvDomain=$(( LonMin-BufferDeg ))
