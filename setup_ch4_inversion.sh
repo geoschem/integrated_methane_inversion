@@ -789,9 +789,9 @@ if "$SetupInversion"; then
 
     if "$isAWS"; then
        sed -i -e "/#SBATCH -p huce_intel/d" \
-	          -e "/#SBATCH -t/d" \
-	          -e "/#SBATCH --mem/d" \
-	          -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
+       -e "/#SBATCH -t/d" \
+       -e "/#SBATCH --mem/d" \
+       -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
     fi
     
     printf "=== DONE SETTING UP INVERSION DIRECTORY ===\n"
