@@ -721,7 +721,7 @@ if "$SetupJacobianRuns"; then
 	chmod 755 ${name}.run
 
     if "$isAWS"; then
-	    sed -i -e "/#SBATCH -p huce_cascade/d" \
+        sed -i -e "/#SBATCH -p huce_cascade/d" \
                -e "/#SBATCH -t/d" \
                -e "/#SBATCH --mem/d" \
                -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
