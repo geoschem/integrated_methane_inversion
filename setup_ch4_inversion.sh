@@ -232,6 +232,12 @@ if "$CreateStateVectorFile"; then
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
+
+else
+
+    # Copy custom state vector to $MyPath/$RunName directory for use by other scripts
+    cp $StateVectorFile ${MyPath}/$RunName/StateVector.nc
+
 fi
 
 # Load environment with NCO
@@ -779,7 +785,7 @@ if "$SetupInversion"; then
            -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
            -e "s:{MY_PATH}:${MyPath}:g" \
            -e "s:{RUN_NAME}:${RunName}:g" \
-           -e "s:{STATE_VECTOR_PATH}:../${StateVectorFile}:g" \
+           -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
            -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
            -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
            -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
