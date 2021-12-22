@@ -65,7 +65,7 @@ TODO: choose ideal computational node. Choose the c5.9xlarge instance type, whic
 .. _skip-ec2-config-label:
 
 
-Proceed to Step 3 and select the ``IAM Role`` you created in :ref:`Step 2 <2. Add S3 user permissions so you can download input data>`. All other config settings in step 3 can be left as the defaults.
+Proceed to Step 3 and select the ``IAM Role`` you created in :ref:`Step 2<2. Add S3 user permissions so you can download input data>`. All other config settings in step 3 can be left as the defaults.
 
 .. figure:: img/assign_iam_to_ec2.png
 
