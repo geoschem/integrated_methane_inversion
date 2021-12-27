@@ -18,7 +18,7 @@ master_doc = 'index'
 
 # -- Project information -----------------------------------------------------
 
-project = 'UMI'
+project = 'IMI'
 copyright = '2021, TODO'
 author = 'TODO'
 
