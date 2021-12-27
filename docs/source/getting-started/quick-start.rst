@@ -165,5 +165,9 @@ You have two options now, "Stop" to shutdown or "Terminate" to completely delete
 - "Terminate" will completely remove that instance so you won't be charged for it any further.
   Unless you save your system as an AMI or transfer the data to other storage services, you will lose all your data and software.
 
-9. Exporting Data to S3:
-TODO: Add section (here or elsewhere) on exporting data to S3. Also add information somewhere about modifying instance type when not running IMI to save money
+9. Storing Data on S3:
+S3 is our preferred cloud storage platform due to cost and ease of access. You can use the ```cp``` command to copy your output files to your desired S3 bucket for long term storage::
+
+  $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
+
+For more information on using s3 check out the `Exporting Data to S3 <https://integrated-methane-inversion.readthedocs.io/en/docs-update/getting-started/minimizing-cost-tips.html#exporting-data-to-s3>` section.
