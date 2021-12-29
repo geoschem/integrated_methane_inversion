@@ -1,19 +1,3 @@
-AMI Specifications
-==================
-
-TODO: Move this to its own page on the RTD site.
-
-
-The latest Amazon Machine Image (AMI) for the UMI Workflow contains the following software libraries:
-
-- GNU Compiler Collection 8.2.0
-- NetCDF-Fortran 4.5.3
-- Slurm 20.11.0.1
-- Python 3.8.7
-- GEOS-Chem Classic 13.0.2 TODO: Update to 13.0.2
-
-
-
 .. _quick-start-label:
 
 Quick start guide for new users
@@ -30,8 +14,8 @@ Go to http://aws.amazon.com and click on "Create an AWS Account" in the upper-ri
   :target: https://aws.amazon.com
   :width: 400 px
 
-You will need to enter some basic personal information and a credit card number. Running the UMI Workflow is relatively inexpensive (usually on the order of 10s of dollars).
-The exact cost primarily depends on the length of your simulations and how long you leave your Cloud instance running beyond the steps of the UMI Workflow.
+You will need to enter some basic personal information and a credit card number. Running the IMI Workflow is relatively inexpensive (usually on the order of 10s of dollars).
+The exact cost primarily depends on the length of your simulations and how long you leave your Cloud instance running beyond the steps of the IMI Workflow.
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
@@ -40,19 +24,16 @@ The exact cost primarily depends on the length of your simulations and how long 
 2. Add S3 user permissions so you can download input data
 ---------------------------------------------------------
 
-Most input data for the UMI Workflow are stored on the AWS Cloud, but are not included in your instance by default. Instead, relevant data
-for your customized simulation are fetched automatically during the workflow. These automatically fetched fields include data GEOS-Chem meteorology and chemistry input fields,
+Most input data for the IMI Workflow are stored on the AWS Cloud, but are not included in your instance by default. Instead, relevant data
+for your customized simulation are fetched automatically during the workflow. These automatically fetched fields include GEOS-Chem meteorology data and chemistry input fields,
 as well as TROPOMI methane fields. To enable this data retrieval, you need to grant S3 download permissions to a user in your AWS account.
 
 
-The easiest way to enable S3-to-EC2 downloading (and uploading) is to grant S3 access to all EC2 (Elastic Compute Cloud, AWS's basic computing node service) 
-instances that are launched on your account.
-TODO: Transfer these instructions to this page. Instructions on how to do so are available at 
-https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role.
+The easiest way to enable S3-to-EC2 downloading (and uploading) is to grant S3 access to an IAM role, which when designated to an EC2 instance (Elastic Compute Cloud, AWS's basic computing node service), will give that EC2 instance full access to S3. Instructions on how to create an IAM role with full s3 access is available at `this link to the GEOS-Chem Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. For more information on `IAM Roles check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
 
-3. Launch an instance with the UMI Workflow pre-installed
+3. Launch an instance with the IMI Workflow pre-installed
 ---------------------------------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and click on EC2.
@@ -61,8 +42,7 @@ Once you've setup S3 permissions on your AWS account, login to the AWS console a
   :width: 600 px
 
 In the EC2 console, you can see your current selected region in the top right.
-Choosing a region closer to your physical location will improve your network connectivity, but may result in increased costs compared to using the region
-where GEOS-Chem data are hosted (US East (N.Virginia)).
+Choosing a region closer to your physical location will improve your network connectivity, but may result in increased costs compared to using the region where GEOS-Chem data are hosted (us-east-1 (N.Virginia)).
 
 .. figure:: img/region_list.png
   :width: 300 px
@@ -70,19 +50,27 @@ where GEOS-Chem data are hosted (US East (N.Virginia)).
 .. _choose_ami-label:
 
 In the EC2 console, click on "AMIs" (Amazon Machine Images) under "IMAGES" on the left navigation bar. Then select "Public images" and search for ``TODO:AMI_ID`` or ``TODO:AMI_NAME``.
-This image contains the latest version of the UMI Workflow.
+This image contains the latest version of the IMI Workflow and has all the necessary software dependencies preinstalled.
 
 .. figure:: img/search_ami.png
 
 An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
 Now it's time to specify the hardware for running your system. Hardware choices differ primarily in CPU and RAM counts. 
 
-You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. The UMI Workflow will run more quickly with a higher number of CPUs. 
-TODO: choose ideal computational node (this one may be unnecessarily powerful as it is built for inter-node connection). Choose the c5n.9xlarge instance type, which includes 36 CPU cores and 96GB of RAM. 
+You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. The IMI Workflow will run more quickly with a higher number of CPUs. 
+TODO: choose ideal computational node. Choose the c5.9xlarge instance type, which includes 36 CPU cores and 72GB of RAM. Depending on your use case you may choose to use a different instance type that provides more/less cores and memory.
 
 .. figure:: img/choose_instance_type.png
 
 .. _skip-ec2-config-label:
+
+
+Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions so you can download input data>`_. All other config settings in Step 3: Configuring Instance Details can be left as the defaults.
+
+.. figure:: img/assign_iam_to_ec2.png
+
+Proceed to "Step 4: Add Storage" and select the size of your storage volume. Your needs will depend on the length and resolution of your inversion. For example, for a 1 week inversion 100GB is sufficient. Note that your storage costs will be based on this value. You can always add storage space after your EC2 instance is launched, but it is very difficult to shrink volume size, so it is best to start conservative if you plan to keep the instance for a significant time period (more than a few days).
+
 
 **Then, just click on "Review and Launch".** You don't need to touch other options this time. This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
 
@@ -120,123 +108,47 @@ Select your instance, click on the "Connect" button (shown in the above figure) 
   (3) Change the user name in that command from ``root`` to ``ubuntu``, so the full command will be like ``ssh -i "your-key-name.pem" ubuntu@xxx.amazonaws.com``
 
 - On Windows, you can install `Git-BASH <https://gitforwindows.org>`_ to emulate a Linux terminal. Simply accept all default options during installation, as the goal here is just to use Bash, not Git. 
-Alternatively, you can use `MobaXterm <http://angus.readthedocs.io/en/2016/amazon/log-in-with-mobaxterm-win.html>`_, `Putty <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/putty.html>`_, 
-`Linux Subsystem <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/WSL.html>`_ or `PowerShell with OpenSSH <https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/>`_. 
-The Git-BASH solution should be the most painless, but these other options should work as well.
+  Alternatively, you can use `MobaXterm <http://angus.readthedocs.io/en/2016/amazon/log-in-with-mobaxterm-win.html>`_, `Putty <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/putty.html>`_, `Windows Subsystem for Linux (WSL) <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/WSL.html>`_ or `PowerShell with OpenSSH <https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/>`_. The Git-BASH solution should be the most painless, but these other options should work as well. Note: there is a bug on older versions of WSL that can prevent the ``chmod`` command from functioning.
+
 
 
 Once you've followed the above instructions, you should see a "Welcome to Ubuntu" message indicating you've logged into your new EC2 instance.
 
 
-5. Configure and run the UMI Workflow
+5. Configure and run the IMI Workflow
 -------------------------------------
 
-Navigate to the UMI Workflow setup directory::
+Navigate to the IMI Workflow setup directory::
 
   $ cd ~/setup_CH4
 
-Open the ``setup_ch4_inversion.sh`` script::
+Open the ``config.yml`` file with vim or emacs::
 
   $ emacs setup_ch4_inversion.sh
 
 
-This script contains many settings you can modify according to your scientific needs. You should not need to modify
-certain settings if you are using an instance generated from the AMI to run the workflow. These settings are italicized in the list below.
+This file contains many settings you can modify according to your scientific needs. A detailed explanation of all configuration values can be read at the `IMI config file page <imi-config-file>`_.
 
-Setup settings
-~~~~~~~~~~~~~~
+6. Running the Automated Workflow
+---------------------------------
+After you have edited the config file to your desired workflow settings, run the workflow by executing the following command in ``~/setup_CH4``:
+  
+  $ ./run_ch4_inversion.sh
 
-- CreateClusterFile: Create a netCDF cluster file containing the gridboxes or regions where emissions will be perturbed. If this is set to false, the ClusterFile option must be specified further down.
-- SetupTemplateRundir: Copy run directory files from GEOS-Chem and replace text in input files according to settings in setup_ch4_inversion.sh. The template run directory is needed to set up the spinup, 
-  Jacobian, and posterior run directories. It only needs to be generated once.
-- SetupSpinupRun: Create a run directory to spinup a new restart file representative of your model setup.
-- SetupJacobianRunDirectories: Setup run directories for each of your perturbation clusters. The output from these simulations will be used to construct the Jacobian.
-- SetupInversion: Copy scripts used to post-process GEOS-Chem data, build the Jacobian, and run the inversion.
-- SetupPosteriorRun: Create a run directory to submit a posterior run.
+This will kick off the workflow. This can take significant time to complete depending on the length and settings specified in the configuration file. Note: You must remain logged in for the duration of the inversion. For long running inversions you can run the workflow with tmux, see `using tmux to run the workflow <running-with-tmux>`_.
 
-Environment files
-~~~~~~~~~~~~~~~~~
-
-- *NCOEnv: Bash script to load NCO software package*
-- *GCCEnv: Bash script to load software packages needed to compileand run  GEOS-Chem Classic*
-- *CondaEnv: Name of conda environment containing python packages needed to execute the scripts in CH4_TROPOMI_INV. See the example in envs/Harvard-Cannon/ch4_inv.yml.*
-
-File paths
-~~~~~~~~~~
-- RunName: Specify a name for your simulations.
-- MyPath: Set it to the file path where you want to setup the CH4 inversion run directories.
-- *DataPath: Path to non-emissions data that will replate {DATA_ROOT} token in input.geos and HEMCO_Config.rc. The default is path is ``/home/ubuntu/ExtData/``.*
-  *The emissions data path is set in HEMCO_Config.rc and by default is set to ``/home/ubuntu/ExtData/HEMCO/``.*
-- ClusterFile: Path to netCDF file containing clusters to perturb.
-- UseBCsForRestart: Logical to determine whether boundary condition files should be used in place of a restart file.
-- RestartFile: Path to the initial restart file. Sample restart files may be found in TODO.
-- BCfiles: Path to boundary condition files to be used for nested grid simulations. This will replace the path in HEMCO_Config.rc.
-
-Data download settings
-~~~~~~~~~~~~~~~~~~~~~~
-
-Your instance created from the AMI does not include much of the required input data for even a very short simulation, so it is recommended you set each of these to true
-to automatically fetch required input data. Note that for each of these settings (except RestartDownload) files will not be redownloaded if they already exist at the requested path on your instance, 
-so it is safe to leave these set to "true" in successive runs of the workflow. 
-
-- SpinupDryrun: Set to "true" to automatically fetch all required GEOS-Chem meteorology and emissions input files for the spinup run from Amazon S3 (your account will incur small charges).
-- ProdDryrun: Set to "true" to automatically fetch all required GEOS-Chem meteorology and emissions input files for the production runs from Amazon S3 (your account will incur small charges).
-- RestartDownload: Set to "true" to automatically fetch a default restart file from Amazon S3 (your account will incur a small charge).
-- BCDryrun: Set to "true" to automatically fetch default required boundary conditions files from Amazon S3 (your account will incur small charges).
-
-Grid settings
-~~~~~~~~~~~~~
-- Res: Options are "4x5", "2x2.5", "0.5x0.625", and "0.25x0.3125".
-- Met: Options are "merra2" or "geosfp".
-- LonMin: Minimum longitude edge of your domain.
-- LonMax: Maximum longitude edge of your domain. e.g. For global simulations use -180.0, 180.0. For nested NA simulations use -140.0, -40.0 (0.5x0.625); -130.0, -60.0 (0.25x0.3125).
-  For nested Asia simulations use   60.0, 150.0 (0.5x0.625); 70.0, 140.0 (0.25x0.3125)
-- LatMin: Minimum latitude edge of your domain.
-- LatMax: Maximum latitude edge of your domain. e.g. For global simulations use -90.0, 90.0. For nested NA simulations use 10.0, 70.0 (0.5x0.625); 9.75, 60.0 (0.25x0.3125).
-  For nested Asia simulations use  15.0, 55.0 (0.5x0.625); -11.0, 55.0 (0.25x0.3125).
-- HalfPolar: Set to "T" for global simulations to use half polar boxes. Set to "F" for nested grid simulations.
-- Levs: Set to 47 to use the reduced 47-level grid recommended for CH4 simulations.
-- NestedGrid: Set to "F" for global simulations or "T" for nested simulations.
-- Region: Set to "" for global or "NA", "AS", "CH", "EU" for default domains
-- Buffer: Set to "0 0 0 0" for global simulations. For nested simulations, the recommendation is to use "3 3 3 3" to use 3 grid cells along the nested-grid domain for your buffer zone.
-
-Jacobian settings
-~~~~~~~~~~~~~~~~~
-- PerturbValue: Perturbation value to apply to clusters in analytical inversion.
-
-Additional settings (change options in input.geos)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-- GOSAT: Set to true to use GOSAT observation operator.
-- TCCON: Set to true to use TCCON observation operator.
-- UseEmisSF: Set to true to use emission scale factors from a previous analytical inversion.
-- UseSeparateWetlandsSF: Set to true to use separate scale factors for wetland and nonwetland emissions.
-- UseOHSF: Set to true to use OH scale factors from a previous analytical inversion.
-- PLANEFLIGHT: Set to true to use the planeflight diagnostic.
-- HourlyCH4: Set to true to save out hourly CH4 concentrations and pressure edges.
+`Click here <manual-running>`_ for instructions on manually running each step of the workflow (an alternative to using the automated workflow run script).
 
 
-Save and close setup_ch4_inversion.sh when you're done editing configuration settings.
-
-TODO: Add instructions for using automated workflow
-
-`Click here <manual-running>`__ for instructions on manually running each step of the workflow (an alternative to using the automated workflow run script).
-
-TODO: Add instructions from README.MD to describe different customization options and using the workflow.
-
-
-TODO: More workflow instructions here
-
-
-
-6. Analyze output data with Python
+7. Analyze output data with Python
 ----------------------------------
 
-TODO: Fill in this section once all scripts are ready
+TODO
 
 
 .. _shutdown-label:
 
-7. Shut down the instance
+8. Shut down the instance
 -------------------------
 
 If you're done using your instance for awhile or don't plan on using it again, you should either shutdown or terminate your instance. 
@@ -249,9 +161,13 @@ Right-click on the instance in your console to get this menu:
 
 You have two options now, "Stop" to shutdown or "Terminate" to completely delete your instance:
 
-- "Stop" will make the system inactive. You won't be charged for CPU time, but you will be charged a negligible disk storage fee.
-  You can restart the server at any time and all files will be preserved. When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type") 
+- "Stop" will make the system inactive. You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB allocated to your EC2 instance. You can restart the server at any time and all files will be preserved. When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type") 
 - "Terminate" will completely remove that instance so you won't be charged for it any further.
   Unless you save your system as an AMI or transfer the data to other storage services, you will lose all your data and software.
 
-TODO: Add section (here or elsewhere) on exporting data to S3. Also add information somewhere about modifying instance type when not running UMI to save money
+9. Storing Data on S3:
+S3 is our preferred cloud storage platform due to cost and ease of access. You can use the ```cp``` command to copy your output files to your desired S3 bucket for long term storage::
+
+  $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
+
+For more information on using s3 check out the `Exporting Data to S3 <https://integrated-methane-inversion.readthedocs.io/en/docs-update/getting-started/minimizing-cost-tips.html#exporting-data-to-s3>` section.
