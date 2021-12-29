@@ -214,7 +214,7 @@ if "$DoPosterior"; then
     FetchTROPOMI="False"
     isPost="True"
 
-    printf "\n=== Calling jacobian.py to sample prior simulation (without jacobian sensitivity analysis) ===\n"
+    printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
     python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $FetchTROPOMI $isPost; wait
     printf "=== DONE sampling the posterior simulation ===\n\n"
 
