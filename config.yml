@@ -54,12 +54,8 @@ nBufferClusters: 8
 LandThreshold: 0.25
 
 ## Custom statevector file (if CreateStateVectorFile: false)
-StateVectorFile: {path/to/StateVector.nc}
+StateVectorFile: {path/to/statevector_ncfile}
 ShapeFile: {path/to/shapefile}
-LonMinCustomStateVector: -111
-LonMaxCustomStateVector: -99
-LatMinCustomStateVector: 24
-LatMaxCustomStateVector: 36
 
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster

@@ -289,10 +289,11 @@ if "$SetupTemplateRundir"; then
     LatMaxInvDomain=$(( LatMax+BufferDeg ))
     # If using custom state vector
     if ! "$CreateStateVectorFile"; then
-        LonMinInvDomain=${LonMinCustomStateVector}
-        LonMaxInvDomain=${LonMaxCustomStateVector}
-        LatMinInvDomain=${LatMinCustomStateVector}
-        LatMaxInvDomain=${LatMaxCustomStateVector}
+        function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+        LonMinInvDomain=$(ncmin lon $StateVectorFile)
+        LonMaxInvDomain=$(ncmax lon $StateVectorFile)
+        LatMinInvDomain=$(ncmin lat $StateVectorFile)
+        LatMaxInvDomain=$(ncmax lat $StateVectorFile)
     fi
     Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
