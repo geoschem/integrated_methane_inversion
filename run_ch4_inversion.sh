@@ -198,7 +198,6 @@ if "$DoPosterior"; then
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    nElements=$(ncmax StateVector $StateVectorFilePath)
     LonMinInvDomain=$(( LonMin-BufferDeg ))
     LonMaxInvDomain=$(( LonMax+BufferDeg ))
     LatMinInvDomain=$(( LatMin-BufferDeg ))
@@ -212,6 +211,7 @@ if "$DoPosterior"; then
         LatMaxInvDomain=$(ncmax lat $StateVectorFile)
         StateVectorFilePath=$StateVectorFile
     fi
+    nElements=$(ncmax StateVector $StateVectorFilePath)
     FetchTROPOMI="False"
     isPost="True"
 
