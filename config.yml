@@ -66,6 +66,7 @@ DoInversion: true
 DoPosterior: true
 
 ## IMI preview
+SetupPreview: true
 DoPreview: true
 DOFSThreshold: 2
 

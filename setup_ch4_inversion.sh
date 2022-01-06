@@ -50,13 +50,15 @@ eval $(parse_yaml config.yml)
 # Path to inversion setup
 InversionPath=$(pwd -P)
 
-# AWS only: Download missing GEOS-Chem input data from S3 (you will be charged)
+# AWS only: Download missing GEOS-Chem input data from S3 (you may be charged for S3 transfer)
 if "$isAWS"; then
+    PreviewDryRun=true     # Met fields/emissions for preview run
     SpinupDryrun=true      # Met fields/emissions for spinup run
     ProductionDryRun=true  # Met fields/emissions for production runs
     PosteriorDryRun=true   # Met fields/emissions for posterior run
     BCdryrun=true          # Boundary condition files
 else
+    PreviewDryRun=false
     SpinupDryrun=false
     ProductionDryRun=false
     PosteriorDryRun=false
@@ -458,7 +460,7 @@ if "$SetupTemplateRundir"; then
 fi # SetupTemplateRunDir
 
 ##=======================================================================
-##  Set up spinup run directory
+##  Set up IMI preview run directory
 ##=======================================================================
 
 if "$isAWS"; then
@@ -468,6 +470,81 @@ if "$isAWS"; then
     cpu_str=$(echo ${array[1]})
     cpu_count=$(echo ${cpu_str:5})
 fi
+
+if  "$SetupPreview"; then
+
+    # Make sure template run directory exists
+    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+        echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        exit 9999
+    fi
+
+    printf "\n=== CREATING IMI PREVIEW RUN DIRECTORY ===\n"
+
+    cd ${MyPath}/${RunName}
+    
+    # Define the run directory name
+    PreviewName="${RunName}_Preview"
+
+    # Make the directory
+    runDir="preview_run"
+    mkdir -p -v ${runDir}
+
+    # Copy run directory files
+    cp ${RunTemplate}/*  ${runDir}
+    cd $runDir
+    mkdir -p OutputDir
+    mkdir -p Restarts
+
+    # Link to GEOS-Chem executable instead of having a copy in each run dir
+    rm -rf gcclassic
+    ln -s ${RunTemplate}/gcclassic .
+
+    # Link to restart file
+    #ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    #if "$UseBCsForRestart"; then
+    #    sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+    #fi
+
+    # End date for the preview simulation -- just 1 day
+    PreviewEnd=$(date --date="${StartDate} +1 day" +%Y%m%d)
+
+    # Update settings in input.geos
+    sed -i -e "s|${EndDate}|${PreviewEnd}|g" \
+           -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
+           -e "s|{PERTURBATION}|1.0|g" \
+           -e "s|{ELEMENT}|0|g" input.geos
+
+    # Create run script from template
+    sed -e "s:namename:${PreviewName}:g" \
+	-e "s:##:#:g" ch4_run.template > ${PreviewName}.run
+    chmod 755 ${PreviewName}.run
+    rm -f ch4_run.template
+
+    if "$isAWS"; then
+	sed -i -e "/#SBATCH -p huce_cascade/d" \
+	       -e "/#SBATCH -t/d" \
+	       -e "/#SBATCH --mem/d" \
+	       -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PreviewName}.run
+    fi
+
+    ### Perform dry run if requested
+    if "$PreviewDryRun"; then
+        printf "Executing dry-run for preview run...\n"
+        ./gcclassic --dryrun &> log.dryrun
+        ./download_data.py log.dryrun aws
+    fi
+    
+    # Navigate back to top-level directory
+    cd ..
+
+    printf "=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
+
+fi 
+
+##=======================================================================
+##  Set up spinup run directory
+##=======================================================================
 
 if  "$SetupSpinupRun"; then
 
