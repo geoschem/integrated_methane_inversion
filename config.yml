@@ -11,6 +11,7 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Region of interest
+## These values ignored if using custom state vector (below)
 LonMin: -106
 LonMax: -104
 LatMin: 29

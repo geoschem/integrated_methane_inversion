@@ -232,6 +232,12 @@ if "$CreateStateVectorFile"; then
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
     printf "=== DONE CREATING STATE VECTOR FILE ===\n"
+
+else
+
+    # Copy custom state vector to $MyPath/$RunName directory for use by other scripts
+    cp $StateVectorFile ${MyPath}/$RunName/StateVector.nc
+
 fi
 
 # Load environment with NCO
@@ -431,11 +437,11 @@ if "$SetupTemplateRundir"; then
     make -j install
     cd ..
     if [[ -f gcclassic ]]; then
-	rm -rf build
-	mv build_info ../GEOSChem_build_info
+        rm -rf build
+        mv build_info ../GEOSChem_build_info
     else
-	echo "GEOS-Chem build failed"
-	exit 999
+        echo "GEOS-Chem build failed"
+        exit 999
     fi
 
     # Purge software modules
@@ -466,8 +472,8 @@ if  "$SetupSpinupRun"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
-	exit 9999
+        echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        exit 9999
     fi
 
     printf "\n=== CREATING SPINUP RUN DIRECTORY ===\n"
@@ -494,7 +500,7 @@ if  "$SetupSpinupRun"; then
     # Link to restart file
     ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
-	sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+        sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
     
     # Update settings in input.geos
@@ -510,26 +516,26 @@ if  "$SetupSpinupRun"; then
                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
-	fi
+    fi
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
-	    -e "s:##:#:g" ch4_run.template > ${SpinupName}.run
+        -e "s:##:#:g" ch4_run.template > ${SpinupName}.run
     chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
 
     if "$isAWS"; then
 	sed -i -e "/#SBATCH -p huce_cascade/d" \
-	       -e "/#SBATCH -t/d" \
-	       -e "/#SBATCH --mem/d" \
+           -e "/#SBATCH -t/d" \
+           -e "/#SBATCH --mem/d" \
            -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
     fi
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
-       printf "Executing dry-run for spinup run...\n"
-       ./gcclassic --dryrun &> log.dryrun
-       ./download_data.py log.dryrun aws
+        printf "Executing dry-run for spinup run...\n"
+        ./gcclassic --dryrun &> log.dryrun
+        ./download_data.py log.dryrun aws
     fi
     
     # Navigate back to top-level directory
@@ -546,8 +552,8 @@ if  "$SetupPosteriorRun"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
-	exit 9999
+        echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        exit 9999
     fi
 
     printf "\n=== CREATING POSTERIOR RUN DIRECTORY ===\n"
@@ -573,13 +579,13 @@ if  "$SetupPosteriorRun"; then
 
     # Link to restart file
     if "$DoSpinup"; then
-       ln -s ../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -s ../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
     else
-       ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
-       if "$UseBCsForRestart"; then
-	   sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-	   printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
-       fi
+        ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
+        if "$UseBCsForRestart"; then
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+        fi
     fi
     
     # Update settings in input.geos
@@ -598,7 +604,7 @@ if  "$SetupPosteriorRun"; then
                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
-	fi
+    fi
 
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
@@ -615,9 +621,9 @@ if  "$SetupPosteriorRun"; then
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
-	   printf "Executing dry-run for posterior run...\n"
-	   ./gcclassic --dryrun &> log.dryrun
-	   ./download_data.py log.dryrun aws
+        printf "Executing dry-run for posterior run...\n"
+        ./gcclassic --dryrun &> log.dryrun
+        ./download_data.py log.dryrun aws
     fi
     
     # Navigate back to top-level directory
@@ -634,8 +640,8 @@ if "$SetupJacobianRuns"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-	echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
-	exit 9999
+        echo "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        exit 9999
     fi
 
     printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
@@ -649,8 +655,8 @@ if "$SetupJacobianRuns"; then
     cp ${RunFilesPath}/runScriptSamples/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_cascade/d" \
-       	   -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
+        sed -i -e "/#SBATCH -p huce_cascade/d" \
+               -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" -e "s:{END}:${nElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
@@ -702,7 +708,7 @@ if "$SetupJacobianRuns"; then
    
 	# Update settings in input.geos
 	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
-           -e "s:{ELEMENT}:${xUSE}:g" input.geos
+	       -e "s:{ELEMENT}:${xUSE}:g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -721,14 +727,14 @@ if "$SetupJacobianRuns"; then
 	chmod 755 ${name}.run
 
     if "$isAWS"; then
-	sed -i -e "/#SBATCH -p huce_cascade/d" \
-	       -e "/#SBATCH -t/d" \
-	       -e "/#SBATCH --mem/d" \
-           -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
+        sed -i -e "/#SBATCH -p huce_cascade/d" \
+               -e "/#SBATCH -t/d" \
+               -e "/#SBATCH --mem/d" \
+               -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
 
-    sed -i -e "/#SBATCH -p huce_cascade/d" \
-	       -e "/#SBATCH --mem/d" \
-           -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ../run_jacobian_simulations.sh
+        sed -i -e "/#SBATCH -p huce_cascade/d" \
+               -e "/#SBATCH --mem/d" \
+               -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ../run_jacobian_simulations.sh
     fi
 
     ### Perform dry run if requested, only for base run
@@ -765,33 +771,33 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_GC
     mkdir -p inversion/Sensi
     if "$isAWS"; then
-	mkdir -p inversion/data_TROPOMI
-	cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
+        mkdir -p inversion/data_TROPOMI
+        cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
     else
-	ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
+        ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
     fi
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/visualization_notebook.ipynb inversion/
     sed -i -e "s:{START}:${StartDate}:g" \
            -e "s:{END}:${EndDate}:g" \
-	   -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
-	   -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
-	   -e "s:{MY_PATH}:${MyPath}:g" \
-	   -e "s:{RUN_NAME}:${RunName}:g" \
-	   -e "s:{STATE_VECTOR_PATH}:../${StateVectorFile}:g" \
-	   -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
-	   -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
-	   -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
-	   -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-       -e "s:{RES}:${gridResLong}:g" \
-	   -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
+           -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
+           -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
+           -e "s:{MY_PATH}:${MyPath}:g" \
+           -e "s:{RUN_NAME}:${RunName}:g" \
+           -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
+           -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
+           -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
+           -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
+           -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
+           -e "s:{RES}:${gridResLong}:g" \
+           -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
 
     if "$isAWS"; then
-       sed -i -e "/#SBATCH -p huce_intel/d" \
-	      -e "/#SBATCH -t/d" \
-	      -e "/#SBATCH --mem/d" \
-	      -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
+        sed -i -e "/#SBATCH -p huce_intel/d" \
+               -e "/#SBATCH -t/d" \
+               -e "/#SBATCH --mem/d" \
+               -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
     fi
     
     printf "=== DONE SETTING UP INVERSION DIRECTORY ===\n"

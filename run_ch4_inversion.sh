@@ -4,6 +4,8 @@
 # (mps, 2/20/2021)
 # (djv, 12/7/2021)
 
+start_time=$(date)
+
 ##=======================================================================
 ## Parse config.yml file
 ##=======================================================================
@@ -83,6 +85,8 @@ if "$RunSetup"; then
     # Run the setup script
     ./setup_ch4_inversion.sh; wait;
 
+    printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
+
 fi
 
 ##=======================================================================
@@ -104,7 +108,7 @@ if  "$DoSpinup"; then
     # Submit job to job scheduler
     sbatch -W ${RunName}_Spinup.run; wait;
 
-    printf "\n=== DONE SPINUP SIMULATION ===\n"
+    printf "=== DONE SPINUP SIMULATION ===\n"
     
 fi
 
@@ -127,7 +131,7 @@ if "$DoJacobian"; then
     # Submit job to job scheduler
     ./submit_jacobian_simulations_array.sh; wait;
 
-    printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
+    printf "=== DONE JACOBIAN SIMULATIONS ===\n"
 
 fi
 
@@ -172,25 +176,25 @@ if "$DoPosterior"; then
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch -W ${RunName}_Posterior.run; wait;
-    printf "\n=== DONE SPINUP SIMULATION ===\n"
+    printf "=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion
 
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
     PrevDir="${MyPath}/${RunName}/spinup_run"
-    printf "Calling postproc_diags.py for posterior\n"
+    printf "\n=== Calling postproc_diags.py for posterior ===\n"
     python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
-    printf "DONE -- postproc_diags.py\n\n"
+    printf "=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
     mkdir -p data_GC_posterior
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_GC_posterior"
-    printf "Calling setup_GCdatadir.py for posterior\n"
+    printf "\n=== Calling setup_GCdatadir.py for posterior ===\n"
     python setup_GCdatadir.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "DONE -- setup_GCdatadir.py\n\n"
+    printf "=== DONE -- setup_GCdatadir.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     LonMinInvDomain=$(( LonMin-BufferDeg ))
@@ -210,10 +214,14 @@ if "$DoPosterior"; then
     FetchTROPOMI="False"
     isPost="True"
 
-    printf "Calling jacobian.py to sample prior simulation - no sensitivity analysis\n"
+    printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
     python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $FetchTROPOMI $isPost; wait
-    printf " DONE -- jacobian.py\n\n"
+    printf "=== DONE sampling the posterior simulation ===\n\n"
 
 fi
+
+end_time=$(date)
+printf "\nIMI started: %s" "$start_time"
+printf "\nIMI ended: %s\n\n" "$end_time"
 
 exit 0
