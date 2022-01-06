@@ -11,11 +11,29 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Region of interest
-## These values ignored if using custom state vector (below)
+## These lat/lon bounds will only be used if CreateStateVectorFile: true
 LonMin: -106
 LonMax: -104
 LatMin: 29
 LatMax: 31
+
+## State vector
+BufferDeg: 5
+nBufferClusters: 8
+LandThreshold: 0.25
+## Option for the IMI to create the state vector file automatically
+CreateStateVectorFile: true
+## If false, provide path to custom state vector file
+StateVectorFile: {path/to/statevector_ncfile}
+## To create custom state vector file from a shapefile, three steps: 
+## 1. Provide path to shapefile and lat/lon bounds for the inversion domain
+ShapeFile: {path/to/shapefile}
+LonMinCustomStateVector: -110
+LonMaxCustomStateVector: -100
+LatMinCustomStateVector: 25
+LatMaxCustomStateVector: 35
+## 2. Open and run the statevector_from_shapefile.ipynb Jupyter notebook
+## 3. Provide path to custom state vector file above
 
 ## Inversion
 PriorError: 0.5
@@ -33,7 +51,6 @@ Buffer: "3 3 3 3"
 
 ## Setup modules
 ## Turn on/off different steps in setting up GEOS-Chem & inversion 
-CreateStateVectorFile: true
 SetupTemplateRundir: true
 SetupSpinupRun: true
 SetupJacobianRuns: true
@@ -48,14 +65,9 @@ DoJacobian: true
 DoInversion: true
 DoPosterior: true
 
-## State vector settings (if CreateStateVectorFile: true)
-BufferDeg: 5
-nBufferClusters: 8
-LandThreshold: 0.25
-
-## Custom statevector file (if CreateStateVectorFile: false)
-StateVectorFile: {path/to/statevector_ncfile}
-ShapeFile: {path/to/shapefile}
+## IMI preview
+DoPreview: true
+DOFSThreshold: 2
 
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster
