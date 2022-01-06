@@ -283,10 +283,11 @@ if "$SetupTemplateRundir"; then
     cd $RunTemplate
 
     # Define inversion domain lat/lon bounds
-    LonMinInvDomain=$(( LonMin-BufferDeg ))
-    LonMaxInvDomain=$(( LonMax+BufferDeg ))
-    LatMinInvDomain=$(( LatMin-BufferDeg ))
-    LatMaxInvDomain=$(( LatMax+BufferDeg ))
+    # Here we use bc to do floating point arithmetic
+    LonMinInvDomain=`echo "$LonMin-$BufferDeg" | bc`
+    LonMaxInvDomain=`echo "$LonMax+$BufferDeg" | bc`
+    LatMinInvDomain=`echo "$LatMin-$BufferDeg" | bc`
+    LatMaxInvDomain=`echo "$LatMax+$BufferDeg" | bc`
     # If using custom state vector
     if ! "$CreateStateVectorFile"; then
         LonMinInvDomain=${LonMinCustomStateVector}
