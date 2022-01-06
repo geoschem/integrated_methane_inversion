@@ -515,6 +515,9 @@ if  "$SetupPreview"; then
            -e "s|{PERTURBATION}|1.0|g" \
            -e "s|{ELEMENT}|0|g" input.geos
 
+    # Update settings in HEMCO_Config.rc
+    sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
+
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PreviewName}.run
