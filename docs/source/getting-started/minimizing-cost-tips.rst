@@ -18,5 +18,6 @@ Exporting Data to S3
 Storing data in EBS volumes is more expensive than storing data in AWS' simple storage service (S3). Additionally, data costs in S3 are only charged on the amount of space you use, whereas EBS volumes charge you for the amount of space allocated.
 
 For these reasons, it is best practice to, after running the IMI, push your needed output data to an S3 bucket for long term storage and usage, rather than storing the entire EBS volume. Resources for creating an s3 bucket and pushing data to it can be found here:
+
 * `Creating an S3 Bucket <https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html>`_
 * `Uploading/Downloading files using the cp command <https://docs.aws.amazon.com/cli/latest/userguide/cli-services-s3-commands.html#using-s3-commands-managing-objects-copy>`_
