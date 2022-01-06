@@ -172,11 +172,13 @@ if [ "$Met" == "geosfp" ]; then
     metDir="GEOS_FP"
     native="0.25x0.3125"
     constYr="2011"
+    LandCoverFileExtension="nc"
 elif [ "$Met" == "merra2" ]; then
     metUC="MERRA2"
     metDir="MERRA2"
     native="0.5x0.625"
     constYr="2015"
+    LandCoverFileExtension="nc4"
 fi
 if [ "$Res" = "4x5" ]; then
     gridRes="${Res}"
