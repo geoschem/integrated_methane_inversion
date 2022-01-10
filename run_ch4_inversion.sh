@@ -197,10 +197,11 @@ if "$DoPosterior"; then
     printf "=== DONE -- setup_GCdatadir.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
-    LonMinInvDomain=$(( LonMin-BufferDeg ))
-    LonMaxInvDomain=$(( LonMax+BufferDeg ))
-    LatMinInvDomain=$(( LatMin-BufferDeg ))
-    LatMaxInvDomain=$(( LatMax+BufferDeg ))
+    # Here we use bc to do floating point arithmetic
+    LonMinInvDomain=`echo "$LonMin-$BufferDeg" | bc`
+    LonMaxInvDomain=`echo "$LonMax+$BufferDeg" | bc`
+    LatMinInvDomain=`echo "$LatMin-$BufferDeg" | bc`
+    LatMaxInvDomain=`echo "$LatMax+$BufferDeg" | bc`
     StateVectorFilePath="${MyPath}/${RunName}/StateVector.nc"
     if ! "$CreateStateVectorFile"; then
         LonMinInvDomain=${LonMinCustomStateVector}
