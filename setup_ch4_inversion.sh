@@ -251,6 +251,7 @@ fi
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
 nElements=$(ncmax StateVector $StateVectorFile)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
+rm ~/foo.nc
 
 # Purge software modules
 if ! "$isAWS"; then
@@ -296,6 +297,7 @@ if "$SetupTemplateRundir"; then
         LonMaxInvDomain=$(ncmax lon $StateVectorFile)
         LatMinInvDomain=$(ncmin lat $StateVectorFile)
         LatMaxInvDomain=$(ncmax lat $StateVectorFile)
+        rm ~/foo.nc
     fi
     Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
@@ -541,7 +543,7 @@ if  "$SetupPreview"; then
     # Navigate back to top-level directory
     cd ..
 
-    printf "=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
+    printf "=== DONE CREATING PREVIEW RUN DIRECTORY ===\n"
 
 fi 
 
