@@ -524,11 +524,27 @@ if  "$DoPreview"; then
         ./gcclassic --dryrun &> log.dryrun
         ./download_data.py log.dryrun aws
     fi
-    
-    # Navigate back to top-level directory
-    cd ..
 
     printf "=== DONE CREATING PREVIEW RUN DIRECTORY ===\n"
+
+    ##===============##
+    ##  Run preview  ##
+    ##===============##
+
+    printf "\n=== RUNNING IMI PREVIEW ===\n"
+
+    # Submit job to job scheduler
+    sbatch -W ${RunName}_Preview.run; wait;
+
+    # Run preview script
+    python ${InversionPath}/imi_preview.py
+
+    # Escape condition for DOFS threshold?
+
+    printf "=== DONE RUNNING IMI PREVIEW ===\n"
+
+    # Navigate back to top-level directory
+    cd ..
 
 fi 
 
