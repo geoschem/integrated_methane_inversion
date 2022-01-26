@@ -97,6 +97,14 @@ else
     source activate $CondaEnv
 fi
 
+# Get max process count for spinup, production, and run_inversion scripts
+if "$isAWS"; then
+    output=$(echo $(slurmd -C))
+    array=($output)
+    cpu_str=$(echo ${array[1]})
+    cpu_count=$(echo ${cpu_str:5})
+fi
+
 ## Jacobian settings
 PerturbValue=1.5
 
@@ -129,9 +137,9 @@ if "$BCdryrun"; then
     mkdir -p ${BCfiles}
 
     if "$DoSpinup"; then
-	START=${SpinupStart}
+        START=${SpinupStart}
     else
-	START=${StartDate}
+        START=${StartDate}
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
     python download_bc.py ${START} ${EndDate} ${BCfiles}
@@ -143,7 +151,7 @@ fi
 ##=======================================================================
 if "$RestartDownload"; then
     if [ ! -f "$RestartFile" ]; then
-	aws s3 cp --request-payer=requester s3://imi-boundary-conditions/${RestartFile} $RestartFile
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/${RestartFile} $RestartFile
     fi
 fi    
 
@@ -192,7 +200,7 @@ mkdir -p -v ${MyPath}/${RunName}
 ##=======================================================================
 if "$CreateStateVectorFile"; then
 
-    printf "\n=== CREATING STATE VECTOR FILE ===\n"
+    printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.nc"
@@ -214,7 +222,7 @@ if "$CreateStateVectorFile"; then
     printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
-    printf "=== DONE CREATING STATE VECTOR FILE ===\n"
+    printf "=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
 else
 
@@ -234,7 +242,7 @@ nElements=$(ncmax StateVector $StateVectorFile)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
 rm ~/foo.nc
 
-# Purge software modules
+# Purge software modules if not on AWS
 if ! "$isAWS"; then
     module purge
 fi
@@ -317,9 +325,9 @@ if "$SetupTemplateRundir"; then
     # Modify path to state vector file in HEMCO_Config.rc
     OLD=" StateVector.nc"
     if "$CreateStateVectorFile"; then
-	NEW=" ${MyPath}/${RunName}/${StateVectorFile}"
+        NEW=" ${MyPath}/${RunName}/${StateVectorFile}"
     else
-	NEW=" ${StateVectorFile}"
+        NEW=" ${StateVectorFile}"
     fi
     echo $NEW
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
@@ -445,14 +453,6 @@ fi # SetupTemplateRunDir
 ##=======================================================================
 ##  Set up IMI preview run directory
 ##=======================================================================
-
-if "$isAWS"; then
-    # Get max process count for spinup, production, and run_inversion scripts
-    output=$(echo $(slurmd -C))
-    array=($output)
-    cpu_str=$(echo ${array[1]})
-    cpu_count=$(echo ${cpu_str:5})
-fi
 
 if  "$SetupPreview"; then
 
