@@ -179,10 +179,11 @@ if "$DoPosterior"; then
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    LonMinInvDomain=$(( LonMin-BufferDeg ))
-    LonMaxInvDomain=$(( LonMax+BufferDeg ))
-    LatMinInvDomain=$(( LatMin-BufferDeg ))
-    LatMaxInvDomain=$(( LatMax+BufferDeg ))
+    # Here we use bc to do floating point arithmetic
+    LonMinInvDomain=`echo "$LonMin-$BufferDeg" | bc`
+    LonMaxInvDomain=`echo "$LonMax+$BufferDeg" | bc`
+    LatMinInvDomain=`echo "$LatMin-$BufferDeg" | bc`
+    LatMaxInvDomain=`echo "$LatMax+$BufferDeg" | bc`
     StateVectorFilePath="${MyPath}/${RunName}/StateVector.nc"
     if ! "$CreateStateVectorFile"; then
         function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }

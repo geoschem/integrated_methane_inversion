@@ -163,11 +163,13 @@ if [ "$Met" == "geosfp" ]; then
     metDir="GEOS_FP"
     native="0.25x0.3125"
     constYr="2011"
+    LandCoverFileExtension="nc"
 elif [ "$Met" == "merra2" ]; then
     metUC="MERRA2"
     metDir="MERRA2"
     native="0.5x0.625"
     constYr="2015"
+    LandCoverFileExtension="nc4"
 fi
 if [ "$Res" = "4x5" ]; then
     gridRes="${Res}"
@@ -203,10 +205,10 @@ if "$CreateStateVectorFile"; then
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.nc"
+    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.${LandCoverFileExtension}"
 
     # Download land cover file
-    s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.nc"
+    s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.${LandCoverFileExtension}"
     aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
 
     # Output path and filename for state vector file
@@ -275,10 +277,11 @@ if "$SetupTemplateRundir"; then
     cd $RunTemplate
 
     # Define inversion domain lat/lon bounds
-    LonMinInvDomain=$(( LonMin-BufferDeg ))
-    LonMaxInvDomain=$(( LonMax+BufferDeg ))
-    LatMinInvDomain=$(( LatMin-BufferDeg ))
-    LatMaxInvDomain=$(( LatMax+BufferDeg ))
+    # Here we use bc to do floating point arithmetic
+    LonMinInvDomain=`echo "$LonMin-$BufferDeg" | bc`
+    LonMaxInvDomain=`echo "$LonMax+$BufferDeg" | bc`
+    LatMinInvDomain=`echo "$LatMin-$BufferDeg" | bc`
+    LatMaxInvDomain=`echo "$LatMax+$BufferDeg" | bc`
     # If using custom state vector
     if ! "$CreateStateVectorFile"; then
         function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }

@@ -28,7 +28,6 @@ This site provides instructions for setting up and running the Integrated Methan
    getting-started/quick-start.rst
    getting-started/imi-config-file.rst
    getting-started/ami-specifications.rst
-   getting-started/manual-running.rst
    getting-started/running-with-tmux.rst
    getting-started/minimizing-cost-tips.rst
 
