@@ -63,15 +63,6 @@ else
     CondaEnv="ch4_inv" # See envs/README to create this environment
 fi
 
-# Activate Conda environment
-printf "Activating conda environment: ${CondaEnv}\n"
-if "$isAWS"; then
-    source /home/ubuntu/miniconda/etc/profile.d/conda.sh
-    conda activate $CondaEnv
-else
-    source activate $CondaEnv
-fi
-
 # Path to find non-emissions input data
 if "$isAWS"; then
     DataPath="/home/ubuntu/ExtData"
@@ -95,6 +86,15 @@ if "$isAWS"; then
     BCfiles="${DataPath}/BoundaryConditions"
 else
     BCfiles="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
+fi
+
+# Activate Conda environment
+printf "Activating conda environment: ${CondaEnv}\n"
+if "$isAWS"; then
+    source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+    conda activate $CondaEnv
+else
+    source activate $CondaEnv
 fi
 
 ## Jacobian settings
