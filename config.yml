@@ -25,7 +25,7 @@ LandThreshold: 0.25
 CreateStateVectorFile: true
 ## If false, provide path to custom state vector file
 StateVectorFile: {path/to/statevector_ncfile}
-## To create custom state vector file from a shapefile, three steps: 
+## If no file available, to create one from a shapefile, three steps: 
 ## 1. Provide path to shapefile and lat/lon bounds for the inversion domain
 ShapeFile: {path/to/shapefile}
 LonMinCustomStateVector: -110
@@ -33,7 +33,7 @@ LonMaxCustomStateVector: -100
 LatMinCustomStateVector: 25
 LatMaxCustomStateVector: 35
 ## 2. Open and run the statevector_from_shapefile.ipynb Jupyter notebook
-## 3. Provide path to custom state vector file above
+## 3. When complete, provide {path/to/statevector_ncfile}
 
 ## Inversion
 PriorError: 0.5
