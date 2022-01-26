@@ -151,7 +151,7 @@ fi
 ##=======================================================================
 if "$RestartDownload"; then
     if [ ! -f "$RestartFile" ]; then
-        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/${RestartFile} $RestartFile
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
     fi
 fi    
 
@@ -484,16 +484,17 @@ if  "$SetupPreview"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    #ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
-    #if "$UseBCsForRestart"; then
-    #    sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-    #fi
+    ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    if "$UseBCsForRestart"; then
+        sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+    fi
 
-    # End date for the preview simulation -- just 1 day
-    PreviewEnd=$(date --date="${StartDate} +1 day" +%Y%m%d)
+    # End date for the preview simulation
+    PreviewEnd=$(date --date="${SpinupStart} +1 day" +%Y%m%d)
 
     # Update settings in input.geos
-    sed -i -e "s|${EndDate}|${PreviewEnd}|g" \
+    sed -i -e "s|${StartDate}|${SpinupStart}|g" \
+           -e "s|${EndDate}|${PreviewEnd}|g" \
            -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
            -e "s|{PERTURBATION}|1.0|g" \
            -e "s|{ELEMENT}|0|g" input.geos
@@ -642,11 +643,13 @@ if  "$SetupPosteriorRun"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    if "$DoSpinup"; then
-        ln -s ../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
+    RestartFileFromSpinup=../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    if test -f "$RestartFileFromSpinup"; then
+        ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
     else
-        ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
+            RestartFile=${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+            ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
         fi
@@ -763,11 +766,17 @@ if "$SetupJacobianRuns"; then
 	rm -rf gcclassic
 	ln -s ${RunTemplate}/gcclassic .
 
-	# Link to restart file
-	if "$DoSpinup"; then
-	    ln -s ../../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
+    # Link to restart file
+    RestartFileFromSpinup=../../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    if test -f "$RestartFileFromSpinup"; then
+        ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
-	    ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
+	    if "$UseBCsForRestart"; then
+            RestartFile=${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+            ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+        fi
 	fi
    
 	# Update settings in input.geos
