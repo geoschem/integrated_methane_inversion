@@ -454,7 +454,7 @@ fi # SetupTemplateRunDir
 ##  Set up IMI preview run directory
 ##=======================================================================
 
-if  "$SetupPreview"; then
+if  "$DoPreview"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
