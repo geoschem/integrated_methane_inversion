@@ -50,6 +50,15 @@ CondaEnv="ch4_inv"
 FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 
 ##=======================================================================
+##  Download the TROPOMI data
+##=======================================================================
+if "$isAWS"; then
+    Sat_datadir=${MyPath}/${RunName}/data_TROPOMI
+    mkdir -p -v $Sat_datadir
+    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $Sat_datadir
+fi
+
+##=======================================================================
 ##  Run the setup script
 ##=======================================================================
 if "$RunSetup"; then
