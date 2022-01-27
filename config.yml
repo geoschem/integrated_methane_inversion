@@ -52,22 +52,22 @@ Buffer: "3 3 3 3"
 ## Setup modules
 ## Turn on/off different steps in setting up GEOS-Chem & inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
-SetupJacobianRuns: true
-SetupInversion: true
-SetupPosteriorRun: true
+SetupSpinupRun: false
+SetupJacobianRuns: false
+SetupInversion: false
+SetupPosteriorRun: false
 
 ## Run modules
 ## Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: true
-DoJacobian: true
-DoInversion: true
-DoPosterior: true
+DoSpinup: false
+DoJacobian: false
+DoInversion: false
+DoPosterior: false
 
 ## IMI preview
 DoPreview: true
-DOFSThreshold: 2
+DOFSThreshold: 0
 
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster

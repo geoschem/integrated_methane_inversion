@@ -549,7 +549,7 @@ if  "$DoPreview"; then
     # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
     eval $(parse_yaml ${preview_dir}/preview_diagnostics.txt) 
     if [ 1 -eq "$(echo "${expectedDOFS} < ${DOFSThreshold}" | bc)" ]; then  
-        printf "\nExpected DOFS = ${expectedDOFS} are less than DOFSThreshold = ${DOFSThreshold}. Exiting."
+        printf "\nExpected DOFS = ${expectedDOFS} are less than DOFSThreshold = ${DOFSThreshold}. Exiting.\n"
         printf "Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n"
         exit 0
     fi
