@@ -469,7 +469,7 @@ if  "$DoPreview"; then
 
     cd ${MyPath}/${RunName}
     
-    # Define the run directory name
+    # Define the preview run name
     PreviewName="${RunName}_Preview"
 
     # Make the directory
@@ -537,7 +537,11 @@ if  "$DoPreview"; then
     sbatch -W ${RunName}_Preview.run; wait;
 
     # Run preview script
-    python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py
+    config_path=${InversionPath}/config.yml
+    state_vector_path=$StateVectorFile
+    preview_dir=${MyPath}/${RunName}/${runDir}
+    tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
+    python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py $config_path $state_vector_path $preview_dir $tropomi_cache
 
     # Escape condition for DOFS threshold?
 
