@@ -53,9 +53,9 @@ FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 ##  Download the TROPOMI data
 ##=======================================================================
 if "$isAWS"; then
-    Sat_datadir=${MyPath}/${RunName}/data_TROPOMI
-    mkdir -p -v $Sat_datadir
-    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $Sat_datadir
+    tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
+    mkdir -p -v $tropomi_cache
+    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $tropomi_cache
 fi
 
 ##=======================================================================
