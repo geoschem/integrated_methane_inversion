@@ -31,7 +31,8 @@ eval $(parse_yaml config.yml)
 # Path to inversion setup
 InversionPath=$(pwd -P)
 
-# AWS only: Download missing GEOS-Chem input data from S3 (you may be charged for S3 transfer)
+# AWS only: Download missing GEOS-Chem input data from S3
+# You will be charged if your ec2 instance is not in the us-east-1 region.
 if "$isAWS"; then
     PreviewDryRun=true     # Met fields/emissions for preview run
     SpinupDryrun=true      # Met fields/emissions for spinup run
@@ -538,14 +539,20 @@ if  "$DoPreview"; then
 
     # Run preview script
     config_path=${InversionPath}/config.yml
-    state_vector_path=$StateVectorFile
+    state_vector_path=${MyPath}/${RunName}/StateVector.nc
     preview_dir=${MyPath}/${RunName}/${runDir}
     tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
     python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py $config_path $state_vector_path $preview_dir $tropomi_cache
 
-    # Escape condition for DOFS threshold?
-
     printf "=== DONE RUNNING IMI PREVIEW ===\n"
+
+    # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
+    eval $(parse_yaml ${preview_dir}/preview_diagnostics.txt) 
+    if [ 1 -eq "$(echo "${expectedDOFS} < ${DOFSThreshold}" | bc)" ]; then  
+        printf "\nExpected DOFS = ${expectedDOFS} are less than DOFSThreshold = ${DOFSThreshold}. Exiting."
+        printf "Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n"
+        exit 0
+    fi
 
     # Navigate back to top-level directory
     cd ..
