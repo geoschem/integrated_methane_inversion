@@ -674,7 +674,7 @@ if  "$SetupPosteriorRun"; then
 
     # Link to restart file
     RestartFileFromSpinup=../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup"; then
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
     else
         if "$UseBCsForRestart"; then
@@ -798,7 +798,7 @@ if "$SetupJacobianRuns"; then
 
     # Link to restart file
     RestartFileFromSpinup=../../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup"; then
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
 	    if "$UseBCsForRestart"; then
