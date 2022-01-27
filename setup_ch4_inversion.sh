@@ -533,11 +533,11 @@ if  "$DoPreview"; then
 
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
-    # Submit job to job scheduler
+    # Submit preview GEOS-Chem job to job scheduler
     sbatch -W ${RunName}_Preview.run; wait;
 
     # Run preview script
-    python ${InversionPath}/imi_preview.py
+    python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py
 
     # Escape condition for DOFS threshold?
 
