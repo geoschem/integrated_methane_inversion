@@ -16,6 +16,7 @@ LonMin: -106
 LonMax: -104
 LatMin: 29
 LatMax: 31
+REGION: "NA"
 
 ## State vector
 BufferDeg: 5
@@ -46,7 +47,6 @@ Met: "geosfp"
 HalfPolar: "F"
 Levs: "47"
 NestedGrid: "T"
-REGION: "NA"
 Buffer: "3 3 3 3"
 
 ## Setup modules
