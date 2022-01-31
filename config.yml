@@ -22,9 +22,9 @@ REGION: "NA"
 BufferDeg: 5
 nBufferClusters: 8
 LandThreshold: 0.25
-## Option for the IMI to create the state vector file automatically
+## Option for the IMI to create the state vector file from scratch automatically
 CreateStateVectorFile: true
-## If false, provide path to custom state vector file
+## If false, provide path to custom/pre-generated state vector file
 StateVectorFile: {path/to/statevector_ncfile}
 ## If no file available, to create one from a shapefile, three steps: 
 ## 1. Provide path to shapefile and lat/lon bounds for the inversion domain
