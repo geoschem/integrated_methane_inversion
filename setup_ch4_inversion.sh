@@ -243,7 +243,6 @@ fi
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
 nElements=$(ncmax StateVector ${MyPath}/${RunName}/StateVector.nc)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
-rm ~/foo.nc
 
 # Purge software modules if not on AWS
 if ! "$isAWS"; then
