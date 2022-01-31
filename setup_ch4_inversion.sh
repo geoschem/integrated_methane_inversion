@@ -898,9 +898,10 @@ if "$SetupInversion"; then
 
 fi #SetupInversion
 
-# Copy sample cluster files (djv: remove cluster terminology)
+# Copy sample cluster files and remove temporary files (djv: remove cluster terminology)
 if "$isAWS"; then
     cp -rfP /home/ubuntu/backup_files/cluster_files/* /home/ubuntu/ExtData/HEMCO/
+    rm -f /home/ubuntu/foo.nc
 fi
 
 exit 0

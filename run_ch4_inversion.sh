@@ -204,6 +204,11 @@ if "$DoPosterior"; then
 
 fi
 
+# Remove temporary files
+if "$isAWS"; then
+    rm -f /home/ubuntu/foo.nc
+fi
+
 end_time=$(date)
 printf "\nIMI started: %s" "$start_time"
 printf "\nIMI ended: %s\n\n" "$end_time"
