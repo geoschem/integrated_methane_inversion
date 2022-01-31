@@ -275,25 +275,16 @@ if "$SetupTemplateRundir"; then
     cp -RLv ${RunFilesPath}/../shared/download_data.yml ${RunTemplate}/
     cp -RLv ${GCClassicPath}/src/GEOS-Chem/run/shared/species_database.yml ${RunTemplate}/
 
-    cd $RunTemplate
-
     # Define inversion domain lat/lon bounds
-    # Here we use bc to do floating point arithmetic
-    LonMinInvDomain=`echo "$LonMin-$BufferDeg" | bc`
-    LonMaxInvDomain=`echo "$LonMax+$BufferDeg" | bc`
-    LatMinInvDomain=`echo "$LatMin-$BufferDeg" | bc`
-    LatMaxInvDomain=`echo "$LatMax+$BufferDeg" | bc`
-    # If using custom state vector
-    if ! "$CreateStateVectorFile"; then
-        function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-        LonMinInvDomain=$(ncmin lon $StateVectorFile)
-        LonMaxInvDomain=$(ncmax lon $StateVectorFile)
-        LatMinInvDomain=$(ncmin lat $StateVectorFile)
-        LatMaxInvDomain=$(ncmax lat $StateVectorFile)
-        rm ~/foo.nc
-    fi
+    function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+    LonMinInvDomain=$(ncmin lon StateVector.nc)
+    LonMaxInvDomain=$(ncmax lon StateVector.nc)
+    LatMinInvDomain=$(ncmin lat StateVector.nc)
+    LatMaxInvDomain=$(ncmax lat StateVector.nc)
     Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
+
+    cd $RunTemplate
 
     # Update settings in input.geos
     sed -i -e "s:{DATE1}:${StartDate}:g" \
