@@ -213,7 +213,7 @@ if "$CreateStateVectorFile"; then
     aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
 
     # Output path and filename for state vector file
-    StateVectorFile="StateVector.nc"
+    StateVectorFName="StateVector.nc"
 
     # Create state vector file
     cd ${MyPath}/$RunName
@@ -223,14 +223,14 @@ if "$CreateStateVectorFile"; then
     chmod 755 make_state_vector_file.py
 
     printf "Calling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFile $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
+    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
     printf "=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
 else
 
-    # Copy custom state vector to $MyPath/$RunName directory for use by other scripts
-    cp $StateVectorFile ${MyPath}/$RunName/StateVector.nc
+    # Copy custom state vector to $MyPath/$RunName directory for later use
+    cp $StateVectorFile ${MyPath}/${RunName}/StateVector.nc
 
 fi
 
@@ -241,7 +241,7 @@ fi
 
 # Determine number of elements in state vector file
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-nElements=$(ncmax StateVector $StateVectorFile)
+nElements=$(ncmax StateVector ${MyPath}/${RunName}/StateVector.nc)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
 rm ~/foo.nc
 
@@ -319,11 +319,7 @@ if "$SetupTemplateRundir"; then
 
     # Modify path to state vector file in HEMCO_Config.rc
     OLD=" StateVector.nc"
-    if "$CreateStateVectorFile"; then
-        NEW=" ${MyPath}/${RunName}/${StateVectorFile}"
-    else
-        NEW=" ${StateVectorFile}"
-    fi
+    NEW=" ${MyPath}/${RunName}/StateVector.nc"
     echo $NEW
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
