@@ -68,7 +68,7 @@ DoPosterior: false
 
 ## IMI preview
 DoPreview: true
-DOFSThreshold: 1
+DOFSThreshold: 0
 
 ## ======================================================================
 ## Specific to Harvard's Cannon cluster
