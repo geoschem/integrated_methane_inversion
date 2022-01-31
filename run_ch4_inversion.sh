@@ -54,9 +54,9 @@ FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 ##=======================================================================
 # Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
 if "$isAWS"; then
-    tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
-    mkdir -p -v $tropomi_cache
-    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $tropomi_cache
+    tropomiCache=${MyPath}/${RunName}/data_TROPOMI
+    mkdir -p -v $tropomiCache
+    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $tropomiCache
 fi
 
 ##=======================================================================
@@ -199,7 +199,7 @@ if "$DoPosterior"; then
     isPost="True"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $FetchTROPOMI $isPost; wait
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
     printf "=== DONE sampling the posterior simulation ===\n\n"
 
 fi
