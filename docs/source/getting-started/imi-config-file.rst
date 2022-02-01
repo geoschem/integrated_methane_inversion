@@ -6,6 +6,7 @@ General
 ~~~~~~~
 - ``isAWS``: Boolean value of whether you are running the workflow on AWS (``true``) or a local cluster (``false``).
 - ``RunName``: Name for your workflow that will be used for directory names and prefixes.
+- ``UseSlurm``: Boolean value of whether you are running the end to end script as a batch job with ``sbatch`` (eg. ``sbatch run_ch4_inversion.sh``) instead of interactively (eg. ./run_ch4_inversion.sh)
 
 Period of Interest
 ~~~~~~~~~~~~~~~~~~

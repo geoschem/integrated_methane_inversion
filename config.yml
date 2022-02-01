@@ -2,8 +2,9 @@
 ## (djv, 7 December 2021)
 
 ## General
-isAWS: true
+isAWS: false
 RunName: "Test_Permian_1week"
+UseSlurm: false
 
 ## Period of interest
 StartDate: 20180501

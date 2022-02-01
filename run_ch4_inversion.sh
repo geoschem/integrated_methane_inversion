@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#SBATCH -n 1
+#SBATCH -N 1
+
 # This script will run a CH4 analytical inversion with GEOS-Chem.
 # (mps, 2/20/2021)
 # (djv, 12/7/2021)
@@ -30,6 +33,24 @@ function parse_yaml {
          printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
       }
    }'
+}
+
+# Description: schedule job either by using sbatch or direct call
+# Usage:
+#   scheduleJob <runscript-name>
+#       runscript-name: script to schedule or run job for
+scheduleJob() {
+    # Note: running sbatch within a preexisting sbatch process on aws results in 
+    # the secondary sbatch job getting stuck in pending because all
+    # resources on the instance are utilized by the driving sbatch command.
+    # In this case the secondary sbatch process should be run directly 
+
+    if "$UseSlurm" && "$isAWS"; then
+        ./$1
+    else
+        # Submit job to job scheduler
+        sbatch -W $1; wait;
+    fi
 }
 
 # Get configuration
@@ -106,7 +127,7 @@ if  "$DoSpinup"; then
     fi
 
     # Submit job to job scheduler
-    sbatch -W ${RunName}_Spinup.run; wait;
+    scheduleJob ${RunName}_Spinup.run
 
     printf "=== DONE SPINUP SIMULATION ===\n"
     
@@ -153,7 +174,7 @@ if "$DoInversion"; then
     fi
 
     # Execute inversion driver script
-    sbatch -W run_inversion.sh; wait;
+    scheduleJob run_inversion.sh
         
     printf "=== DONE RUNNING INVERSION ===\n"
 
@@ -175,7 +196,7 @@ if "$DoPosterior"; then
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch -W ${RunName}_Posterior.run; wait;
+    scheduleJob ${RunName}_Posterior.run
     printf "=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion
