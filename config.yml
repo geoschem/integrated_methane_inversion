@@ -2,7 +2,7 @@
 ## (djv, 7 December 2021)
 
 ## General
-isAWS: false
+isAWS: true
 RunName: "Test_Permian_1week"
 UseSlurm: false
 
