@@ -1,9 +1,13 @@
 #!/bin/bash
 
-# Function to parse yaml files from shell script
-# By Stefan Farestam via stackoverflow:
-# https://stackoverflow.com/questions/5014632/how-can-i-parse-a-yaml-file-from-a-linux-shell-script
-function parse_yaml {
+# Description: Function to parse yaml files from shell script
+#   By Stefan Farestam via stackoverflow:
+#   https://stackoverflow.com/questions/5014632/how-can-i-parse-a-yaml-file-from-a-linux-shell-script
+# Usage:
+#   parse_yaml <file-path> <local-prefix>
+#      <file-path>: path to yaml file you would like to parse
+#      <local-prefix>: [Optional] prefix to append onto yaml vars
+parse_yaml() {
    local prefix=$2
    local s='[[:space:]]*' w='[a-zA-Z0-9_]*' fs=$(echo @|tr @ '\034')
    sed -ne "s|^\($s\):|\1|" \
@@ -14,8 +18,8 @@ function parse_yaml {
       vname[indent] = $2;
       for (i in vname) {if (i > indent) {delete vname[i]}}
       if (length($3) > 0) {
-         vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
-         printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
+        vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+        printf("%s%s%s=\"%s\"\n", "'$prefix'",vn, $2, $3);
       }
    }'
 }

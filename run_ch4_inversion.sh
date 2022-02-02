@@ -12,11 +12,31 @@ start_time=$(date)
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
+# Description: 
+#   running `sbatch <file>; wait;` within a preexisting sbatch 
+#   process on aws results in the child sbatch job getting stuck in pending 
+#   because all available resources on the instance are utilized by the 
+#   driving sbatch command. In this case the child sbatch process 
+#   should be run directly. This function schedules a job either by using 
+#   sbatch or direct call depending on whether the parent process is using slurm
+# Usage:
+#   scheduleJob <runscript-name>
+#      runscript-name: script to schedule or run job for
+scheduleJob() {
+
+    if "$UseSlurm" && "$isAWS"; then
+        ./$1
+    else
+        # Submit job to job scheduler
+        sbatch -W $1; wait;
+    fi
+}
+
 # Get configuration
 source parse_yaml.sh
 eval $(parse_yaml config.yml)
 # For reference, this defines the following environment variables:
-# General: $isAWS, $RunName
+# General: $isAWS, $RunName, $UseSlurm
 # Period of interest: $StartDate, $EndDate, $SpinupMonths
 # Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
 # Inversion: $PriorError, $ObsError, $Gamma
@@ -97,7 +117,7 @@ if  "$DoSpinup"; then
     fi
 
     # Submit job to job scheduler
-    sbatch -W ${RunName}_Spinup.run; wait;
+    scheduleJob ${RunName}_Spinup.run
 
     printf "=== DONE SPINUP SIMULATION ===\n"
     
@@ -144,7 +164,7 @@ if "$DoInversion"; then
     fi
 
     # Execute inversion driver script
-    sbatch -W run_inversion.sh; wait;
+    scheduleJob run_inversion.sh
         
     printf "=== DONE RUNNING INVERSION ===\n"
 
@@ -166,7 +186,7 @@ if "$DoPosterior"; then
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch -W ${RunName}_Posterior.run; wait;
+    scheduleJob ${RunName}_Posterior.run
     printf "=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion

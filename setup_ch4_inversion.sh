@@ -13,7 +13,7 @@ printf "\n=== PARSING CONFIG FILE ===\n"
 source parse_yaml.sh
 eval $(parse_yaml config.yml)
 # For reference, this defines the following environment variables:
-# General: $isAWS, $RunName
+# General: $isAWS, $RunName, $UseSlurm
 # Period of interest: $StartDate, $EndDate, $SpinupMonths
 # Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
 # Inversion: $PriorError, $ObsError, $Gamma
