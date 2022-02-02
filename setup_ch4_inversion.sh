@@ -150,6 +150,7 @@ fi
 ##=======================================================================
 ## Download initial restart file if requested
 ##=======================================================================
+
 if "$RestartDownload"; then
     if [ ! -f "$RestartFile" ]; then
         aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
@@ -159,6 +160,7 @@ fi
 ##=======================================================================
 ## Define met and grid fields for HEMCO_Config.rc
 ##=======================================================================
+
 if [ "$Met" == "geosfp" ]; then
     metUC="GEOSFP"
     metDir="GEOS_FP"
@@ -172,6 +174,7 @@ elif [ "$Met" == "merra2" ]; then
     constYr="2015"
     LandCoverFileExtension="nc4"
 fi
+
 if [ "$Res" = "4x5" ]; then
     gridRes="${Res}"
     gridResLong="4.0x5.0"
@@ -185,6 +188,7 @@ elif [ "$Res" == "0.25x0.3125" ]; then
     gridRes="025x03125"
     gridResLong="${Res}"
 fi
+
 if [ -z "$REGION" ]; then
     gridDir="$Res"
 else
@@ -201,6 +205,7 @@ mkdir -p -v ${MyPath}/${RunName}
 ##=======================================================================
 ## Create state vector file
 ##=======================================================================
+
 if "$CreateStateVectorFile"; then
 
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
@@ -252,7 +257,9 @@ fi
 ##=======================================================================
 ## Set up template run directory
 ##=======================================================================
+
 RunTemplate="${MyPath}/${RunName}/template_run"
+
 if "$SetupTemplateRundir"; then
 
     printf "\n=== CREATING TEMPLATE RUN DIRECTORY ===\n"
@@ -629,6 +636,7 @@ fi # SetupSpinupRun
 ##=======================================================================
 ##  Set up posterior run directory
 ##=======================================================================
+
 if  "$SetupPosteriorRun"; then
 
     # Make sure template run directory exists
@@ -719,6 +727,7 @@ fi # SetupPosteriorRun
 ##=======================================================================
 ##  Set up Jacobian run directories
 ##=======================================================================
+
 if "$SetupJacobianRuns"; then
 
     # Make sure template run directory exists
@@ -850,6 +859,7 @@ fi  # SetupJacobianRuns
 ##=======================================================================
 ##  Setup inversion directory
 ##=======================================================================
+
 if "$SetupInversion"; then
 
     printf "\n=== SETTING UP INVERSION DIRECTORY ===\n"

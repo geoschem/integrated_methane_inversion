@@ -12,26 +12,6 @@ start_time=$(date)
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
-# Description: 
-#   running `sbatch <file>; wait;` within a preexisting sbatch 
-#   process on aws results in the child sbatch job getting stuck in pending 
-#   because all available resources on the instance are utilized by the 
-#   driving sbatch command. In this case the child sbatch process 
-#   should be run directly. This function schedules a job either by using 
-#   sbatch or direct call depending on whether the parent process is using slurm
-# Usage:
-#   scheduleJob <runscript-name>
-#      runscript-name: script to schedule or run job for
-scheduleJob() {
-
-    if "$UseSlurm" && "$isAWS"; then
-        ./$1
-    else
-        # Submit job to job scheduler
-        sbatch -W $1; wait;
-    fi
-}
-
 # Get configuration
 source parse_yaml.sh
 eval $(parse_yaml config.yml)
@@ -56,8 +36,32 @@ else
     SetupPath="FILL"
 fi
 
+##=======================================================================
+## Function for scheduling jobs
+##=======================================================================
+
+# Description: 
+#   running `sbatch <file>; wait;` within a preexisting sbatch 
+#   process on aws results in the child sbatch job getting stuck in pending 
+#   because all available resources on the instance are utilized by the 
+#   driving sbatch command. In this case the child sbatch process 
+#   should be run directly. This function schedules a job either by using 
+#   sbatch or direct call depending on whether the parent process is using slurm
+# Usage:
+#   scheduleJob <runscript-name>
+#      runscript-name: script to schedule or run job for
+scheduleJob() {
+
+    if "$UseSlurm" && "$isAWS"; then
+        ./$1
+    else
+        # Submit job to job scheduler
+        sbatch -W $1; wait;
+    fi
+}
+
 ## ======================================================================
-## Specific to Harvard's Cannon cluster
+## Settings specific to Harvard's Cannon cluster
 ## ======================================================================
 
 # Path to inversion setup
@@ -72,6 +76,7 @@ FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 ##=======================================================================
 ##  Download the TROPOMI data
 ##=======================================================================
+
 # Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
 if "$isAWS"; then
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
@@ -82,6 +87,7 @@ fi
 ##=======================================================================
 ##  Run the setup script
 ##=======================================================================
+
 if "$RunSetup"; then
 
     printf "\n=== RUNNING SETUP SCRIPT ===\n"
@@ -103,6 +109,7 @@ fi
 ##=======================================================================
 ##  Submit spinup simulation
 ##=======================================================================
+
 if  "$DoSpinup"; then
 
     printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
@@ -126,6 +133,7 @@ fi
 ##=======================================================================
 ##  Submit Jacobian simulation
 ##=======================================================================
+
 if "$DoJacobian"; then
 
     printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
@@ -149,6 +157,7 @@ fi
 ##=======================================================================
 ##  Process data and run inversion
 ##=======================================================================
+
 if "$DoInversion"; then
 
     printf "\n=== RUNNING INVERSION ===\n"
@@ -171,8 +180,9 @@ if "$DoInversion"; then
 fi
 
 ##=======================================================================
-##  Submit posterior simulation and process output
+##  Submit posterior simulation and process the output
 ##=======================================================================
+
 if "$DoPosterior"; then
 
     cd ${MyPath}/${RunName}/posterior_run
@@ -229,6 +239,7 @@ if "$isAWS"; then
     rm -f /home/ubuntu/foo.nc
 fi
 
+# Run time
 end_time=$(date)
 printf "\nIMI started: %s" "$start_time"
 printf "\nIMI ended: %s\n\n" "$end_time"
