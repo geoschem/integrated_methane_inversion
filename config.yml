@@ -13,10 +13,10 @@ SpinupMonths: 1
 
 ## Region of interest
 ## These lat/lon bounds will only be used if CreateStateVectorFile: true
-LonMin: -106
-LonMax: -104
-LatMin: 29
-LatMax: 31
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 33
 ## Select nesting window (NA, EU, or AS)
 REGION: "NA"
 
