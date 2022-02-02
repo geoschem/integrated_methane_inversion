@@ -203,9 +203,9 @@ if "$DoPosterior"; then
     mkdir -p data_GC_posterior
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_GC_posterior"
-    printf "\n=== Calling setup_GCdatadir.py for posterior ===\n"
-    python setup_GCdatadir.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "=== DONE -- setup_GCdatadir.py ===\n"
+    printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
+    python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+    printf "=== DONE -- setup_gc_cache.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
