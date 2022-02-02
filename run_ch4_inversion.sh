@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#SBATCH -n 1
-#SBATCH -N 1
-
 # This script will run a CH4 analytical inversion with GEOS-Chem.
 # (mps, 2/20/2021)
 # (djv, 12/7/2021)
