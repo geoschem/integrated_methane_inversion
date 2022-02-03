@@ -25,6 +25,8 @@ nBufferClusters: 8
 LandThreshold: 0.25
 ##   Option for the IMI to automatically create the state vector file:
 CreateStateVectorFile: true
+
+## Custom state vector
 ##   If using a custom/pre-generated state vector file, provide the path:
 StateVectorFile: {optional/path/to/statevector_ncfile}
 ##   To create a custom state vector file from a shape file, follow three steps:
