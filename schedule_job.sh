@@ -10,7 +10,7 @@
 # Usage:
 #   scheduleJob <runscript-name>
 #      runscript-name: script to schedule or run job for
-scheduleJob() {
+schedule_job() {
 
     if "$UseSlurm" && "$isAWS"; then
         ./$1
