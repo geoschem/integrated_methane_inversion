@@ -27,6 +27,8 @@ eval $(parse_yaml config.yml)
 # If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
 # Harvard-Cannon: $nCPUs, $partition
 
+source schedule_job.sh
+
 # My path
 if "$isAWS"; then
     MyPath="/home/ubuntu/CH4_Workflow"
@@ -35,30 +37,6 @@ else
     MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
     SetupPath="FILL"
 fi
-
-##=======================================================================
-## Function for scheduling jobs
-##=======================================================================
-
-# Description: 
-#   running `sbatch <file>; wait;` within a preexisting sbatch 
-#   process on aws results in the child sbatch job getting stuck in pending 
-#   because all available resources on the instance are utilized by the 
-#   driving sbatch command. In this case the child sbatch process 
-#   should be run directly. This function schedules a job either by using 
-#   sbatch or direct call depending on whether the parent process is using slurm
-# Usage:
-#   scheduleJob <runscript-name>
-#      runscript-name: script to schedule or run job for
-scheduleJob() {
-
-    if "$UseSlurm" && "$isAWS"; then
-        ./$1
-    else
-        # Submit job to job scheduler
-        sbatch -W $1; wait;
-    fi
-}
 
 ## ======================================================================
 ## Settings specific to Harvard's Cannon cluster
@@ -124,7 +102,7 @@ if  "$DoSpinup"; then
     fi
 
     # Submit job to job scheduler
-    scheduleJob ${RunName}_Spinup.run
+    schedule_job ${RunName}_Spinup.run
 
     printf "=== DONE SPINUP SIMULATION ===\n"
     
@@ -173,7 +151,7 @@ if "$DoInversion"; then
     fi
 
     # Execute inversion driver script
-    scheduleJob run_inversion.sh
+    schedule_job run_inversion.sh
         
     printf "=== DONE RUNNING INVERSION ===\n"
 
@@ -196,7 +174,7 @@ if "$DoPosterior"; then
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    scheduleJob ${RunName}_Posterior.run
+    schedule_job ${RunName}_Posterior.run
     printf "=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion

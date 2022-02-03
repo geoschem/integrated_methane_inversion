@@ -24,6 +24,8 @@ eval $(parse_yaml config.yml)
 # If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
 # Harvard-Cannon: $nCPUs, $partition
 
+source schedule_job.sh
+
 ##=======================================================================
 ## Standard settings
 ##=======================================================================
@@ -528,7 +530,7 @@ if  "$DoPreview"; then
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
     # Submit preview GEOS-Chem job to job scheduler
-    sbatch -W ${RunName}_Preview.run; wait;
+    schedule_job ${RunName}_Preview.run
 
     # Run preview script
     config_path=${InversionPath}/config.yml
