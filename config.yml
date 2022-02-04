@@ -3,7 +3,7 @@
 ## General
 isAWS: true
 RunName: "Test_Permian_1week"
-UseSlurm: true
+UseSlurm: false
 
 ## Period of interest
 StartDate: 20180501
