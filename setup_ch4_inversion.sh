@@ -516,9 +516,6 @@ if  "$DoPreview"; then
                -e "/#SBATCH -t/d" \
                -e "/#SBATCH --mem/d" \
                -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PreviewName}.run
-        if "$UseSlurm"; then
-            sed -i -e "s|export OMP_NUM_THREADS|#export OMP_NUM_THREADS|g" ${PreviewName}.run
-        fi
     fi
 
     ### Perform dry run if requested
@@ -626,9 +623,6 @@ if  "$SetupSpinupRun"; then
                -e "/#SBATCH -t/d" \
                -e "/#SBATCH --mem/d" \
                -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
-        if "$UseSlurm"; then
-            sed -i -e "s|export OMP_NUM_THREADS|#export OMP_NUM_THREADS|g" ${SpinupName}.run
-        fi
     fi
 
     ### Perform dry run if requested
@@ -720,9 +714,6 @@ if  "$SetupPosteriorRun"; then
                -e "/#SBATCH -t/d" \
                -e "/#SBATCH --mem/d" \
                -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
-        if "$UseSlurm"; then
-            sed -i -e "s|export OMP_NUM_THREADS|#export OMP_NUM_THREADS|g" ${PosteriorName}.run
-        fi
     fi
 
     ### Perform dry run if requested
