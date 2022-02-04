@@ -24,8 +24,6 @@ eval $(parse_yaml config.yml)
 # If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
 # Harvard-Cannon: $nCPUs, $partition
 
-source schedule_job.sh
-
 ##=======================================================================
 ## Standard settings
 ##=======================================================================
@@ -106,6 +104,12 @@ if "$isAWS"; then
     array=($output)
     cpu_str=$(echo ${array[1]})
     cpu_count=$(echo ${cpu_str:5})
+    
+    # with sbatch reduce cpu_count by 1 to account for parent sbatch process 
+    # using 1 core 
+    if "$UseSlurm"; then 
+        cpu_count="$((cpu_count-1))"
+    fi
 fi
 
 ## Jacobian settings
@@ -533,7 +537,7 @@ if  "$DoPreview"; then
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
     # Submit preview GEOS-Chem job to job scheduler
-    schedule_job ${RunName}_Preview.run
+    sbatch -W ${RunName}_Preview.run; wait;
 
     # Run preview script
     config_path=${InversionPath}/config.yml

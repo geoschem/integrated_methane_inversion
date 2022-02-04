@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#SBATCH -N 1
+#SBATCH -n 1
+
 # This script will run a CH4 analytical inversion with GEOS-Chem.
 # (mps, 2/20/2021)
 # (djv, 12/7/2021)
@@ -26,8 +29,6 @@ eval $(parse_yaml config.yml)
 # State vector: $BufferDeg, $nBufferClusters, $LandThreshold
 # If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
 # Harvard-Cannon: $nCPUs, $partition
-
-source schedule_job.sh
 
 # My path
 if "$isAWS"; then
@@ -102,7 +103,7 @@ if  "$DoSpinup"; then
     fi
 
     # Submit job to job scheduler
-    schedule_job ${RunName}_Spinup.run
+    sbatch -W ${RunName}_Spinup.run; wait;
 
     printf "=== DONE SPINUP SIMULATION ===\n"
     
@@ -151,7 +152,7 @@ if "$DoInversion"; then
     fi
 
     # Execute inversion driver script
-    schedule_job run_inversion.sh
+    sbatch -W run_inversion.sh; wait;
         
     printf "=== DONE RUNNING INVERSION ===\n"
 
@@ -174,7 +175,7 @@ if "$DoPosterior"; then
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    schedule_job ${RunName}_Posterior.run
+    sbatch -W ${RunName}_Posterior.run; wait;
     printf "=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${MyPath}/${RunName}/inversion
