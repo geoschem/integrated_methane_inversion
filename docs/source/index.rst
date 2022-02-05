@@ -17,7 +17,9 @@ Integrated Methane Inversion Workflow
 
 The Integrated Methane Inversion (IMI) workflow is a cloud-based (or local cluster) tool for quantifying methane emissions by inversion of satellite observations from the TROPOspheric Monitoring Instrument (TROPOMI). The IMI uses `GEOS-Chem <http://geos-chem.org>`_ as forward model for the inversion and infers methane emissions at 25 × 25 km\ :sup:`2`\  resolution.
 
-This site provides instructions for setting up and running the Integrated Methane Inversion workflow. Some instructions are specific to running the workflow on the AWS Cloud, but most steps in the workflow do not rely on using a cloud environment. We explain how to launch an EC2 instance from our custom AMI, configure and run the inversion workflow, and analyze the results with a ready-made jupyter notebook.
+This site provides instructions for setting up and running the IMI. Some instructions are specific to the AWS cloud, but most steps in the workflow do not require a cloud environment. 
+
+We explain how to launch an EC2 instance from our custom AMI, configure and run an inversion, and analyze results with a ready-made jupyter notebook.
 
 
 .. toctree::
