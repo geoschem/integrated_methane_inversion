@@ -8,25 +8,39 @@ General
    :widths: 40 60
 
    * - ``isAWS``
-     - Boolean for running the workflow on AWS (``true``) or a local cluster (``false``).
+     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
    * - ``UseSlurm``
-     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively. To run the IMI with ``sbatch run_ch4_inversion.sh``, select ``true``; to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO), select ``false``.
+     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively. Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``. Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO).
 
 Period of Interest
 ~~~~~~~~~~~~~~~~~~
-- ``StartDate``: Beginning of the inversion time frame in ``YYYYMMDD`` format (this date is included in the inversion, 0-24h UTC).
-- ``EndDate``: End of the inversion time frame in ``YYYYMMDD`` format (this date is excluded from the inversion, 0-24h UTC).
-- ``SpinupMonths``: Number of months for the spinup simulation.
+.. list-table::
+   :widths: 40 60
+
+   * - ``StartDate``
+     - Beginning of the inversion time frame in ``YYYYMMDD`` format (this date is included in the inversion, 0-24h UTC).
+   * - ``EndDate``
+     - End of the inversion time frame in ``YYYYMMDD`` format (this date is excluded from the inversion, 0-24h UTC).
+   * - ``SpinupMonths``
+     - Number of months for the spinup simulation. 
 
 Region of Interest
 ~~~~~~~~~~~~~~~~~~
-- ``LonMin``: Minimum longitude edge of your domain.
-- ``LonMax``: Maximum longitude edge of your domain.
-- ``LatMin``: Minimum latitude edge of your domain.
-- ``LatMax``: Maximum latitude edge of your domain.
-- ``REGION``: Nesting domain for the inversion; must be ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America. See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available nesting domains.
+.. list-table::
+   :widths: 40 60
+
+   * - ``LonMin``
+     - Minimum longitude edge of your domain.
+   * - ``LonMax``
+     - Maximum longitude edge of your domain.
+   * - ``LatMin``
+     - Minimum latitude edge of your domain.
+   * - ``LatMax``
+     - Maximum latitude edge of your domain.
+   * - ``REGION``
+     - Nesting domain for the inversion; must be ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America. See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available nesting domains.
 
 State vector 
 ~~~~~~~~~~~~
