@@ -49,25 +49,45 @@ Region of Interest
 
 State vector 
 ~~~~~~~~~~~~
+.. list-table::
+   :widths: 40 60
 
-- ``CreateStateVectorFile``: Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. If ``false``, a custom/pre-generated state vector netcdf file must be provided below.
-- ``nBufferClusters``: Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector of emissions being optimized in the inversion.
-- ``BufferDeg``: Width of the buffer elements, in degrees; will not be used if ``CreateStateVectorFile`` is ``false``.
-- ``LandThreshold``: Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file.
+   * - ``CreateStateVectorFile``
+     - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. 
+       If ``false``, a custom/pre-generated state vector netcdf file must be provided below.
+   * - ``nBufferClusters``
+     - Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector 
+       of emissions being optimized in the inversion.
+   * - ``BufferDeg``
+     - Width of the buffer elements, in degrees; will not be used if ``CreateStateVectorFile`` is ``false``.
+   * - ``LandThreshold``
+     - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file.
 
 Custom/pre-generated state vector file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Only used if ``CreateStateVectorFile`` is ``false``.
 
-- ``StateVectorFile``: Path to the custom or pre-generated state vector netcdf file.
+.. list-table::
+   :widths: 40 60
+
+   * - ``StateVectorFile``
+     - Path to the custom or pre-generated state vector netcdf file.
 
 To create a custom state vector file from a shapefile, use the following settings in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook:
 
-- ``ShapeFile``: Path to the shapefile.
-- ``LonMinCustomStateVector``: Minimum longitude edge of the desired inversion domain (includes region of interest and buffer elements).
-- ``LonMaxCustomStateVector``: Maximum longitude edge of the desired inversion domain (includes region of interest and buffer elements).
-- ``LatMinCustomStateVector``: Minimum latitude edge of the desired inversion domain (includes region of interest and buffer elements).
-- ``LatMaxCustomStateVector``: Maximum latitude edge of the desired inversion domain (includes region of interest and buffer elements).
+.. list-table::
+   :widths: 40 60
+
+   * - ``ShapeFile``
+     - Path to the shapefile.
+   * - ``LonMinCustomStateVector``
+     - Minimum longitude edge of the desired inversion domain (includes region of interest and buffer elements).
+   * - ``LonMaxCustomStateVector``
+     - Maximum longitude edge of the desired inversion domain (includes region of interest and buffer elements).
+   * - ``LatMinCustomStateVector``
+     - Minimum latitude edge of the desired inversion domain (includes region of interest and buffer elements).
+   * - ``LatMaxCustomStateVector``
+     - Maximum latitude edge of the desired inversion domain (includes region of interest and buffer elements).
 
 Inversion
 ~~~~~~~~~
