@@ -5,21 +5,21 @@ This page documents settings in the IMI configuration file (``config.yml``).
 General
 ~~~~~~~
 .. list-table::
-   :widths: 40 60
+   :widths: 40, 60
 
    * - ``isAWS``
      - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
    * - ``UseSlurm``
-     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively. 
-       Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``. 
+     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
+       Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``.
        Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO).
 
 Period of Interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::
-   :widths: 40 60
+   :widths: 40, 60
 
    * - ``StartDate``
      - Beginning of the inversion period in ``YYYYMMDD`` format (this date is included in the inversion, 0-24h UTC).
@@ -31,16 +31,17 @@ Period of Interest
 Region of Interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::
-   :widths: 40 60
+   :widths: 40, 60
+   :class: tight-table 
 
    * - ``LonMin``
-     - Minimum longitude edge of your domain.
+     - Minimum longitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
    * - ``LonMax``
-     - Maximum longitude edge of your domain.
+     - Maximum longitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
    * - ``LatMin``
-     - Minimum latitude edge of your domain.
+     - Minimum latitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
    * - ``LatMax``
-     - Maximum latitude edge of your domain.
+     - Maximum latitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
    * - ``REGION``
      - Nesting domain for the inversion. 
        Select ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America.
@@ -50,7 +51,7 @@ Region of Interest
 State vector 
 ~~~~~~~~~~~~
 .. list-table::
-   :widths: 40 60
+   :widths: 40, 60
 
    * - ``CreateStateVectorFile``
      - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. 
@@ -68,7 +69,7 @@ Custom/pre-generated state vector file
 Only used if ``CreateStateVectorFile`` is ``false``.
 
 .. list-table::
-   :widths: 40 60
+   :widths: 40, 60
 
    * - ``StateVectorFile``
      - Path to the custom or pre-generated state vector netcdf file.
@@ -76,7 +77,7 @@ Only used if ``CreateStateVectorFile`` is ``false``.
 To create a custom state vector file from a shapefile, use the following settings in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook:
 
 .. list-table::
-   :widths: 40 60
+   :widths: 40, 60
 
    * - ``ShapeFile``
      - Path to the shapefile.
@@ -91,9 +92,15 @@ To create a custom state vector file from a shapefile, use the following setting
 
 Inversion
 ~~~~~~~~~
-- ``PriorError``: Error in the prior estimates (1-sigma; relative). E.g., ``0.5`` means 50% error.
-- ``ObsError``: Observational error (1-sigma; absolute; ppb). E.g., ``15`` means 15 ppb error.
-- ``Gamma``: Regularization parameter; typically between 0 and 1.
+.. list-table::
+   :widths: 40, 60
+
+   * - ``PriorError``
+     - Error in the prior estimates (1-sigma; relative). E.g., ``0.5`` means 50% error.
+   * - ``ObsError``
+     - Observational error (1-sigma; absolute; ppb). E.g., ``15`` means 15 ppb error.
+   * - ``Gamma``
+     - Regularization parameter; typically between 0 and 1.
 
 Grid
 ~~~~
