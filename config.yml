@@ -20,11 +20,10 @@ LatMax: 33
 REGION: "NA"
 
 ## State vector
-BufferDeg: 5
-nBufferClusters: 8
-LandThreshold: 0.25
-##   Option for the IMI to automatically create the state vector file:
 CreateStateVectorFile: true
+nBufferClusters: 8
+BufferDeg: 5
+LandThreshold: 0.25
 
 ## Custom state vector
 ##   If using a custom/pre-generated state vector file, provide the path:
