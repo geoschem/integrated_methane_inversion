@@ -4,9 +4,15 @@ This page documents settings in the IMI configuration file (``config.yml``).
 
 General
 ~~~~~~~
-- ``isAWS``: Boolean for running the workflow on AWS (``true``) or a local cluster (``false``).
-- ``RunName``: Name for this inversion; will be used for directory names and prefixes.
-- ``UseSlurm``: Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively. To run the IMI with ``sbatch run_ch4_inversion.sh``, select ``true``; to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO), select ``false``.
+.. list-table::
+   :widths: 40 60
+
+   * - ``isAWS``
+     - Boolean for running the workflow on AWS (``true``) or a local cluster (``false``).
+   * - ``RunName``
+     - Name for this inversion; will be used for directory names and prefixes.
+   * - ``UseSlurm``
+     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively. To run the IMI with ``sbatch run_ch4_inversion.sh``, select ``true``; to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO), select ``false``.
 
 Period of Interest
 ~~~~~~~~~~~~~~~~~~
