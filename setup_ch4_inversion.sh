@@ -255,6 +255,15 @@ function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | c
 nElements=$(ncmax StateVector ${MyPath}/${RunName}/StateVector.nc)
 printf "\n Number of state vector elements in this inversion= ${nElements}\n"
 
+# Define inversion domain lat/lon bounds
+function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+LonMinInvDomain=$(ncmin lon ${MyPath}/${RunName}/StateVector.nc)
+LonMaxInvDomain=$(ncmax lon ${MyPath}/${RunName}/StateVector.nc)
+LatMinInvDomain=$(ncmin lat ${MyPath}/${RunName}/StateVector.nc)
+LatMaxInvDomain=$(ncmax lat ${MyPath}/${RunName}/StateVector.nc)
+Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
+Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
+
 # Purge software modules if not on AWS
 if ! "$isAWS"; then
     module purge
@@ -286,15 +295,6 @@ if "$SetupTemplateRundir"; then
     cp -RLv ${RunFilesPath}/../shared/download_data.py ${RunTemplate}/
     cp -RLv ${RunFilesPath}/../shared/download_data.yml ${RunTemplate}/
     cp -RLv ${GCClassicPath}/src/GEOS-Chem/run/shared/species_database.yml ${RunTemplate}/
-
-    # Define inversion domain lat/lon bounds
-    function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    LonMinInvDomain=$(ncmin lon StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon StateVector.nc)
-    LatMinInvDomain=$(ncmin lat StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat StateVector.nc)
-    Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
-    Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
 
     cd $RunTemplate
 
