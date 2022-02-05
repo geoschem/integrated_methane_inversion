@@ -6,7 +6,7 @@ General
 ~~~~~~~
 - ``isAWS``: Boolean for running the workflow on AWS (``true``) or a local cluster (``false``).
 - ``RunName``: Name for this inversion; will be used for directory names and prefixes.
-- ``UseSlurm``: Boolean for running the inversion as a batch job with ``sbatch`` (e.g., ``sbatch run_ch4_inversion.sh``; select ``true``) instead of interactively (e.g., ``./run_ch4_inversion.sh``; select ``false``).
+- ``UseSlurm``: Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively. To run the IMI with ``sbatch run_ch4_inversion.sh``, select ``true``; to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO), select ``false``.
 
 Period of Interest
 ~~~~~~~~~~~~~~~~~~
