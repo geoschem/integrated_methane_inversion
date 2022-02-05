@@ -37,7 +37,7 @@ LonMaxCustomStateVector: -100
 LatMinCustomStateVector: 25
 LatMaxCustomStateVector: 35
 ##   2. Open and run the statevector_from_shapefile.ipynb Jupyter notebook
-##   3. When complete, define StateVectorFile: {path/to/statevector_ncfile} above
+##   3. When complete, fill in {optional/path/to/statevector_ncfile} above
 
 ## Inversion
 PriorError: 0.5
