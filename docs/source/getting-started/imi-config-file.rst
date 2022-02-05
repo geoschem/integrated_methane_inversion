@@ -5,7 +5,7 @@ This page documents settings in the IMI configuration file (``config.yml``).
 General
 ~~~~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``isAWS``
@@ -20,7 +20,7 @@ General
 Period of Interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``StartDate``
@@ -33,7 +33,7 @@ Period of Interest
 Region of Interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table 
 
    * - ``LonMin``
@@ -53,7 +53,7 @@ Region of Interest
 State vector 
 ~~~~~~~~~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``CreateStateVectorFile``
@@ -72,7 +72,7 @@ Custom/pre-generated state vector file
 These settings are only used if ``CreateStateVectorFile`` is ``false``.
 
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``StateVectorFile``
@@ -81,7 +81,7 @@ These settings are only used if ``CreateStateVectorFile`` is ``false``.
 To create a custom state vector file from a shapefile, use the following settings in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook.
 
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``ShapeFile``
@@ -98,7 +98,7 @@ To create a custom state vector file from a shapefile, use the following setting
 Inversion
 ~~~~~~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``PriorError``
@@ -111,7 +111,7 @@ Inversion
 Grid
 ~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``Res``
@@ -133,7 +133,7 @@ Setup modules
 These settings turn on/off (``true`` / ``false``) different steps for setting up the IMI.
 
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``SetupTemplateRundir``
@@ -153,7 +153,7 @@ Run modules
 These settings turn on/off (``true`` / ``false``) different steps of the inversion.
 
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``RunSetup``
@@ -170,7 +170,7 @@ These settings turn on/off (``true`` / ``false``) different steps of the inversi
 IMI preview
 ~~~~~~~~~~~
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``DoPreview``
@@ -184,7 +184,7 @@ Compute Resources to Request
 These settings are specific to Harvard's Cannon compute cluster. Not used for cloud runs.
 
 .. list-table::
-   :widths: 40, 60
+   :widths: 30, 70
    :class: tight-table
 
    * - ``nCPUs``
