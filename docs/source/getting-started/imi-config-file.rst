@@ -15,7 +15,7 @@ General
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
        Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``.
-       Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (`via tmux <running-with-tmux>`_).
+       Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (`via tmux <../advanced/running-with-tmux>`_).
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~

@@ -170,7 +170,7 @@ After editing the configuration file, you can run the IMI by executing the follo
 The IMI can take hours to days to complete depending on the configuration. 
 You can safely disconnect from your instance during this time, but the instance must remain active in the AWS console.
 
-Alternatively, you can `run the IMI with tmux <running-with-tmux>`_ to obtain minor to moderate speed-up.
+Alternatively, you can `run the IMI with tmux <../advanced/running-with-tmux>`_ to obtain minor to moderate speed-up.
 
 
 7. Visualize results with Python

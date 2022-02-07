@@ -32,7 +32,6 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
 
    getting-started/quick-start.rst
    getting-started/imi-config-file.rst
-   getting-started/running-with-tmux.rst
    getting-started/ami-specifications.rst
    getting-started/minimizing-cost-tips.rst
 
@@ -40,6 +39,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    :maxdepth: 1
    :caption: Advanced Features
 
+   advanced/running-with-tmux.rst
    advanced/custom-state-vector.rst
    advanced/custom-prior-emissions-hemco.rst
    advanced/inversion-ensemble.rst
