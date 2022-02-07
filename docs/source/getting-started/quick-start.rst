@@ -14,31 +14,33 @@ Go to http://aws.amazon.com and click on "Create an AWS Account" in the upper-ri
   :target: https://aws.amazon.com
   :width: 400 px
 
-You'll need to enter some basic personal information and a credit card number. 
+You'll need to enter some basic personal information and a credit card number.
+
 Running the IMI is relatively inexpensive (usually on the order of USD $10-$100).
 The cost depends on the length of the inversion period, the size of the inversion domain, 
 how long you retain your Cloud instance after completing the inversion, and how you store the final results.
-(For more information on the latter two points, see :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.)
+
+For more information on costs, see preview_link_TODO and :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
   
 
-2. Add S3 user permissions
+1. Add S3 user permissions
 --------------------------
 
 Default input data for the IMI are stored in the Amazon Simple Storage Service (S3). 
 These include TROPOMI methane data, default prior emission estimates, GEOS-Chem meteorological data, and boundary condition data.
+
 The IMI will automatically fetch the data needed for your inversion, but to enable this data retrieval, 
 you need to grant S3 download permissions to a user in your AWS account.
-
 
 The easiest way to enable data transfer from and to S3 is to grant S3 access to an IAM role.
 When attached to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service), 
 the IAM role will give that EC2 instance full access to S3. 
+
 Instructions to create an IAM role with full S3 access are available at `this link to the GEOS-Chem Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
 For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
-
 
 
 3. Launch an instance with the IMI Workflow pre-installed
