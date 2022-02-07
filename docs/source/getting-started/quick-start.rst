@@ -158,7 +158,7 @@ Open the ``config.yml`` file with vim or emacs::
   $ emacs setup_ch4_inversion.sh
 
 This configuration file contains many settings that you can modify to suit your needs. 
-See the `IMI configuration file page <imi-config-file>`_ for information on the different settings/options.
+See the :doc:`IMI configuration file page <imi-config-file>` for information on the different settings/options.
 
 
 6. Run the IMI
@@ -170,7 +170,7 @@ After editing the configuration file, you can run the IMI by executing the follo
 The IMI can take hours to days to complete depending on the configuration. 
 You can safely disconnect from your instance during this time, but the instance must remain active in the AWS console.
 
-Alternatively, you can `run the IMI with tmux <../advanced/running-with-tmux>`_ to obtain minor to moderate speed-up.
+Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmux>` to obtain minor to moderate speed-up.
 
 
 7. Visualize results with Python

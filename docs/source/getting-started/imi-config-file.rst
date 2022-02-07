@@ -15,7 +15,7 @@ General
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
        Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``.
-       Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (`via tmux <../advanced/running-with-tmux>`_).
+       Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -78,7 +78,7 @@ These settings are only used if ``CreateStateVectorFile`` is ``false``.
    * - ``StateVectorFile``
      - Path to the custom or pre-generated state vector netcdf file.
 
-To `create a custom state vector file <../advanced/custom-state-vector>`_ from a shapefile, use the following settings in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook.
+To :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile, use the following settings in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook.
 
 .. list-table::
    :widths: 30, 70
