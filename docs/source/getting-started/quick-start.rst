@@ -33,11 +33,11 @@ Default input data for the IMI are stored in the Amazon Simple Storage Service (
 These include TROPOMI methane data, default prior emission estimates, GEOS-Chem meteorological data, and boundary condition data.
 
 The IMI will automatically fetch the data needed for your inversion, but to enable this data transfer 
-you'll need to setup S3 download permissions on your AWS account.
+you'll need to add S3 user permissions to your AWS account.
 
 The easiest way to do this is to grant S3 access to an IAM role.
-When attached to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service), 
-the IAM role will give the EC2 instance full access to S3. 
+Attaching the IAM role to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service) 
+will give the EC2 instance full access to S3. 
 
 Instructions to create an IAM role with full S3 access are provided in the 
 `GEOS-Chem Cloud Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
