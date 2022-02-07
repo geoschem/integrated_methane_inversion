@@ -18,7 +18,7 @@ You'll need to enter some basic personal information and a credit card number.
 
 Running the IMI is relatively inexpensive (usually on the order of USD $10-$100).
 The cost depends on the length of the inversion period, the size of the inversion domain, 
-how long you retain your Cloud instance after completing the inversion, and how you store the final results.
+how long you retain your compute instance after completing the inversion, and how you store the final results.
 
 For more information on costs, see preview_link_TODO and :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.
 
@@ -26,25 +26,25 @@ For more information on costs, see preview_link_TODO and :doc:`Tips for Minimizi
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
   
 
-1. Add S3 user permissions
+2. Add S3 user permissions
 --------------------------
 
 Default input data for the IMI are stored in the Amazon Simple Storage Service (S3). 
 These include TROPOMI methane data, default prior emission estimates, GEOS-Chem meteorological data, and boundary condition data.
 
-The IMI will automatically fetch the data needed for your inversion, but to enable this data retrieval, 
+The IMI will automatically fetch the data needed for your inversion, but to enable this data retrieval 
 you need to grant S3 download permissions to a user in your AWS account.
 
 The easiest way to enable data transfer from and to S3 is to grant S3 access to an IAM role.
 When attached to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service), 
 the IAM role will give that EC2 instance full access to S3. 
 
-Instructions to create an IAM role with full S3 access are available at `this link to the GEOS-Chem Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
+Instructions to create an IAM role with full S3 access are provided in the `GEOS-Chem Cloud Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
 For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
-3. Launch an instance with the IMI Workflow pre-installed
----------------------------------------------------------
+3. Launch an instance with the IMI pre-installed
+------------------------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and click on EC2.
 
@@ -75,7 +75,7 @@ TODO: choose ideal computational node. Choose the c5.9xlarge instance type, whic
 .. _skip-ec2-config-label:
 
 
-Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions so you can download input data>`_. All other config settings in Step 3: Configuring Instance Details can be left as the defaults.
+Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions>`_. All other config settings in Step 3: Configuring Instance Details can be left as the defaults.
 
 .. figure:: img/assign_iam_to_ec2.png
 
@@ -125,8 +125,8 @@ Select your instance, click on the "Connect" button (shown in the above figure) 
 Once you've followed the above instructions, you should see a "Welcome to Ubuntu" message indicating you've logged into your new EC2 instance.
 
 
-5. Configure and run the IMI Workflow
--------------------------------------
+5. Configuring the IMI
+----------------------
 
 Navigate to the IMI Workflow setup directory::
 
@@ -139,8 +139,8 @@ Open the ``config.yml`` file with vim or emacs::
 
 This file contains many settings you can modify according to your scientific needs. A detailed explanation of all configuration values can be read at the `IMI config file page <imi-config-file>`_.
 
-6. Running the Automated Workflow
----------------------------------
+6. Running the IMI
+------------------
 After you have edited the config file to your desired workflow settings, run the workflow by executing the following command in ``~/setup_CH4``:
   
   $ ./run_ch4_inversion.sh
@@ -175,7 +175,9 @@ You have two options now, "Stop" to shutdown or "Terminate" to completely delete
 - "Terminate" will completely remove that instance so you won't be charged for it any further.
   Unless you save your system as an AMI or transfer the data to other storage services, you will lose all your data and software.
 
-9. Storing Data on S3:
+9. Storing Data on S3
+---------------------
+
 S3 is our preferred cloud storage platform due to cost and ease of access. You can use the ```cp``` command to copy your output files to your desired S3 bucket for long term storage::
 
   $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
