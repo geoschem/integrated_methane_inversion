@@ -541,7 +541,7 @@ if  "$DoPreview"; then
     state_vector_path=${MyPath}/${RunName}/StateVector.nc
     preview_dir=${MyPath}/${RunName}/${runDir}
     tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
-    python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py $config_path $state_vector_path $preview_dir $tropomi_cache
+    python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py $config_path $state_vector_path $preview_dir $tropomi_cache $cpu_count
 
     printf "=== DONE RUNNING IMI PREVIEW ===\n"
 
