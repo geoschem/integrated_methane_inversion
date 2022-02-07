@@ -1,4 +1,4 @@
-IMI Configuration File
+IMI configuration file
 ======================
 This page documents settings in the IMI configuration file (``config.yml``).
 
@@ -17,7 +17,7 @@ General
        Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``.
        Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (via tmux_link_TODO).
 
-Period of Interest
+Period of interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::
    :widths: 30, 70
@@ -30,7 +30,7 @@ Period of Interest
    * - ``SpinupMonths``
      - Number of months for the spinup simulation. 
 
-Region of Interest
+Region of interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::
    :widths: 30, 70
@@ -179,7 +179,7 @@ IMI preview
      - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
        Default value ``0`` prevents exit.
 
-Compute Resources to Request
+Compute resources to request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are specific to Harvard's Cannon compute cluster. Not used for cloud runs.
 

@@ -1,4 +1,4 @@
-AMI Specifications
+AMI specifications
 ==================
 
 AMI Name: TODO

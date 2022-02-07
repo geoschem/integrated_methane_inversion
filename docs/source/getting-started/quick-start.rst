@@ -32,19 +32,20 @@ For more information on costs, see preview_link_TODO and :doc:`Tips for Minimizi
 Default input data for the IMI are stored in the Amazon Simple Storage Service (S3). 
 These include TROPOMI methane data, default prior emission estimates, GEOS-Chem meteorological data, and boundary condition data.
 
-The IMI will automatically fetch the data needed for your inversion, but to enable this data retrieval 
-you need to grant S3 download permissions to a user in your AWS account.
+The IMI will automatically fetch the data needed for your inversion, but to enable this data transfer 
+you'll need to setup S3 download permissions on your AWS account.
 
-The easiest way to enable data transfer from and to S3 is to grant S3 access to an IAM role.
+The easiest way to do this is to grant S3 access to an IAM role.
 When attached to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service), 
-the IAM role will give that EC2 instance full access to S3. 
+the IAM role will give the EC2 instance full access to S3. 
 
-Instructions to create an IAM role with full S3 access are provided in the `GEOS-Chem Cloud Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
+Instructions to create an IAM role with full S3 access are provided in the 
+`GEOS-Chem Cloud Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
 For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
-3. Launch an instance with the IMI preinstalled
------------------------------------------------
+3. Launch an instance with the IMI
+----------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and click on EC2.
 
@@ -80,7 +81,6 @@ Depending on your use case you may choose a different instance type with more/le
 
 .. _skip-ec2-config-label:
 
-
 Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions>`_. 
 All other config settings in "Step 3: Configuring Instance Details" can be left as the defaults.
 
@@ -88,12 +88,11 @@ All other config settings in "Step 3: Configuring Instance Details" can be left 
 
 Proceed to "Step 4: Add Storage" and select the size of your storage volume. 
 
-Your storage needs will depend on the length of the inversion period, size of the inversion domain, and the inversion resolution (0.25x0.3125 or 0.5x0.625). 
+Your storage needs will depend on the length of the inversion period, size of the inversion domain, and the inversion resolution. 
 Storage_guidelines_TODO -- For example, 100GB is generally sufficient for a 1-week inversion. 
 Note that your storage costs will be based on this value. 
 You can always add storage space after your EC2 instance is launched, but it is very difficult to retroactively reduce storage space. 
 It is best to start conservative if you plan to keep the instance for a significant time period (more than a few days).
-
 
 **Then, just click on "Review and Launch".** You don't need to touch other options this time. 
 This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
@@ -109,7 +108,6 @@ In the future, you can simply select "Choose an existing Key Pair", select your 
 .. figure:: img/key_pair.png
   :width: 500 px
 
-
 Once launched, you can monitor the instance in the EC2-Instance console as shown below. 
 Within one minute of initialization, "Instance State" should show "running" (refresh the page if the status remains "pending"):
 
@@ -117,6 +115,7 @@ Within one minute of initialization, "Instance State" should show "running" (ref
 
 You now have your own system running on the cloud! Note that you will be charged continuously while the instance is running, so make sure to do the 
 :ref:`final tutorial step: shutdown the server <shutdown-label>` if you need to pause your work to avoid unnecessary compute charges.
+
 
 .. _login_ec2-label:
 
@@ -130,7 +129,7 @@ Select your instance and click on the "Connect" button (shown in the figure abov
 
 - On Mac or Linux, use the ``ssh -i ...`` command under "Example" to connect to the server in the terminal. Some minor changes are needed:
 
-  (1) ``cd`` to the directory where your Key Pair is stored (people often put the key in ``~/.ssh/`` but any directory will do.)
+  (1) ``cd`` to the directory where your Key Pair is stored. People often put the key in ``~/.ssh/`` but any directory will do.
   (2) Use ``chmod 400 your-key-name.pem`` to change the key pair's permission (also mentioned in the above figure; this only needs to be done once).
   (3) Change the user name in the command from ``root`` to ``ubuntu`` so that the full command
       looks like ``ssh -i "your-key-name.pem" ubuntu@ec2-##-###-##-##.compute-1.amazonaws.com``
@@ -144,15 +143,13 @@ Select your instance and click on the "Connect" button (shown in the figure abov
   The Git-BASH solution should be the most painless, but these other options can work as well. 
   Note: there is a bug on older versions of WSL that can prevent the ``chmod`` command from functioning.
 
-
-
 Once you've followed the above instructions, you should see a "Welcome to Ubuntu" message indicating you've logged into your new EC2 instance.
 
 
-5. Configuring the IMI
-----------------------
+5. Configure the IMI
+--------------------
 
-Navigate to the IMI Workflow setup directory::
+Navigate to the IMI setup directory::
 
   $ cd ~/setup_CH4
 
@@ -163,21 +160,21 @@ Open the ``config.yml`` file with vim or emacs::
 This configuration file contains many settings that you can modify to suit your needs. 
 See the `IMI configuration file page <imi-config-file>`_ for information on the different settings/options.
 
-6. Running the IMI
-------------------
+
+6. Run the IMI
+--------------
 After editing the configuration file, you can run the IMI by executing the following command:
   
-  $ ./run_ch4_inversion.sh
+  $ sbatch run_ch4_inversion.sh
 
-This can take significant time to complete depending on the length and settings specified in the configuration file.
-Note: You must remain logged in for the duration of the inversion. 
-For long running inversions you can run the workflow with tmux, see `using tmux to run the workflow <running-with-tmux>`_.
+The IMI can take hours to days to complete depending on the configuration. 
+You can safely disconnect from your instance during this time, but the instance must remain active in the AWS console.
 
-`Click here <manual-running>`_ for instructions on manually running each step of the workflow (an alternative to using the automated workflow run script).
+Alternatively, you can `run the IMI with tmux <running-with-tmux>`_ to obtain minor to moderate speed-up.
 
 
-7. Analyze output data with Python
-----------------------------------
+7. Visualize results with Python
+--------------------------------
 
 TODO
 
@@ -200,8 +197,9 @@ There are two options for ending the session: "Stop" (temporary shutdown) or "Te
 - "Terminate" will completely delete the instance so you will incur no further charges.
   Unless you save your system as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
 
-9. Storing Data on S3
----------------------
+
+9. Store Data on S3
+-------------------
 
 S3 is our preferred cloud storage platform due to cost and ease of access. 
 

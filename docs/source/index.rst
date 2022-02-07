@@ -8,7 +8,7 @@ Integrated Methane Inversion (IMI)
    </p>
 
 .. important:: This is a prerelease of the Integrated Methane Inversion (IMI) user guide.
-   These pages are the most up-to-date and accurate instructions for the IMI, but they
+   These pages contain the most up-to-date and accurate instructions for the IMI, but they
    are still a work in progress. 
    
    Contributions (e.g., suggestions, edits, revisions) would be greatly appreciated. See
@@ -30,12 +30,19 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    :maxdepth: 1
    :caption: Getting Started
 
-
    getting-started/quick-start.rst
    getting-started/imi-config-file.rst
-   getting-started/ami-specifications.rst
    getting-started/running-with-tmux.rst
+   getting-started/ami-specifications.rst
    getting-started/minimizing-cost-tips.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Advanced Features
+
+   advanced/custom-state-vector.rst
+   advanced/custom-prior-emissions-hemco.rst
+   advanced/inversion-ensemble.rst
 
 .. toctree::
    :maxdepth: 1
