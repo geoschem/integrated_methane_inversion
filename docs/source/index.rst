@@ -32,6 +32,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
 
    getting-started/quick-start.rst
    getting-started/imi-config-file.rst
+   getting-started/imi-preview.rst
    getting-started/ami-specifications.rst
    getting-started/minimizing-cost-tips.rst
 

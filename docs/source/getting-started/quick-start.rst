@@ -172,6 +172,8 @@ You can safely disconnect from your instance during this time, but the instance 
 
 Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmux>` to obtain minor to moderate speed-up.
 
+.. note::
+  We **strongly** recommend using the :doc:`IMI preview feature <imi-preview>` before running an inversion.
 
 7. Visualize results with Python
 --------------------------------
