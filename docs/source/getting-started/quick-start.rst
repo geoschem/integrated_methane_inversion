@@ -1,35 +1,43 @@
 .. _quick-start-label:
 
-Quick start guide for new users
-===============================
+Quick start guide
+=================
 
 
-1. Sign up for an Amazon Web Services (AWS) account
----------------------------------------------------
+1. Create an Amazon Web Services (AWS) account
+----------------------------------------------
 
-If you do not already have an AWS account (whether personal or through your institution), you'll need to sign up for one.
+If you do not already have an AWS account, you'll need to sign up for one.
 Go to http://aws.amazon.com and click on "Create an AWS Account" in the upper-right corner:
 
 .. figure:: img/create_aws_account.png
   :target: https://aws.amazon.com
   :width: 400 px
 
-You will need to enter some basic personal information and a credit card number. Running the IMI Workflow is relatively inexpensive (usually on the order of 10s of dollars).
-The exact cost primarily depends on the length of your simulations and how long you leave your Cloud instance running beyond the steps of the IMI Workflow.
+You'll need to enter some basic personal information and a credit card number. 
+Running the IMI is relatively inexpensive (usually on the order of USD $10-$100).
+The cost depends on the length of the inversion period, the size of the inversion domain, 
+how long you retain your Cloud instance after completing the inversion, and how you store the final results.
+(For more information on the latter two points, see :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.)
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
   
 
-2. Add S3 user permissions so you can download input data
----------------------------------------------------------
+2. Add S3 user permissions
+--------------------------
 
-Most input data for the IMI Workflow are stored on the AWS Cloud, but are not included in your instance by default. Instead, relevant data
-for your customized simulation are fetched automatically during the workflow. These automatically fetched fields include GEOS-Chem meteorology data and chemistry input fields,
-as well as TROPOMI methane fields. To enable this data retrieval, you need to grant S3 download permissions to a user in your AWS account.
+Default input data for the IMI are stored in the Amazon Simple Storage Service (S3). 
+These include TROPOMI methane data, default prior emission estimates, GEOS-Chem meteorological data, and boundary condition data.
+The IMI will automatically fetch the data needed for your inversion, but to enable this data retrieval, 
+you need to grant S3 download permissions to a user in your AWS account.
 
 
-The easiest way to enable S3-to-EC2 downloading (and uploading) is to grant S3 access to an IAM role, which when designated to an EC2 instance (Elastic Compute Cloud, AWS's basic computing node service), will give that EC2 instance full access to S3. Instructions on how to create an IAM role with full s3 access is available at `this link to the GEOS-Chem Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. For more information on `IAM Roles check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
+The easiest way to enable data transfer from and to S3 is to grant S3 access to an IAM role.
+When attached to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service), 
+the IAM role will give that EC2 instance full access to S3. 
+Instructions to create an IAM role with full S3 access are available at `this link to the GEOS-Chem Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
+For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
 
@@ -94,7 +102,7 @@ You now have your own system running on the cloud! Note that you will be charged
 .. _login_ec2-label:
 
 4. Login to your instance
-------------------------------
+-------------------------
 
 Select your instance, click on the "Connect" button (shown in the above figure) near the blue "Launch Instance" button, then you should see this instruction page:
 
