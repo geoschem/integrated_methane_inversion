@@ -1,4 +1,4 @@
-Custom prior emission estimates
-===============================
+Modifying prior emission estimates
+==================================
 
 TODO
