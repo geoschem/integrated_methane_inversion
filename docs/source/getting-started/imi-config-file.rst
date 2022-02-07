@@ -107,6 +107,8 @@ Inversion
      - Observational error (1-sigma; absolute; ppb). E.g., ``15`` means 15 ppb error.
    * - ``Gamma``
      - Regularization parameter; typically between 0 and 1.
+   * - ``PrecomputedJacobian``
+     - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``).
 
 Grid
 ~~~~

@@ -22,7 +22,7 @@ eval $(parse_yaml config.yml)
 # General: $isAWS, $RunName, $UseSlurm
 # Period of interest: $StartDate, $EndDate, $SpinupMonths
 # Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
-# Inversion: $PriorError, $ObsError, $Gamma
+# Inversion: $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
 # Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $REGION, $Buffer
 # Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
 # Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior

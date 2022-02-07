@@ -42,6 +42,7 @@ LatMaxCustomStateVector: 35
 PriorError: 0.5
 ObsError: 15
 Gamma: 0.25
+PrecomputedJacobian: false
 
 ## Grid
 ##   Res & Met are "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"

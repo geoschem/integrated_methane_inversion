@@ -16,7 +16,7 @@ eval $(parse_yaml config.yml)
 # General: $isAWS, $RunName, $UseSlurm
 # Period of interest: $StartDate, $EndDate, $SpinupMonths
 # Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
-# Inversion: $PriorError, $ObsError, $Gamma
+# Inversion: $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
 # Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $REGION, $Buffer
 # Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
 # Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
@@ -884,19 +884,14 @@ if "$SetupInversion"; then
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/visualization_notebook.ipynb inversion/
-    sed -i -e "s:{START}:${StartDate}:g" \
-           -e "s:{END}:${EndDate}:g" \
-           -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
-           -e "s:{BUFFER_CLUSTERS}:${nBufferClusters}:g" \
+    sed -i -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
            -e "s:{MY_PATH}:${MyPath}:g" \
-           -e "s:{RUN_NAME}:${RunName}:g" \
            -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
            -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
            -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
            -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-           -e "s:{RES}:${gridResLong}:g" \
-           -e "s:{IS_AWS}:${isAWS}:g" inversion/run_inversion.sh
+           -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
 
     if "$isAWS"; then
         sed -i -e "/#SBATCH -p huce_intel/d" \
