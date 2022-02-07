@@ -541,8 +541,22 @@ if  "$DoPreview"; then
     state_vector_path=${MyPath}/${RunName}/StateVector.nc
     preview_dir=${MyPath}/${RunName}/${runDir}
     tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
-    python ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py $config_path $state_vector_path $preview_dir $tropomi_cache
+    preview_file=${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py
 
+    # if running end to end script with sbatch then use
+    # sbatch to take advantage of multiple cores 
+    if "$UseSlurm"; then
+        # set number of cores to run preview with
+        if "$isAWS"; then
+            sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py
+        fi
+        cd ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/
+        chmod +x $preview_file
+        sbatch -W $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache $cpu_count; wait;
+        cd $runDir
+    else
+        python $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache $cpu_count
+    fi
     printf "=== DONE RUNNING IMI PREVIEW ===\n"
 
     # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
