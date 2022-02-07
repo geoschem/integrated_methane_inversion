@@ -43,8 +43,8 @@ Instructions to create an IAM role with full S3 access are provided in the `GEOS
 For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
-3. Launch an instance with the IMI pre-installed
-------------------------------------------------
+3. Launch an instance with the IMI preinstalled
+-----------------------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and click on EC2.
 
@@ -52,73 +52,97 @@ Once you've setup S3 permissions on your AWS account, login to the AWS console a
   :width: 600 px
 
 In the EC2 console, you can see your current selected region in the top right.
-Choosing a region closer to your physical location will improve your network connectivity, but may result in increased costs compared to using the region where GEOS-Chem data are hosted (us-east-1 (N.Virginia)).
+Choosing a region closer to your physical location will improve your network connectivity, 
+but may result in increased costs compared to using the region where GEOS-Chem data are hosted (us-east-1, N.Virginia).
 
 .. figure:: img/region_list.png
   :width: 300 px
 
 .. _choose_ami-label:
 
-In the EC2 console, click on "AMIs" (Amazon Machine Images) under "IMAGES" on the left navigation bar. Then select "Public images" and search for ``TODO:AMI_ID`` or ``TODO:AMI_NAME``.
-This image contains the latest version of the IMI Workflow and has all the necessary software dependencies preinstalled.
+In the EC2 console, click on "AMIs" (Amazon Machine Images) under "IMAGES" on the left navigation bar. 
+Then select "Public images" and search for ``TODO:AMI_ID`` or ``TODO:AMI_NAME``.
+This image contains the latest version of the IMI including all required software dependencies.
 
 .. figure:: img/search_ami.png
 
 An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
+
 Now it's time to specify the hardware for running your system. Hardware choices differ primarily in CPU and RAM counts. 
 
-You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. The IMI Workflow will run more quickly with a higher number of CPUs. 
-TODO: choose ideal computational node. Choose the c5.9xlarge instance type, which includes 36 CPU cores and 72GB of RAM. Depending on your use case you may choose to use a different instance type that provides more/less cores and memory.
+You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. 
+The IMI will run more quickly with a higher number of CPUs. 
+TODO: choose ideal computational node. 
+Choose the c5.9xlarge instance type, which includes 36 CPU cores and 72GB of RAM. 
+Depending on your use case you may choose a different instance type with more/less cores and memory.
 
 .. figure:: img/choose_instance_type.png
 
 .. _skip-ec2-config-label:
 
 
-Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions>`_. All other config settings in Step 3: Configuring Instance Details can be left as the defaults.
+Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions>`_. 
+All other config settings in "Step 3: Configuring Instance Details" can be left as the defaults.
 
 .. figure:: img/assign_iam_to_ec2.png
 
-Proceed to "Step 4: Add Storage" and select the size of your storage volume. Your needs will depend on the length and resolution of your inversion. For example, for a 1 week inversion 100GB is sufficient. Note that your storage costs will be based on this value. You can always add storage space after your EC2 instance is launched, but it is very difficult to shrink volume size, so it is best to start conservative if you plan to keep the instance for a significant time period (more than a few days).
+Proceed to "Step 4: Add Storage" and select the size of your storage volume. 
+
+Your storage needs will depend on the length of the inversion period, size of the inversion domain, and the inversion resolution (0.25x0.3125 or 0.5x0.625). 
+Storage_guidelines_TODO -- For example, 100GB is generally sufficient for a 1-week inversion. 
+Note that your storage costs will be based on this value. 
+You can always add storage space after your EC2 instance is launched, but it is very difficult to retroactively reduce storage space. 
+It is best to start conservative if you plan to keep the instance for a significant time period (more than a few days).
 
 
-**Then, just click on "Review and Launch".** You don't need to touch other options this time. This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
+**Then, just click on "Review and Launch".** You don't need to touch other options this time. 
+This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
 
 .. _keypair-label:
 
-When you first use EC2, you will be asked to create and download a file called a "Key Pair". It is equivalent to the password you enter to ``ssh`` to your local server.
+When you first use EC2, you will be asked to create and download a file called a "Key Pair". 
+It is equivalent to the password you enter to ``ssh`` to your local server.
 
-Give your "Key Pair" a name, click on "Download Key Pair", and finally click on "Launch Instances". In the future, you can simply select "Choose an existing Key Pair", select your previously created Key Pair, and launch.
+Give your "Key Pair" a name, click on "Download Key Pair", and finally click on "Launch Instances". 
+In the future, you can simply select "Choose an existing Key Pair", select your previously created Key Pair, and launch.
 
 .. figure:: img/key_pair.png
   :width: 500 px
 
 
-Once launched, you can monitor the instance in the EC2-Instance console as shown below. Within < 1min of initialization, "Instance State" should become "running" (refresh the page if the status stays as "pending"):
+Once launched, you can monitor the instance in the EC2-Instance console as shown below. 
+Within one minute of initialization, "Instance State" should show "running" (refresh the page if the status remains "pending"):
 
 .. figure:: img/running_instance.png
 
-You now have your own system running on the cloud! Note that you will be charged every hour that you leave this instance running, so make sure to do the 
-:ref:`final tutorial step: shutdown the server <shutdown-label>` if you need to pause your work to avoid being charged continuously.
+You now have your own system running on the cloud! Note that you will be charged continuously while the instance is running, so make sure to do the 
+:ref:`final tutorial step: shutdown the server <shutdown-label>` if you need to pause your work to avoid unnecessary compute charges.
 
 .. _login_ec2-label:
 
 4. Login to your instance
 -------------------------
 
-Select your instance, click on the "Connect" button (shown in the above figure) near the blue "Launch Instance" button, then you should see this instruction page:
+Select your instance and click on the "Connect" button (shown in the figure above) near the blue "Launch Instance" button to show this instruction page:
 
 .. figure:: img/connect_instruction.png
   :width: 500 px
 
 - On Mac or Linux, use the ``ssh -i ...`` command under "Example" to connect to the server in the terminal. Some minor changes are needed:
 
-  (1) ``cd`` to the directory where your Key Pair is stored (people often put the key in ``~/.ssh/`` but any directory is fine.)
-  (2) Use ``chmod 400 your-key-name.pem`` to change the key pair's permission (also mentioned in the above figure; only need to do this the first time you login).
-  (3) Change the user name in that command from ``root`` to ``ubuntu``, so the full command will be like ``ssh -i "your-key-name.pem" ubuntu@xxx.amazonaws.com``
+  (1) ``cd`` to the directory where your Key Pair is stored (people often put the key in ``~/.ssh/`` but any directory will do.)
+  (2) Use ``chmod 400 your-key-name.pem`` to change the key pair's permission (also mentioned in the above figure; this only needs to be done once).
+  (3) Change the user name in the command from ``root`` to ``ubuntu`` so that the full command
+      looks like ``ssh -i "your-key-name.pem" ubuntu@ec2-##-###-##-##.compute-1.amazonaws.com``
 
-- On Windows, you can install `Git-BASH <https://gitforwindows.org>`_ to emulate a Linux terminal. Simply accept all default options during installation, as the goal here is just to use Bash, not Git. 
-  Alternatively, you can use `MobaXterm <http://angus.readthedocs.io/en/2016/amazon/log-in-with-mobaxterm-win.html>`_, `Putty <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/putty.html>`_, `Windows Subsystem for Linux (WSL) <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/WSL.html>`_ or `PowerShell with OpenSSH <https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/>`_. The Git-BASH solution should be the most painless, but these other options should work as well. Note: there is a bug on older versions of WSL that can prevent the ``chmod`` command from functioning.
+- On Windows, you can install `Git-BASH <https://gitforwindows.org>`_ to emulate a Linux terminal. 
+  Simply accept all default options during installation, as the goal here is just to use Bash, not Git. 
+  Alternatively, you can use `MobaXterm <http://angus.readthedocs.io/en/2016/amazon/log-in-with-mobaxterm-win.html>`_, 
+  `Putty <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/putty.html>`_, 
+  `Windows Subsystem for Linux (WSL) <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/WSL.html>`_, or 
+  `PowerShell with OpenSSH <https://blogs.msdn.microsoft.com/powershell/2017/12/15/using-the-openssh-beta-in-windows-10-fall-creators-update-and-windows-server-1709/>`_. 
+  The Git-BASH solution should be the most painless, but these other options can work as well. 
+  Note: there is a bug on older versions of WSL that can prevent the ``chmod`` command from functioning.
 
 
 
@@ -136,16 +160,18 @@ Open the ``config.yml`` file with vim or emacs::
 
   $ emacs setup_ch4_inversion.sh
 
-
-This file contains many settings you can modify according to your scientific needs. A detailed explanation of all configuration values can be read at the `IMI config file page <imi-config-file>`_.
+This configuration file contains many settings that you can modify to suit your needs. 
+See the `IMI configuration file page <imi-config-file>`_ for information on the different settings/options.
 
 6. Running the IMI
 ------------------
-After you have edited the config file to your desired workflow settings, run the workflow by executing the following command in ``~/setup_CH4``:
+After editing the configuration file, you can run the IMI by executing the following command:
   
   $ ./run_ch4_inversion.sh
 
-This will kick off the workflow. This can take significant time to complete depending on the length and settings specified in the configuration file. Note: You must remain logged in for the duration of the inversion. For long running inversions you can run the workflow with tmux, see `using tmux to run the workflow <running-with-tmux>`_.
+This can take significant time to complete depending on the length and settings specified in the configuration file.
+Note: You must remain logged in for the duration of the inversion. 
+For long running inversions you can run the workflow with tmux, see `using tmux to run the workflow <running-with-tmux>`_.
 
 `Click here <manual-running>`_ for instructions on manually running each step of the workflow (an alternative to using the automated workflow run script).
 
@@ -161,25 +187,26 @@ TODO
 8. Shut down the instance
 -------------------------
 
-If you're done using your instance for awhile or don't plan on using it again, you should either shutdown or terminate your instance. 
-Shutting down or terminating your instance will minimize or completely stop, respectively, new charges to your account.
-
-
-Right-click on the instance in your console to get this menu:
+When you are ready to end your session, right-click on the instance in the AWS EC2 console to get this menu:
 
 .. image:: img/terminate.png
 
-You have two options now, "Stop" to shutdown or "Terminate" to completely delete your instance:
+There are two options for ending the session: "Stop" (temporary shutdown) or "Terminate" (permanent deletion):
 
-- "Stop" will make the system inactive. You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB allocated to your EC2 instance. You can restart the server at any time and all files will be preserved. When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type") 
-- "Terminate" will completely remove that instance so you won't be charged for it any further.
-  Unless you save your system as an AMI or transfer the data to other storage services, you will lose all your data and software.
+- "Stop" will make the system inactive. 
+  You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB allocated to your EC2 instance.
+  You can restart the server at any time and all files will be preserved.
+  When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type").
+- "Terminate" will completely delete the instance so you will incur no further charges.
+  Unless you save your system as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
 
 9. Storing Data on S3
 ---------------------
 
-S3 is our preferred cloud storage platform due to cost and ease of access. You can use the ```cp``` command to copy your output files to your desired S3 bucket for long term storage::
+S3 is our preferred cloud storage platform due to cost and ease of access. 
+
+You can use the ``cp`` command to copy your output files to an S3 bucket for long term storage::
 
   $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
 
-For more information on using s3 check out the `Exporting Data to S3 <https://integrated-methane-inversion.readthedocs.io/en/docs-update/getting-started/minimizing-cost-tips.html#exporting-data-to-s3>` section.
+For more information on using ``s3`` check out the `Exporting Data to S3 <https://integrated-methane-inversion.readthedocs.io/en/docs-update/getting-started/minimizing-cost-tips.html#exporting-data-to-s3>` section.
