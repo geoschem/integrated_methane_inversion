@@ -174,7 +174,7 @@ IMI preview
    :class: tight-table
 
    * - ``DoPreview``
-     - Boolean to run the IMI preview (``true``) or not (``false``).
+     - Boolean to run the :doc:`IMI preview <imi-preview>` (``true``) or not (``false``).
    * - ``DOFSThreshold``
      - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
        Default value ``0`` prevents exit.
