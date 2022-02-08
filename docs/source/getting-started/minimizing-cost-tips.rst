@@ -4,7 +4,7 @@ Tips for minimizing AWS costs
 
 Switching instance types
 ------------------------
-Performing an inversion with the IMI typically requires an EC2 instances with significant compute power. But if you only 
+The IMI can be very efficient when run on an EC2 instance with significant compute power. But if you only 
 wish to run the IMI preview or analyze output data, then much of this compute power will be wasted. 
 
 Thankfully, it is possible to switch the instance type of an existing instance if you expect to be doing less compute-heavy work. 
@@ -33,22 +33,22 @@ For more information on how to avoid and handle interruptions check out this pos
 
 Selecting storage volume size
 -----------------------------
-AWS charges continuous fees for the storage provisioned to the EBS volume on an EC2 instance. 
-These fees can become significant if you retain an EBS volume for long periods of time (weeks/months). 
+AWS charges continuous fees for the storage volume provisioned to an EC2 instance. 
+These fees can become significant if you retain the volume for long periods of time (weeks/months). 
 
-It is best to only provision the storage you need, and to delete your volume once finished with it to avoid added costs. 
+It is best to provision only the amount of storage needed, and to delete your volume once finished with it to minimize costs. 
 
 You can always add storage space after launching an EC2 instance, but it is very difficult to retroactively reduce storage space;
 see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html>`_.
 
 .. note::
-  When unsure of storage needs for an inversion, we recommend starting small, with a volume of ~100 GB. 
+  When unsure of the storage needs for an inversion, we recommend starting small. A good starting point is ~100 GB. 
   To determine your true storage needs, first ``ssh`` into the instance and run a 1-week inversion for 
   your region of interest. When the 1-week inversion is complete, check how much storage has been used. 
   From there, you can scale-up the storage according to your actual period of interest. 
 
   For example, if the 1-week inversion occupies 75/100 GB and you want to perform a 1-year inversion,
-  then increasing your storage to 5 TB will leave you with roughly 1 TB of additional space to work with
+  then increasing your storage to 5 TB will leave you with at least 1 TB of additional space to work with
   once the inversion is complete.
 
 
@@ -56,7 +56,7 @@ see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/lates
 
 Exporting data to S3
 --------------------
-Storing data in EBS volumes is more expensive than storing data in AWS' simple storage service (S3). 
+Storing data in EBS volumes is more expensive than storing data in AWS's simple storage service (S3). 
 Additionally, data costs in S3 are only charged on the amount of space you use, whereas EBS volumes 
 charge you for the amount of space provisioned.
 
