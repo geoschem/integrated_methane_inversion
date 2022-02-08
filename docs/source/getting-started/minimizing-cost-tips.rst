@@ -13,6 +13,7 @@ Allocating storage volume size
 ------------------------------
 You pay for the amount of storage space you allocate to an instance at creation time. The cost of storage is not high, but can become significant if you keep the storage volumes for long periods of time (weeks/months). It is best to only allocate the storage you need and delete the volume once finished with it to prevent these costs. Note that volumes can be dynamically expanded, but not easily shrunk, see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html>`_.
 
+.. _exportingS3-label:
 Exporting data to S3
 --------------------
 Storing data in EBS volumes is more expensive than storing data in AWS' simple storage service (S3). Additionally, data costs in S3 are only charged on the amount of space you use, whereas EBS volumes charge you for the amount of space allocated.

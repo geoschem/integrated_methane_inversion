@@ -89,10 +89,15 @@ All other config settings in "Step 3: Configuring Instance Details" can be left 
 Proceed to "Step 4: Add Storage" and select the size of your storage volume. 
 
 Your storage needs will depend on the length of the inversion period, size of the inversion domain, and the inversion resolution. 
-Storage_guidelines_TODO -- For example, 100GB is generally sufficient for a 1-week inversion. 
-Note that your storage costs will be based on this value. 
+For example, 100GB is generally sufficient for a 1-week inversion, and 5 TB will likely be enough for a 1-year inversion.
+
 You can always add storage space after your EC2 instance is launched, but it is very difficult to retroactively reduce storage space. 
 It is best to start conservative if you plan to keep the instance for a significant time period (more than a few days).
+
+.. note::
+  Storage costs will typically amount to USD $100 per month per TB of provisioned storage.
+  When your inversion is complete, you can :ref:`copy output data to S3 <s3storage-label>` and 
+  :ref:`terminate your EC2 instance <shutdown-label>` to avoid continued storage charges.
 
 **Then, just click on "Review and Launch".** You don't need to touch other options this time. 
 This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
@@ -153,7 +158,7 @@ Navigate to the IMI setup directory::
 
   $ cd ~/setup_CH4
 
-Open the ``config.yml`` file with vim or emacs::
+Open the ``config.yml`` file with vim (``vi``) or emacs::
 
   $ emacs setup_ch4_inversion.sh
 
@@ -167,10 +172,10 @@ After editing the configuration file, you can run the IMI by executing the follo
   
   $ sbatch run_ch4_inversion.sh
 
-The IMI can take hours to days to complete depending on the configuration. 
+The IMI can take minutes to days to complete, depending on the configuration and EC2 instance type. 
 You can safely disconnect from your instance during this time, but the instance must remain active in the AWS console.
 
-Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmux>` to obtain minor to moderate speed-up.
+Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmux>` to obtain a small to moderate speed-up.
 
 .. note::
   We **strongly** recommend using the :doc:`IMI preview feature <imi-preview>` before running an inversion.
@@ -200,7 +205,9 @@ There are two options for ending the session: "Stop" (temporary shutdown) or "Te
   Unless you save your system as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
 
 
-9. Store Data on S3
+.. _s3storage-label:
+
+9. Store data on S3
 -------------------
 
 S3 is our preferred cloud storage platform due to cost and ease of access. 
@@ -209,4 +216,4 @@ You can use the ``cp`` command to copy your output files to an S3 bucket for lon
 
   $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
 
-For more information on using ``s3`` check out the `Exporting Data to S3 <https://integrated-methane-inversion.readthedocs.io/en/docs-update/getting-started/minimizing-cost-tips.html#exporting-data-to-s3>` section.
+For more information on using ``s3`` check out the :doc:`Exporting Data to S3 <minimizing-cost-tips/exportingS3-label>` section.
