@@ -211,11 +211,11 @@ When you are ready to end your session, right-click on the instance in the AWS E
 There are two options for ending the session: "Stop" (temporary shutdown) or "Terminate" (permanent deletion):
 
 - "Stop" will make the system inactive. 
-  You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB allocated to your EC2 instance.
-  You can restart the server at any time and all files will be preserved.
+  You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB provisioned on your EC2 instance.
+  You can restart the instance at any time and all files will be preserved.
   When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type").
 - "Terminate" will completely delete the instance so you will incur no further charges.
-  Unless you save your system as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
+  Unless you save the contents of your instance as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
 
 
 .. _s3storage-label:
