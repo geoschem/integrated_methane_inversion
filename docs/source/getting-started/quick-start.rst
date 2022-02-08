@@ -24,7 +24,9 @@ For more information on costs, see preview_link_TODO and :doc:`Tips for Minimizi
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
-  
+
+
+.. _s3-permissions-label:
 
 2. Add S3 user permissions
 --------------------------
@@ -81,7 +83,7 @@ Depending on your use case you may choose a different instance type with more/le
 
 .. _skip-ec2-config-label:
 
-Proceed to Step 3 and select the ``IAM Role`` you created in `step 2 <2. Add S3 user permissions>`_. 
+Proceed to Step 3 and select the ``IAM Role`` you created in :ref:`step 2 <s3-permissions-label>`. 
 All other config settings in "Step 3: Configuring Instance Details" can be left as the defaults.
 
 .. figure:: img/assign_iam_to_ec2.png
@@ -216,4 +218,4 @@ You can use the ``cp`` command to copy your output files to an S3 bucket for lon
 
   $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
 
-For more information on using ``s3`` check out the :doc:`Exporting Data to S3 <minimizing-cost-tips/exportingS3-label>` section.
+For more information on using ``s3`` check out the :doc:`Exporting Data to S3 <minimizing-cost-tips#exportingS3-label>` section.
