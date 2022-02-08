@@ -5,32 +5,41 @@ Tips for minimizing AWS costs
 Switching instance types
 ------------------------
 To run the inversion, you need to have an instance with significant compute power, but if you are only 
-running IMI preview or doing analysis of output data, then much of this compute power is going to waste. 
-However, it is possible to switch the instance type of an existing instance if you expect to be doing less compute heavy tasks. 
-See the `AWS Documentation on how to change your instance type <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-resize.html>`_.
+running IMI preview or doing analysis of output data, then much of this compute power will be wasted. 
+
+Thankfully, it is possible to switch the instance type of an existing instance if you expect to be doing less compute-heavy tasks. 
+See the `AWS Documentation on how to change your instance type <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-resize.html>`_
+for more information.
 
 
 Spot instances
 --------------
 Spot instances take advantage of unused compute capacity on the AWS cloud, allowing users to launch instances at a 
-70-90% reduction in price compared to on-demand instances. However, this reduced pricing comes with the understanding 
-that AWS can take back this extra capacity at any time, so your instance may be interrupted (with a 2 minute warning). 
-Generally, interruptions are rare (~5% of instances get interrupted) and once interupted your instance will be either 
-Stopped or Terminated depending on your configuration. We recommend using spot instances for inversions that take hours 
-(not days) as it can greatly reduce your EC2 costs. For information on how to launch a spot instance see 
+70-90% reduction in price compared to on-demand instances. 
+
+However, this reduced pricing comes with the understanding that AWS can take back this extra capacity at any time, 
+so your instance may be interrupted (with a 2 minute warning). Interruptions are generally rare (~5% of instances get interrupted) 
+and once interupted your instance will be either Stopped or Terminated depending on the EC2 configuration. 
+
+We recommend using spot instances for inversions that take hours (not days) as it can greatly reduce your EC2 costs. 
+For information on how to launch a spot instance see 
 `Create a Spot Instance Request <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-requests.html#create-spot-instance-request-console-procedure>`_. 
 For more information on how to avoid and handle interruptions checko out this post on 
 `Best Practices <https://aws.amazon.com/blogs/compute/best-practices-for-handling-ec2-spot-instance-interruptions/>`_.
 
 
+.. _selectingStorageSize-label:
+
 Selecting storage volume size
 -----------------------------
-You pay for the amount of storage space you provision to an instance at creation time. 
-The cost of storage is not high when provisioned for a short time, but can become significant if you keep the storage 
-volumes for longer periods (weeks/months). 
+AWS charges continuous fees for the storage volumes provisioned to the EBS volume on your EC2 instances. 
+These fees can become significant if you retain EBS volumes for long periods of time (weeks/months). 
+
 It is best to only provision the storage you need, and to delete your volume once finished with it to avoid added costs. 
-Note that volumes can be dynamically expanded, but not easily shrunk;
+
+You can always add storage space after launching an EC2 instance, but it is very difficult to retroactively reduce storage space;
 see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html>`_.
+
 
 
 .. _exportingS3-label:
