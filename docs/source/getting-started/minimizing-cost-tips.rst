@@ -4,10 +4,10 @@ Tips for minimizing AWS costs
 
 Switching instance types
 ------------------------
-To run the inversion, you need to have an instance with significant compute power, but if you are only 
-running IMI preview or doing analysis of output data, then much of this compute power will be wasted. 
+Performing an inversion with the IMI typically requires an EC2 instances with significant compute power. But if you only 
+wish to run the IMI preview or analyze output data, then much of this compute power will be wasted. 
 
-Thankfully, it is possible to switch the instance type of an existing instance if you expect to be doing less compute-heavy tasks. 
+Thankfully, it is possible to switch the instance type of an existing instance if you expect to be doing less compute-heavy work. 
 See the `AWS Documentation on how to change your instance type <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-resize.html>`_
 for more information.
 
@@ -18,13 +18,14 @@ Spot instances take advantage of unused compute capacity on the AWS cloud, allow
 70-90% reduction in price compared to on-demand instances. 
 
 However, this reduced pricing comes with the understanding that AWS can take back this extra capacity at any time, 
-so your instance may be interrupted (with a 2 minute warning). Interruptions are generally rare (~5% of instances get interrupted) 
-and once interupted your instance will be either Stopped or Terminated depending on the EC2 configuration. 
+so your instance may be interrupted (with a 2 minute warning), causing the IMI to crash. 
+Interruptions are generally rare (~5% of instances get interrupted) and once interupted your instance will be either 
+Stopped or Terminated depending on the EC2 configuration. 
 
 We recommend using spot instances for inversions that take hours (not days) as it can greatly reduce your EC2 costs. 
 For information on how to launch a spot instance see 
 `Create a Spot Instance Request <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-requests.html#create-spot-instance-request-console-procedure>`_. 
-For more information on how to avoid and handle interruptions checko out this post on 
+For more information on how to avoid and handle interruptions check out this post on 
 `Best Practices <https://aws.amazon.com/blogs/compute/best-practices-for-handling-ec2-spot-instance-interruptions/>`_.
 
 
@@ -32,14 +33,23 @@ For more information on how to avoid and handle interruptions checko out this po
 
 Selecting storage volume size
 -----------------------------
-AWS charges continuous fees for the storage volumes provisioned to the EBS volume on your EC2 instances. 
-These fees can become significant if you retain EBS volumes for long periods of time (weeks/months). 
+AWS charges continuous fees for the storage provisioned to the EBS volume on an EC2 instance. 
+These fees can become significant if you retain an EBS volume for long periods of time (weeks/months). 
 
 It is best to only provision the storage you need, and to delete your volume once finished with it to avoid added costs. 
 
 You can always add storage space after launching an EC2 instance, but it is very difficult to retroactively reduce storage space;
 see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html>`_.
 
+.. note::
+  When unsure of storage needs for an inversion, we recommend starting small, with a volume of ~100 GB. 
+  To determine your true storage needs, first ``ssh`` into the instance and run a 1-week inversion for 
+  your region of interest. When the 1-week inversion is complete, check how much storage has been used. 
+  From there, you can scale-up the storage according to your actual period of interest. 
+
+  For example, if the 1-week inversion occupies 75/100 GB and you want to perform a 1-year inversion,
+  then increasing your storage to 5 TB will leave you with roughly 1 TB of additional space to work with
+  once the inversion is complete.
 
 
 .. _exportingS3-label:
