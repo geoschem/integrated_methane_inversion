@@ -183,19 +183,20 @@ Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmu
 7. Visualize results with Python
 --------------------------------
 
-When your inversion is complete, you can use the ``visualization_notebook.ipynb`` provided with the IMI to inspect the results.
+When your inversion is complete, you can use the visualization notebook provided with the IMI to quickly inspect the results.
 
 First navigate to the inversion directory::
 
   $ cd /home/ubuntu/CH4_Workflow/{YourRunName}/inversion
 
 You can use the ``ls`` command to view the contents of the directory, which will include several scripts, data directories,
-and netcdf output files, along with the ``visualization_notebook.ipynb``. For more information on the contents, 
-see :doc:`Inversion directory contents <../other/inversion-directory-contents>`.
+and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
+see :doc:`Contents of the inversion directory <../other/inversion-directory-contents>`.
 
 Follow `these short instructions <https://docs.aws.amazon.com/dlami/latest/devguide/setup-jupyter.html>`_ to set up and connect to
-a jupyter notebook on AWS. Once connected to the notebook, run its contents to display key results including the state vector,
-prior and posterior emissions, TROPOMI data for the region/period of interest, averaging kernel sensitivities, and more.
+a jupyter notebook server on AWS. Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display 
+key inversion results including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
+averaging kernel sensitivities, and more.
 
 
 .. _shutdown-label:
