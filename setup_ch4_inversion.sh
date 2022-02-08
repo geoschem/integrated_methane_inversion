@@ -890,12 +890,18 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_GC
     mkdir -p inversion/Sensi
     if "$isAWS"; then
-        mkdir -p inversion/data_TROPOMI
         cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
     else
+        mkdir -p inversion/data_TROPOMI
         ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
     fi
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/*.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/calc_sensi.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/invert.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/jacobian.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_gridded_posterior.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/postproc_diags.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/setup_gc_cache.py inversion/
+    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/utils.py inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
     cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/visualization_notebook.ipynb inversion/
     sed -i -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \

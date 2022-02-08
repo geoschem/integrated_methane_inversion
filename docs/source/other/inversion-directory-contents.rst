@@ -9,13 +9,23 @@ After completing an inversion, navigate to the inversion directory and display i
     $ cd /home/ubuntu/CH4_Workflow/{YourRunName}/inversion
     $ ll
 
-You will see the following items:
+In addition to a shell script and several Python scripts used in the inversion, you will see the following items:
 
 .. list-table::
    :widths: 30, 70
    :class: tight-table
 
-   * - ``temp``
+   * - ``data_converted``
      - temp
-   * - ``temp``
+   * - ``data_converted_posterior``
      - temp
+   * - ``data_GC``
+     - temp
+   * - ``Sensi``
+     - temp
+   * - ``inversion_result.nc``
+     - temp
+   * - ``gridded_posterior.nc``
+     - temp
+   * - ``visualization_notebook.ipynb``
+     -
