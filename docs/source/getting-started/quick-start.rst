@@ -95,7 +95,7 @@ Proceed to "Step 4: Add Storage" and select the size of your storage volume.
   100GB is generally sufficient for a 1-week inversion (such as for the Permian Basin), and 5 TB will likely be enough for a 1-year inversion.
 
   Storage costs typically amount to USD $100 per month per TB of provisioned space. 
-  See our `advice on selecting storage volume size <minimizing-cost-tips.rst#selectingStorageSize-label>`__ to help minimize storage fees.
+  See our `advice on selecting storage volume size <minimizing-cost-tips.html#selecting-storage-volume-size>`__ to help minimize storage fees.
   And when your inversion is complete, consider :ref:`copying output data to S3 <s3storage-label>` and 
   :ref:`terminating your EC2 instance <shutdown-label>` to avoid continued storage fees.
 
@@ -216,4 +216,4 @@ You can use the ``cp`` command to copy your output files to an S3 bucket for lon
 
   $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
 
-For more information on using ``s3`` check out our `tips for exporting data to S3 <minimizing-cost-tips.rst#exportingS3-label>`__.
+For more information on using ``s3`` check out our `tips for exporting data to S3 <minimizing-cost-tips.html#exporting-data-to-s3>`__.
