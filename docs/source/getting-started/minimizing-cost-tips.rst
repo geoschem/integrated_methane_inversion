@@ -43,6 +43,7 @@ see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/lates
 
 .. note::
   When unsure of the storage needs for an inversion, we recommend starting small. A good starting point is ~100 GB. 
+  
   To determine your true storage needs, first ``ssh`` into the instance and run a 1-week inversion for 
   your region of interest. When the 1-week inversion is complete, check how much storage has been used. 
   From there, you can scale-up the storage according to your actual period of interest. 
@@ -56,12 +57,12 @@ see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/lates
 
 Exporting data to S3
 --------------------
-Storing data in EBS volumes is more expensive than storing data in AWS's simple storage service (S3). 
-Additionally, data costs in S3 are only charged on the amount of space you use, whereas EBS volumes 
+Storing data in EBS volumes is more expensive than storing data in Amazon S3. 
+Additionally, with S3 you are only charged for the amount of space you use, whereas EBS volumes 
 charge you for the amount of space provisioned.
 
-For these reasons, after running the IMI, best practice is to push your needed output data to an S3 bucket 
-for long term storage and usage, rather than retaining the entire EBS volume. 
+For these reasons, after running the IMI, we recommend pushing your output data to an S3 bucket 
+for long term storage, rather than retaining the entire EBS volume. 
 Resources for creating an S3 bucket and pushing data to it can be found here:
 
 * `Creating an S3 Bucket <https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html>`_

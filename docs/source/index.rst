@@ -47,6 +47,12 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
 
 .. toctree::
    :maxdepth: 1
+   :caption: other
+
+   other/inversion-directory-contents.rst
+
+.. toctree::
+   :maxdepth: 1
    :caption: Help & Reference
 
    reference/known-bugs.rst
