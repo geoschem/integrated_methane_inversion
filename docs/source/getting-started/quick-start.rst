@@ -191,7 +191,7 @@ First navigate to the inversion directory::
 
 You can use the ``ls`` command to view the contents of the directory, which will include several scripts, data directories,
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
-see :doc:`Contents of the inversion directory <../other/inversion-directory-contents>`.
+see `Contents of the inversion directory <../other/listing-directory-contents.html/inversion-directory>`__.
 
 Follow `these short instructions <https://docs.aws.amazon.com/dlami/latest/devguide/setup-jupyter.html>`_ to set up and connect to
 a jupyter notebook server on AWS. Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display 
