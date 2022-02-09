@@ -18,19 +18,19 @@ the following items in the inversion directory after completing an inversion:
    :class: tight-table
   
    * - ``data_converted/``
-     - Directory of Python ``.pkl`` files containing
+     - | Directory of Python ``.pkl`` files containing
        
-       - TROPOMI observations
-       - virtual TROPOMI observations of the GEOS-Chem reference simulation 
-       - elements of the Jacobian matrix
+         - TROPOMI observations
+         - virtual TROPOMI observations of the GEOS-Chem reference simulation 
+         - elements of the Jacobian matrix
        | for each TROPOMI orbit relevant to the inversion.
        | 
        | All quantities have been "converted" to 1D fields indexed by latitude and longitude.
    * - ``data_converted_posterior/``
      - | Directory of Python ``.pkl`` files containing
        
-       - TROPOMI observations
-       - virtual TROPOMI observations of the GEOS-Chem posterior simulation
+         - TROPOMI observations
+         - virtual TROPOMI observations of the GEOS-Chem posterior simulation
        | for each TROPOMI orbit relevant to the inversion.
        |
        | All quantities have been "converted" to 1D fields indexed by latitude and longitude.
@@ -42,15 +42,15 @@ the following items in the inversion directory after completing an inversion:
      - | Directory of ``.nc`` files containing daily 4-D GEOS-Chem sensitivities to perturbations in the 
          state variablesof the inversion (i.e., in the emission elements being optimized). 
        |
-       | The data have dimensions ``(element, lev, lat, lon)``, where ``element`` is the emission element Id
-         (state variable Id) and ``lev`` is the vertical dimension. 
+       | The data have dimensions ``(element, lev, lat, lon)``, where ``element`` is the emission element id
+         (state variable id) and ``lev`` is the vertical dimension. 
        |
        | These files are used to compute the Jacobian matrix by application of the TROPOMI operator.
    * - ``inversion_result.nc``
-     - File containing the raw output of the inversion (``invert.py``) as vectors (posterior emission
-       estimate) and matrices (posterior error covariance matrix, averaging kernel matrix).
+     - | File containing the raw output of the inversion (``invert.py``) as vectors (posterior emission
+         estimate) and matrices (posterior error covariance matrix, averaging kernel matrix).
    * - ``gridded_posterior.nc``
-     - File containing the posterior emission estimate, posterior error covariance matrix, and averaging
-       kernel matrix projected onto the 2-D inversion grid.
+     - | File containing the posterior emission estimate, posterior error covariance matrix, and averaging
+         kernel matrix projected onto the 2-D inversion grid.
    * - ``visualization_notebook.ipynb``
-     - Jupyter notebook for quickly visualizing key results of the inversion.
+     - | Jupyter notebook for quickly visualizing key results of the inversion.
