@@ -23,36 +23,29 @@ the following items in the inversion directory after completing an inversion:
        - TROPOMI observations
        - virtual TROPOMI observations of the GEOS-Chem reference simulation 
        - elements of the Jacobian matrix
-
-       for each TROPOMI orbit relevant to the inversion.
-
-
-       All quantities have been "converted" to 1D fields indexed by latitude and longitude.
+       | for each TROPOMI orbit relevant to the inversion.
+       | 
+       | All quantities have been "converted" to 1D fields indexed by latitude and longitude.
    * - ``data_converted_posterior/``
      - Directory of Python ``.pkl`` files containing
 
        - TROPOMI observations
        - virtual TROPOMI observations of the GEOS-Chem posterior simulation
-
        for each TROPOMI orbit relevant to the inversion.
-
 
        All quantities have been "converted" to 1D fields indexed by latitude and longitude.
    * - ``data_GC/``
      - Directory of ``.nc`` files containing daily GEOS-Chem ``SpeciesConc`` output from the
        reference simulation. 
        
-
        These files are used to generate virtual TROPOMI observations
        for comparison with the true observations.
    * - ``Sensi/``
      - Directory of ``.nc`` files containing daily 4-D GEOS-Chem sensitivities to perturbations in the 
        state variablesof the inversion (i.e., in the emission elements being optimized). 
        
-
-       The data have dimensions ``(element, lev, lat, lon)``, where ``element`` is the emission element
-       (state variable) Id and ``lev`` is the vertical dimension. 
-       
+       The data have dimensions ``(element, lev, lat, lon)``, where ``element`` is the emission element Id
+       (state variable Id) and ``lev`` is the vertical dimension. 
        
        These files are used to compute the Jacobian matrix by application of the TROPOMI operator.
    * - ``inversion_result.nc``
