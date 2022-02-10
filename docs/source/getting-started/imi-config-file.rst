@@ -159,7 +159,7 @@ These settings turn on/off (``true`` / ``false``) different steps of the inversi
    :class: tight-table
 
    * - ``RunSetup``
-     - Run the setup script, including selected setup modules above.
+     - Run the setup script (``setup_imi.sh``), including selected setup modules above.
    * - ``DoSpinup``
      - Run the spin-up simulation.
    * - ``DoJacobian``

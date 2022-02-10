@@ -164,6 +164,7 @@ Open the ``config.yml`` file with vim (``vi``) or emacs::
 
 This configuration file contains many settings that you can modify to suit your needs. 
 See the :doc:`IMI configuration file page <imi-config-file>` for information on the different settings/options.
+Also see the :doc:`common configurations page <../other/common-configurations>`.
 
 
 6. Run the IMI
@@ -178,7 +179,7 @@ You can safely disconnect from your instance during this time, but the instance 
 Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmux>` to obtain a small to moderate speed-up.
 
 .. note::
-  We **strongly** recommend using the :doc:`IMI preview feature <imi-preview>` before running an inversion.
+  We strongly recommend using the :doc:`IMI preview feature <imi-preview>` before running an inversion.
 
 7. Visualize results with Python
 --------------------------------
