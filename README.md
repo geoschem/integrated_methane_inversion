@@ -1,6 +1,5 @@
 # Integrated Methane Inversion (IMI) Workflow
 ## Overview:
-===============================================================================
 
 This directory contains the source code for setting up and running the
 Integrated Methane Inversion with GEOS-Chem.

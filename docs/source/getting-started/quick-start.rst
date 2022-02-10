@@ -83,7 +83,7 @@ Depending on your use case you may choose a different instance type with more/le
 
 .. _skip-ec2-config-label:
 
-Proceed to Step 3 and select the ``IAM Role`` you created in :ref:`step 2 <s3-permissions-label>`. 
+Proceed to Step 3 and select the IAM role you created in :ref:`step 2 <s3-permissions-label>`. 
 All other config settings in "Step 3: Configuring Instance Details" can be left as the defaults.
 
 .. figure:: img/assign_iam_to_ec2.png
@@ -160,7 +160,7 @@ Navigate to the IMI setup directory::
 
 Open the ``config.yml`` file with vim (``vi``) or emacs::
 
-  $ emacs setup_imi.sh
+  $ emacs config.yml
 
 This configuration file contains many settings that you can modify to suit your needs. 
 See the :doc:`IMI configuration file page <imi-config-file>` for information on the different settings/options.

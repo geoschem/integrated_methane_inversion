@@ -87,6 +87,32 @@ Note that the final results of the original inversion (``inversion_result.nc`` a
 will be overwritten if not archived before running the sensitivity inversion.
 
 
+Running an inversion without the preview
+----------------------------------------
+
+We generally don't recommend doing this, but if you wish to perform an inversion without manually inspecting the results 
+of the IMI preview, use the following configuration to run the IMI from end to end, with a threshold on the expected degrees of
+freedom for signal (DOFS) to cancel the inversion; if the expected DOFS are below the threshold, the IMI will exit with a warning. ::
+
+    ## Setup modules
+    SetupTemplateRundir: true
+    SetupSpinupRun: true
+    SetupJacobianRuns: true
+    SetupInversion: true
+    SetupPosteriorRun: true
+    
+    ## Run modules
+    RunSetup: true
+    DoSpinup: true
+    DoJacobian: true
+    DoInversion: true
+    DoPosterior: true
+    
+    ## IMI preview
+    DoPreview: true
+    DOFSThreshold: {insert-threshold-value}
+
+
 Modifying prior emission estimates
 ----------------------------------
 
@@ -109,7 +135,8 @@ First run the IMI with the following configuration to set up the template run di
     ## IMI preview
     DoPreview: false
 
-Follow the :doc:`instructions to modify prior emission inventories <../advanced/custom-prior-emissions-hemco>` via HEMCO.
+Follow the :doc:`instructions to modify prior emission inventories <../advanced/custom-prior-emissions-hemco>` via 
+`HEMCO <http://wiki.seas.harvard.edu/geos-chem/index.php/HEMCO>`_.
 
 When you are finished modifying the emission inventories, run the preview without setting up the template run directory. ::
 
@@ -129,3 +156,5 @@ When you are finished modifying the emission inventories, run the preview withou
     
     ## IMI preview
     DoPreview: true
+
+If satisfied with the preview results, continue with one of the above configurations to run the inversion.
