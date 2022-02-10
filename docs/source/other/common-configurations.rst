@@ -116,7 +116,8 @@ freedom for signal (DOFS) to cancel the inversion; if the expected DOFS are belo
 Modifying prior emission estimates
 ----------------------------------
 
-First run the IMI with the following configuration to set up the template run directory. ::
+**Set up the template run directory**
+::
 
     ## Setup modules
     SetupTemplateRundir: true
@@ -138,7 +139,10 @@ First run the IMI with the following configuration to set up the template run di
 Follow the :doc:`instructions to modify prior emission inventories <../advanced/custom-prior-emissions-hemco>` via 
 `HEMCO <http://wiki.seas.harvard.edu/geos-chem/index.php/HEMCO>`_.
 
-When you are finished modifying the emission inventories, run the preview without setting up the template run directory. ::
+**Run the preview**
+
+After :doc:`modifying the prior emission inventories <../advanced/custom-prior-emissions-hemco>`,
+run the preview without setting up the template run directory. ::
 
     ## Setup modules
     SetupTemplateRundir: false
