@@ -27,14 +27,14 @@ run the preview, and then stop. ::
     ## IMI preview
     DoPreview: true
 
-If the results of the preview are satisfactory, try the next configuration on this page to run the inversion.
+If the results of the preview are satisfactory, you can try the next configuration on this page to run the inversion.
 If they are not satisfactory, modify the configuration file (e.g., the region and/or period of interest) and try again.
 
 
-Inversion after successful preview
-----------------------------------
+Running an inversion after the preview
+--------------------------------------
 
-The preview is complete and the results are satisfactory. Now proceed with the inversion (without re-running the preview). ::
+If the preview is complete and the results are satisfactory, you can proceed with the inversion (without re-running the preview). ::
 
     ## Inversion
     PrecomputedJacobian: false
@@ -57,10 +57,10 @@ The preview is complete and the results are satisfactory. Now proceed with the i
     DoPreview: false
 
 
-Sensitivity inversion
----------------------
+Running a sensitivity inversion
+-------------------------------
 
-An initial inversion is complete. Now re-run the inversion with modified prior error (``PriorError``), 
+You've completed an initial inversion. Use the following configuration to run a new inversion with modified prior error (``PriorError``), 
 observational error (``ObsError``), or regularization parameter (``Gamma``). ::
 
     ## Inversion
@@ -85,3 +85,47 @@ observational error (``ObsError``), or regularization parameter (``Gamma``). ::
 
 Note that the final results of the original inversion (``inversion_result.nc`` and ``gridded_posterior.nc``) 
 will be overwritten if not archived before running the sensitivity inversion.
+
+
+Modifying prior emission estimates
+----------------------------------
+
+First run the IMI with the following configuration to set up the template run directory. ::
+
+    ## Setup modules
+    SetupTemplateRundir: true
+    SetupSpinupRun: false
+    SetupJacobianRuns: false
+    SetupInversion: false
+    SetupPosteriorRun: false
+    
+    ## Run modules
+    RunSetup: false
+    DoSpinup: false
+    DoJacobian: false
+    DoInversion: false
+    DoPosterior: false
+    
+    ## IMI preview
+    DoPreview: false
+
+Follow the :doc:`instructions to modify prior emission inventories <../advanced/custom-prior-emissions-hemco>` via HEMCO.
+
+When you are finished modifying the emission inventories, run the preview without setting up the template run directory. ::
+
+    ## Setup modules
+    SetupTemplateRundir: false
+    SetupSpinupRun: false
+    SetupJacobianRuns: false
+    SetupInversion: false
+    SetupPosteriorRun: false
+    
+    ## Run modules
+    RunSetup: true
+    DoSpinup: false
+    DoJacobian: false
+    DoInversion: false
+    DoPosterior: false
+    
+    ## IMI preview
+    DoPreview: true
