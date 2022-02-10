@@ -20,11 +20,11 @@ import sys
 import subprocess
 
 # Exit with error if we are not using Python3
-assert sys.version_info.major >= 3, \
-"ERROR: Python 3 is required to run download_bc.py!"
+assert sys.version_info.major >= 3, "ERROR: Python 3 is required to run download_bc.py!"
 
 # Define global variables
 DATA_DOWNLOAD_SCRIPT = "./auto_generated_download_script.sh"
+
 
 def list_missing_files(start_date, end_date, destination):
     """
@@ -42,7 +42,7 @@ def list_missing_files(start_date, end_date, destination):
     """
 
     missing_files = []
-    
+
     start_str = str(start_date)
     start_year = start_str[:4]
     start_month = start_str[4:6]
@@ -51,57 +51,73 @@ def list_missing_files(start_date, end_date, destination):
     end_year = end_str[:4]
     end_month = end_str[4:6]
     end_day = end_str[6:8]
-        
-    month_days = [31,[28,29],31,30,31,30,31,31,30,31,30,31]
 
-    file_prefix='GEOSChem.BoundaryConditions.'
-    file_suffix='_0000z.nc4'
-    
-    for year in range(int(start_year), int(end_year)+1):
+    month_days = [31, [28, 29], 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+    file_prefix = "GEOSChem.BoundaryConditions."
+    file_suffix = "_0000z.nc4"
+
+    for year in range(int(start_year), int(end_year) + 1):
         # skip years with definite no data
-        if year<2018:
-            print('Skipping BC data download for ', str(year),
-                  ': no data from this year')
+        if year < 2018:
+            print(
+                "Skipping BC data download for ", str(year), ": no data from this year"
+            )
             continue
-        init_month=1
-        final_month=12
-        if year==int(start_year):
+        init_month = 1
+        final_month = 12
+        if year == int(start_year):
             # only get desired months from incomplete years
-            init_month=int(start_month)
-        if year==int(end_year):
-            final_month=int(end_month)
-        for month in range(init_month, final_month+1):
+            init_month = int(start_month)
+        if year == int(end_year):
+            final_month = int(end_month)
+        for month in range(init_month, final_month + 1):
             # skip months with definite no data
-            if year==2018 and month<4:
-                print('Skipping BC data download for ', str(year),
-                      '/0', str(month), ': no data from this month')
+            if year == 2018 and month < 4:
+                print(
+                    "Skipping BC data download for ",
+                    str(year),
+                    "/0",
+                    str(month),
+                    ": no data from this month",
+                )
                 continue
             # add 0 to month string if necessary
-            month_prefix = '0' if month<10 else ''
-            init_day=1
-            final_day=month_days[month-1]
+            month_prefix = "0" if month < 10 else ""
+            init_day = 1
+            final_day = month_days[month - 1]
             # leap day
-            if month==2:
-                if year%4==0:
-                    final_day=final_day[1]
+            if month == 2:
+                if year % 4 == 0:
+                    final_day = final_day[1]
                 else:
-                    final_day=final_day[0]
-            if month==int(start_month) and year==int(start_year):
+                    final_day = final_day[0]
+            if month == int(start_month) and year == int(start_year):
                 # only get desired days from incomplete months
-                init_day=int(start_day)
-            if month==int(end_month) and year==int(end_year):
-                final_day=int(end_day)
-            for day in range(init_day, final_day+1):
+                init_day = int(start_day)
+            if month == int(end_month) and year == int(end_year):
+                final_day = int(end_day)
+            for day in range(init_day, final_day + 1):
                 # add 0 to day string if necessary
-                day_prefix = '0' if day<10 else ''
+                day_prefix = "0" if day < 10 else ""
 
                 # check if file for this day already exists
-                file_name = file_prefix+str(year)+month_prefix+str(month)+\
-                              day_prefix+str(day)+file_suffix
+                file_name = (
+                    file_prefix
+                    + str(year)
+                    + month_prefix
+                    + str(month)
+                    + day_prefix
+                    + str(day)
+                    + file_suffix
+                )
                 # add file to download list if needed
-                if not os.path.exists(destination+'/'+file_name): missing_files.append(file_name)
+                if not os.path.exists(destination + "/" + file_name):
+                    missing_files.append(file_name)
 
     return missing_files
+
+
 def create_download_script(paths, destination):
     """
     Creates a data download script to obtain missing files
@@ -111,7 +127,7 @@ def create_download_script(paths, destination):
         paths : dict
             Output of function list_missing_files.
     """
-    
+
     # Create the data download script
     with open(DATA_DOWNLOAD_SCRIPT, "w") as f:
 
@@ -125,13 +141,12 @@ def create_download_script(paths, destination):
         # make destination if needed
         if not os.path.exists(destination):
             os.mkdir(destination)
-        
+
         # Write download commands for only the missing data files
         for path in paths:
-            cmd = cmd_prefix + remote_root + path + ' ' + destination
+            cmd = cmd_prefix + remote_root + path + " " + destination
             print(cmd, file=f)
             print(file=f)
-
 
         # Close file and make it executable
         f.close()
@@ -157,7 +172,7 @@ def download_the_data(start_date, end_date, destination):
 
     # Create script to download missing files from AWS S3
     create_download_script(paths, destination)
-    
+
     # Run the data download script and return the status
     # Remove the file afterwards
     status = subprocess.call(DATA_DOWNLOAD_SCRIPT)
@@ -167,6 +182,7 @@ def download_the_data(start_date, end_date, destination):
     if status != 0:
         err_msg = "Error downloading data from AWS!"
         raise Exception(err_msg)
+
 
 def main():
     """
