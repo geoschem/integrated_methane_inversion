@@ -136,9 +136,6 @@ Modifying prior emission estimates
     ## IMI preview
     DoPreview: false
 
-Follow the :doc:`instructions to modify prior emission inventories <../advanced/custom-prior-emissions-hemco>` via 
-`HEMCO <http://wiki.seas.harvard.edu/geos-chem/index.php/HEMCO>`_.
-
 **Run the preview**
 
 After :doc:`modifying the prior emission inventories <../advanced/custom-prior-emissions-hemco>`,
