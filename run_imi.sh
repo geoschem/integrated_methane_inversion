@@ -61,7 +61,7 @@ FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 if "$isAWS"; then
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
     mkdir -p -v $tropomiCache
-    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $tropomiCache
+    python src/inversion_scripts/download_TROPOMI.py $StartDate $EndDate $tropomiCache
 fi
 
 ##=======================================================================
