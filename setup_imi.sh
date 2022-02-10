@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# This script will set up CH4 analytical inversions with GEOS-Chem. See
-# setup_ch4_inversion_instructions.txt for details (mps, 2/20/2020)
+# This script will set up an Integrated Methane Inversion (IMI) with GEOS-Chem.
+# For documentation, see https://integrated-methane-inversion.readthedocs.io.
+#
+# Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
 ##=======================================================================
 ## Parse config.yml file
@@ -10,7 +12,7 @@
 printf "\n=== PARSING CONFIG FILE ===\n"
 
 # Get configuration
-source parse_yaml.sh
+source src/utilities/parse_yaml.sh
 eval $(parse_yaml config.yml)
 # For reference, this defines the following environment variables:
 # General: $isAWS, $RunName, $UseSlurm
@@ -53,7 +55,7 @@ SpinupEnd=${StartDate}
 
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
-    MyPath="/home/ubuntu/CH4_Workflow"
+    MyPath="/home/ubuntu/imi_output_dir"
     CondaEnv="geo"
 else
     MyPath="/n/holyscratch01/jacob_lab/$USER"
@@ -149,7 +151,7 @@ if "$BCdryrun"; then
         START=${StartDate}
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
-    python download_bc.py ${START} ${EndDate} ${BCfiles}
+    python src/utilities/download_bc.py ${START} ${EndDate} ${BCfiles}
 
 fi
 

@@ -14,7 +14,7 @@ first_line='ControlMachine'+slurm_info[0][8:]+'\n'
 second_line = ' '.join(['\n', slurm_info[0], slurm_info[1], slurm_info[6], "CoresPerSocket" + slurm_info[1][4:], "ThreadsPerCore=1 State=UNKNOWN"])+'\n'
 third_line = ' '.join(['PartitionName=debug', 'Nodes' + slurm_info[0][8:], 'Default=YES', 'MaxTime=INFINITE', 'State=UP'])+'\n'
 
-with open('/home/ubuntu/setup_CH4/new_slurm.conf', 'a+') as f:
+with open('/home/ubuntu/integrated_methane_inversion/new_slurm.conf', 'a+') as f:
     f.write('\n')
     f.write(first_line)
     f.write(second_line)

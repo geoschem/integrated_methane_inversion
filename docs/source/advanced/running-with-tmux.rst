@@ -11,7 +11,7 @@ tmux comes preinstalled on the ami used for running the IMI workflow on the clou
 
 This enters a tmux shell. From there you can run the inversion script:
     
-    $ ./run_ch4_inversion.sh
+    $ ./run_imi.sh
     
 This will start the workflow. To keep it running in the background, press ``ctrl-b`` then press ``d`` (without holding ``ctrl``) to detach the tmux shell and get back to the original terminal. At this point you can disconnect the from ssh and the workflow will continue to run in the background.
 
