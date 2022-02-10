@@ -11,4 +11,4 @@ Start by transferring your custom emission inventory to EC2::
 
     $ scp -i /local/path/to/my-key-pair.pem /local/path/to/my-inventory.nc ubuntu@my-instance-public-dns-name:/path/to/my-inventory.nc
 
-The emissions need to be defined in a netcdf file formatted as HEMCO expects.
+The emissions need to be defined in a netcdf file formatted as HEMCO expects. TODO

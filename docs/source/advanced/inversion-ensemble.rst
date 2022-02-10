@@ -14,4 +14,4 @@ the values of ``PriorError``, ``ObsError``, and/or ``Gamma`` in the configuratio
     before running the sensitivity inversion. Those files will be overwritten.
 
 If you want to run a sensitivity inversion with updated prior emission inventories, the pre-computed Jacobian will have
-to be scaled according to the differences between the original and updated inventories... instructions_TODO.
+to be scaled according to the differences between the original and updated inventories... TODO.
