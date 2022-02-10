@@ -67,8 +67,8 @@ State vector
    * - ``LandThreshold``
      - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file.
 
-Custom/pre-generated state vector file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Custom/pre-generated state vector
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are only used if ``CreateStateVectorFile`` is ``false``.
 
 .. list-table::
@@ -78,7 +78,10 @@ These settings are only used if ``CreateStateVectorFile`` is ``false``.
    * - ``StateVectorFile``
      - Path to the custom or pre-generated state vector netcdf file.
 
-To :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile, use the following settings in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook.
+To :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile, use the following settings in conjunction 
+with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
+
+  $ /home/ubuntu/integrated_methane_inversion/src/inversion_scripts/statevector_from_shapefile.ipynb
 
 .. list-table::
    :widths: 30, 70

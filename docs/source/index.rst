@@ -48,6 +48,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    :maxdepth: 1
    :caption: Other
 
+   other/common-configurations.rst
    other/listing-directory-contents.rst
    other/ami-specifications.rst
 
