@@ -14,8 +14,8 @@ General
      - Name for this inversion; will be used for directory names and prefixes.
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
-       Select ``true`` to run the IMI with ``sbatch run_ch4_inversion.sh``.
-       Select ``false`` to run the IMI with ``./run_ch4_inversion.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
+       Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
+       Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~

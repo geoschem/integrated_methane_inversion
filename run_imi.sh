@@ -3,9 +3,10 @@
 #SBATCH -N 1
 #SBATCH -n 1
 
-# This script will run a CH4 analytical inversion with GEOS-Chem.
-# (mps, 2/20/2021)
-# (djv, 12/7/2021)
+# This script will run the Integrated Methane Inversion with GEOS-Chem.
+# For documentation, see https://integrated-methane-inversion.readthedocs.io.
+#
+# Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
 start_time=$(date)
 
@@ -16,7 +17,7 @@ start_time=$(date)
 printf "\n=== PARSING CONFIG FILE ===\n"
 
 # Get configuration
-source parse_yaml.sh
+source src/utilities/parse_yaml.sh
 eval $(parse_yaml config.yml)
 # For reference, this defines the following environment variables:
 # General: $isAWS, $RunName, $UseSlurm
@@ -32,10 +33,10 @@ eval $(parse_yaml config.yml)
 
 # My path
 if "$isAWS"; then
-    MyPath="/home/ubuntu/CH4_Workflow"
-    SetupPath="/home/ubuntu/setup_CH4"
+    MyPath="/home/ubuntu/imi_output_dir"
+    SetupPath="/home/ubuntu/integrated_methane_inversion"
 else
-    MyPath="/n/holyscratch01/jacob_lab/msulprizio/CH4"
+    MyPath="/n/holyscratch01/jacob_lab/$USER"
     SetupPath="FILL"
 fi
 
@@ -60,7 +61,7 @@ FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 if "$isAWS"; then
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
     mkdir -p -v $tropomiCache
-    python PostprocessingScripts/CH4_TROPOMI_INV/download_TROPOMI.py $StartDate $EndDate $tropomiCache
+    python src/inversion_scripts/download_TROPOMI.py $StartDate $EndDate $tropomiCache
 fi
 
 ##=======================================================================
@@ -79,7 +80,7 @@ if "$RunSetup"; then
     fi
 
     # Run the setup script
-    ./setup_ch4_inversion.sh; wait;
+    ./setup_imi.sh; wait;
 
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 

@@ -4,10 +4,10 @@
 # instance hardware and IPs change when creating a new instance.
 # The script should be run with root permissions and is configured to run
 # automatically on system boot in the Integrated Methane Inversion AMI.
-cp /home/ubuntu/setup_CH4/base_slurm.conf /home/ubuntu/setup_CH4/new_slurm.conf
-/home/ubuntu/miniconda/bin/python /home/ubuntu/setup_CH4/configure_slurm.py
-cp /home/ubuntu/setup_CH4/new_slurm.conf /etc/slurm-llnl/slurm.conf
-rm /home/ubuntu/setup_CH4/new_slurm.conf
+cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/base_slurm.conf /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
+/home/ubuntu/miniconda/bin/python /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/configure_slurm.py
+cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf /etc/slurm-llnl/slurm.conf
+rm /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
 /usr/sbin/service slurmd restart
 /usr/sbin/service slurmctld restart
 

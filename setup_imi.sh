@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# This script will set up CH4 analytical inversions with GEOS-Chem. See
-# setup_ch4_inversion_instructions.txt for details (mps, 2/20/2020)
+# This script will set up an Integrated Methane Inversion (IMI) with GEOS-Chem.
+# For documentation, see https://integrated-methane-inversion.readthedocs.io.
+#
+# Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
 ##=======================================================================
 ## Parse config.yml file
@@ -10,7 +12,7 @@
 printf "\n=== PARSING CONFIG FILE ===\n"
 
 # Get configuration
-source parse_yaml.sh
+source src/utilities/parse_yaml.sh
 eval $(parse_yaml config.yml)
 # For reference, this defines the following environment variables:
 # General: $isAWS, $RunName, $UseSlurm
@@ -53,7 +55,7 @@ SpinupEnd=${StartDate}
 
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
-    MyPath="/home/ubuntu/CH4_Workflow"
+    MyPath="/home/ubuntu/imi_output_dir"
     CondaEnv="geo"
 else
     MyPath="/n/holyscratch01/jacob_lab/$USER"
@@ -149,7 +151,7 @@ if "$BCdryrun"; then
         START=${StartDate}
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
-    python download_bc.py ${START} ${EndDate} ${BCfiles}
+    python src/utilities/download_bc.py ${START} ${EndDate} ${BCfiles}
 
 fi
 
@@ -230,7 +232,7 @@ if "$CreateStateVectorFile"; then
     cd ${MyPath}/$RunName
 
     # Copy state vector creation script to working directory
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_state_vector_file.py .
+    cp ${InversionPath}/src/inversion_scripts/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
     printf "Calling make_state_vector_file.py\n"
@@ -541,16 +543,16 @@ if  "$DoPreview"; then
     state_vector_path=${MyPath}/${RunName}/StateVector.nc
     preview_dir=${MyPath}/${RunName}/${runDir}
     tropomi_cache=${MyPath}/${RunName}/data_TROPOMI
-    preview_file=${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py
+    preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
         # set number of cores to run preview with
         if "$isAWS"; then
-            sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/imi_preview.py
+            sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         fi
-        cd ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/
+        cd ${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
         sbatch -W $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache $cpu_count; wait;
         cd $runDir
@@ -895,15 +897,15 @@ if "$SetupInversion"; then
         mkdir -p inversion/data_TROPOMI
         ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
     fi
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/calc_sensi.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/invert.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/jacobian.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/make_gridded_posterior.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/postproc_diags.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/setup_gc_cache.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/utils.py inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/run_inversion.sh inversion/
-    cp ${InversionPath}/PostprocessingScripts/CH4_TROPOMI_INV/visualization_notebook.ipynb inversion/
+    cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
+    cp ${InversionPath}/src/inversion_scripts/visualization_notebook.ipynb inversion/
     sed -i -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
            -e "s:{MY_PATH}:${MyPath}:g" \
            -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
