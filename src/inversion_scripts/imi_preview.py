@@ -75,7 +75,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     return tropomi_data
 
 
-def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache, cpu_count):
+def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -173,7 +173,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache, cpu_
     albedo = []
 
     # read in and filter tropomi observations (uses parallel processing)
-    observation_dicts = Parallel(n_jobs=cpu_count)(
+    observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
         for file_path in tropomi_paths
     )
@@ -394,6 +394,5 @@ if __name__ == "__main__":
     state_vector_path = sys.argv[2]
     preview_dir = sys.argv[3]
     tropomi_cache = sys.argv[4]
-    cpu_count = int(sys.argv[5])
 
-    imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache, cpu_count)
+    imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache)
