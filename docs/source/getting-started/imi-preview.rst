@@ -27,7 +27,7 @@ described in the configuration file):
 This information is generated as a ``.txt`` file and collection of ``.png`` files in the preview directory, 
 which is located at::
 
-    $ /home/ubuntu/imi_output_dir/{YourRunName}/preview_run/
+    /home/ubuntu/imi_output_dir/{YourRunName}/preview_run/
 
 The ``.txt`` file can be viewed directly in the terminal. To view the ``.png`` files, first download them from
 EC2 to your local computer using::

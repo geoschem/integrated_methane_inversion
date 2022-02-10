@@ -46,11 +46,12 @@ see the `AWS Documentation for details <https://docs.aws.amazon.com/AWSEC2/lates
   
   To determine your true storage needs, first ``ssh`` into the instance and run a 1-week inversion for 
   your region of interest. When the 1-week inversion is complete, check how much storage has been used. 
-  From there, you can scale-up the storage according to your actual period of interest. 
+  From there, you can scale-up the storage according to your actual period of interest. Consider that
+  the AMI itself takes about 20 GB of storage.
 
-  For example, if the 1-week inversion occupies 75/100 GB and you want to perform a 1-year inversion,
-  then increasing your storage to 5 TB will leave you with at least 1 TB of additional space to work with
-  once the inversion is complete.
+  For example, if after the 1-week inversion you find that 75/100 GB are occupied, then you should budget
+  75 - 20 = 55 GB per inversion week. If you want to perform a 1-year inversion, then increasing the storage 
+  to 3.5 TB will leave you with about 500 GB of additional space to work with once the inversion is complete.
 
 
 .. _exportingS3-label:
