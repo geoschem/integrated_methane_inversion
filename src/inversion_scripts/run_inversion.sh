@@ -15,8 +15,8 @@
 printf "\n=== PARSING CONFIG FILE ===\n"
 
 # Get configuration (relative paths assume script is run from the inversion directory)
-eval $(parse_yaml ../../../integrated_methane_inversion/config.yml)
 source ../../../integrated_methane_inversion/src/utilities/parse_yaml.sh
+eval $(parse_yaml ../../../integrated_methane_inversion/config.yml)
 # This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
 # It also define $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
 # Parsing the config file here facilitates generation of inversion ensembles
