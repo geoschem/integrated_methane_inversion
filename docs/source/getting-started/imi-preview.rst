@@ -10,7 +10,8 @@ the preview (default) configuration, see the
 `common configurations page <../other/common-configurations.html#default-preview-configuration>`__.
 
 To run the preview after selecting a region and time period of interest in the configuration file (and modifying
-any other configurable settings), simply `run the IMI <quick-start.html#run-the-imi>`__.
+any other configurable settings), simply `run the IMI <quick-start.html#run-the-imi>`__ with the ``DoPreview``
+option in the `configuration file <imi-config-file.html#imi-preview>`__ set to ``true``.
 
 The IMI preview provides the following information for users to assess their proposed inversion (as it is 
 described in the configuration file):
