@@ -148,10 +148,10 @@ def make_state_vector_file(
     if land_threshold:
         # Where there is no land, replace with 0
         land = lc.where(lc > land_threshold)
-        statevector.values[land.isnull()] = 0
+        statevector.values[land.isnull().values] = 0
 
     # Fill in the remaining NaNs with state vector element values
-    statevector.values[statevector.isnull()] = np.arange(
+    statevector.values[statevector.isnull().values] = np.arange(
         1, statevector.isnull().sum() + 1
     )[::-1]
 
@@ -160,7 +160,7 @@ def make_state_vector_file(
         # First, where there is no land, replace with NaN
         statevector = statevector.where(lc > land_threshold)
         # Fill with missing_value = -9999
-        statevector.values[statevector.isnull()] = -9999
+        statevector.values[statevector.isnull().values] = -9999
 
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
