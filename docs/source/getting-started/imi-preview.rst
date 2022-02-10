@@ -1,13 +1,15 @@
 IMI preview
 ===========
 
-The IMI preview feature allows users to project the quality and information content of a proposed inversion 
-before actually performing the inversion. It takes approximately 10 minutes to run for a 1-year inversion
-performed on a ``c5.9xlarge`` instance with 36 CPUs.
+The IMI preview feature allows users to estimate the quality and information content of a proposed inversion 
+without actually performing the inversion.
 
 Under the default configuration, the IMI performs only the preview and then stops. This is to prevent 
 the accidental initiation of low-quality but potentially expensive inversions. For more details about
 the preview (default) configuration, see `<../other/common-configurations.html#default-(preview)-configuration>`__.
+
+To run the preview after selecting a region and time period of interest in the configuration file (and modifying
+any other configurable settings), simply :doc:`run the IMI <quick-start#run-the-imi>`.
 
 The IMI preview provides the following information for users to assess their proposed inversion (as described
 in the configuration file):

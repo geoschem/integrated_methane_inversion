@@ -20,7 +20,7 @@ Running the IMI is relatively inexpensive (usually on the order of USD $10-$100)
 The cost depends on the length of the inversion period, the size of the inversion domain, 
 how long you retain your compute instance after completing the inversion, and how you store the final results.
 
-For more information on costs, see preview_link_TODO and :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.
+For more information on costs, see :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
