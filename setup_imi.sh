@@ -890,9 +890,7 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_GC
     mkdir -p inversion/Sensi
-    if "$isAWS"; then
-        cp -rfP /home/ubuntu/backup_files/input_data/ ${MyPath}/
-    else
+    if ! "$isAWS"; then
         mkdir -p inversion/data_TROPOMI
         ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
     fi
