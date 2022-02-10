@@ -156,11 +156,11 @@ Once you've followed the above instructions, you should see a "Welcome to Ubuntu
 
 Navigate to the IMI setup directory::
 
-  $ cd ~/setup_CH4
+  $ cd ~/integrated_methane_inversion
 
 Open the ``config.yml`` file with vim (``vi``) or emacs::
 
-  $ emacs setup_ch4_inversion.sh
+  $ emacs setup_imi.sh
 
 This configuration file contains many settings that you can modify to suit your needs. 
 See the :doc:`IMI configuration file page <imi-config-file>` for information on the different settings/options.
@@ -171,7 +171,7 @@ Also see the :doc:`common configurations page <../other/common-configurations>`.
 --------------
 After editing the configuration file, you can run the IMI by executing the following command::
   
-  $ sbatch run_ch4_inversion.sh
+  $ sbatch run_imi.sh
 
 The IMI can take minutes to days to complete, depending on the configuration and EC2 instance type. 
 You can safely disconnect from your instance during this time, but the instance must remain active in the AWS console.
@@ -188,7 +188,7 @@ When your inversion is complete, you can use the visualization notebook provided
 
 First navigate to the inversion directory::
 
-  $ cd /home/ubuntu/CH4_Workflow/{YourRunName}/inversion
+  $ cd /home/ubuntu/imi_output_dir/{YourRunName}/inversion
 
 You can use the ``ls`` command to view the contents of the directory, which will include several scripts, data directories,
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 

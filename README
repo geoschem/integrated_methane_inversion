@@ -1,90 +1,21 @@
-README -- Describes the contents of /n/seasasfs02/CH4_Inversion
-20 Feb 2020
-
 Overview:
 ===============================================================================
 
-This directory contains the GEOS-Chem source code and post-processing scripts
-used to run CH4 analytical inversions.
+This directory contains the source code for setting up and running the
+Integrated Methane Inversion with GEOS-Chem.
 
 
-Instructions
+Documentation:
 ===============================================================================
 
-1. Clone this repository
-
-     git clone https://github.com/ACMG-CH4/CH4_inversion_workflow.git
+Please see https://integrated-methane-inversion.readthedocs.io
 
 
-2. Fetch Git submodules
-
-     cd CH4_inversion_workflow
-     git submodule update --init --recursive
-
-
-3. Clone GEOS-Chem source code
-
-     git clone -b CH4_Analytical_Inversion https://github.com/ACMG-CH4/GCClassic.git
-     cd GCClassic
-     git submodule update --init --recursive
-
-   Updating the submodules will automatically use the GEOS-Chem science code
-   from https://github.com/ACMG-CH4/geos-chem.git in the branch 'CH4_Analytical_Inversion'
-
-   Note: You may also link to your own clone or fork of the GEOS-Chem source
-   code, but please ensure your code contains the latest updates in the
-   CH4_Analytical_Inversion branch for the scripts in this repository to work
-   properly.
-
-
-Contents:
+Reference:
 ===============================================================================
 
-GCClassic
-------------
-   GEOS-Chem source code containing updates for running analytical inversions
-   of methane. These updates are stored in the 'CH4_Analytical_Inversion' branch
-   (navigate to the code directory and type 'gitk --all' to view the
-   complete revision history).
-   
-
-PostprocessingScripts
----------------------
-   Includes any scripts used to postprocess files used to construct the
-   Jacobian, compare GEOS-Chem output to satellites, etc. It contains the
-   CH4_TROPOMI_INV repository which is a Git submodule in the
-   CH4_inversion_workflow repository.
-			    
-
-Revision History:
-===============================================================================
-
-20 Feb 2020 - M. Sulprizio - Initial setup using latest updates from J.D.
-                             Maasakkers et al. (2019) and Y. Zhang et al. (2020)
-
-27 May 2020 - H. Nesser    - Added two scripts to PostprocessingScripts:
-       	      	 	     inversion.py: contains an Inversion class (and
-			     several inherited subclasses) for solving and
-			     plotting analytic inversion results. 
-		           - format_plots.py: needed for the plots in the
-			     Inversion class.
-			   - These scripts and others for post-processing
-			     (though with fewer comments) can be found on 
-			      https://github.com/hannahnesser/reduced_rank_jacobian/
-			     Please feel free to create your own fork and create
- 			     pull requests for any desired changes! (And I will 
-                             update these copies on a regular basis.)
-
-13 Dec 2020 - M. Sulprizio - Made GEOS-Chem source code a Git submodule and
-                             move run directory files there instead of relying
-			     on the soon-to-be obsolete unit tester.
-			   - Added a Git submodule for CH4_TROPOMI_INV,
-			     containing inversion  scripts.
-			   - Cleaned up setup_ch4_runs.sh and added option to
-			     create a spinup run directory.
-			   - Added run_inversion.sh script modified from Daniel
-			     Varon's inversion_script.sh.
-
-24 Jan 2021 - M. Sulprizio - Removed GEOS-Chem as a Git submodule and use a
-                             clone of the GEOS-Chem source code (or link to
-                             local fork instead)
+Varon, D.J., D.J. Jacob, M.P. Sulprizio, L.A. Estrada, W.B. Downs, L. Shen,
+  S.E. Hancock, H. Nesser, Z. Qu, X. Lu, A. Lorente, A. Tewari, C.A. Randles,
+  Integrated Methane Inversion (IMI 1.0): An open-access, cloud-based facility
+  for inferring high-resolution methane emissions from TROPOMI satellite
+  observations, in prep.

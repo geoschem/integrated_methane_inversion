@@ -18,7 +18,7 @@ tmux comes preinstalled on the AMI. To start tmux run the following:
 
 This enters a tmux shell. From there you can run the inversion script:
     
-    $ ./run_ch4_inversion.sh
+    $ ./run_imi.sh
     
 This will start the workflow. To keep it running in the background, press ``ctrl-b``. 
 Then press ``d`` (without holding ``ctrl``) to detach the tmux shell and get back to the original terminal.

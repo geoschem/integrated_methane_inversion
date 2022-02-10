@@ -2,3 +2,5 @@ GEOS-Chem
 GCClassic
 docs/build/
 .DS_STORE
+src/inversion_scripts/__pycache__
+src/inversion_scripts/.ipynb_checkpoints

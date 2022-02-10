@@ -8,7 +8,7 @@ Inversion directory
 
 The inversion directory is where the IMI computes the Jacobian, obtains the optimal estimate of emissions, and saves the results.
 
-It is located at ``/home/ubuntu/CH4_Workflow/{YourRunName}/inversion``.
+It is located at ``/home/ubuntu/imi_output_dir/{YourRunName}/inversion``.
 
 In addition to a shell script and several Python scripts used in the inversion, you will find
 the following items in the inversion directory after completing an inversion:
