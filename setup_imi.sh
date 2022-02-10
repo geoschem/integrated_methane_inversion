@@ -905,7 +905,7 @@ if "$SetupInversion"; then
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
-    cp ${InversionPath}/src/inversion_scripts/visualization_notebook.ipynb inversion/
+    cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     sed -i -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
            -e "s:{MY_PATH}:${MyPath}:g" \
            -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
