@@ -51,6 +51,6 @@ For more informaton on this command, see the
     to severe bias in the prior inventory) OR if the expected DOFS is low, consider: (a) using an improved 
     prior inventory, (b) increasing the inversion period to incorporate more observations, and/or 
     (c) increasing the prior error estimate.
-  - There is is indication of albedo-related artifacts in the XCH4 field, consider removing the affected
+  - If there is indication of albedo-related artifacts in the XCH4 field, consider removing the affected
     observations. This can be done by modifying the TROPOMI data filters in 
     ``/home/ubuntu/integrated_methane_inversion/src/inversion_scripts/filter_tropomi.py``.
