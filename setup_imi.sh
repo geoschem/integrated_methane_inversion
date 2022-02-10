@@ -552,10 +552,9 @@ if  "$DoPreview"; then
         if "$isAWS"; then
             sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         fi
-        cd ${InversionPath}/src/inversion_scripts/
+        export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
         sbatch -W $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache $cpu_count; wait;
-        cd $runDir
     else
         python $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache $cpu_count
     fi
