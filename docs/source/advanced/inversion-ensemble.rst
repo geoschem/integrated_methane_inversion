@@ -2,10 +2,9 @@ Constructing an inversion ensemble
 ==================================
 
 After performing an inversion, you can use the IMI to create a low-cost ensemble of sensitivity inversions with different 
-inversion parameters. This is because the Jacobian matrix has already been computed in the first inversion and can easily 
-be reused.
+inversion parameters. This is because the Jacobian matrix computed in the first inversion can easily be reused.
 
-See the `common configurations page <../other/common-configurations.html#running-a-sensitivity-inversion>`__ 
+See the `Common configurations page <../other/common-configurations.html#running-a-sensitivity-inversion>`__ 
 for instructions on how to re-configure the IMI to use a pre-computed Jacobian. Then modify
 the values of ``PriorError``, ``ObsError``, and/or ``Gamma`` in the configuration file and re-run the inversion.
 

@@ -25,7 +25,7 @@ First upload a shapefile for the custom region of interest to your EC2 instance:
     $ scp -i /local/path/to/my-key-pair.pem /local/path/to/my-shapefile ubuntu@my-instance-public-dns-name:/path/to/my-shapefile
 
 Next, open the configuration file (`/home/ubuntu/integrated_methane_inversion/config.yml`) and insert the path to your
-shapefile in the `custom/pre-generated state vector section <imi-config-file.html#custom-pre-generated-state-vector>`__.
+shapefile in the `custom state vector section <../getting-started/imi-config-file.html#custom-pre-generated-state-vector>`__.
 Also provide the latitude/longitude bounds for your desired inversion domain, which will include both the irregular region of
 interest and the additional coarse buffer elements).
 
