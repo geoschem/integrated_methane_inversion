@@ -51,7 +51,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     TROPOMI = read_tropomi(file_path)
 
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-    sat_ind = filter_tropomi(tropomi_data, xlim, ylim, startdate_np64, enddate_np64)
+    sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
