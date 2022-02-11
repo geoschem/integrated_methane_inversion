@@ -11,7 +11,7 @@ import os
 import pandas as pd
 import datetime
 from shapely.geometry import Polygon
-from utils import save_obj
+from utils import save_obj, filter_tropomi
 
 
 def read_tropomi(filename):
@@ -408,17 +408,7 @@ def apply_tropomi_operator(
     TROPOMI = read_tropomi(filename)
 
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-    sat_ind = np.where(
-        (TROPOMI["longitude"] > xlim[0])
-        & (TROPOMI["longitude"] < xlim[1])
-        & (TROPOMI["latitude"] > ylim[0])
-        & (TROPOMI["latitude"] < ylim[1])
-        & (TROPOMI["time"] >= gc_startdate)
-        & (TROPOMI["time"] <= gc_enddate)
-        & (TROPOMI["qa_value"] >= 0.5)
-        & (TROPOMI["swir_albedo"] > 0.05)
-        & (TROPOMI["blended_albedo"] < 0.85)
-    )
+    sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])

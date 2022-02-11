@@ -15,6 +15,7 @@ from utils import (
     sum_total_emissions,
     count_obs_in_mask,
     plot_field,
+    filter_tropomi,
 )
 from joblib import Parallel, delayed
 from jacobian import read_tropomi
@@ -50,17 +51,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     TROPOMI = read_tropomi(file_path)
 
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-    sat_ind = np.where(
-        (TROPOMI["longitude"] > xlim[0])
-        & (TROPOMI["longitude"] < xlim[1])
-        & (TROPOMI["latitude"] > ylim[0])
-        & (TROPOMI["latitude"] < ylim[1])
-        & (TROPOMI["time"] >= startdate_np64)
-        & (TROPOMI["time"] <= enddate_np64)
-        & (TROPOMI["qa_value"] >= 0.5)
-        & (TROPOMI["swir_albedo"] > 0.05)
-        & (TROPOMI["blended_albedo"] < 0.85)
-    )
+    sat_ind = filter_tropomi(tropomi_data, xlim, ylim, startdate_np64, enddate_np64)
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
