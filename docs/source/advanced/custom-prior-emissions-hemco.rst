@@ -15,14 +15,10 @@ The emissions need to be defined in a netcdf file formatted as HEMCO expects. Se
 `HEMCO documentation for preparing data files <http://wiki.seas.harvard.edu/geos-chem/index.php/Preparing_data_files_for_use_with_HEMCO>`_
 for details on how to format your custom emission inventory for use with HEMCO.
 
-Once your inventory has been properly formatted, it can be included as an emission field in the HEMCO configuration file.
-
-Navigate to the template run directory::
+Once your inventory has been properly formatted, you can include it as an emission field via HEMCO. To do this, navigate to the template 
+run directory and open the HEMCO configuration file with vim (``vi``) or emacs::
 
     $ cd /home/ubuntu/imi_output_dir/{YourRunName}/template_run
-
-and open the HEMCO configuration file with vim (``vi``) or emacs::
-
     $ emacs HEMCO_Config.rc
 
 Follow `instructions in the HEMCO User's Guide <http://wiki.seas.harvard.edu/geos-chem/index.php/The_HEMCO_User%27s_Guide#Base_emissions>`_
