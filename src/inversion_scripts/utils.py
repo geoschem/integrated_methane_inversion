@@ -218,3 +218,25 @@ def plot_field(
     # Title
     if title:
         ax.set_title(title)
+
+
+def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
+    """
+    Description:
+        Filter out any data that does not meet the following
+        criteria: We only consider data within lat/lon/time bounds,
+        with QA > 0.5, and with safe surface albedo values
+    Returns:
+        numpy array with satellite indices for filtered tropomi data.
+    """
+    return np.where(
+        (tropomi_data["longitude"] > xlim[0])
+        & (tropomi_data["longitude"] < xlim[1])
+        & (tropomi_data["latitude"] > ylim[0])
+        & (tropomi_data["latitude"] < ylim[1])
+        & (tropomi_data["time"] >= startdate)
+        & (tropomi_data["time"] <= enddate)
+        & (tropomi_data["qa_value"] >= 0.5)
+        & (tropomi_data["swir_albedo"] > 0.05)
+        & (tropomi_data["blended_albedo"] < 0.85)
+    )
