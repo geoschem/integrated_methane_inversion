@@ -208,7 +208,7 @@ def plot_field(
 
     # Show boundary of ROI?
     if mask is not None:
-        mask.plot.contour(levels=1, colors="k", linewidths=2, ax=ax)
+        mask.plot.contour(levels=1, colors="k", linewidths=4, ax=ax)
 
     # Remove duplicated axis labels
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, alpha=0)

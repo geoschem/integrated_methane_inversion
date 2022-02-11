@@ -12,7 +12,5 @@ the values of ``PriorError``, ``ObsError``, and/or ``Gamma`` in the configuratio
     Make sure to archive the final results of the original inversion (``inversion_result.nc`` and ``gridded_posterior.nc``) 
     before running the sensitivity inversion. Those files will be overwritten.
 
-If you want to run a sensitivity inversion with updated prior emission inventories, the pre-computed Jacobian will have
-to be scaled according to the differences between the original and updated inventories. 
-
-TODO
+If you want to run a sensitivity inversion with updated prior emission inventories, the pre-computed Jacobian needs
+to be scaled according to the differences between the original and updated inventories. Instructions for this to come.
