@@ -889,7 +889,7 @@ if "$SetupInversion"; then
     mkdir -p -v inversion
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_GC
-    mkdir -p inversion/Sensi
+    mkdir -p inversion/data_sensitivities
     if ! "$isAWS"; then
         mkdir -p inversion/data_TROPOMI
         ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI

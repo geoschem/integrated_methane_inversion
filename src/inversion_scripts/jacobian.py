@@ -120,7 +120,7 @@ def read_tropomi(filename):
     return dat
 
 
-def read_geoschem(date, gc_cache, build_jacobian=False, sens_cache=None):
+def read_geoschem(date, gc_cache, build_jacobian=False, sensi_cache=None):
     """
     Read GEOS-Chem data and save important variables to dictionary.
 
@@ -128,7 +128,7 @@ def read_geoschem(date, gc_cache, build_jacobian=False, sens_cache=None):
         date           [str]   : Date of interest
         gc_cache       [str]   : Path to GEOS-Chem output data
         build_jacobian [log]   : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sens_cache     [str]   : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        sensi_cache    [str]   : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
         dat            [dict]  : Dictionary of important variables from GEOS-Chem:
@@ -168,7 +168,7 @@ def read_geoschem(date, gc_cache, build_jacobian=False, sens_cache=None):
 
     # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
     if build_jacobian:
-        sensitivity_data = xr.open_dataset(f"{sens_cache}/Sensi_{date}.nc")
+        sensitivity_data = xr.open_dataset(f"{sensi_cache}/sensi_{date}.nc")
         sensitivities = sensitivity_data["Sensitivities"].values
         # Reshape so the data have dimensions (lon, lat, lev, grid_element)
         sensitivities = np.einsum("klji->ijlk", sensitivities)
@@ -178,7 +178,7 @@ def read_geoschem(date, gc_cache, build_jacobian=False, sens_cache=None):
     return dat
 
 
-def read_all_geoschem(all_strdate, gc_cache, build_jacobian=False, sens_cache=None):
+def read_all_geoschem(all_strdate, gc_cache, build_jacobian=False, sensi_cache=None):
     """
     Call readgeoschem() for multiple dates in a loop.
 
@@ -186,7 +186,7 @@ def read_all_geoschem(all_strdate, gc_cache, build_jacobian=False, sens_cache=No
         all_strdate    [list, str] : Multiple date strings
         gc_cache       [str]       : Path to GEOS-Chem output data
         build_jacobian [log]       : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sens_cache     [str]       : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        sensi_cache    [str]       : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
         dat            [dict]      : Dictionary of dictionaries. Each sub-dictionary is returned by read_geoschem()
@@ -194,7 +194,7 @@ def read_all_geoschem(all_strdate, gc_cache, build_jacobian=False, sens_cache=No
 
     dat = {}
     for strdate in all_strdate:
-        dat[strdate] = read_geoschem(strdate, gc_cache, build_jacobian, sens_cache)
+        dat[strdate] = read_geoschem(strdate, gc_cache, build_jacobian, sensi_cache)
 
     return dat
 
@@ -311,12 +311,12 @@ def remap(gc_CH4, data_type, p_merge, edge_index, first_gc_edge):
     return sat_CH4
 
 
-def remap_sensitivities(sens_lonlat, data_type, p_merge, edge_index, first_gc_edge):
+def remap_sensitivities(sensi_lonlat, data_type, p_merge, edge_index, first_gc_edge):
     """
     Remap GEOS-Chem sensitivity data (from perturbation simulations) to the TROPOMI vertical grid.
 
     Arguments
-        sens_lonlat   [float]   : Sensitivity data from GEOS-Chem perturbation runs, for a specific lon/lat; has dims (lev, grid_element)
+        sensi_lonlat  [float]   : Sensitivity data from GEOS-Chem perturbation runs, for a specific lon/lat; has dims (lev, grid_element)
         p_merge       [float]   : Combined TROPOMI + GEOS-Chem pressure levels, from merge_pressure_grids()
         data_type     [int]     : Labels for pressure edges of merged grid. 1=TROPOMI, 2=GEOS-Chem, from merge_pressure_grids()
         edge_index    [int]     : Indexes of pressure edges, from merge_pressure_grids()
@@ -327,12 +327,12 @@ def remap_sensitivities(sens_lonlat, data_type, p_merge, edge_index, first_gc_ed
     """
 
     # Define DeltaCH4 in the layers of the merged pressure grid, for all perturbed state vector elements
-    n_elem = sens_lonlat.shape[1]
+    n_elem = sensi_lonlat.shape[1]
     deltaCH4 = np.zeros((len(p_merge) - 1, n_elem))
     deltaCH4.fill(np.nan)
     k = 0
     for i in range(first_gc_edge, len(p_merge) - 1):
-        deltaCH4[i, :] = sens_lonlat[k, :]
+        deltaCH4[i, :] = sensi_lonlat[k, :]
         if data_type[i + 1] == 2:
             k = k + 1
     if first_gc_edge > 0:
@@ -377,7 +377,7 @@ def apply_tropomi_operator(
     ylim,
     gc_cache,
     build_jacobian,
-    sens_cache,
+    sensi_cache,
 ):
     """
     Apply the tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -391,7 +391,7 @@ def apply_tropomi_operator(
         ylim           [float]      : Latitude bounds for simulation domain
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sens_cache     [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
         output         [dict]       : Dictionary with one or two fields:
@@ -434,7 +434,7 @@ def apply_tropomi_operator(
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sens_cache)
+    all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
 
     # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
     obs_GC = np.zeros([n_obs, 6], dtype=np.float32)
@@ -558,11 +558,11 @@ def apply_tropomi_operator(
             if build_jacobian:
 
                 # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-                sens_lonlat = GEOSCHEM["Sensitivities"][iGC, jGC, :, :]
+                sensi_lonlat = GEOSCHEM["Sensitivities"][iGC, jGC, :, :]
 
                 # Map the sensitivities to TROPOMI pressure levels
                 sat_deltaCH4 = remap_sensitivities(
-                    sens_lonlat,
+                    sensi_lonlat,
                     merged["data_type"],
                     merged["p_merge"],
                     merged["edge_index"],
@@ -642,7 +642,7 @@ if __name__ == "__main__":
 
     # Configuration
     workdir = "."
-    sens_cache = f"{workdir}/Sensi"
+    sensi_cache = f"{workdir}/data_sensitivities"
     if isPost.lower() == "false":
         build_jacobian = True
         gc_cache = f"{workdir}/data_GC"
@@ -697,7 +697,7 @@ if __name__ == "__main__":
                 ylim,
                 gc_cache,
                 build_jacobian,
-                sens_cache,
+                sensi_cache,
             )
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")

@@ -38,7 +38,7 @@ SpinupDir="${MyPath}/${RunName}/spinup_run"
 JacobianRunsDir="${MyPath}/${RunName}/jacobian_runs"
 PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
-SensiDir="./Sensi"
+SensiDir="./data_sensitivities"
 GCDir="./data_GC"
 JacobianDir="./data_converted"
 tropomiCache="${MyPath}/${RunName}/data_TROPOMI"
@@ -90,7 +90,7 @@ if ! "$PrecomputedJacobian"; then
 fi
 
 #=======================================================================
-# Calculate GEOS-Chem sensitivities and save to Sensi directory
+# Calculate GEOS-Chem sensitivities and save to sensitivities directory
 #=======================================================================
 
 if ! "$PrecomputedJacobian"; then

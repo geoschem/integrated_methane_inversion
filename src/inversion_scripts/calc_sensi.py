@@ -32,7 +32,7 @@ def calc_sensi(
         run_name       [str]   : Simulation run name; e.g. 'CH4_Jacobian'
         sensi_save_pth [str]   : Path to save the sensitivity data
 
-    Resulting 'Sensi' files look like:
+    Resulting 'sensi' files look like:
 
         <xarray.Dataset>
         Dimensions:  (grid: 1207, lat: 105, lev: 47, lon: 87)
@@ -42,7 +42,7 @@ def calc_sensi(
         * lev      (lev) int32 1 2 3 4 5 6 7 8 9 10 ... 38 39 40 41 42 43 44 45 46 47
         * grid     (grid) int32 1 2 3 4 5 6 7 8 ... 1201 1202 1203 1204 1205 1206 1207
         Data variables:
-            Sensi    (grid, lev, lat, lon) float32 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
+            sensi    (grid, lev, lat, lon) float32 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
 
     Pseudocode summary:
 
@@ -53,14 +53,14 @@ def calc_sensi(
             nlev = count the number of vertical levels
             for each hour:
                 base = extract the base run data for the hour
-                Sensi = np.empty((nelements, nlev, nlat, nlon))
-                Sensi.fill(np.nan)
+                sensi = np.empty((nelements, nlev, nlat, nlon))
+                sensi.fill(np.nan)
                 for each state vector element:
                     load the SpeciesConc .nc file for the element and day
                     pert = extract the data for the hour
                     sens = pert - base
-                    Sensi[element,:,:,:] = sens
-                save Sensi as netcdf with appropriate coordinate variables
+                    sensi[element,:,:,:] = sens
+                save sensi as netcdf with appropriate coordinate variables
     """
 
     # Make date range
@@ -92,8 +92,8 @@ def calc_sensi(
             # Get the base run data for the hour
             base = base_data["SpeciesConc_CH4"][h, :, :, :]
             # Initialize sensitivities array
-            Sensi = np.empty((nelements, nlev, nlat, nlon))
-            Sensi.fill(np.nan)
+            sensi = np.empty((nelements, nlev, nlat, nlon))
+            sensi.fill(np.nan)
             # For each state vector element
             for e in elements:
                 # State vector elements are numbered 1..nelements
@@ -105,11 +105,11 @@ def calc_sensi(
                 # Get the data for the current hour
                 pert = pert_data["SpeciesConc_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
-                sens = (pert.values - base.values) / perturbation
-                Sensi[e, :, :, :] = sens
-            # Save Sensi as netcdf with appropriate coordinate variables
-            Sensi = xr.DataArray(
-                Sensi,
+                sensitivities = (pert.values - base.values) / perturbation
+                sensi[e, :, :, :] = sensitivities
+            # Save sensi as netcdf with appropriate coordinate variables
+            sensi = xr.DataArray(
+                sensi,
                 coords=(
                     np.arange(1, nelements + 1),
                     np.arange(1, nlev + 1),
@@ -119,8 +119,8 @@ def calc_sensi(
                 dims=["element", "lev", "lat", "lon"],
                 name="Sensitivities",
             )
-            Sensi = Sensi.to_dataset()
-            Sensi.to_netcdf(f"{sensi_save_pth}/Sensi_{d}_{zero_pad_num_hour(h)}.nc")
+            sensi = sensi.to_dataset()
+            sensi.to_netcdf(f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc")
 
         results = Parallel(n_jobs=-1)(delayed(process)(hour) for hour in hours)
     print(f"Saved GEOS-Chem sensitivity files to {sensi_save_pth}")
