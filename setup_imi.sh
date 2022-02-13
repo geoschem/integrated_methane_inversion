@@ -232,7 +232,7 @@ if "$CreateStateVectorFile"; then
     cd ${MyPath}/$RunName
 
     # Copy state vector creation script to working directory
-    cp ${InversionPath}/src/inversion_scripts/make_state_vector_file.py .
+    cp ${InversionPath}/src/utilities/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
     printf "Calling make_state_vector_file.py\n"
