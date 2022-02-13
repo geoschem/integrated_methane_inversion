@@ -42,7 +42,7 @@ GCDir="./data_GC"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
 tropomiCache="${MyPath}/${RunName}/data_TROPOMI"
-    
+
 # Only matters for Kalman filter inversions, to be implemented in a future version of the IMI
 FirstSimSwitch=true
 

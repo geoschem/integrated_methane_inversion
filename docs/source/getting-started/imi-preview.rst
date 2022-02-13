@@ -53,5 +53,5 @@ For more informaton on this command, see the
     prior inventory, (b) increasing the inversion period to incorporate more observations, and/or 
     (c) increasing the prior error estimate.
   - If there is indication of albedo-related artifacts in the XCH4 field, consider removing the affected
-    observations. This can be done by modifying the TROPOMI data filters in 
-    ``/home/ubuntu/integrated_methane_inversion/src/inversion_scripts/filter_tropomi.py``.
+    observations. This can be done by modifying the TROPOMI data filters via the ``filter_tropomi()``
+    function in ``/home/ubuntu/integrated_methane_inversion/src/inversion_scripts/utils.py``.

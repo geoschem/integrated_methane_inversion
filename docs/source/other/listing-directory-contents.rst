@@ -38,9 +38,13 @@ the following items in the inversion directory after completing an inversion:
      - | Directory of ``.nc`` files containing daily GEOS-Chem ``SpeciesConc`` output from the reference simulation. 
        |
        | These files are used to generate virtual TROPOMI observations for comparison with the true observations.
-   * - ``Sensi/``
+   * - ``data_GC_posterior/``
+     - | Directory of ``.nc`` files containing daily GEOS-Chem ``SpeciesConc`` output from the posterior simulation. 
+       |
+       | These files are used to generate virtual TROPOMI observations for comparison with the true observations.
+   * - ``data_sensitivities/``
      - | Directory of ``.nc`` files containing daily 4-D GEOS-Chem sensitivities to perturbations in the 
-         state variablesof the inversion (i.e., in the emission elements being optimized). 
+         state variables of the inversion (i.e., in the emission elements being optimized). 
        |
        | The data have dimensions ``(element, lev, lat, lon)``, where ``element`` is the emission element id
          (state variable id) and ``lev`` is the vertical dimension. 
