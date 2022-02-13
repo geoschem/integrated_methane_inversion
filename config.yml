@@ -1,8 +1,9 @@
-## Configuration file for the IMI
+## IMI configuration file
+## Documentation @ https://integrated-methane-inversion.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-isAWS: true
 RunName: "Test_Permian_1week"
+isAWS: true
 UseSlurm: true
 
 ## Period of interest
@@ -26,17 +27,12 @@ BufferDeg: 5
 LandThreshold: 0.25
 
 ## Custom state vector
-##   If using a custom/pre-generated state vector file, provide the path:
-StateVectorFile: {optional/path/to/statevector_ncfile}
-##   To create a custom state vector file from a shape file, follow three steps:
-##   1. Provide path to shapefile and lat/lon bounds for the inversion domain
-ShapeFile: {optional/path/to/shapefile}
+StateVectorFile: "optional/path/to/statevector_ncfile"
+ShapeFile: "optional/path/to/shapefile"
 LonMinCustomStateVector: -110
 LonMaxCustomStateVector: -100
 LatMinCustomStateVector: 25
 LatMaxCustomStateVector: 35
-##   2. Open and run the statevector_from_shapefile.ipynb Jupyter notebook
-##   3. When complete, fill in {optional/path/to/statevector_ncfile} above
 
 ## Inversion
 PriorError: 0.5
@@ -45,7 +41,7 @@ Gamma: 0.25
 PrecomputedJacobian: false
 
 ## Grid
-##   Res & Met are "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
+##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
 Res: "0.25x0.3125"
 Met: "geosfp"
 ##   Other grid settings
