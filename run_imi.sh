@@ -190,9 +190,9 @@ if "$DoPosterior"; then
 
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
-    mkdir -p data_GC_posterior
+    mkdir -p data_geoschem_posterior
     GCsourcepth="${PosteriorRunDir}/OutputDir"
-    GCDir="./data_GC_posterior"
+    GCDir="./data_geoschem_posterior"
     printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
     python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
     printf "=== DONE -- setup_gc_cache.py ===\n"

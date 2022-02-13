@@ -34,11 +34,11 @@ the following items in the inversion directory after completing an inversion:
        | for each TROPOMI orbit relevant to the inversion.
        |
        | All quantities have been "converted" to 1D fields indexed by latitude and longitude.
-   * - ``data_GC/``
+   * - ``data_geoschem/``
      - | Directory of ``.nc`` files containing daily GEOS-Chem ``SpeciesConc`` output from the reference simulation. 
        |
        | These files are used to generate virtual TROPOMI observations for comparison with the true observations.
-   * - ``data_GC_posterior/``
+   * - ``data_geoschem_posterior/``
      - | Directory of ``.nc`` files containing daily GEOS-Chem ``SpeciesConc`` output from the posterior simulation. 
        |
        | These files are used to generate virtual TROPOMI observations for comparison with the true observations.

@@ -645,11 +645,11 @@ if __name__ == "__main__":
     sensi_cache = f"{workdir}/data_sensitivities"
     if isPost.lower() == "false":
         build_jacobian = True
-        gc_cache = f"{workdir}/data_GC"
+        gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
     else:  # if sampling posterior simulation
         build_jacobian = False
-        gc_cache = f"{workdir}/data_GC_posterior"
+        gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
     xlim = [lonmin, lonmax]
     ylim = [latmin, latmax]

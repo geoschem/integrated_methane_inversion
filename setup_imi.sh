@@ -888,7 +888,7 @@ if "$SetupInversion"; then
     cd ${MyPath}/$RunName
     mkdir -p -v inversion
     mkdir -p inversion/data_converted
-    mkdir -p inversion/data_GC
+    mkdir -p inversion/data_geoschem
     mkdir -p inversion/data_sensitivities
     if ! "$isAWS"; then
         mkdir -p inversion/data_TROPOMI
