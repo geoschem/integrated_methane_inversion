@@ -38,9 +38,9 @@ SpinupDir="${MyPath}/${RunName}/spinup_run"
 JacobianRunsDir="${MyPath}/${RunName}/jacobian_runs"
 PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
-SensiDir="./data_sensitivities"
 GCDir="./data_GC"
 JacobianDir="./data_converted"
+sensiCache="./data_sensitivities"
 tropomiCache="${MyPath}/${RunName}/data_TROPOMI"
     
 # Only matters for Kalman filter inversions, to be implemented in a future version of the IMI
@@ -99,7 +99,7 @@ if ! "$PrecomputedJacobian"; then
     Perturbation=0.5
 
     printf "Calling calc_sensi.py\n"
-    python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $SensiDir; wait
+    python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache; wait
     printf "DONE -- calc_sensi.py\n\n"
 
 fi
