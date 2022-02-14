@@ -500,11 +500,10 @@ if  "$DoPreview"; then
     fi
 
     # End date for the preview simulation
-    PreviewEnd=$(date --date="${SpinupStart} +1 day" +%Y%m%d)
+    PreviewEnd=$(date --date="${StartDate} +1 day" +%Y%m%d)
 
     # Update settings in input.geos
-    sed -i -e "s|${StartDate}|${SpinupStart}|g" \
-           -e "s|${EndDate}|${PreviewEnd}|g" \
+    sed -i -e "s|${EndDate}|${PreviewEnd}|g" \
            -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
            -e "s|{PERTURBATION}|1.0|g" \
            -e "s|{ELEMENT}|0|g" input.geos
