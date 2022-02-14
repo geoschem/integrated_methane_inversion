@@ -78,9 +78,11 @@ UseBCsForRestart=true
 if "$isAWS"; then
     RestartDownload=true # automatically download restart file
     RestartFile="${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
+    RestartFilePreview="${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
 else
     RestartDownload=false
     RestartFile="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
+    RestartFilePreview="/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
 fi
     
 # Path to boundary condition files (for nested grid simulations)
@@ -162,6 +164,9 @@ fi
 if "$RestartDownload"; then
     if [ ! -f "$RestartFile" ]; then
         aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+    fi
+    if [ ! -f "$RestartFilePreview" ]; then
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
     fi
 fi    
 
@@ -489,7 +494,7 @@ if  "$DoPreview"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    ln -s $RestartFilePreview GEOSChem.Restart.${StartDate}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
