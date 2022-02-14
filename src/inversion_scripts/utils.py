@@ -68,6 +68,24 @@ def calculate_gridcell_areas(state_vector, mask, dlat, dlon):
     return areas
 
 
+def match_size(state_vector_labels, emissions):
+    """
+    Trim gridded state vector to the dimensions of the HEMCO diagnostics emission field.
+    """
+
+    smaller_lat_min = np.min(emissions.lat.values)
+    smaller_lat_max = np.max(emissions.lat.values)
+    smaller_lon_min = np.min(emissions.lon.values)
+    smaller_lon_max = np.max(emissions.lon.values)
+    ilat1 = np.abs(state_vector_labels.lat.values - smaller_lat_min).argmin()
+    ilat2 = np.abs(state_vector_labels.lat.values - smaller_lat_max).argmin()
+    ilon1 = np.abs(state_vector_labels.lon.values - smaller_lon_min).argmin()
+    ilon2 = np.abs(state_vector_labels.lon.values - smaller_lon_max).argmin()
+    state_vector_labels_matched = state_vector_labels[ilat1:ilat2+1,ilon1:ilon2+1]
+    
+    return state_vector_labels_matched
+
+
 def sum_total_emissions(emissions, areas, state_vector_labels, last_ROI_element):
     """
     Function to sum total emissions across the region of interest.
@@ -85,6 +103,7 @@ def sum_total_emissions(emissions, areas, state_vector_labels, last_ROI_element)
     s_per_d = 86400
     d_per_y = 365
     tg_per_kg = 1e-9
+    state_vector_labels = match_size(state_vector_labels, emissions)
     xgrid = range(len(state_vector_labels.lon.values))
     ygrid = range(len(state_vector_labels.lat.values))
     mask = state_vector_labels <= last_ROI_element
