@@ -81,7 +81,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
 
     # Open the state vector file
-    state_vector = xr.open_dataset(state_vector_path)
+    state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
@@ -103,7 +103,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
     ][0]
     prior_pth = os.path.join(preview_cache, hemco_diags_file)
 
-    prior = xr.open_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
+    prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
 
     # Compute total emissions
     if config["Res"] == "0.25x0.3125":
@@ -327,7 +327,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         ax,
         ds["xch4"],
         cmap="Spectral_r",
-        plot_type="imshow",
+        plot_type="pcolormesh",
         vmin=1800,
         vmax=1850,
         lon_bounds=None,
@@ -346,7 +346,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         ax,
         ds["swir_albedo"],
         cmap="magma",
-        plot_type="imshow",
+        plot_type="pcolormesh",
         vmin=0,
         vmax=0.4,
         lon_bounds=None,
@@ -365,7 +365,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         ax,
         ds_counts["counts"],
         cmap="Blues",
-        plot_type="imshow",
+        plot_type="pcolormesh",
         vmin=0,
         vmax=np.nanmax(ds_counts["counts"].values),
         lon_bounds=None,

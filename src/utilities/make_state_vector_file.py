@@ -107,7 +107,7 @@ def make_state_vector_file(
     """
 
     # Load land cover data
-    lc = xr.open_dataset(land_cover_pth)
+    lc = xr.load_dataset(land_cover_pth)
 
     # Group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()

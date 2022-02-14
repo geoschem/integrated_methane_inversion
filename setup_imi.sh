@@ -255,7 +255,7 @@ fi
 # Determine number of elements in state vector file
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
 nElements=$(ncmax StateVector ${MyPath}/${RunName}/StateVector.nc)
-printf "\n Number of state vector elements in this inversion= ${nElements}\n"
+printf "\n Number of state vector elements in this inversion = ${nElements}\n"
 
 # Define inversion domain lat/lon bounds
 function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }

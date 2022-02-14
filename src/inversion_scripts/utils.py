@@ -136,7 +136,7 @@ def plot_field(
     plot_type="pcolormesh",
     lon_bounds=None,
     lat_bounds=None,
-    levels=21,
+    levels=None,
     vmin=None,
     vmax=None,
     title=None,
@@ -156,7 +156,7 @@ def plot_field(
         plot_type  : 'pcolormesh' or 'imshow'
         lon_bounds : [lon_min, lon_max]
         lat_bounds : [lat_min, lat_max]
-        levels     : number of levels for pcolormesh option
+        levels     : number of colormap levels (None for continuous)
         vmin       : colorbar lower bound
         vmax       : colorbar upper bound
         title      : plot title
@@ -193,6 +193,7 @@ def plot_field(
     elif plot_type == "imshow":
         field.plot.imshow(
             cmap=cmap,
+            levels=levels,
             ax=ax,
             vmin=vmin,
             vmax=vmax,
