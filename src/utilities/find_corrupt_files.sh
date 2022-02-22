@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Usage: ./find_corrupt_files.sh > corrupt.log
 # This shell script is used to verify the integrity of 
 # netcdf s3 datasets. It is meant to download the 
 # specified data from s3 and run an nccopy command to
@@ -21,7 +22,7 @@ S3_PATH="s3://${S3_BUCKET}/${RESOLUTION}/${MET}/${YEAR}/"
 #   dest: path files will be downloaded to
 download_aws_files() {
     echo "starting aws download"
-    aws s3 cp $1 $2 --request-payer --recursive --dryrun
+    aws s3 cp $1 $2 --request-payer --recursive
     echo "finished aws download"
 }
 
