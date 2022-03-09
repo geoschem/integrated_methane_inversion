@@ -31,7 +31,7 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
     end_day = end_str[8:10]
 
     DATA_DOWNLOAD_SCRIPT = "./auto_generated_download_script.sh"
-    cmd_prefix = "aws s3 sync "
+    cmd_prefix = "aws s3 sync --only-show-errors "
     remote_root = "s3://meeo-s5p/"
     # access number of days in each month easily
     month_days = [31, [28, 29], 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
