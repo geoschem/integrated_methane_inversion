@@ -1,5 +1,6 @@
 import subprocess
 
+
 def download_landcover_files(config):
     """
     Download landcover files from s3 given the config file
@@ -33,10 +34,14 @@ def download_landcover_files(config):
 
     LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['REGION']}.{LandCoverFileExtension}"
     s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['REGION']}.{LandCoverFileExtension}"
-    
+
     # run the aws command to download the files
     command = f"aws s3 cp --request-payer=requester {s3_lc_path} {LandCoverFile}"
     results = subprocess.run(command.split(), capture_output=True, text=True)
-    
-    output = "Successfully downloaded landcover files" if results.returncode == 0 else results
+
+    output = (
+        "Successfully downloaded landcover files"
+        if results.returncode == 0
+        else results
+    )
     print(output)
