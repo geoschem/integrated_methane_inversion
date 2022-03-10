@@ -62,6 +62,7 @@ if "$isAWS"; then
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
     mkdir -p -v $tropomiCache
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
+    echo "Finished TROPOMI download"
 fi
 
 ##=======================================================================

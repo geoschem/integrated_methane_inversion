@@ -154,7 +154,7 @@ if "$BCdryrun"; then
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
     python src/utilities/download_bc.py ${START} ${EndDate} ${BCfiles}
-
+    echo "Finished boundary condition download"
 fi
 
 ##=======================================================================
