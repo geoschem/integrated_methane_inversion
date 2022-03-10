@@ -305,6 +305,9 @@ if "$SetupTemplateRundir"; then
 
     cd $RunTemplate
 
+    # Update GC data download to silence output from aws commands
+    sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
+
     # Update settings in input.geos
     sed -i -e "s:{DATE1}:${StartDate}:g" \
            -e "s:{DATE2}:${EndDate}:g" \
