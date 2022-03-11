@@ -173,9 +173,9 @@ After editing the configuration file, you can run the IMI by executing the follo
   
   $ sbatch run_imi.sh
 
-The sbatch command runs the IMI and writes the output to a slurm output file. You can track it's progress by using::
+The sbatch command runs the IMI and writes to the imi_output.log output file. You can track it's progress by using::
  
-  $ tail --follow slurm-XXXX.out (Note: the XXXX denotes a 4 digit number assigned at runtime)
+  $ tail --follow imi_output.log
 
 The IMI can take minutes to days to complete, depending on the configuration and EC2 instance type. 
 You can safely disconnect from your instance during this time, but the instance must remain active in the AWS console.
