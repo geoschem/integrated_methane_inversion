@@ -60,6 +60,12 @@ FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 
 # Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
 if "$isAWS"; then
+    { # test if instance has access to TROPOMI bucket
+        stdout=`aws s3 ls s3://meeo-s5p`
+    } || { # catch 
+        echo "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
+        exit 1
+    }
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
     mkdir -p -v $tropomiCache
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache

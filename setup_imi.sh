@@ -56,6 +56,7 @@ SpinupEnd=${StartDate}
 # Path where you want to set up CH4 inversion code and run directories
 if "$isAWS"; then
     MyPath="/home/ubuntu/imi_output_dir"
+    SetupPath="/home/ubuntu/integrated_methane_inversion"
     CondaEnv="geo"
 else
     MyPath="/n/holyscratch01/jacob_lab/$USER"
@@ -154,7 +155,7 @@ if "$BCdryrun"; then
     fi
     echo "Downloading boundary condition data for $START to $EndDate"
     python src/utilities/download_bc.py ${START} ${EndDate} ${BCfiles}
-    echo "Finished boundary condition download"
+
 fi
 
 ##=======================================================================
@@ -776,10 +777,13 @@ if "$SetupJacobianRuns"; then
     sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
     if "$isAWS"; then
         sed -i -e "/#SBATCH -p huce_cascade/d" \
+               -e "s:{SetupPath}:${SetupPath}:g" \
                -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${RunFilesPath}/runScriptSamples/submit_jacobian_simulations_array.sh jacobian_runs/
-    sed -i -e "s:{START}:0:g" -e "s:{END}:${nElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    sed -i -e "s:{START}:0:g" \
+           -e "s:{SetupPath}:${SetupPath}:g" \
+           -e "s:{END}:${nElements}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
