@@ -79,7 +79,11 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
 
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-
+    # redirect output to log file
+    if config["isAWS"]:
+        output_file = open("/home/ubuntu/integrated_methane_inversion/imi_output.log", "a")
+        sys.stdout = output_file
+        sys.stderr = output_file
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
