@@ -5,6 +5,7 @@
 RunName: "Test_Permian_1week"
 isAWS: true
 UseSlurm: true
+SafeMode: true
 
 ## Period of interest
 StartDate: 20180501
