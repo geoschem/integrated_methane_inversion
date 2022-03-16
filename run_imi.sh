@@ -41,6 +41,19 @@ else
     SetupPath="FILL"
 fi
 
+# if running in safe mode check whether previous run was done
+if "$SafeMode"; then
+    if ([ -d "${MyPath}/${RunName}/spinup_run" ] && "$DoSpinup") \
+       || ([ -d "${MyPath}/${RunName}/jacobian_runs" ] && "$DoJacobian") \
+       || ([ -d "${MyPath}/${RunName}/inversion" ] && "$DoInversion") \
+       || ([ -d "${MyPath}/${RunName}/posterior_run" ] && "$DoPosterior"); then
+        
+        echo "Error: files in ${MyPath}/${RunName}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
+        echo "To proceed, and overwrite existing files, set SafeMode in the config file to false."
+        exit 1 
+    fi
+fi
+
 ## ======================================================================
 ## Settings specific to Harvard's Cannon cluster
 ## ======================================================================
