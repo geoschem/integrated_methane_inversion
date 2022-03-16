@@ -49,7 +49,8 @@ if "$SafeMode"; then
        || ([ -d "${MyPath}/${RunName}/posterior_run" ] && "$DoPosterior"); then
         
         echo "Error: files in ${MyPath}/${RunName}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
-        echo "To proceed, and overwrite existing files, set SafeMode in the config file to false."
+        echo "To proceed, and overwrite existing files, set SafeMode in the config file to false." 
+        echo "IMI $RunName Aborted"
         exit 1 
     fi
 fi
@@ -77,6 +78,7 @@ if "$isAWS"; then
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
         echo "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
+        echo "IMI $RunName Aborted."
         exit 1
     }
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
