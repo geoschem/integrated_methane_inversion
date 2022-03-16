@@ -41,7 +41,7 @@ else
     SetupPath="FILL"
 fi
 
-# if running in safe mode check whether previous run was done
+# in safe mode check whether selected options will overwrite existing files
 if "$SafeMode"; then
     if ([ -d "${MyPath}/${RunName}/spinup_run" ] && "$DoSpinup") \
        || ([ -d "${MyPath}/${RunName}/jacobian_runs" ] && "$DoJacobian") \
