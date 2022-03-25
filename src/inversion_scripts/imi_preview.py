@@ -11,7 +11,6 @@ import datetime
 import cartopy.crs as ccrs
 import colorcet as cc
 from utils import (
-    calculate_gridcell_areas,
     sum_total_emissions,
     count_obs_in_mask,
     plot_field,
@@ -51,7 +50,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     TROPOMI = read_tropomi(file_path)
 
     # Handle unreadable files
-    if TROPOMI == None: 
+    if TROPOMI == None:
         print(f"Skipping {file_path} due to error")
         return TROPOMI
 
@@ -86,7 +85,9 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     # redirect output to log file
     if config["isAWS"]:
-        output_file = open("/home/ubuntu/integrated_methane_inversion/imi_output.log", "a")
+        output_file = open(
+            "/home/ubuntu/integrated_methane_inversion/imi_output.log", "a"
+        )
         sys.stdout = output_file
         sys.stderr = output_file
     # Open the state vector file
@@ -111,22 +112,11 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f
     ][0]
     prior_pth = os.path.join(preview_cache, hemco_diags_file)
-
     prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
 
-    # Compute total emissions
-    if config["Res"] == "0.25x0.3125":
-        dlat = 0.25 / 2
-        dlon = 0.3125 / 2
-    elif config["Res"] == "0.5x0.625":
-        dlat = 0.5 / 2
-        dlon = 0.625 / 2
-
-    # Compute grid cell areas and sum total emissions in the region of interest
-    areas = calculate_gridcell_areas(state_vector, mask, dlat, dlon)
-    total_prior_emissions = sum_total_emissions(
-        prior, areas, state_vector_labels, last_ROI_element
-    )
+    # Compute total emissions in the region of interest
+    areas = xr.load_dataset(prior_pth)["AREA"]
+    total_prior_emissions = sum_total_emissions(prior, areas, mask)
     outstring1 = (
         f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y"
     )
@@ -225,7 +215,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         total_prior_emissions * 1e9 / (3600 * 24 * 365)
     )  # kg/s from Tg/y
     total_prior_emissions_kgs_per_element = (
-        total_prior_emissions_kgs / L**2 / n
+        total_prior_emissions_kgs / L ** 2 / n
     )  # kg/m2/s from kg/s, per element
 
     # Error standard deviations with updated units
@@ -234,7 +224,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
 
     # Averaging kernel sensitivity for each grid element, and dofs
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (sO / k) ** 2 / m)
+    a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
     dofs = n * a
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
@@ -293,7 +283,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
     outputtextfile.close()
 
     # Prepare plot data for prior
-    prior_kgkm2h = prior * (1000**2) * 60 * 60  # Units kg/km2/h
+    prior_kgkm2h = prior * (1000 ** 2) * 60 * 60  # Units kg/km2/h
 
     # Prepare plot data for observations
     df_means = df.copy(deep=True)

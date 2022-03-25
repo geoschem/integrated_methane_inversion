@@ -5,7 +5,7 @@
 #SBATCH -o "imi_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
-# For documentation, see https://integrated-methane-inversion.readthedocs.io.
+# For documentation, see https://imi.readthedocs.io.
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
@@ -32,6 +32,20 @@ eval $(parse_yaml ${ConfigFile})
 ## Standard settings
 ##=======================================================================
 
+# In safe mode check whether selected options will overwrite existing files
+if "$SafeMode"; then
+    if ([ -d "${OutputPath}/${RunName}/spinup_run" ] && "$DoSpinup") \
+       || ([ -d "${OutputPath}/${RunName}/jacobian_runs" ] && "$DoJacobian") \
+       || ([ -d "${OutputPath}/${RunName}/inversion" ] && "$DoInversion") \
+       || ([ -d "${OutputPath}/${RunName}/posterior_run" ] && "$DoPosterior"); then
+        
+        echo "Error: files in ${OutputPath}/${RunName}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
+        echo "To proceed, and overwrite existing files, set SafeMode in the config file to false." 
+        echo "IMI $RunName Aborted"
+        exit 1 
+    fi
+fi
+
 # Path to inversion setup
 InversionPath=$(pwd -P)
 
@@ -45,6 +59,7 @@ if "$isAWS"; then
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
         printf "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
+        printf "IMI $RunName Aborted."
         exit 1
     }
     tropomiCache=${OutputPath}/${RunName}/data_TROPOMI

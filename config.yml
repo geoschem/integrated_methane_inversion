@@ -1,10 +1,11 @@
 ## IMI configuration file
-## Documentation @ https://integrated-methane-inversion.readthedocs.io/en/latest/getting-started/imi-config-file.html
+## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
 RunName: "Test_Permian_1week"
 isAWS: true
 UseSlurm: true
+SafeMode: true
 
 ## Period of interest
 StartDate: 20180501
@@ -16,9 +17,9 @@ NestedGrid: "T"
 
 ## Select nested grid region for using pre-cropped met fields
 ##   Current options are listed below with ([lat],[lon]) bounds:
-##    "NA" : North America ([10,70],[-140,-40]) 
 ##    "AS" : Asia ([-11,55],[60,150]) 
 ##    "EU" : Europe ([33,61],[-30,70])
+##    "NA" : North America ([10,70],[-140,-40]) 
 ##    ""   : Use for global met fields (global simulation/custom nested grids)
 NestedRegion: "NA"
 
@@ -37,12 +38,12 @@ BufferDeg: 5
 LandThreshold: 0.25
 
 ## Custom state vector
-StateVectorFile: "optional/path/to/statevectorfile.nc"
-ShapeFile: "optional/path/to/shapefile.shp"
-LonMinCustomStateVector: -110
-LonMaxCustomStateVector: -100
-LatMinCustomStateVector: 25
-LatMaxCustomStateVector: 35
+StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
+ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
+LonMinCustomStateVector: -111
+LonMaxCustomStateVector: -95
+LatMinCustomStateVector: 24
+LatMaxCustomStateVector: 39
 
 ## Inversion
 PriorError: 0.5
@@ -119,17 +120,19 @@ DataPath: "/home/ubuntu/ExtData"
 source /home/ubuntu/miniconda/etc/profile.d/conda.sh
 CondaEnv: "geo"
 
-## Path to initial GEOS-Chem restart file
+## Download initial restart file from AWS S3?
 RestartDownload: true
+
+## Path to initial GEOS-Chem restart file
 RestartFile: "${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
 RestartFilePreview: "${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 BCfiles: "${DataPath}/BoundaryConditions"
 
-## Options to download missing GEOS-Chem input data
-## For AWS: Data will be downloaded from S3 and you will be charged if
-##          your ec2 instance is not in the us-east-1 region.
+## Options to download missing GEOS-Chem input data from AWS S3
+##   NOTE: You will be charged if your ec2 instance is not in the
+##         us-east-1 region.
 PreviewDryRun: true
 SpinupDryrun: true
 ProductionDryRun: true

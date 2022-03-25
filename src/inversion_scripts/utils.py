@@ -30,71 +30,14 @@ def zero_pad_num_hour(n):
     return nstr
 
 
-def calculate_gridcell_areas(state_vector, mask, dlat, dlon):
-    """
-    Compute the surface areas of grid cells in the region of interest, in m2.
-    """
-
-    xgrid = range(len(state_vector.lon.values))
-    ygrid = range(len(state_vector.lat.values))
-    areas = []
-    for j in xgrid:
-        for i in ygrid:
-            if mask.values[i, j] == 1:
-                lat_top = state_vector.lat.values[i] + dlat
-                lat_bot = state_vector.lat.values[i] - dlat
-                lon_left = state_vector.lon.values[j] - dlon
-                lon_righ = state_vector.lon.values[j] + dlon
-                geom = Polygon(
-                    [
-                        (lon_left, lat_bot),
-                        (lon_left, lat_top),
-                        (lon_righ, lat_top),
-                        (lon_righ, lat_bot),
-                        (lon_left, lat_bot),
-                    ]
-                )
-                geom_area = ops.transform(
-                    partial(
-                        pyproj.transform,
-                        pyproj.Proj(init="EPSG:4326"),
-                        pyproj.Proj(
-                            proj="aea", lat_1=geom.bounds[1], lat_2=geom.bounds[3]
-                        ),
-                    ),
-                    geom,
-                )
-                areas.append(geom_area.area)
-    return areas
-
-
-def match_size(state_vector_labels, emissions):
-    """
-    Trim gridded state vector to the dimensions of the HEMCO diagnostics emission field.
-    """
-
-    smaller_lat_min = np.min(emissions.lat.values)
-    smaller_lat_max = np.max(emissions.lat.values)
-    smaller_lon_min = np.min(emissions.lon.values)
-    smaller_lon_max = np.max(emissions.lon.values)
-    ilat1 = np.abs(state_vector_labels.lat.values - smaller_lat_min).argmin()
-    ilat2 = np.abs(state_vector_labels.lat.values - smaller_lat_max).argmin()
-    ilon1 = np.abs(state_vector_labels.lon.values - smaller_lon_min).argmin()
-    ilon2 = np.abs(state_vector_labels.lon.values - smaller_lon_max).argmin()
-    state_vector_labels_matched = state_vector_labels[ilat1:ilat2+1,ilon1:ilon2+1]
-    
-    return state_vector_labels_matched
-
-
-def sum_total_emissions(emissions, areas, state_vector_labels, last_ROI_element):
+def sum_total_emissions(emissions, areas, mask):
     """
     Function to sum total emissions across the region of interest.
 
     Arguments:
-        emissions           : emissions dataarray
-        areas               : list of pixel areas (in m2) for region of interest
-        state_vector_labels : state vector element IDs, dataarray
-        last_ROI_element    : ID of last state vector element in the region of interest
+        emissions : xarray data array for emissions across inversion domain
+        areas     : xarray data array for grid-cell areas across inversion domain
+        mask      : xarray data array binary mask for the region of interest
 
     Returns:
         Total emissions in Tg/y
@@ -103,17 +46,9 @@ def sum_total_emissions(emissions, areas, state_vector_labels, last_ROI_element)
     s_per_d = 86400
     d_per_y = 365
     tg_per_kg = 1e-9
-    state_vector_labels = match_size(state_vector_labels, emissions)
-    xgrid = range(len(state_vector_labels.lon.values))
-    ygrid = range(len(state_vector_labels.lat.values))
-    mask = state_vector_labels <= last_ROI_element
-    emiss = []
-    for j in xgrid:
-        for i in ygrid:
-            if mask.values[i, j] == 1:
-                emiss.append(emissions.values[i, j])
-    total = np.sum(np.asarray([areas[r] * emiss[r] for r in range(len(areas))]))
-    return total * s_per_d * d_per_y * tg_per_kg
+    emissions_in_kg_per_s = emissions * areas * mask
+    total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
+    return float(total)
 
 
 def count_obs_in_mask(mask, df):
