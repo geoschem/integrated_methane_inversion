@@ -21,8 +21,11 @@ LonMin: -105
 LonMax: -103
 LatMin: 31
 LatMax: 33
-##   Select nesting window (NA, EU, or AS)
-REGION: "NA"
+#    Use nested grid simulation by default
+NestedGrid: "T"
+##   Select nested grid region for using pre-cropped met fields
+##     (Options are currently NA, EU, or AS)
+NestedRegion: "NA"
 
 ## State vector
 CreateStateVectorFile: true
@@ -48,11 +51,8 @@ PrecomputedJacobian: false
 ##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
 Res: "0.25x0.3125"
 Met: "geosfp"
+
 ##   Other grid settings
-HalfPolar: "F"
-Levs: "47"
-NestedGrid: "T"
-Buffer: "3 3 3 3"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
@@ -73,11 +73,3 @@ DoPosterior: false
 ## IMI preview
 DoPreview: true
 DOFSThreshold: 0
-
-## ======================================================================
-## Specific to Harvard's Cannon cluster
-## ======================================================================
-
-## Compute resources to request
-nCPUs: 16
-partition: "huce_cascade"

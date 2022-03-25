@@ -19,7 +19,7 @@ eval $(parse_yaml config.yml)
 # Period of interest: $StartDate, $EndDate, $SpinupMonths
 # Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
 # Inversion: $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
-# Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $REGION, $Buffer
+# Grid: $Res, $Met, $NestedGrid, $NestedRegion
 # Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
 # Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
 # State vector: $BufferDeg, $nBufferClusters, $LandThreshold
@@ -203,10 +203,10 @@ elif [ "$Res" == "0.25x0.3125" ]; then
     gridResLong="${Res}"
 fi
 
-if [ -z "$REGION" ]; then
+if [ -z "$NestedRegion" ]; then
     gridDir="$Res"
 else
-    gridDir="${Res}_${REGION}"
+    gridDir="${Res}_${NestedRegion}"
 fi
 
 # Define path to GEOS-Chem run directory files
@@ -225,10 +225,10 @@ if "$CreateStateVectorFile"; then
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.${LandCoverFileExtension}"
+    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
 
     # Download land cover file
-    s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${REGION}.${LandCoverFileExtension}"
+    s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
     aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
 
     # Output path and filename for state vector file
@@ -321,10 +321,10 @@ if "$SetupTemplateRundir"; then
            -e "s:{LON_RANGE}:${Lons}:g" \
            -e "s:{LAT_RANGE}:${Lats}:g" \
            -e "s:{CENTER_180}:T:g" \
-           -e "s:{HALF_POLAR}:${HalfPolar}:g" \
-           -e "s:{NLEV}:${Levs}:g" \
+           -e "s:{HALF_POLAR}:T:g" \
+           -e "s:{NLEV}:47" \
            -e "s:{NESTED_SIM}:${NestedGrid}:g" \
-           -e "s:{BUFFER_ZONE}:${Buffer}:g" input.geos
+           -e "s:{BUFFER_ZONE}:3 3 3 3:g" input.geos
     if [ "$NestedGrid" == "T" ]; then
 	sed -i -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
            -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
@@ -410,8 +410,8 @@ if "$SetupTemplateRundir"; then
            -e "s:{NATIVE_RES}:${native}:g" \
            -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BCfiles}:g" HEMCO_Config.rc
 
-    if [ ! -z "$REGION" ]; then
-        sed -i -e "s:\$RES:\$RES.${REGION}:g" HEMCO_Config.rc
+    if [ ! -z "$NestedRegion" ]; then
+        sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc
     fi
     if [ "$NestedGrid" == "T" ]; then
         OLD="--> GC_BCs                 :       false "
