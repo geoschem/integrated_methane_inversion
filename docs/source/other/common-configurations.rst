@@ -127,7 +127,7 @@ Modifying prior emission estimates
     SetupPosteriorRun: false
     
     ## Run modules
-    RunSetup: false
+    RunSetup: true
     DoSpinup: false
     DoJacobian: false
     DoInversion: false
