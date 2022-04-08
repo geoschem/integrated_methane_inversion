@@ -50,6 +50,11 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     # Load the TROPOMI data
     TROPOMI = read_tropomi(file_path)
 
+    # Handle unreadable files
+    if TROPOMI == None: 
+        print(f"Skipping {file_path} due to error")
+        return TROPOMI
+
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
     sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
 
@@ -172,6 +177,9 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
         for file_path in tropomi_paths
     )
+    # remove any problematic observation dicts (eg. corrupted data file)
+    observation_dicts = list(filter(None, observation_dicts))
+
     for dict in observation_dicts:
         lat.extend(dict["lat"])
         lon.extend(dict["lon"])
