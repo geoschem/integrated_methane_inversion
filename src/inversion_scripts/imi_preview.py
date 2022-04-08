@@ -47,25 +47,27 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     # tropomi data dictionary
     tropomi_data = {"lat": [], "lon": [], "xch4": [], "swir_albedo": []}
 
-    try:
-        # Load the TROPOMI data
-        TROPOMI = read_tropomi(file_path)
+    # Load the TROPOMI data
+    TROPOMI = read_tropomi(file_path)
 
-        # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+    # Handle unreadable files
+    if TROPOMI == None: 
+        print("Skipping {file_path} due to error")
+        return TROPOMI
 
-        # Loop over observations and archive
-        num_obs = len(sat_ind[0])
-        for k in range(num_obs):
-            lat_idx = sat_ind[0][k]
-            lon_idx = sat_ind[1][k]
-            tropomi_data["lat"].append(TROPOMI["latitude"][lat_idx, lon_idx])
-            tropomi_data["lon"].append(TROPOMI["longitude"][lat_idx, lon_idx])
-            tropomi_data["xch4"].append(TROPOMI["methane"][lat_idx, lon_idx])
-            tropomi_data["swir_albedo"].append(TROPOMI["swir_albedo"][lat_idx, lon_idx])
-    except Exception as e:
-        print(f"Skipping {file_path} due to file processing issue: {e}")
-        return None
+    # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
+    sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+
+    # Loop over observations and archive
+    num_obs = len(sat_ind[0])
+    for k in range(num_obs):
+        lat_idx = sat_ind[0][k]
+        lon_idx = sat_ind[1][k]
+        tropomi_data["lat"].append(TROPOMI["latitude"][lat_idx, lon_idx])
+        tropomi_data["lon"].append(TROPOMI["longitude"][lat_idx, lon_idx])
+        tropomi_data["xch4"].append(TROPOMI["methane"][lat_idx, lon_idx])
+        tropomi_data["swir_albedo"].append(TROPOMI["swir_albedo"][lat_idx, lon_idx])
+
     return tropomi_data
 
 
