@@ -52,7 +52,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
 
     # Handle unreadable files
     if TROPOMI == None: 
-        print("Skipping {file_path} due to error")
+        print(f"Skipping {file_path} due to error")
         return TROPOMI
 
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
