@@ -44,7 +44,12 @@ def read_tropomi(filename):
     dat = {}
 
     # Store methane, QA, lat, lon
-    tropomi_data = xr.open_dataset(filename, group="PRODUCT")
+    try:   
+        tropomi_data = xr.open_dataset(filename, group="PRODUCT")
+    except Exception as e:
+        print(f"Error opening {filename}: {e}")
+        return None
+
     dat["methane"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
     dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
     dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
@@ -406,6 +411,9 @@ def apply_tropomi_operator(
 
     # Read TROPOMI data
     TROPOMI = read_tropomi(filename)
+    if TROPOMI == None:
+        print(f"Skipping {filename} due to file processing issue.")
+        return TROPOMI
 
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
     sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
@@ -699,6 +707,9 @@ if __name__ == "__main__":
                 build_jacobian,
                 sensi_cache,
             )
+            if output == None:
+                continue
+            
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
