@@ -48,6 +48,13 @@ def read_tropomi(filename):
         tropomi_data = xr.open_dataset(filename, group="PRODUCT")
     except Exception as error:
         print(f"Error: Cannot open TROPOMI file. Error Message: {error}")
+        dat["methane"] = None
+        dat["qa_value"] = None
+        dat["longitude"] = None
+        dat["latitude"] = None
+        dat["latitude"] = None
+        dat["utctime"] = None
+        dat["time"] = None
         return dat
     dat["methane"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
     dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
