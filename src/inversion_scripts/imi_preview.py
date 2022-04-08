@@ -64,7 +64,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
             tropomi_data["xch4"].append(TROPOMI["methane"][lat_idx, lon_idx])
             tropomi_data["swir_albedo"].append(TROPOMI["swir_albedo"][lat_idx, lon_idx])
     except Exception as e:
-        print(f"Skipping file due to file processing issue: {e}")
+        print(f"Skipping {file_path} due to file processing issue: {e}")
         return None
     return tropomi_data
 

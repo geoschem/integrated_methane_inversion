@@ -702,7 +702,7 @@ if __name__ == "__main__":
                     sensi_cache,
                 )
             except Exception as e: 
-                print(f"Skipping file due to file processing issue: {e}")
+                print(f"Skipping {filename} due to file processing issue: {e}")
                 continue
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
