@@ -689,17 +689,21 @@ if __name__ == "__main__":
         # If not yet processed, run apply_tropomi_operator()
         if not os.path.isfile(f"{outputdir}/{date}_GCtoTROPOMI.pkl"):
             print("Applying TROPOMI operator...")
-            output = apply_tropomi_operator(
-                filename,
-                n_elements,
-                gc_startdate,
-                gc_enddate,
-                xlim,
-                ylim,
-                gc_cache,
-                build_jacobian,
-                sensi_cache,
-            )
+            try:
+                output = apply_tropomi_operator(
+                    filename,
+                    n_elements,
+                    gc_startdate,
+                    gc_enddate,
+                    xlim,
+                    ylim,
+                    gc_cache,
+                    build_jacobian,
+                    sensi_cache,
+                )
+            except Exception as e: 
+                print(f"Skipping file due to file processing issue: {e}")
+                continue
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
