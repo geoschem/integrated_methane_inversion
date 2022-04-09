@@ -203,6 +203,9 @@ a jupyter notebook server on AWS. Once connected to the server, open ``visualiza
 key inversion results including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
 averaging kernel sensitivities, and more.
 
+Note: If you are using Git-BASH, or similar software with ssh, you can follow the 
+`Configure a Linux or macOS Client <https://docs.aws.amazon.com/dlami/latest/devguide/setup-jupyter-configure-client-linux.html>` section, 
+which provides a simpler setup than the Windows instructions.
 
 .. _shutdown-label:
 
