@@ -84,8 +84,7 @@ with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
   $ /home/ubuntu/integrated_methane_inversion/src/notebooks/statevector_from_shapefile.ipynb
 
 
-Note: To setup a remote Jupyter notebook check out the quick start guide 
-:doc:`visualize results with python <../getting-started/quick-start.html#visualize-results-with-python>` section.
+Note: To setup a remote Jupyter notebook check out the quick start guide `visualize results with python <../getting-started/quick-start.html#visualize-results-with-python>`__ section.
 
 .. list-table::
    :widths: 30, 70
