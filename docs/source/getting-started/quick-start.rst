@@ -198,24 +198,7 @@ You can use the ``ls`` command to view the contents of the directory, which will
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
 see `Contents of the inversion directory <../other/listing-directory-contents.html#inversion-directory>`__.
 
-To set up a jupyter notebook server on your ec2 instance, run the following command on your **remote** terminal::
-
-  $ jupyter notebook --no-browser --port 8080
-
-This will start a jupyter server on port 8080. Additionally, it will print out a link with an authentication token, eg::
-  
-  $ jupyter notebook --no-browser --port 8080
-    ....
-    http://localhost:8080/?token=7a7ae708966c68e631bc76ba9eae7b1d287e4747cf7072e7
-
-Then in a new **local** terminal (or GIT-Bash) window run the following command::
-
-  $ ssh -NL 8080:localhost:8080 -i /path/to/private_key
-
-This creates an ssh tunnel from your ec2 instance to your local computer over port 8080, which will allow you to view the jupyter 
-notebook server from your browser if you go to the link outputted (eg. http://localhost:8080/?token=7a7ae708966c68e631bc76ba9eae7b1d287e4747cf7072e7).
-
-To set up and connect to a jupyter notebook server on AWS follow these short instructions ` <../advanced/setting-up-jupyter>`. 
+To set up and connect to a jupyter notebook server on AWS follow `these short instructions <../advanced/setting-up-jupyter>`__. 
 Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display key inversion results 
 including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
 averaging kernel sensitivities, and more.
