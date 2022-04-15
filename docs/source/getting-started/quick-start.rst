@@ -198,7 +198,7 @@ You can use the ``ls`` command to view the contents of the directory, which will
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
 see `Contents of the inversion directory <../other/listing-directory-contents.html#inversion-directory>`__.
 
-To set up and connect to a jupyter notebook server on AWS follow `these short instructions <../advanced/setting-up-jupyter>`__. 
+To set up and connect to a jupyter notebook server on AWS follow `these short instructions <../advanced/setting-up-jupyter.html>`__. 
 Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display key inversion results 
 including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
 averaging kernel sensitivities, and more.
