@@ -81,7 +81,10 @@ These settings are only used if ``CreateStateVectorFile`` is ``false``.
 To :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile, use the following settings in conjunction 
 with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
 
-  $ /home/ubuntu/integrated_methane_inversion/src/inversion_scripts/statevector_from_shapefile.ipynb
+  $ /home/ubuntu/integrated_methane_inversion/src/notebooks/statevector_from_shapefile.ipynb
+
+
+Note: To setup a remote Jupyter notebook check out the quick start guide `visualize results with python <../getting-started/quick-start.html#visualize-results-with-python>`__ section.
 
 .. list-table::
    :widths: 30, 70
