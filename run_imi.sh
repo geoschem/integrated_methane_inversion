@@ -41,6 +41,20 @@ else
     SetupPath="FILL"
 fi
 
+# in safe mode check whether selected options will overwrite existing files
+if "$SafeMode"; then
+    if ([ -d "${MyPath}/${RunName}/spinup_run" ] && "$DoSpinup") \
+       || ([ -d "${MyPath}/${RunName}/jacobian_runs" ] && "$DoJacobian") \
+       || ([ -d "${MyPath}/${RunName}/inversion" ] && "$DoInversion") \
+       || ([ -d "${MyPath}/${RunName}/posterior_run" ] && "$DoPosterior"); then
+        
+        echo "Error: files in ${MyPath}/${RunName}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
+        echo "To proceed, and overwrite existing files, set SafeMode in the config file to false." 
+        echo "IMI $RunName Aborted"
+        exit 1 
+    fi
+fi
+
 ## ======================================================================
 ## Settings specific to Harvard's Cannon cluster
 ## ======================================================================
@@ -64,6 +78,7 @@ if "$isAWS"; then
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
         echo "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
+        echo "IMI $RunName Aborted."
         exit 1
     }
     tropomiCache=${MyPath}/${RunName}/data_TROPOMI
