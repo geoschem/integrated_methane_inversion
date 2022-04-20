@@ -49,7 +49,7 @@ For more information on IAM roles, `check out the AWS Documentation <https://doc
 3. Launch an instance with the IMI
 ----------------------------------
 
-Once you've setup S3 permissions on your AWS account, login to the AWS console and click on EC2.
+Once you've setup S3 permissions on your AWS account, login to the AWS console and search for EC2.
 
 .. figure:: img/main_console.png
   :width: 600 px
@@ -63,17 +63,20 @@ but may result in increased costs compared to using the region where GEOS-Chem d
 
 .. _choose_ami-label:
 
-In the EC2 console, click on "AMIs" (Amazon Machine Images) under "IMAGES" on the left navigation bar. 
-Then select "Public images" and search for ``TODO:AMI_ID`` or ``TODO:AMI_NAME``.
+In the EC2 console, click on "Instances" and click "Launch Instances".
+
+.. figure:: img/instance.png
+  :width: 600 px
+
+Under the "Application and OS Images (Amazon Machine Image)" section, search for and select ``TODO:AMI_ID`` or ``TODO:AMI_NAME``, filtering for Community AMIs.
 This image contains the latest version of the IMI including all required software dependencies.
+An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
 
 .. figure:: img/search_ami.png
 
-An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
-
 Now it's time to specify the hardware for running your system. Hardware choices differ primarily in CPU and RAM counts. 
 
-You can select from a large number of instance types at the "Step 2: Choose an Instance Type" screen. 
+You can select from a large number of instance types in the "Instance Type" section. 
 The IMI will run more quickly with a higher number of CPUs. 
 TODO: choose ideal computational node. 
 Choose the c5.9xlarge instance type, which includes 36 CPU cores and 72GB of RAM. 
@@ -81,14 +84,24 @@ Depending on your use case you may choose a different instance type with more/le
 
 .. figure:: img/choose_instance_type.png
 
+.. note::
+  Note: new AWS users may encounter a limit on the number of CPUs they can allocate. To request a limit increase 
+  follow the steps outlined in the aws docs on `how to calculate a vCPU limit increase <https://aws.amazon.com/premiumsupport/knowledge-center/ec2-on-demand-instance-vcpu-increase/>`_.
+
+.. _keypair-label:
+
+In the next section you create, or select an existing, ssh key pair. This is equivalent to the password you enter to ``ssh`` to your local server. 
+Click "Create new key pair". In the dialog box give your key pair a name (eg. imi_testing) and click "Create key pair".
+In the future, you can simply select your existing keypair from the dropdown menu.
+
+.. figure:: img/key_pair.png
+  :width: 600 px
+
 .. _skip-ec2-config-label:
 
-Proceed to Step 3 and select the IAM role you created in :ref:`step 2 <s3-permissions-label>`. 
-All other config settings in "Step 3: Configuring Instance Details" can be left as the defaults.
+The "Network Settings" section can be left as the defaults. Proceed to "Configure Storage" and select the size of your storage volume. 
 
-.. figure:: img/assign_iam_to_ec2.png
-
-Proceed to "Step 4: Add Storage" and select the size of your storage volume. 
+.. figure:: img/choose_storage.png
 
 .. note::
   Your storage needs will depend on the length of the inversion period, size of the inversion domain, and the inversion resolution. 
@@ -99,20 +112,14 @@ Proceed to "Step 4: Add Storage" and select the size of your storage volume.
   And when your inversion is complete, consider :ref:`copying output data to S3 <s3storage-label>` and 
   :ref:`terminating your EC2 instance <shutdown-label>` to avoid continued storage fees.
 
-**Then, just click on "Review and Launch".** You don't need to touch other options this time. 
-This brings you to "Step 7: Review Instance Launch". Click on the Launch button again.
+Expand the "Advance Details" section and select the IAM role you created in :ref:`step 2 <s3-permissions-label>` under "IAM Instance Profile".
+This ensures that your EC2 instance has access to S3 (for downloading TROPOMI data and GEOS-Chem input data).
+All other config settings in "Advanced Details" can be left as the defaults.
 
-.. _keypair-label:
+.. figure:: img/assign_iam_to_ec2.png
 
-When you first use EC2, you will be asked to create and download a file called a "Key Pair". 
-It is equivalent to the password you enter to ``ssh`` to your local server.
 
-Give your "Key Pair" a name, click on "Download Key Pair", and finally click on "Launch Instances". 
-In the future, you can simply select "Choose an existing Key Pair", select your previously created Key Pair, and launch.
-
-.. figure:: img/key_pair.png
-  :width: 500 px
-
+**Then, after reviewing the summary, just click on the "Launch Instance" button.**.
 Once launched, you can monitor the instance in the EC2-Instance console as shown below. 
 Within one minute of initialization, "Instance State" should show "running" (refresh the page if the status remains "pending"):
 
@@ -198,11 +205,10 @@ You can use the ``ls`` command to view the contents of the directory, which will
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
 see `Contents of the inversion directory <../other/listing-directory-contents.html#inversion-directory>`__.
 
-Follow `these short instructions <https://docs.aws.amazon.com/dlami/latest/devguide/setup-jupyter.html>`_ to set up and connect to
-a jupyter notebook server on AWS. Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display 
-key inversion results including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
+To set up and connect to a jupyter notebook server on AWS follow `these short instructions <../advanced/setting-up-jupyter.html>`__. 
+Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display key inversion results 
+including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
 averaging kernel sensitivities, and more.
-
 
 .. _shutdown-label:
 
