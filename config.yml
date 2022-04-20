@@ -12,16 +12,16 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Region of interest
-##   Note: nested region ([lat],[lon]) bounds are: 
-##      NA ([10,70],[-140,-40]) 
-##      AS ([-11,55],[60,150]) 
-##      EU ([33,61],[-30,70]) 
 ##   These lat/lon bounds will only be used if CreateStateVectorFile: true
 LonMin: -105
 LonMax: -103
 LatMin: 31
 LatMax: 33
 ##   Select nesting window (NA, EU, or AS)
+##     Note: nested region ([lat],[lon]) bounds are: 
+##       AS ([-11,55],[60,150]) 
+##       EU ([33,61],[-30,70]) 
+##       NA ([10,70],[-140,-40])
 REGION: "NA"
 
 ## State vector
