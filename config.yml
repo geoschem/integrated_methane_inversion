@@ -18,11 +18,11 @@ LonMax: -103
 LatMin: 31
 LatMax: 33
 ##   Select nesting window (NA, EU, or AS)
-##     Note: nested region ([lat],[lon]) bounds are: 
-##       AS ([-11,55],[60,150]) 
-##       EU ([33,61],[-30,70]) 
-##       NA ([10,70],[-140,-40])
 REGION: "NA"
+##   Note: nesting window ([lat],[lon]) bounds are: 
+##     AS ([-11,55],[60,150]) 
+##     EU ([33,61],[-30,70]) 
+##     NA ([10,70],[-140,-40])
 
 ## State vector
 CreateStateVectorFile: true
