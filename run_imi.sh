@@ -4,7 +4,7 @@
 #SBATCH -n 1
 
 # This script will run the Integrated Methane Inversion with GEOS-Chem.
-# For documentation, see https://integrated-methane-inversion.readthedocs.io.
+# For documentation, see https://imi.readthedocs.io.
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
