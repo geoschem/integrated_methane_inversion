@@ -66,7 +66,7 @@ def sum_total_emissions(emissions, areas, mask):
     tg_per_kg = 1e-9
     emissions_in_kg_per_s = emissions * areas * mask
     total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
-    return total
+    return float(total)
 
 
 def count_obs_in_mask(mask, df):
