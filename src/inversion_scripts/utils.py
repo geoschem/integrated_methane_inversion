@@ -30,32 +30,14 @@ def zero_pad_num_hour(n):
     return nstr
 
 
-def match_size(state_vector_labels, emissions):
-    """
-    Trim gridded state vector to the dimensions of the HEMCO diagnostics emission field.
-    """
-
-    smaller_lat_min = np.min(emissions.lat.values)
-    smaller_lat_max = np.max(emissions.lat.values)
-    smaller_lon_min = np.min(emissions.lon.values)
-    smaller_lon_max = np.max(emissions.lon.values)
-    ilat1 = np.abs(state_vector_labels.lat.values - smaller_lat_min).argmin()
-    ilat2 = np.abs(state_vector_labels.lat.values - smaller_lat_max).argmin()
-    ilon1 = np.abs(state_vector_labels.lon.values - smaller_lon_min).argmin()
-    ilon2 = np.abs(state_vector_labels.lon.values - smaller_lon_max).argmin()
-    state_vector_labels_matched = state_vector_labels[ilat1:ilat2+1,ilon1:ilon2+1]
-    
-    return state_vector_labels_matched
-
-
 def sum_total_emissions(emissions, areas, mask):
     """
     Function to sum total emissions across the region of interest.
 
     Arguments:
-        emissions : emissions dataarray
-        areas     : list of pixel areas (in m2) for region of interest
-        mask      : binary mask for the region of interest
+        emissions : xarray data array for emissions across inversion domain
+        areas     : xarray data array for grid-cell areas across inversion domain
+        mask      : xarray data array binary mask for the region of interest
 
     Returns:
         Total emissions in Tg/y
