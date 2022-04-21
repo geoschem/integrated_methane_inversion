@@ -7,7 +7,7 @@ Integrated Methane Inversion with GEOS-Chem.
 
 ## Documentation:
 
-Please see the [imi-readthedocs site](https://integrated-methane-inversion.readthedocs.io)
+Please see the [imi-readthedocs site](https://imi.readthedocs.io)
 
 
 ## Reference:

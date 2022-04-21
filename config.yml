@@ -1,10 +1,11 @@
 ## IMI configuration file
-## Documentation @ https://integrated-methane-inversion.readthedocs.io/en/latest/getting-started/imi-config-file.html
+## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
 RunName: "Test_Permian_1week"
 isAWS: true
 UseSlurm: true
+SafeMode: true
 
 ## Period of interest
 StartDate: 20180501
