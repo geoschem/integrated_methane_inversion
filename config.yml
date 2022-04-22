@@ -32,12 +32,12 @@ BufferDeg: 5
 LandThreshold: 0.25
 
 ## Custom state vector
-StateVectorFile: "optional/path/to/statevectorfile.nc"
-ShapeFile: "optional/path/to/shapefile.shp"
-LonMinCustomStateVector: -110
-LonMaxCustomStateVector: -100
-LatMinCustomStateVector: 25
-LatMaxCustomStateVector: 35
+StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
+ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
+LonMinCustomStateVector: -111
+LonMaxCustomStateVector: -95
+LatMinCustomStateVector: 24
+LatMaxCustomStateVector: 39
 
 ## Inversion
 PriorError: 0.5
