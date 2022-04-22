@@ -1,0 +1,3 @@
+Directory to store custom state vector files.
+State vector files can be stored anywhere and pointed to in config.yml.
+This directory is just for convenience.
