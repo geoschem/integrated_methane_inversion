@@ -4,7 +4,7 @@
 #SBATCH -n 1
 #SBATCH -o "imi_output.log"
 
-# This script will run the Integrated Methane Inversion with GEOS-Chem.
+# This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://integrated-methane-inversion.readthedocs.io.
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
@@ -17,42 +17,23 @@ start_time=$(date)
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
-# Get configuration
-source src/utilities/parse_yaml.sh
-eval $(parse_yaml config.yml)
-# For reference, this defines the following environment variables:
-# General: $isAWS, $RunName, $UseSlurm
-# Period of interest: $StartDate, $EndDate, $SpinupMonths
-# Region of interest: $LonMin, $LonMax, $LatMin, $LatMax
-# Inversion: $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
-# Grid: $Res, $Met, $HalfPolar, $Levs, $NestedGrid, $REGION, $Buffer
-# Setup modules: $CreateStateVectorFile, $SetupTemplateRundir, $SetupSpinupRun, $SetupJacobianRuns, $SetupInversion, $SetupPosteriorRun
-# Run modules: $RunSetup, $DoSpinup, $DoJacobian, $DoInversion, $DoPosterior
-# State vector: $BufferDeg, $nBufferClusters, $LandThreshold
-# If custom state vec file: $StateVectorFile, $LonMinCustomStateVector, $LonMaxCustomStateVector, $LatMinCustomStateVector, $LatMaxCustomStateVector
-# Harvard-Cannon: $nCPUs, $partition
-
-# My path
-if "$isAWS"; then
-    MyPath="/home/ubuntu/imi_output_dir"
-    SetupPath="/home/ubuntu/integrated_methane_inversion"
+# Check if user has specified a configuration file
+if [[ $# == 1 ]] ; then
+    ConfigFile=$1
 else
-    MyPath="/n/holyscratch01/jacob_lab/$USER"
-    SetupPath="FILL"
+    ConfigFile="config.yml"
 fi
 
-## ======================================================================
-## Settings specific to Harvard's Cannon cluster
-## ======================================================================
+# Get configuration
+source src/utilities/parse_yaml.sh
+eval $(parse_yaml ${ConfigFile})
+
+##=======================================================================
+## Standard settings
+##=======================================================================
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
-
-# Environment files
-NCOEnv="${InversionPath}/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
-GCCEnv="${InversionPath}/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
-CondaEnv="ch4_inv"
-FortranCompiler="~/env/envs/gcc_cmake.ifort17_openmpi_cannon.env"
 
 ##=======================================================================
 ##  Download the TROPOMI data
@@ -63,13 +44,13 @@ if "$isAWS"; then
     { # test if instance has access to TROPOMI bucket
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
-        echo "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
+        printf "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
         exit 1
     }
-    tropomiCache=${MyPath}/${RunName}/data_TROPOMI
+    tropomiCache=${OutputPath}/${RunName}/data_TROPOMI
     mkdir -p -v $tropomiCache
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    echo "Finished TROPOMI download"
+    printf "Finished TROPOMI download"
 fi
 
 ##=======================================================================
@@ -80,11 +61,11 @@ if "$RunSetup"; then
 
     printf "\n=== RUNNING SETUP SCRIPT ===\n"
 
-    cd ${SetupPath}
+    cd ${InversionPath}
 
     if ! "$isAWS"; then
-        # Load fortran compiler
-        source ${FortranCompiler}
+        # Load environment with modules for compiling GEOS-Chem Classic
+        source ${GEOSChemEnv}
     fi
 
     # Run the setup script
@@ -102,13 +83,11 @@ if  "$DoSpinup"; then
 
     printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
 
-    cd ${MyPath}/${RunName}/spinup_run
+    cd ${OutputPath}/${RunName}/spinup_run
 
     if ! "$isAWS"; then
-        # Replace nCPUs, partitions
-        
         # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GCCEnv}
+        source ${GEOSChemEnv}
     fi
 
     # Submit job to job scheduler
@@ -126,13 +105,13 @@ if "$DoJacobian"; then
 
     printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
 
-    cd ${MyPath}/${RunName}/jacobian_runs
+    cd ${OutputPath}/${RunName}/jacobian_runs
 
     if ! "$isAWS"; then
         # Replace nCPUs, partitions
 
         # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GCCEnv} 
+        source ${GEOSChemEnv} 
     fi
 
     # Submit job to job scheduler
@@ -150,14 +129,14 @@ if "$DoInversion"; then
 
     printf "\n=== RUNNING INVERSION ===\n"
 
-    cd ${MyPath}/${RunName}/inversion
+    cd ${OutputPath}/${RunName}/inversion
 
     if ! "$isAWS"; then
         # Replace nCPUs, partitions
 
         # Activate Conda environment
         printf "Activating conda environment: ${CondaEnv}\n"
-        source activate $CondaEnv
+        conda activate $CondaEnv
     fi
 
     # Execute inversion driver script
@@ -173,13 +152,11 @@ fi
 
 if "$DoPosterior"; then
 
-    cd ${MyPath}/${RunName}/posterior_run
+    cd ${OutputPath}/${RunName}/posterior_run
     
     if ! "$isAWS"; then
-        # Replace nCPUs, partitions
-
         # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GCCEnv}
+        source ${GEOSChemEnv}
     fi
 
     # Submit job to job scheduler
@@ -187,11 +164,11 @@ if "$DoPosterior"; then
     sbatch -W ${RunName}_Posterior.run; wait;
     printf "=== DONE POSTERIOR SIMULATION ===\n"
 
-    cd ${MyPath}/${RunName}/inversion
+    cd ${OutputPath}/${RunName}/inversion
 
     # Fill missing data (first hour of simulation) in posterior output
-    PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
-    PrevDir="${MyPath}/${RunName}/spinup_run"
+    PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
+    PrevDir="${OutputPath}/${RunName}/spinup_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
     python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
     printf "=== DONE -- postproc_diags.py ===\n"
@@ -208,11 +185,11 @@ if "$DoPosterior"; then
     # Sample GEOS-Chem atmosphere with TROPOMI
     function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    LonMinInvDomain=$(ncmin lon ${MyPath}/${RunName}/StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon ${MyPath}/${RunName}/StateVector.nc)
-    LatMinInvDomain=$(ncmin lat ${MyPath}/${RunName}/StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat ${MyPath}/${RunName}/StateVector.nc)
-    nElements=$(ncmax StateVector ${MyPath}/${RunName}/StateVector.nc)
+    LonMinInvDomain=$(ncmin lon ${OutputPath}/${RunName}/StateVector.nc)
+    LonMaxInvDomain=$(ncmax lon ${OutputPath}/${RunName}/StateVector.nc)
+    LatMinInvDomain=$(ncmin lat ${OutputPath}/${RunName}/StateVector.nc)
+    LatMaxInvDomain=$(ncmax lat ${OutputPath}/${RunName}/StateVector.nc)
+    nElements=$(ncmax StateVector ${OutputPath}/${RunName}/StateVector.nc)
     FetchTROPOMI="False"
     isPost="True"
 

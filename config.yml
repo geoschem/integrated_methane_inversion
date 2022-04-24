@@ -11,21 +11,24 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
+## Use nested grid simulation?
+NestedGrid: "T"
+
+## Select nested grid region for using pre-cropped met fields
+##   Current options are listed below with ([lat],[lon]) bounds:
+##    "NA" : North America ([10,70],[-140,-40]) 
+##    "AS" : Asia ([-11,55],[60,150]) 
+##    "EU" : Europe ([33,61],[-30,70])
+##    ""   : Use for global met fields (global simulation/custom nested grids)
+NestedRegion: "NA"
+
 ## Region of interest
-##   Note: nested region ([lat],[lon]) bounds are: 
-##      NA ([10,70],[-140,-40]) 
-##      AS ([-11,55],[60,150]) 
-##      EU ([33,61],[-30,70]) 
-##   These lat/lon bounds will only be used if CreateStateVectorFile: true
+##   These lat/lon bounds are only be used if CreateStateVectorFile: true below
+##   Otherwise lat/lon bounds will be determined from state vector provided
 LonMin: -105
 LonMax: -103
 LatMin: 31
 LatMax: 33
-#    Use nested grid simulation by default
-NestedGrid: "T"
-##   Select nested grid region for using pre-cropped met fields
-##     (Options are currently NA, EU, or AS)
-NestedRegion: "NA"
 
 ## State vector
 CreateStateVectorFile: true
@@ -73,3 +76,62 @@ DoPosterior: false
 ## IMI preview
 DoPreview: true
 DOFSThreshold: 0
+
+##------------------------------------------------------------------
+## Settings for GEOS-Chem simulations
+##------------------------------------------------------------------
+## Jacobian settings
+PerturbValue: 1.5
+
+## Apply scale factors from a previous inversion?
+UseEmisSF: false
+UseSeparateWetlandSF: false
+UseOHSF: false
+
+## Save out hourly diagnostics from GEOS-Chem?
+## For use in satellite operators via post-processing -- required for TROPOMI
+## inversions
+HourlyCH4: true
+
+## Turn on planeflight diagnostic in GEOS-Chem?
+## For use in comparing GEOS-Chem against planeflight data. The path
+## to those data must be specified in input.geos.
+PLANEFLIGHT: false
+
+## Turn on old observation operators in GEOS-Chem?
+## These will save out text files comparing GEOS-Chem to observations, but have
+## to be manually incorporated into the IMI
+GOSAT: false
+TCCON: false
+AIRS: false
+
+##------------------------------------------------------------------
+## Settings for running on local cluster
+##------------------------------------------------------------------
+
+## Path for IMI runs and output
+OutputPath: "/home/ubuntu/imi_output_dir"
+
+## Path to GEOS-Chem input data
+DataPath: "/home/ubuntu/ExtData"
+
+## Environment files
+source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+CondaEnv: "geo"
+
+## Path to initial GEOS-Chem restart file
+RestartDownload: true
+RestartFile: "${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
+RestartFilePreview: "${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
+
+## Path to GEOS-Chem boundary condition files (for nested grid simulations)
+BCfiles: "${DataPath}/BoundaryConditions"
+
+## Options to download missing GEOS-Chem input data
+## For AWS: Data will be downloaded from S3 and you will be charged if
+##          your ec2 instance is not in the us-east-1 region.
+PreviewDryRun: true
+SpinupDryrun: true
+ProductionDryRun: true
+PosteriorDryRun: true
+BCdryrun: true

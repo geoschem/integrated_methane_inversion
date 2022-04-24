@@ -2,7 +2,6 @@
 
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH -p huce_intel
 #SBATCH -t 0-03:00
 #SBATCH --mem 4000
 #SBATCH -o run_inversion_%j.out
@@ -14,15 +13,20 @@
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
-# Get configuration (relative paths assume script is run from the inversion directory)
-source ../../../integrated_methane_inversion/src/utilities/parse_yaml.sh
-eval $(parse_yaml ../../../integrated_methane_inversion/config.yml)
-# This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
-# It also define $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
-# Parsing the config file here facilitates generation of inversion ensembles
-# All that needs to be done is to edit the config file for $PriorError, $ObsError, and $Gamma, 
-# make sure $PrecomputedJacobian is true, and then re-run this script (or run_imi.sh
-# with only the $DoInversion module switched on in config.yml).
+invPath={INVERSION_PATH}
+configFile={CONFIG_FILE}
+
+# Get configuration
+#  This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
+#  It also define $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
+#  Parsing the config file here facilitates generation of inversion ensembles
+#  All that needs to be done is to edit the config file for $PriorError,
+#   $ObsError, and $Gamma
+#  Make sure $PrecomputedJacobian is true, and then re-run this script
+#   (or run_imi.sh with only the $DoInversion module switched on in config.yml).
+
+source ${invPath}/src/utilities/parse_yaml.sh
+eval $(parse_yaml ${invPath}/${configFile)
 
 #=======================================================================
 # Configuration (these settings generated on initial setup)
@@ -32,16 +36,16 @@ LonMaxInvDomain={LON_MAX}
 LatMinInvDomain={LAT_MIN}
 LatMaxInvDomain={LAT_MAX}
 nElements={STATE_VECTOR_ELEMENTS}
-MyPath={MY_PATH}
+OutputPath={OUTPUT_PATH}
 Res={RES}
-SpinupDir="${MyPath}/${RunName}/spinup_run"
-JacobianRunsDir="${MyPath}/${RunName}/jacobian_runs"
-PosteriorRunDir="${MyPath}/${RunName}/posterior_run"
+SpinupDir="${OutputPath}/${RunName}/spinup_run"
+JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
+PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
-tropomiCache="${MyPath}/${RunName}/data_TROPOMI"
+tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
 
 # Only matters for Kalman filter inversions, to be implemented in a future version of the IMI
 FirstSimSwitch=true
