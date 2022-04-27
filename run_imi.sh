@@ -10,6 +10,7 @@
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
 start_time=$(date)
+setup_start=$(date +%s)
 
 ##=======================================================================
 ## Parse config.yml file
@@ -108,11 +109,14 @@ if "$RunSetup"; then
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 
 fi
+setup_end=$(date +%s)
+
 
 ##=======================================================================
 ##  Submit spinup simulation
 ##=======================================================================
 
+spinup_start=$(date +%s)
 if  "$DoSpinup"; then
 
     printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
@@ -132,11 +136,13 @@ if  "$DoSpinup"; then
     printf "=== DONE SPINUP SIMULATION ===\n"
     
 fi
+spinup_end=$(date +%s)
 
 ##=======================================================================
 ##  Submit Jacobian simulation
 ##=======================================================================
 
+jacobian_start=$(date +%s)
 if "$DoJacobian"; then
 
     printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
@@ -156,11 +162,13 @@ if "$DoJacobian"; then
     printf "=== DONE JACOBIAN SIMULATIONS ===\n"
 
 fi
+jacobian_end=$(date +%s)
 
 ##=======================================================================
 ##  Process data and run inversion
 ##=======================================================================
 
+inversion_start=$(date +%s)
 if "$DoInversion"; then
 
     printf "\n=== RUNNING INVERSION ===\n"
@@ -181,11 +189,13 @@ if "$DoInversion"; then
     printf "=== DONE RUNNING INVERSION ===\n"
 
 fi
+inversion_end=$(date +%s)
 
 ##=======================================================================
 ##  Submit posterior simulation and process the output
 ##=======================================================================
 
+posterior_start=$(date +%s)
 if "$DoPosterior"; then
 
     cd ${MyPath}/${RunName}/posterior_run
@@ -236,6 +246,7 @@ if "$DoPosterior"; then
     printf "=== DONE sampling the posterior simulation ===\n\n"
 
 fi
+posterior_end=$(date +%s)
 
 # Remove temporary files
 if "$isAWS"; then
@@ -247,4 +258,10 @@ end_time=$(date)
 printf "\nIMI started: %s" "$start_time"
 printf "\nIMI ended: %s\n\n" "$end_time"
 
+echo "Statistics:"
+echo "Setup runtime (s): $(( $setup_end - $setup_start ))"
+echo "Spinup runtime (s): $(( $spinup_end - $spinup_start ))"
+echo "Inversion runtime (s): $(( $inversion_end - $inversion_start ))"
+echo "Jacobian runtime (s): $(( $jacobian_end - $jacobian_start ))"
+echo "Posterior runtime (s): $(( $posterior_end - $posterior_start ))"
 exit 0
