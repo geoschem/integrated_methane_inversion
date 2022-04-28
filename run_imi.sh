@@ -9,6 +9,12 @@
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
+# Error message for if the IMI fails
+imi_failed() {
+    echo "FATAL ERROR: IMI exiting."
+    exit 1
+}
+
 start_time=$(date)
 setup_start=$(date +%s)
 
@@ -133,6 +139,9 @@ if  "$DoSpinup"; then
     # Submit job to job scheduler
     sbatch -W ${RunName}_Spinup.run; wait;
 
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed
+
     printf "=== DONE SPINUP SIMULATION ===\n"
     
 fi
@@ -158,6 +167,9 @@ if "$DoJacobian"; then
 
     # Submit job to job scheduler
     ./submit_jacobian_simulations_array.sh; wait;
+
+    # check if any jacobians exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed
 
     printf "=== DONE JACOBIAN SIMULATIONS ===\n"
 
