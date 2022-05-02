@@ -1,0 +1,143 @@
+## IMI configuration file
+## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
+
+## General
+RunName: "Test_IMI"
+isAWS: false
+UseSlurm: true
+SafeMode: true
+
+## Period of interest
+StartDate: 20180501
+EndDate: 20180502
+SpinupMonths: 1
+
+## Use nested grid simulation?
+NestedGrid: "T"
+
+## Select nested grid region for using pre-cropped met fields
+##   Current options are listed below with ([lat],[lon]) bounds:
+##    "AS" : Asia ([-11,55],[60,150]) 
+##    "EU" : Europe ([33,61],[-30,70])
+##    "NA" : North America ([10,70],[-140,-40]) 
+##    ""   : Use for global met fields (global simulation/custom nested grids)
+NestedRegion: "NA"
+
+## Region of interest
+##   These lat/lon bounds are only be used if CreateStateVectorFile: true below
+##   Otherwise lat/lon bounds will be determined from state vector provided
+LonMin: -105
+LonMax: -104
+LatMin: 31
+LatMax: 32
+
+## State vector
+CreateStateVectorFile: true
+nBufferClusters: 8
+BufferDeg: 5
+LandThreshold: 0.25
+
+## Custom state vector
+StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_Permian_1week/StateVector.nc"
+ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
+LonMinCustomStateVector: -111
+LonMaxCustomStateVector: -95
+LatMinCustomStateVector: 24
+LatMaxCustomStateVector: 39
+
+## Inversion
+PriorError: 0.5
+ObsError: 15
+Gamma: 0.25
+PrecomputedJacobian: false
+
+## Grid
+##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
+Res: "0.25x0.3125"
+Met: "geosfp"
+
+##   Other grid settings
+
+## Setup modules
+##   Turn on/off different steps in setting up the inversion 
+SetupTemplateRundir: true
+SetupSpinupRun: true
+SetupJacobianRuns: true
+SetupInversion: true
+SetupPosteriorRun: true
+
+## Run modules
+##   Turn on/off different steps in performing the inversion
+RunSetup: true
+DoSpinup: false
+DoJacobian: false
+DoInversion: false
+DoPosterior: false
+
+## IMI preview
+DoPreview: false
+DOFSThreshold: 0
+
+##------------------------------------------------------------------
+## Settings for GEOS-Chem simulations
+##------------------------------------------------------------------
+## Jacobian settings
+PerturbValue: 1.5
+
+## Apply scale factors from a previous inversion?
+UseEmisSF: false
+UseSeparateWetlandSF: false
+UseOHSF: false
+
+## Save out hourly diagnostics from GEOS-Chem?
+## For use in satellite operators via post-processing -- required for TROPOMI
+## inversions
+HourlyCH4: true
+
+## Turn on planeflight diagnostic in GEOS-Chem?
+## For use in comparing GEOS-Chem against planeflight data. The path
+## to those data must be specified in input.geos.
+PLANEFLIGHT: false
+
+## Turn on old observation operators in GEOS-Chem?
+## These will save out text files comparing GEOS-Chem to observations, but have
+## to be manually incorporated into the IMI
+GOSAT: false
+TCCON: false
+AIRS: false
+
+##------------------------------------------------------------------
+## Settings for running on local cluster
+##------------------------------------------------------------------
+
+## Path for IMI runs and output
+OutputPath: "/n/holyscratch01/jacob_lab/$USER"
+
+## Path to GEOS-Chem input data
+DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+
+## Environment files
+## See envs/README to create the Conda environment specified below
+NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
+GEOSChemEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
+CondaEnv: "ch4_inv"
+
+## Download initial restart file from AWS S3?
+##  NOTE: Must have AWS CLI enabled
+RestartDownload: false
+
+## Path to initial GEOS-Chem restart file    
+RestartFile: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
+RestartFilePreview: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
+
+## Path to GEOS-Chem boundary condition files (for nested grid simulations)
+## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
+BCfiles: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
+
+## Options to download missing GEOS-Chem input data from AWS S3
+##  NOTE: Must have AWS CLI enabled
+PreviewDryRun: false
+SpinupDryrun: false
+ProductionDryRun: false
+PosteriorDryRun: false
+BCdryrun: false
