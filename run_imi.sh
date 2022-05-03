@@ -11,8 +11,8 @@
 
 # Error message for if the IMI fails
 imi_failed() {
-    echo "FATAL ERROR: IMI exiting."
-    cp "$SetupPath/imi_output.log" "${MyPath}/${RunName}/imi_output.log"
+    printf "FATAL ERROR: IMI exiting."
+    cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
     exit 1
 }
 
@@ -256,5 +256,5 @@ echo "Jacobian runtime (s): $(( $jacobian_end - $jacobian_start ))"
 echo "Posterior runtime (s): $(( $posterior_end - $posterior_start ))"
 
 # copy output log to run directory for storage
-cp "$SetupPath/imi_output.log" "${MyPath}/${RunName}/imi_output.log"
+cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
 exit 0

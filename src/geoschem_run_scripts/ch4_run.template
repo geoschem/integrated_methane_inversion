@@ -19,13 +19,21 @@ id=namename
 # Define GEOS-Chem log file
 log="$id.log"
 
+# remove error status file if present
+rm -f .error_status_file.txt
+
 #-------------------------------------------------
 # Start the simulation
 #-------------------------------------------------
 # Run GEOS-Chem and pipe output to log
 ./gcclassic >> $log
 
-# Echo end fin
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo "Error Status: $retVal" > .error_status_file.txt
+    exit $retVal
+fi
+
 echo '===> Run ended at' `date` >> $log
 
 #-------------------------------------------------
