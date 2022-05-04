@@ -51,6 +51,9 @@ if "$isAWS"; then
     if "$UseSlurm"; then 
         cpu_count="$((cpu_count-1))"
     fi
+
+    # Source Conda environment file
+    source $CondaFile
 fi
 
 # Activate Conda environment
@@ -62,7 +65,7 @@ source activate $CondaEnv
 ##=======================================================================
 if "$BCdryrun"; then
 
-    mkdir -p ${BCfiles}
+    mkdir -p ${BCpath}
 
     if "$DoSpinup"; then
         START=${SpinupStart}
@@ -70,7 +73,7 @@ if "$BCdryrun"; then
         START=${StartDate}
     fi
     printf "Downloading boundary condition data for $START to $EndDate"
-    python src/utilities/download_bc.py ${START} ${EndDate} ${BCfiles}
+    python src/utilities/download_bc.py ${START} ${EndDate} ${BCpath}
 
 fi
 
@@ -78,11 +81,11 @@ fi
 ## Download initial restart file if requested
 ##=======================================================================
 if "$RestartDownload"; then
-    if [ ! -f "$RestartFile" ]; then
-        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+    if [ ! -f "${RestartFilePrefix}${SpinupStart}_0000z.nc4" ]; then
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 ${RestartFilePrefix}${SpinupStart}_0000z.nc4
     fi
-    if [ ! -f "$RestartFilePreview" ]; then
-        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
+    if [ ! -f "${RestartFilePreviewPrefix}${SpinupStart}_0000z.nc4" ]; then
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 ${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
     fi
 fi    
 
@@ -177,13 +180,13 @@ if ! "$isAWS"; then
 fi
 
 # Determine number of elements in state vector file
-function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; rm -f ~/foo.nc ; }
 nElements=$(ncmax StateVector ${OutputPath}/${RunName}/StateVector.nc)
 rm ~/foo.nc
 printf "\n Number of state vector elements in this inversion = ${nElements}\n"
 
 # Define inversion domain lat/lon bounds
-function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; rm -f ~/foo.nc ; }
 LonMinInvDomain=$(ncmin lon ${OutputPath}/${RunName}/StateVector.nc)
 LonMaxInvDomain=$(ncmax lon ${OutputPath}/${RunName}/StateVector.nc)
 LatMinInvDomain=$(ncmin lat ${OutputPath}/${RunName}/StateVector.nc)
@@ -243,11 +246,13 @@ if "$SetupTemplateRundir"; then
            -e "s:{CENTER_180}:T:g" \
            -e "s:{HALF_POLAR}:T:g" \
            -e "s:{NLEV}:47:g" \
-           -e "s:{NESTED_SIM}:${NestedGrid}:g" \
            -e "s:{BUFFER_ZONE}:3 3 3 3:g" input.geos
-    if [ "$NestedGrid" == "T" ]; then
-	sed -i -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
-           -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
+    if "$NestedGrid"; then
+	sed -i -e "s:{NESTED_SIM}:T:g" \
+               -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
+               -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
+    else
+	sed -i -e "s:{NESTED_SIM}:F:g" input.geos
     fi
 
     # For CH4 inversions always turn analytical inversion on
@@ -327,7 +332,7 @@ if "$SetupTemplateRundir"; then
            -e "s:{GRID_DIR}:${gridDir}:g" \
            -e "s:{MET_DIR}:${metDir}:g" \
            -e "s:{NATIVE_RES}:${native}:g" \
-           -e "s:\$ROOT/SAMPLE_BCs/v2019-05/CH4/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_\$HH\$MNz.nc4:${BCfiles}:g" HEMCO_Config.rc
+           -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
 
     if [ ! -z "$NestedRegion" ]; then
         sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc
@@ -417,7 +422,7 @@ if  "$DoPreview"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    ln -s $RestartFilePreview GEOSChem.Restart.${StartDate}_0000z.nc4
+    ln -s ${RestartFilePreviewPrefix}${StartDate}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
@@ -533,7 +538,7 @@ if  "$SetupSpinupRun"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    ln -s ${RestartFilePrefix}${SpinupStart}_0000z.nc4 GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
@@ -742,10 +747,12 @@ if "$SetupJacobianRuns"; then
         ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
 	    if "$UseBCsForRestart"; then
-            RestartFile=${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+            RestartFile=${BCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
             ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+	    if [ $x -eq 0 ]; then
+		printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
+	    fi
         fi
 	fi
    

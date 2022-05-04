@@ -13,7 +13,7 @@ EndDate: 20180502
 SpinupMonths: 1
 
 ## Use nested grid simulation?
-NestedGrid: "T"
+NestedGrid: true
 
 ## Select nested grid region for using pre-cropped met fields
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -126,13 +126,14 @@ CondaEnv: "ch4_inv"
 ##  NOTE: Must have AWS CLI enabled
 RestartDownload: false
 
-## Path to initial GEOS-Chem restart file    
-RestartFile: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
-RestartFilePreview: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
+## Path to initial GEOS-Chem restart file + prefix
+##   ("YYYYMMDD_0000z.nc4" will be appended)
+RestartFilePrefix: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
-BCfiles: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions.\$YYYY\$MM\$DD_0000z.nc4"
+BCpath: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##  NOTE: Must have AWS CLI enabled

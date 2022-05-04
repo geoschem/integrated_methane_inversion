@@ -13,7 +13,7 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Use nested grid simulation?
-NestedGrid: "T"
+NestedGrid: true
 
 ## Select nested grid region for using pre-cropped met fields
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -117,18 +117,19 @@ OutputPath: "/home/ubuntu/imi_output_dir"
 DataPath: "/home/ubuntu/ExtData"
 
 ## Environment files
-source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
 CondaEnv: "geo"
 
 ## Download initial restart file from AWS S3?
 RestartDownload: true
 
-## Path to initial GEOS-Chem restart file
-RestartFile: "${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4"
-RestartFilePreview: "${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
+## Path to initial GEOS-Chem restart file + prefix
+##   ("YYYYMMDD_0000z.nc4" will be appended)
+RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
-BCfiles: "${DataPath}/BoundaryConditions"
+BCfiles: "/home/ubuntu/ExtData/BoundaryConditions"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: You will be charged if your ec2 instance is not in the
