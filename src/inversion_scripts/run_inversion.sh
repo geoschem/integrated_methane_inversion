@@ -26,7 +26,7 @@ configFile={CONFIG_FILE}
 #   (or run_imi.sh with only the $DoInversion module switched on in config.yml).
 
 source ${invPath}/src/utilities/parse_yaml.sh
-eval $(parse_yaml ${invPath}/${configFile)
+eval $(parse_yaml ${invPath}/${configFile})
 
 #=======================================================================
 # Configuration (these settings generated on initial setup)
