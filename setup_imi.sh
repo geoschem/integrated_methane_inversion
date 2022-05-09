@@ -39,6 +39,7 @@ SpinupEnd=${StartDate}
 # Use global boundary condition files for initial conditions
 UseBCsForRestart=true
 
+printf "Activating conda environment: ${CondaEnv}\n"
 if "$isAWS"; then
     # Get max process count for spinup, production, and run_inversion scripts
     output=$(echo $(slurmd -C))
@@ -54,11 +55,12 @@ if "$isAWS"; then
 
     # Source Conda environment file
     source $CondaFile
+    # Activate Conda environment
+    conda activate $CondaEnv
+else
+    # Activate Conda environment
+    source activate $CondaEnv
 fi
-
-# Activate Conda environment
-printf "Activating conda environment: ${CondaEnv}\n"
-source activate $CondaEnv
 
 ##=======================================================================
 ## Download Boundary Conditions files if requested

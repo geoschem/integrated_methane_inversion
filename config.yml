@@ -129,7 +129,7 @@ RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryCon
 RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
-BCfiles: "/home/ubuntu/ExtData/BoundaryConditions"
+BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: You will be charged if your ec2 instance is not in the
