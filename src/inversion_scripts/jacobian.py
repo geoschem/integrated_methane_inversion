@@ -833,12 +833,6 @@ def apply_tropomi_operator(
     n_obs = len(sat_ind[0])
     print("Found", n_obs, "TROPOMI observations.")
 
-    # reprocess and average tropomi data, but we need the lat/lons of gc gridcells
-    average_observations = True
-    if average_observations:
-        gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
-        average_tropomi_observations(TROPOMI, gc_lat_lon)
-
     # If need to build Jacobian from GEOS-Chem perturbation simulation sensitivity data:
     if build_jacobian:
         # Initialize Jacobian K
