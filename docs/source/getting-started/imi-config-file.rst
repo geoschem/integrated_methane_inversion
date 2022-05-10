@@ -44,7 +44,7 @@ Region of interest
      - Minimum latitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
    * - ``LatMax``
      - Maximum latitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
-   * - ``REGION``
+   * - ``NestedRegion``
      - Nesting domain for the inversion. 
        Select ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America.
        See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation

@@ -118,7 +118,7 @@ def make_state_vector_file(
     )
     if not compatible:
         raise ValueError(
-            "Region of interest not contained within selected nesting REGION (NA, EU, AS; see config.yml)."
+            "Region of interest not contained within selected NestedRegion (NA, EU, AS; see config.yml)."
         )
 
     # Define bounds of inversion domain
