@@ -37,13 +37,13 @@ Region of interest
    :class: tight-table 
 
    * - ``LonMin``
-     - Minimum longitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
+     - Minimum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
    * - ``LonMax``
-     - Maximum longitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
+     - Maximum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
    * - ``LatMin``
-     - Minimum latitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
+     - Minimum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
    * - ``LatMax``
-     - Maximum latitude edge of the region of interest (only used if ``CreateStateVectorFile`` is ``true``).
+     - Maximum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
    * - ``NestedRegion``
      - Nesting domain for the inversion. 
        Select ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America.
@@ -56,42 +56,35 @@ State vector
    :widths: 30, 70
    :class: tight-table
 
-   * - ``CreateStateVectorFile``
+   * - ``CreateAutomaticRectilinearStateVectorFile``
      - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. 
        If ``false``, a custom/pre-generated state vector netcdf file must be provided below.
    * - ``nBufferClusters``
      - Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector 
        of emissions being optimized in the inversion.
    * - ``BufferDeg``
-     - Width of the buffer elements, in degrees; will not be used if ``CreateStateVectorFile`` is ``false``.
+     - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``.
    * - ``LandThreshold``
      - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file.
 
 Custom/pre-generated state vector
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-These settings are only used if ``CreateStateVectorFile`` is ``false``.
+These settings are only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. 
+Use them to :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile 
+in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
+
+  $ /home/ubuntu/integrated_methane_inversion/src/notebooks/statevector_from_shapefile.ipynb
 
 .. list-table::
    :widths: 30, 70
    :class: tight-table
 
    * - ``StateVectorFile``
-     - Path to the custom or pre-generated state vector netcdf file.
-
-To :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile, use the following settings in conjunction 
-with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
-
-  $ /home/ubuntu/integrated_methane_inversion/src/notebooks/statevector_from_shapefile.ipynb
-
-
-Note: To setup a remote Jupyter notebook check out the quick start guide `visualize results with python <../getting-started/quick-start.html#visualize-results-with-python>`__ section.
-
-.. list-table::
-   :widths: 30, 70
-   :class: tight-table
-
+     - Path to the custom or pre-generated state vector netcdf file. File will be saved here if generating it from a shapefile.
    * - ``ShapeFile``
      - Path to the shapefile.
+
+Note: To setup a remote Jupyter notebook check out the quick start guide `visualize results with python <../getting-started/quick-start.html#visualize-results-with-python>`__ section.
 
 Inversion
 ~~~~~~~~~

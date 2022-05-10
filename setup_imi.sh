@@ -141,7 +141,7 @@ fi
 ## Create state vector file
 ##=======================================================================
 
-if "$CreateStateVectorFile"; then
+if "$CreateAutomaticRectilinearStateVectorFile"; then
 
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
