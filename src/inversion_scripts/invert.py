@@ -45,19 +45,21 @@ def do_inversion(
 
     """
 
-    # Need to ignore data in the GEOS-Chem buffer zone
+    # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
-    # 1 degree if 0.25x0.3125 resolution, 2 degrees if 0.5x0.6125 resolution
+    # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
     if "0.25x0.3125" in res:
-        deg = 1
+        degx = 4 * 0.3125
+        degy = 4 * 0.25
     elif "0.5x0.625" in res:
-        deg = 2
+        degx = 4 * 0.625
+        degy = 4 * 0.5
     else:
         msg = "Bad input for res; must be '0.25x0.3125' or '0.5x0.625' "
         raise ValueError(msg)
 
-    xlim = [lon_min + deg, lon_max - deg]
-    ylim = [lat_min + deg, lat_max - deg]
+    xlim = [lon_min + degx, lon_max - degx]
+    ylim = [lat_min + degy, lat_max - degy]
 
     # Read output data from jacobian.py (virtual & true TROPOMI columns, Jacobian matrix)
     files = glob.glob(f"{jacobian_dir}/*.pkl")
