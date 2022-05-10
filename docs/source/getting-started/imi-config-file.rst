@@ -92,14 +92,6 @@ Note: To setup a remote Jupyter notebook check out the quick start guide `visual
 
    * - ``ShapeFile``
      - Path to the shapefile.
-   * - ``LonMinCustomStateVector``
-     - Minimum longitude edge of the desired inversion domain (includes region of interest and buffer elements).
-   * - ``LonMaxCustomStateVector``
-     - Maximum longitude edge of the desired inversion domain (includes region of interest and buffer elements).
-   * - ``LatMinCustomStateVector``
-     - Minimum latitude edge of the desired inversion domain (includes region of interest and buffer elements).
-   * - ``LatMaxCustomStateVector``
-     - Maximum latitude edge of the desired inversion domain (includes region of interest and buffer elements).
 
 Inversion
 ~~~~~~~~~

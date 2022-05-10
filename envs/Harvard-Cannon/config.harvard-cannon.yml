@@ -40,10 +40,6 @@ LandThreshold: 0.25
 ## Custom state vector
 StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_Permian_1week/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
-LonMinCustomStateVector: -111
-LonMaxCustomStateVector: -95
-LatMinCustomStateVector: 24
-LatMaxCustomStateVector: 39
 
 ## Inversion
 PriorError: 0.5
