@@ -24,15 +24,15 @@ NestedGrid: true
 NestedRegion: "NA"
 
 ## Region of interest
-##   These lat/lon bounds are only be used if CreateStateVectorFile: true below
-##   Otherwise lat/lon bounds will be determined from state vector provided
+##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
+##   Otherwise lat/lon bounds are determined from StateVectorFile
 LonMin: -105
 LonMax: -104
 LatMin: 31
 LatMax: 32
 
 ## State vector
-CreateStateVectorFile: true
+CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
@@ -40,10 +40,6 @@ LandThreshold: 0.25
 ## Custom state vector
 StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_Permian_1week/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
-LonMinCustomStateVector: -111
-LonMaxCustomStateVector: -95
-LatMinCustomStateVector: 24
-LatMaxCustomStateVector: 39
 
 ## Inversion
 PriorError: 0.5
