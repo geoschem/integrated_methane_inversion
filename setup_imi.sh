@@ -703,7 +703,7 @@ if "$SetupJacobianRuns"; then
                -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
-    sed -i -e "s:{START}:0:g" \ 
+    sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
 
