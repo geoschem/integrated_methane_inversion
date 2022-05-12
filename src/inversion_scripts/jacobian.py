@@ -375,7 +375,7 @@ def nearest_loc(query_location, reference_grid, tolerance=0.5):
 
 def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     """
-    Map TROPOMI observations into appropriate gc gridcells. Then average all 
+    Map TROPOMI observations into appropriate gc gridcells. Then average all
     observations within a gridcell for processing.
 
     Arguments
@@ -468,8 +468,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
             max_index = overlap_area.argmax()
             # get the matching dictionary for the gridcell with the most overlap area
             gridcell_dict = gridcell_dicts[ij_GC[max_index][0]][ij_GC[max_index][1]]
-            gridcell_dict["lat_sat"] = TROPOMI["latitude"][iSat, jSat]
-            gridcell_dict["lon_sat"] = TROPOMI["longitude"][iSat, jSat]
+            gridcell_dict["lat_sat"].append(TROPOMI["latitude"][iSat, jSat])
+            gridcell_dict["lon_sat"].append(TROPOMI["longitude"][iSat, jSat])
             gridcell_dict["overlap_area"].append(max(overlap_area))
             gridcell_dict["p_sat"].append(TROPOMI["pressures"][iSat, jSat, :])
             gridcell_dict["dry_air_subcolumns"].append(
@@ -479,12 +479,14 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
                 TROPOMI["methane_profile_apriori"][iSat, jSat, :]
             )
             gridcell_dict["avkern"].append(TROPOMI["column_AK"][iSat, jSat, :])
-            gridcell_dict["time"].append( # convert times to epoch time to make taking the mean easier
+            gridcell_dict[
+                "time"
+            ].append(  # convert times to epoch time to make taking the mean easier
                 int(pd.to_datetime(str(TROPOMI["utctime"][iSat])).strftime("%s"))
             )
-            gridcell_dict["methane"] = TROPOMI["methane"][
-                iSat, jSat
-            ]  # Actual TROPOMI methane column observation
+            gridcell_dict["methane"].append(
+                TROPOMI["methane"][iSat, jSat]
+            )  # Actual TROPOMI methane column observation
             gridcell_dict["observation_count"] += 1  # increment the observation count
 
     # filter out gridcells without any observations
@@ -628,6 +630,7 @@ def apply_average_tropomi_operator(
     # reprocess and average tropomi data, but we need the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
     obs_mapped_to_gc = average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind)
+    n_obs = len(obs_mapped_to_gc)
 
     if build_jacobian:
         # Initialize Jacobian K
@@ -739,7 +742,7 @@ def apply_average_tropomi_operator(
         obs_GC[i, 1] = virtual_tropomi  # Virtual TROPOMI methane column observation
         obs_GC[i, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
         obs_GC[i, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
-        obs_GC[i, 4] = gridcell_dict["observation_count"]  
+        obs_GC[i, 4] = gridcell_dict["observation_count"]
         # obs_GC[i, 4] = iSat  # TROPOMI index of longitude # TODO ??
         # obs_GC[i, 5] = jSat  # TROPOMI index of latitude # TODO ??
 
