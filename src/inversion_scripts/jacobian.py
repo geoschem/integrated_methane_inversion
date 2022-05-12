@@ -44,7 +44,7 @@ def read_tropomi(filename):
     dat = {}
 
     # Store methane, QA, lat, lon
-    try:   
+    try:
         tropomi_data = xr.open_dataset(filename, group="PRODUCT")
     except Exception as e:
         print(f"Error opening {filename}: {e}")
@@ -372,37 +372,41 @@ def nearest_loc(query_location, reference_grid, tolerance=0.5):
     else:
         return ind
 
+
 def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     """
-        Average TROPOMI observations into appropriate gc gridcells for processing
-        
-        Arguments
-            TROPOMI        [dict]   : Dict of tropomi data
-            gc_lat_lon     [list]   : list of dictionaries containing  gc gridcell info
-            sat_ind        [int]    : index list of Tropomi data that passes filters
+    Map TROPOMI observations into appropriate gc gridcells. Then average all 
+    observations within a gridcell for processing.
 
-        Returns
-            output         [list]   : list of dictionaries the following fields:
-                                        - lat : gridcell latitude
-                                        - lon : gridcell longitude
-                                        - t_lat : averaged tropomi latitude
-                                        - t_lon : averaged tropomi longitude
-                                        - overlap_area : averaged overlap area with gridcell
-                                        - p_sat : averaged pressure for sat
-                                        - dry_air_subcolumns : averaged
-                                        - apriori : averaged
-                                        - avkern : averaged average kernel
-                                        - time : averaged time
-                                        - methane : averaged methane
-                                        - observation_count : number of observations averaged in cell
-    
+    Arguments
+        TROPOMI        [dict]   : Dict of tropomi data
+        gc_lat_lon     [list]   : list of dictionaries containing  gc gridcell info
+        sat_ind        [int]    : index list of Tropomi data that passes filters
+
+    Returns
+        output         [dict[]]   : flat list of dictionaries the following fields:
+                                    - lat                : gridcell latitude
+                                    - lon                : gridcell longitude
+                                    - iGC                : longitude index value
+                                    - jGC                : latitude index value
+                                    - lat_sat            : averaged tropomi latitude
+                                    - lon_sat            : averaged tropomi longitude
+                                    - overlap_area       : averaged overlap area with gridcell
+                                    - p_sat              : averaged pressure for sat
+                                    - dry_air_subcolumns : averaged
+                                    - apriori            : averaged
+                                    - avkern             : averaged average kernel
+                                    - time               : averaged time
+                                    - methane            : averaged methane
+                                    - observation_count  : number of observations averaged in cell
+
     """
     n_obs = len(sat_ind[0])
     print("Found", n_obs, "TROPOMI observations.")
     gc_lats = gc_lat_lon["lat"]
     gc_lons = gc_lat_lon["lon"]
     gridcell_dicts = get_gridcell_list(gc_lons, gc_lats)
-    
+
     for k in range(n_obs):
         iSat = sat_ind[0][k]  # lat index
         jSat = sat_ind[1][k]  # lon index
@@ -418,7 +422,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
             jGC = nearest_loc(latitude_bounds[l], gc_lats)
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
-        
+
         # If the tolerance in nearest_loc() is not satisfied, skip the observation
         if np.nan in corners_lon_index + corners_lat_index:
             continue
@@ -431,7 +435,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
         overlap_area = np.zeros(len(gc_coords))
         dlon = gc_lons[1] - gc_lons[0]
         dlat = gc_lats[1] - gc_lats[0]
-        
+
         # Polygon representing TROPOMI pixel
         polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
         for gridcellIndex in range(len(gc_coords)):
@@ -460,58 +464,69 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)
         if not total_overlap_area == 0:
+            # map observation into the gridcell with the most ovrlap area TODO: update this strategy?
             max_index = overlap_area.argmax()
             # get the matching dictionary for the gridcell with the most overlap area
             gridcell_dict = gridcell_dicts[ij_GC[max_index][0]][ij_GC[max_index][1]]
-            gridcell_dict["t_lat"] = TROPOMI["latitude"][iSat, jSat]
-            gridcell_dict["t_lon"] = TROPOMI["longitude"][iSat, jSat]
-            gridcell_dict["overlap_area"].append(max(overlap_area)) 
+            gridcell_dict["lat_sat"] = TROPOMI["latitude"][iSat, jSat]
+            gridcell_dict["lon_sat"] = TROPOMI["longitude"][iSat, jSat]
+            gridcell_dict["overlap_area"].append(max(overlap_area))
             gridcell_dict["p_sat"].append(TROPOMI["pressures"][iSat, jSat, :])
-            gridcell_dict["dry_air_subcolumns"].append(TROPOMI["dry_air_subcolumns"][iSat, jSat, :])
-            gridcell_dict["apriori"].append(TROPOMI["methane_profile_apriori"][iSat, jSat, :])
+            gridcell_dict["dry_air_subcolumns"].append(
+                TROPOMI["dry_air_subcolumns"][iSat, jSat, :]
+            )
+            gridcell_dict["apriori"].append(
+                TROPOMI["methane_profile_apriori"][iSat, jSat, :]
+            )
             gridcell_dict["avkern"].append(TROPOMI["column_AK"][iSat, jSat, :])
-            gridcell_dict["time"].append(int(pd.to_datetime(str(TROPOMI["utctime"][iSat])).strftime('%s')))
-            gridcell_dict["methane"] = TROPOMI["methane"][iSat, jSat]  # Actual TROPOMI methane column observation
-            gridcell_dict["observation_count"] += 1 # increment the observation count
+            gridcell_dict["time"].append( # convert times to epoch time to make taking the mean easier
+                int(pd.to_datetime(str(TROPOMI["utctime"][iSat])).strftime("%s"))
+            )
+            gridcell_dict["methane"] = TROPOMI["methane"][
+                iSat, jSat
+            ]  # Actual TROPOMI methane column observation
+            gridcell_dict["observation_count"] += 1  # increment the observation count
 
     # filter out gridcells without any observations
-    gridcell_dicts = [item for item in gridcell_dicts.flatten() if item["observation_count"] > 0]
+    gridcell_dicts = [
+        item for item in gridcell_dicts.flatten() if item["observation_count"] > 0
+    ]
     # mean observation values for each gridcell
     for gridcell_dict in gridcell_dicts:
-        gridcell_dict["t_lat"] = np.mean(gridcell_dict["t_lat"])
-        gridcell_dict["t_lon"] = np.mean(gridcell_dict["t_lon"])
+        gridcell_dict["lat_sat"] = np.mean(gridcell_dict["lat_sat"])
+        gridcell_dict["lon_sat"] = np.mean(gridcell_dict["lon_sat"])
         gridcell_dict["overlap_area"] = np.mean(gridcell_dict["overlap_area"])
         gridcell_dict["methane"] = np.mean(gridcell_dict["methane"])
+        # take mean of epoch times and then convert gc filename time string
+        gridcell_dict["time"] = (
+            pd.to_datetime(
+                datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))
+            )
+            .round("60min")
+            .strftime("%Y%m%d_%H")
+        )
+        # for multi-dimensional arrays, we only take the mean across the 0 axis
         gridcell_dict["p_sat"] = np.mean(gridcell_dict["p_sat"], axis=0)
-        gridcell_dict["dry_air_subcolumns"] = np.mean(gridcell_dict["dry_air_subcolumns"], axis=0)
+        gridcell_dict["dry_air_subcolumns"] = np.mean(
+            gridcell_dict["dry_air_subcolumns"], axis=0
+        )
         gridcell_dict["apriori"] = np.mean(gridcell_dict["apriori"], axis=0)
         gridcell_dict["avkern"] = np.mean(gridcell_dict["avkern"], axis=0)
-        gridcell_dict["time"] = pd.to_datetime(datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))).round("60min").strftime("%Y%m%d_%H")
     return gridcell_dicts
+
 
 def get_gc_lat_lon(gc_cache, start_date):
     """
-        get a list of dictionaries representing each gc gridcell, with initialized values for tropomi values.
-        
-        Arguments
-            gc_cache       [str]    : path to gc data
-            start_date     [str]    : start date of the inversion
+    get dictionary of lat/lon values for gc gridcells
 
-        Returns
-            output         [list]   : list of dictionaries the following fields:
-                                        - lat : gridcell latitude
-                                        - lon : gridcell longitude
-                                        - t_lat : averaged tropomi latitude
-                                        - t_lon : averaged tropomi longitude
-                                        - overlap_area : averaged overlap area with gridcell
-                                        - p_sat : averaged pressure for sat
-                                        - dry_air_subcolumns : averaged
-                                        - apriori : averaged
-                                        - avkern : averaged average kernel
-                                        - time : averaged time
-                                        - methane : averaged methane
-                                        - observation_count : number of observations averaged in cell
-    
+    Arguments
+        gc_cache    [str]   : path to gc data
+        start_date  [str]   : start date of the inversion
+
+    Returns
+        output      [dict]  : dictionary with the following fields:
+                                - lat : list of GC latitudes
+                                - lon : list of GC longitudes
     """
     gc_ll = {}
     date = pd.to_datetime(start_date).strftime("%Y%m%d_%H")
@@ -522,31 +537,47 @@ def get_gc_lat_lon(gc_cache, start_date):
     gc_ll["lat"] = gc_data["lat"].values
 
     gc_data.close()
-    return gc_ll 
+    return gc_ll
+
 
 def get_gridcell_list(lons, lats):
+    """
+    Create a 2d array of dictionaries, with each dictionary representing a GC gridcell.
+    Dictionaries also initialize the fields necessary to store for tropomi data
+    (eg. methane, time, p_sat, etc.)
+
+    Arguments
+        lons     [float[]]      : list of gc longitudes for region of interest
+        lats     [float[]]      : list of gc latitudes for region of interest
+
+    Returns
+        gricells [dict[][]]     : 2D array of dicts representing a gridcell
+    """
     # create array of dictionaries to represent gridcells
-    dat = []
+    gricells = []
     for i in range(len(lons)):
         for j in range(len(lats)):
-            dat.append( {
-                "lat": lats[j],
-                "lon": lons[i],
-                "iGC": i,
-                "jGC": j,
-                "methane": [],
-                "p_sat": [],
-                "dry_air_subcolumns": [],
-                "apriori": [],
-                "avkern": [],
-                "time": [],
-                "overlap_area": [],
-                "t_lat": [],
-                "t_lon": [],
-                "observation_count": 0
-            })
-    dat = np.array(dat).reshape(len(lons), len(lats))
-    return dat
+            gricells.append(
+                {
+                    "lat": lats[j],
+                    "lon": lons[i],
+                    "iGC": i,
+                    "jGC": j,
+                    "methane": [],
+                    "p_sat": [],
+                    "dry_air_subcolumns": [],
+                    "apriori": [],
+                    "avkern": [],
+                    "time": [],
+                    "overlap_area": [],
+                    "lat_sat": [],
+                    "lon_sat": [],
+                    "observation_count": 0,
+                }
+            )
+    gricells = np.array(gricells).reshape(len(lons), len(lats))
+    return gricells
+
 
 def apply_average_tropomi_operator(
     filename,
@@ -589,7 +620,6 @@ def apply_average_tropomi_operator(
     if TROPOMI == None:
         print(f"Skipping {filename} due to file processing issue.")
         return TROPOMI
-    
 
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
     sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
@@ -603,7 +633,6 @@ def apply_average_tropomi_operator(
         # Initialize Jacobian K
         jacobian_K = np.zeros([n_obs, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
-        
 
     # Initialize a list to store the dates we want to look at
     all_strdate = []
@@ -625,7 +654,7 @@ def apply_average_tropomi_operator(
     for i, gridcell_dict in enumerate(obs_mapped_to_gc):
 
         # Get GEOS-Chem data for the date of the observation:
-        p_sat =  gridcell_dict["p_sat"]
+        p_sat = gridcell_dict["p_sat"]
         dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # mol m-2
         apriori = gridcell_dict["apriori"]  # mol m-2
         avkern = gridcell_dict["avkern"]
@@ -671,7 +700,9 @@ def apply_average_tropomi_operator(
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:
             # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-            sensi_lonlat = GEOSCHEM["Sensitivities"][gridcell_dict["iGC"], gridcell_dict["jGC"], :, :]
+            sensi_lonlat = GEOSCHEM["Sensitivities"][
+                gridcell_dict["iGC"], gridcell_dict["jGC"], :, :
+            ]
             # Map the sensitivities to TROPOMI pressure levels
             sat_deltaCH4 = remap_sensitivities(
                 sensi_lonlat,
@@ -702,17 +733,23 @@ def apply_average_tropomi_operator(
         virtual_tropomi = area_weighted_virtual_tropomi / gridcell_dict["overlap_area"]
 
         # Save actual and virtual TROPOMI data
-        obs_GC[i, 0] = gridcell_dict["methane"] # Actual TROPOMI methane column observation
+        obs_GC[i, 0] = gridcell_dict[
+            "methane"
+        ]  # Actual TROPOMI methane column observation
         obs_GC[i, 1] = virtual_tropomi  # Virtual TROPOMI methane column observation
-        obs_GC[i, 2] = gridcell_dict["t_lon"]  # TROPOMI longitude
-        obs_GC[i, 3] = gridcell_dict["t_lat"] # TROPOMI latitude
-        # obs_GC[i, 4] = iSat  # TROPOMI index of longitude #TODO ??
+        obs_GC[i, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
+        obs_GC[i, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
+        obs_GC[i, 4] = gridcell_dict["observation_count"]  
+        # obs_GC[i, 4] = iSat  # TROPOMI index of longitude # TODO ??
         # obs_GC[i, 5] = jSat  # TROPOMI index of latitude # TODO ??
 
         if build_jacobian:
             # Compute TROPOMI sensitivity as weighted mean by overlapping area
             # i.e., need to divide out area [m2] from the previous step
-            jacobian_K[i, :] = area_weighted_virtual_tropomi_sensitivity / gridcell_dict["overlap_area"]
+            jacobian_K[i, :] = (
+                area_weighted_virtual_tropomi_sensitivity
+                / gridcell_dict["overlap_area"]
+            )
 
     # Output
     output = {}
@@ -726,6 +763,7 @@ def apply_average_tropomi_operator(
 
     return output
 
+
 def apply_tropomi_operator(
     filename,
     n_elements,
@@ -737,31 +775,6 @@ def apply_tropomi_operator(
     build_jacobian,
     sensi_cache,
 ):
-    """
-    Apply the tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
-
-    Arguments
-        filename       [str]        : TROPOMI netcdf data file to read
-        n_elements     [int]        : Number of state vector elements
-        gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and TROPOMI
-        gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and TROPOMI
-        xlim           [float]      : Longitude bounds for simulation domain
-        ylim           [float]      : Latitude bounds for simulation domain
-        gc_cache       [str]        : Path to GEOS-Chem output data
-        build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
-
-    Returns
-        output         [dict]       : Dictionary with one or two fields:
-                                                        - obs_GC : GEOS-Chem and TROPOMI methane data
-                                                    - TROPOMI methane
-                                                    - GEOS-Chem methane
-                                                    - TROPOMI lat, lon
-                                                    - TROPOMI lat index, lon index
-                                                      If build_jacobian=True, also include:
-                                                        - K      : Jacobian matrix
-    """
-
     # Read TROPOMI data
     TROPOMI = read_tropomi(filename)
     if TROPOMI == None:
@@ -983,6 +996,7 @@ def apply_tropomi_operator(
 
     return output
 
+
 if __name__ == "__main__":
     import sys
 
@@ -1062,7 +1076,7 @@ if __name__ == "__main__":
             )
             if output == None:
                 continue
-            
+
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")

@@ -128,11 +128,17 @@ def do_inversion(
         # TROPOMI and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
+        # weight gamma based on the observation count to prevent overfitting
+        # Note: weighting function defined by Zichong for his 
+        # middle east inversions. May need to be tuned based on region.
+        obsWeight = 1.02 - (obs_GC[ind, 4] * .02)
+        gamma = obsWeight * gamma
+
         # Jacobian entries for observations within bounds [ppb]
         K = 1e9 * dat["K"][ind, :]
 
         # Number of observations
-        N = obs_GC.shape[0]
+        N = obs_GC[ind, 4]
         print("Sum of Jacobian entries:", np.sum(K))
 
         # Define observational errors (diagonal entries of S_o matrix)
