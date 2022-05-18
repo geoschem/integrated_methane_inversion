@@ -394,6 +394,7 @@ fi # SetupTemplateRunDir
 ##  Set up IMI preview run directory
 ##=======================================================================
 
+preview_start=$(date +%s)
 if  "$DoPreview"; then
 
     # Make sure template run directory exists
@@ -505,6 +506,7 @@ if  "$DoPreview"; then
     cd ..
 
 fi 
+preview_end=$(date +%s)
 
 ##=======================================================================
 ##  Set up spinup run directory
@@ -862,4 +864,8 @@ if "$isAWS"; then
     rm -f /home/ubuntu/foo.nc
 fi
 
+# Run time
+echo "Statistics (setup):"
+echo "Preview runtime (s): $(( $preview_end - $preview_start ))"
+echo "Note: this is part of the Setup runtime reported by run_imi.sh"
 exit 0
