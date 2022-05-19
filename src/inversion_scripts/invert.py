@@ -134,19 +134,16 @@ def do_inversion(
         obs_error = obsWeight * obs_err
         
         # check to make sure obs_err isn't negative, set 1 as default value
-        obs_error = [obs if obs_err >= 0 else 1 for obs in obs_err]
+        obs_error = [obs if obs_err >= 0 else 1 for obs in obs_error]
 
         # Jacobian entries for observations within bounds [ppb]
         K = 1e9 * dat["K"][ind, :]
 
         # Number of observations
-        # N = int(sum(obs_GC[:, 4]))
         print("Sum of Jacobian entries:", np.sum(K))
 
         # Define observational errors (diagonal entries of S_o matrix)
-        # obs_error = np.zeros(N)
-        # obs_error.fill(obs_err**2)
-        obs_error = obs_error**2
+        obs_error = np.power(obs_error, 2)
         
         # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand
