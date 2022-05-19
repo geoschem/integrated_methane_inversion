@@ -134,7 +134,7 @@ def do_inversion(
         obs_error = obsWeight * obs_err
         
         # check to make sure obs_err isn't negative, set 1 as default value
-        obs_error = [obs if obs_err >= 0 else 1 for obs in obs_error]
+        obs_error = [obs if obs > 0 else 1 for obs in obs_error]
 
         # Jacobian entries for observations within bounds [ppb]
         K = 1e9 * dat["K"][ind, :]
