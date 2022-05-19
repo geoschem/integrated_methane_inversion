@@ -82,7 +82,6 @@ PerturbValue: 1.5
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false
-UseSeparateWetlandSF: false
 UseOHSF: false
 
 ## Save out hourly diagnostics from GEOS-Chem?

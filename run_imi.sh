@@ -11,7 +11,7 @@
 
 # Error message for if the IMI fails
 imi_failed() {
-    printf "FATAL ERROR: IMI exiting."
+    printf "\nFATAL ERROR: IMI exiting."
     cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
     exit 1
 }
@@ -36,20 +36,23 @@ fi
 source src/utilities/parse_yaml.sh
 eval $(parse_yaml ${ConfigFile})
 
+# Set path to IMI runs
+RunDirs="${OutputPath}/${RunName}"
+
 ##=======================================================================
 ## Standard settings
 ##=======================================================================
 
 # In safe mode check whether selected options will overwrite existing files
 if "$SafeMode"; then
-    if ([ -d "${OutputPath}/${RunName}/spinup_run" ] && "$DoSpinup") \
-       || ([ -d "${OutputPath}/${RunName}/jacobian_runs" ] && "$DoJacobian") \
-       || ([ -d "${OutputPath}/${RunName}/inversion" ] && "$DoInversion") \
-       || ([ -d "${OutputPath}/${RunName}/posterior_run" ] && "$DoPosterior"); then
+    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") \
+       || ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") \
+       || ([ -d "${RunDirs}/inversion" ] && "$DoInversion") \
+       || ([ -d "${RunDirs}/posterior_run" ] && "$DoPosterior"); then
         
-        echo "Error: files in ${OutputPath}/${RunName}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
-        echo "To proceed, and overwrite existing files, set SafeMode in the config file to false." 
-        echo "IMI $RunName Aborted"
+        printf "\nError: files in ${RunDirs}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
+        printf "To proceed, and overwrite existing files, set SafeMode in the config file to false." 
+        printf "\nIMI $RunName Aborted"
         exit 1 
     fi
 fi
@@ -66,14 +69,14 @@ if "$isAWS"; then
     { # test if instance has access to TROPOMI bucket
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
-        printf "Error: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions."
+        printf "\nError: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions.\n"
         printf "IMI $RunName Aborted."
         exit 1
     }
-    tropomiCache=${OutputPath}/${RunName}/data_TROPOMI
+    tropomiCache=${RunDirs}/data_TROPOMI
     mkdir -p -v $tropomiCache
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    printf "Finished TROPOMI download"
+    printf "\nFinished TROPOMI download\n"
 fi
 
 ##=======================================================================
@@ -92,7 +95,7 @@ if "$RunSetup"; then
     fi
 
     # Run the setup script
-    ./setup_imi.sh; wait;
+    ./setup_imi.sh ${ConfigFile}; wait;
 
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 
@@ -109,7 +112,7 @@ if  "$DoSpinup"; then
 
     printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
 
-    cd ${OutputPath}/${RunName}/spinup_run
+    cd ${RunDirs}/spinup_run
 
     if ! "$isAWS"; then
         # Load environment with modules for compiling GEOS-Chem Classic
@@ -122,7 +125,7 @@ if  "$DoSpinup"; then
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed
 
-    printf "=== DONE SPINUP SIMULATION ===\n"
+    printf "\n=== DONE SPINUP SIMULATION ===\n"
     
 fi
 spinup_end=$(date +%s)
@@ -136,11 +139,9 @@ if "$DoJacobian"; then
 
     printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
 
-    cd ${OutputPath}/${RunName}/jacobian_runs
+    cd ${RunDirs}/jacobian_runs
 
     if ! "$isAWS"; then
-        # Replace nCPUs, partitions
-
         # Load environment with modules for compiling GEOS-Chem Classic
         source ${GEOSChemEnv} 
     fi
@@ -151,7 +152,7 @@ if "$DoJacobian"; then
     # check if any jacobians exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed
 
-    printf "=== DONE JACOBIAN SIMULATIONS ===\n"
+    printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
 
 fi
 jacobian_end=$(date +%s)
@@ -165,20 +166,20 @@ if "$DoInversion"; then
 
     printf "\n=== RUNNING INVERSION ===\n"
 
-    cd ${OutputPath}/${RunName}/inversion
+    cd ${RunDirs}/inversion
 
     if ! "$isAWS"; then
         # Replace nCPUs, partitions
 
         # Activate Conda environment
-        printf "Activating conda environment: ${CondaEnv}\n"
+        printf "\nActivating conda environment: ${CondaEnv}\n"
         conda activate $CondaEnv
     fi
 
     # Execute inversion driver script
     sbatch -W run_inversion.sh; wait;
         
-    printf "=== DONE RUNNING INVERSION ===\n"
+    printf "\n=== DONE RUNNING INVERSION ===\n"
 
 fi
 inversion_end=$(date +%s)
@@ -190,7 +191,7 @@ inversion_end=$(date +%s)
 posterior_start=$(date +%s)
 if "$DoPosterior"; then
 
-    cd ${OutputPath}/${RunName}/posterior_run
+    cd ${RunDirs}/posterior_run
     
     if ! "$isAWS"; then
         # Load environment with modules for compiling GEOS-Chem Classic
@@ -200,16 +201,16 @@ if "$DoPosterior"; then
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch -W ${RunName}_Posterior.run; wait;
-    printf "=== DONE POSTERIOR SIMULATION ===\n"
+    printf "\n=== DONE POSTERIOR SIMULATION ===\n"
 
-    cd ${OutputPath}/${RunName}/inversion
+    cd ${RunDirs}/inversion
 
     # Fill missing data (first hour of simulation) in posterior output
-    PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
-    PrevDir="${OutputPath}/${RunName}/spinup_run"
+    PosteriorRunDir="${RunDirs}/posterior_run"
+    PrevDir="${RunDirs}/spinup_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
     python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
-    printf "=== DONE -- postproc_diags.py ===\n"
+    printf "\n=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
@@ -218,22 +219,22 @@ if "$DoPosterior"; then
     GCDir="./data_geoschem_posterior"
     printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
     python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "=== DONE -- setup_gc_cache.py ===\n"
+    printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    LonMinInvDomain=$(ncmin lon ${OutputPath}/${RunName}/StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon ${OutputPath}/${RunName}/StateVector.nc)
-    LatMinInvDomain=$(ncmin lat ${OutputPath}/${RunName}/StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat ${OutputPath}/${RunName}/StateVector.nc)
-    nElements=$(ncmax StateVector ${OutputPath}/${RunName}/StateVector.nc)
+    LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
+    LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
+    LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
+    LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     FetchTROPOMI="False"
     isPost="True"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
     python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
-    printf "=== DONE sampling the posterior simulation ===\n\n"
+    printf "\n=== DONE sampling the posterior simulation ===\n\n"
 
 fi
 posterior_end=$(date +%s)
@@ -248,13 +249,14 @@ end_time=$(date)
 printf "\nIMI started: %s" "$start_time"
 printf "\nIMI ended: %s\n\n" "$end_time"
 
-echo "Statistics:"
-echo "Setup runtime (s): $(( $setup_end - $setup_start ))"
-echo "Spinup runtime (s): $(( $spinup_end - $spinup_start ))"
-echo "Inversion runtime (s): $(( $inversion_end - $inversion_start ))"
-echo "Jacobian runtime (s): $(( $jacobian_end - $jacobian_start ))"
-echo "Posterior runtime (s): $(( $posterior_end - $posterior_start ))"
+printf "Statistics:"
+printf "Setup runtime (s): $(( $setup_end - $setup_start ))"
+printf "Spinup runtime (s): $(( $spinup_end - $spinup_start ))"
+printf "Inversion runtime (s): $(( $inversion_end - $inversion_start ))"
+printf "Jacobian runtime (s): $(( $jacobian_end - $jacobian_start ))"
+printf "Posterior runtime (s): $(( $posterior_end - $posterior_start ))"
 
 # copy output log to run directory for storage
-cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
+cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
+
 exit 0

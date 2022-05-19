@@ -38,7 +38,7 @@ BufferDeg: 5
 LandThreshold: 0.25
 
 ## Custom state vector
-StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_Permian_1week/StateVector.nc"
+StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_IMI/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
@@ -82,7 +82,6 @@ PerturbValue: 1.5
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false
-UseSeparateWetlandSF: false
 UseOHSF: false
 
 ## Save out hourly diagnostics from GEOS-Chem?
