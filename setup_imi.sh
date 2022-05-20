@@ -12,7 +12,7 @@
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\n=== PARSING CONFIG FILE ===\n"
+printf "\n=== PARSING CONFIG FILE (setup_imi.sh) ===\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then

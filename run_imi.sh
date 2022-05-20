@@ -23,7 +23,7 @@ setup_start=$(date +%s)
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\n=== PARSING CONFIG FILE ===\n"
+printf "\n=== PARSING CONFIG FILE (run_imi.sh) ===\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then
@@ -45,14 +45,31 @@ RunDirs="${OutputPath}/${RunName}"
 
 # In safe mode check whether selected options will overwrite existing files
 if "$SafeMode"; then
-    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") \
-       || ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") \
-       || ([ -d "${RunDirs}/inversion" ] && "$DoInversion") \
-       || ([ -d "${RunDirs}/posterior_run" ] && "$DoPosterior"); then
+
+    # Check if directories exist before creating them
+    if ([ -d "${RunDirs}/spinup_run" ] && "$SetupSpinupRun") || \
+       ([ -d "${RunDirs}/jacobian_runs" ] && "$SetupJacobianRuns") || \
+       ([ -d "${RunDirs}/inversion" ] && "$SetupInversion") || \
+       ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
         
-        printf "\nError: files in ${RunDirs}/ may be overwritten. Please change RunName in the IMI config file to avoid overwriting files."
-        printf "To proceed, and overwrite existing files, set SafeMode in the config file to false." 
-        printf "\nIMI $RunName Aborted"
+        printf "\nERROR: Run directories in ${RunDirs}/"
+	printf "\n   already exist. Please change RunName or change the"
+	printf "\n   Setup* options to false in the IMI config file.\n"
+        printf "\nIMI $RunName Aborted\n"
+        exit 1 
+    fi
+
+    # Check if output from previous runs exists
+    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") || \
+       ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") || \
+       ([ -d "${RunDirs}/inversion" ] && "$DoInversion") || \
+       ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
+        printf "\nWARNING: Output files in ${RunDirs}/" 
+	printf "\n  may be overwritten. Please change RunName in the IMI"
+	printf "\n  config file to avoid overwriting files.\n"
+        printf "\n  To proceed, and overwrite existing output files, set"
+	printf "\n  SafeMode in the config file to false.\n" 
+        printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi
 fi
@@ -244,19 +261,23 @@ if "$isAWS"; then
     rm -f /home/ubuntu/foo.nc
 fi
 
+printf "\n=== DONE RUNNING THE IMI ===\n"
+
 # Run time
 end_time=$(date)
-printf "\nIMI started: %s" "$start_time"
-printf "\nIMI ended: %s\n\n" "$end_time"
-
-printf "Statistics:"
-printf "Setup runtime (s): $(( $setup_end - $setup_start ))"
-printf "Spinup runtime (s): $(( $spinup_end - $spinup_start ))"
-printf "Inversion runtime (s): $(( $inversion_end - $inversion_start ))"
-printf "Jacobian runtime (s): $(( $jacobian_end - $jacobian_start ))"
-printf "Posterior runtime (s): $(( $posterior_end - $posterior_start ))"
+printf "\nIMI started : %s" "$start_time"
+printf "\nIMI ended   : %s" "$end_time"
+printf "\n"
+printf "\nRuntime statistics (s):"
+printf "\n Setup     : $(( $setup_end - $setup_start ))"
+printf "\n Spinup    : $(( $spinup_end - $spinup_start ))"
+printf "\n Inversion : $(( $inversion_end - $inversion_start ))"
+printf "\n Jacobian  : $(( $jacobian_end - $jacobian_start ))"
+printf "\n Posterior : $(( $posterior_end - $posterior_start ))\n\n"
 
 # copy output log to run directory for storage
-cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
+if [[ -f ${InversionPath}/imi_output.log ]]; then
+    cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
+fi
 
 exit 0
