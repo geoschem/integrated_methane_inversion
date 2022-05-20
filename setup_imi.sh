@@ -247,7 +247,7 @@ if "$SetupTemplateRundir"; then
 	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
     fi
 
-    # Update settings in input.geos
+    # Modify input.geos based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
            -e "s:GEOSFP:${Met}:g" \
@@ -265,7 +265,7 @@ if "$SetupTemplateRundir"; then
     NEW="Do analytical inversion?: T"
     sed -i "s/$OLD/$NEW/g" input.geos
 
-    # Turn on analytical inversion option in HEMCO_Config.rc also
+    # Also turn on analytical inversion option in HEMCO_Config.rc
     OLD="--> AnalyticalInv          :       false"
     NEW="--> AnalyticalInv          :       true "
     sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
@@ -314,6 +314,14 @@ if "$SetupTemplateRundir"; then
 	sed -i "s/$OLD/$NEW/g" input.geos
     fi
 
+    # Modify HEMCO_Config.rc based on settings in config.yml
+    # Use cropped met fields (add the region to both METDIR and the met files)
+    if [ ! -z "$NestedRegion" ]; then
+	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
+        sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
+    fi
+
     # Determine length of inversion period in days
     InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
 
@@ -324,18 +332,13 @@ if "$SetupTemplateRundir"; then
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
-
-    # Use cropped met fields 
-    if [ ! -z "$NestedRegion" ]; then
-        sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
-    fi
     if [ "$NestedGrid" == "false" ]; then
         OLD="--> GC_BCs                 :       true "
         NEW="--> GC_BCs                 :       false"
         sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
     fi
 
-    # Set up HISTORY.rc
+    # Modify HISTORY.rc
     sed -i -e "s:'CH4':#'CH4':g" \
            -e "s:'Metrics:#'Metrics:g" HISTORY.rc
     
