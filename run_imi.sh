@@ -92,6 +92,7 @@ if "$isAWS"; then
     }
     tropomiCache=${RunDirs}/data_TROPOMI
     mkdir -p -v $tropomiCache
+    printf "Downloading TROPOMI data from S3"
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
     printf "\nFinished TROPOMI download\n"
 fi
