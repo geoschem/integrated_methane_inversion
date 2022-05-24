@@ -12,17 +12,6 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
-## Use nested grid simulation?
-NestedGrid: true
-
-## Select nested grid region for using pre-cropped met fields
-##   Current options are listed below with ([lat],[lon]) bounds:
-##    "AS" : Asia ([-11,55],[60,150]) 
-##    "EU" : Europe ([33,61],[-30,70])
-##    "NA" : North America ([10,70],[-140,-40]) 
-##    ""   : Use for global met fields (global simulation/custom nested grids)
-NestedRegion: "NA"
-
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
@@ -30,6 +19,19 @@ LonMin: -105
 LonMax: -103
 LatMin: 31
 LatMax: 33
+
+## Use nested grid simulation?
+##   Must be "true" for IMI regional inversions
+NestedGrid: true
+
+## Select nested grid region (for using pre-cropped meteorological fields)
+##   Current options are listed below with ([lat],[lon]) bounds:
+##     "AS" : Asia ([-11,55],[60,150]) 
+##     "EU" : Europe ([33,61],[-30,70])
+##     "NA" : North America ([10,70],[-140,-40]) 
+##     ""   : Use for global met fields (global simulation/custom nested grids)
+##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
+NestedRegion: "NA"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -74,9 +76,21 @@ DoPosterior: false
 DoPreview: true
 DOFSThreshold: 0
 
-##------------------------------------------------------------------
-## Settings for GEOS-Chem simulations
-##------------------------------------------------------------------
+##====================================================================
+##
+## Advanced Settings (optional)
+##
+##====================================================================
+
+## These settings are intended for advanced users who wish to:
+##   a. modify additional GEOS-Chem options, or
+##   b. run the IMI on a local cluster.
+## They can be ignored for any standard cloud application of the IMI.
+
+##--------------------------------------------------------------------
+## Additional settings for GEOS-Chem simulations
+##--------------------------------------------------------------------
+
 ## Jacobian settings
 PerturbValue: 1.5
 
@@ -101,9 +115,9 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
-##------------------------------------------------------------------
-## Settings for running on local cluster
-##------------------------------------------------------------------
+##--------------------------------------------------------------------
+## Settings for running on a local cluster
+##--------------------------------------------------------------------
 
 ## Path for IMI runs and output
 OutputPath: "/home/ubuntu/imi_output_dir"
