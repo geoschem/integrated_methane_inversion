@@ -54,8 +54,6 @@ PrecomputedJacobian: false
 Res: "0.25x0.3125"
 Met: "geosfp"
 
-##   Other grid settings
-
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true

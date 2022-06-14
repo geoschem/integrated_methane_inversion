@@ -8,14 +8,16 @@ General
    :widths: 30, 70
    :class: tight-table
 
-   * - ``isAWS``
-     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
+   * - ``isAWS``
+     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
        Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
        Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
+   * - ``SafeMode``
+     - Boolean for running in safe mode to prevent overwriting existing files.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -44,11 +46,11 @@ Region of interest
      - Minimum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
    * - ``LatMax``
      - Maximum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
+   * - ``NestedGrid``
+     - Boolean for using the GEOS-Chem nested grid simulation. Must be
+       ``true`` for IMI regional inversions.
    * - ``NestedRegion``
-     - Nesting domain for the inversion. 
-       Select ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America.
-       See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation
-       for details about the available nesting domains.
+     - Nesting domain for the inversion. Select ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America. For global met fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available nested-grid domains.
 
 State vector 
 ~~~~~~~~~~~~
@@ -57,21 +59,17 @@ State vector
    :class: tight-table
 
    * - ``CreateAutomaticRectilinearStateVectorFile``
-     - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. 
-       If ``false``, a custom/pre-generated state vector netcdf file must be provided below.
+     - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. If ``false``, a custom/pre-generated state vector netcdf file must be provided below.
    * - ``nBufferClusters``
-     - Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector 
-       of emissions being optimized in the inversion.
+     - Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector of emissions being optimized in the inversion. Default value is ``8``.
    * - ``BufferDeg``
-     - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``.
+     - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``5`` (~500 km).
    * - ``LandThreshold``
-     - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file.
+     - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file. Default value is ``0.25``.
 
 Custom/pre-generated state vector
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-These settings are only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. 
-Use them to :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile 
-in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
+These settings are only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Use them to :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
 
   $ /home/ubuntu/integrated_methane_inversion/src/notebooks/statevector_from_shapefile.ipynb
 
@@ -93,13 +91,13 @@ Inversion
    :class: tight-table
 
    * - ``PriorError``
-     - Error in the prior estimates (1-sigma; relative). E.g., ``0.5`` means 50% error.
+     - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
    * - ``ObsError``
-     - Observational error (1-sigma; absolute; ppb). E.g., ``15`` means 15 ppb error.
+     - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
    * - ``Gamma``
-     - Regularization parameter; typically between 0 and 1.
+     - Regularization parameter; typically between 0 and 1. Default value is ``0.25``.
    * - ``PrecomputedJacobian``
-     - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``).
+     - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
 
 Grid
 ~~~~
@@ -111,15 +109,6 @@ Grid
      - Resolution for inversion. Options are ``"0.25x0.3125"`` and ``"0.5x0.625"``.
    * - ``Met``
      - Meteorology to use for the inversion. Options are ``"geosfp"`` (for ``Res: "0.25x0.3125"``) and ``"merra2"`` (for ``Res: "0.5x0.625"``).
-   * - ``HalfPolar``
-     - Set to ``"F"`` for nested grid simulations. 
-   * - ``Levs``
-     - Set to ``"47"`` to use the reduced 47-level grid recommended for CH4 simulations.
-   * - ``NestedGrid``
-     - ``"T"`` for nested simulations.
-   * - ``Buffer``
-     - Width of GEOS-Chem meteorological buffer zone (different from state vector buffer clusters above). 
-       For nested simulations, the recommended input is ``"3 3 3 3"`` to use 3 grid cells along the edges of the nested-grid domain as buffer zone.
 
 Setup modules
 ~~~~~~~~~~~~~
@@ -130,35 +119,34 @@ These settings turn on/off (``true`` / ``false``) different steps for setting up
    :class: tight-table
 
    * - ``SetupTemplateRundir``
-     - Copy run directory files from GEOS-Chem and modify with information from ``config.yml``.
+     - Boolean to create a GEOS-Chem run directory and modify it with settings from ``config.yml``.
    * - ``SetupSpinupRun``
-     - Setup the run directory for the spin-up simulation.
+     - Boolean to set up a run directory for the spinup-simulation by copying the template run directory and modifying the start/end dates, restart file, and diagnostics.
    * - ``SetupJacobianRuns``
-     - Setup run directories for N+1 simulations (one reference simulation, plus N sensitivity simulations for the N state vector elements). 
-       Output of these simulations will be used to construct the Jacobian.
+     - Boolean to set up run directories for N+1 simulations (one reference simulation, plus N sensitivity simulations for the N state vector elements) by copying the template run directory and modifying the start/end dates, restart file, and diagnostics. Output from these simulations will be used to construct the Jacobian.
    * - ``SetupInversion``
-     - Setup the inversion directory containing scripts needed to perform the inverse analysis; inversion results will be saved here.
+     - Boolean to set up the inversion directory containing scripts needed to perform the inverse analysis; inversion results will be saved here.
    * - ``SetupPosteriorRun``
-     - Setup the run directory for the posterior simulation.
+     - Boolean to set up the run directory for the posterior simulation by copying the template run directory and modifying the start/end dates, restart file, and diagnostics.
 
 Run modules
 ~~~~~~~~~~~
-These settings turn on/off (``true`` / ``false``) different steps of the inversion.
+These settings turn on/off (``true`` / ``false``) different steps for running the inversion.
 
 .. list-table::
    :widths: 30, 70
    :class: tight-table
 
    * - ``RunSetup``
-     - Run the setup script (``setup_imi.sh``), including selected setup modules above.
+     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules above.
    * - ``DoSpinup``
-     - Run the spin-up simulation.
+     - Boolean to run the spin-up simulation.
    * - ``DoJacobian``
-     - Run the reference and sensitivity simulations.
+     - Boolean to run the reference and sensitivity simulations.
    * - ``DoInversion``
-     - Run the inverse analysis code.
+     - Boolean to run the inverse analysis code.
    * - ``DoPosterior``
-     - Run the posterior simulation.
+     - Boolean to run the posterior simulation.
 
 IMI preview
 ~~~~~~~~~~~
@@ -172,15 +160,67 @@ IMI preview
      - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
        Default value ``0`` prevents exit.
 
-Compute resources to request
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-These settings are specific to Harvard's Cannon compute cluster. Not used for cloud runs.
+Advanced settings: GEOS-Chem options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+These settings are intended for advanced users who wish to modify additional GEOS-Chem options.
 
 .. list-table::
    :widths: 30, 70
    :class: tight-table
 
-   * - ``nCPUs``
-     - Number of cpus to use in ``sbatch`` scripts.
-   * - ``partition``
-     - Name of the cluster partition to use with ``sbatch`` (eg. ``"huce_cascade"``).
+   * - ``PerturbValue``
+     - Value to perturb emissions by in each sensitivity simulation. Default value is ``1.5``.
+   * - ``UseEmisSF``
+     - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
+   * - ``UseOHSF``
+     - Boolean to apply OH scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
+   * - ``HourlyCH4``
+     - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
+   * - ``PLANEFLIGHT``
+     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <http://wiki.seas.harvard.edu/geos-chem/index.php/Planeflight_diagnostic>`_ documentation for details. Default value is ``false``.
+   * - ``GOSAT``
+     - Boolean to turn on the GOSAT observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
+   * - ``TCCON``
+     - Boolean to turn on the TCCON observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
+   * - ``AIRS``
+     - Boolean to turn on the AIRS observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
+
+Advanced settings: Local cluster
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+These settings are intended for advanced users who wish to run the IMI
+on a local cluster.
+
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``OutputPath``
+     - Path for IMI runs and output.
+   * - ``DataPath``
+     - Path to GEOS-Chem input data.
+   * - ``CondaFile``
+     - Path to file containing Conda environment settings.
+   * - ``CondaEnv``
+     - Name of conda environment.
+   * - ``RestartDownload``
+     - Boolean for downloading an initial restart file from AWS S3. Default value is ``true``.
+   * - ``RestartFilePrefix``
+     - Path to initial GEOS-Chem restart file plus file prefix (e.g. ``GEOSChem.BoundaryConditions.`` or ``GEOSChem.Restart.``). The date string and file extension (``YYYYMMDD_0000z.nc4``) will be appended. This file will be used to initialize the spinup simulation.
+   * - ``RestartFilePreviewPrefix``
+     - Path to initial GEOS-Chem restart file plus file prefix (e.g. ``GEOSChem.BoundaryConditions.`` or ``GEOSChem.Restart.``). The date string and file extension (``YYYYMMDD_0000z.nc4``) will be appended. This file will be used to initialize the preview simulation.
+   * - ``BCpath``
+     - Path to GEOS-Chem boundary condition files (for nested grid simulations).
+   * - ``PreviewDryRun``
+     - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
+   * - ``SpinupDryRun``
+     - Boolean to download missing GEOS-Chem data for the spinup simulation. Default value is ``true``.
+   * - ``ProductionDryRun``
+     - Boolean to download missing GEOS-Chem data for the production (i.e. Jacobian) simulations. Default value is ``true``.
+   * - ``PosteriorDryRun``
+     - Boolean to download missing GEOS-Chem data for the posterior simulation. Default value is ``true``.
+   * - ``BCDryRun``
+     - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
+   * - ``PreviewDryRun``
+     - Boolean to download missing GEOS-Chem boundary condition files. Default value is ``true``.
+
+Note for ``*DryRun`` options: If you are running on AWS, you will be charged if your ec2 instance is not in the us-east-1 region. If running on a local cluster you must have AWS CLI enabled or you can modify the ``./download_data.py`` commands in ``setup_imi.sh`` to use ``washu`` instead of ``aws``. See the `GEOS-Chem documentation <https://geos-chem.readthedocs.io/en/latest/inputs/dry-run.html>`_ for more details.
