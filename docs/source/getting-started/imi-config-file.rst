@@ -187,8 +187,8 @@ These settings are intended for advanced users who wish to modify additional GEO
 
 Advanced settings: Local cluster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-These settings are intended for advanced users who wish to run the IMI
-on a local cluster.
+These settings are intended for advanced users who wish to (:doc:`run
+the IMI on a local cluster<../advanced/local-cluster.rst>`).
 
 .. list-table::
    :widths: 30, 70

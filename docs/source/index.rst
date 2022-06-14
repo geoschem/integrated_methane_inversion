@@ -44,6 +44,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    advanced/custom-state-vector.rst
    advanced/custom-prior-emissions-hemco.rst
    advanced/inversion-ensemble.rst
+   advanced/local-cluster.rst
 
 .. toctree::
    :maxdepth: 1
