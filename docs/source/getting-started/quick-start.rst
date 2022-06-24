@@ -49,36 +49,41 @@ For more information on IAM roles, `check out the AWS Documentation <https://doc
 3. Launch an instance with the IMI
 ----------------------------------
 
-Once you've setup S3 permissions on your AWS account, login to the AWS console and search for EC2.
+Once you've setup S3 permissions on your AWS account, login to the AWS console and go to the  
+`AWS Marketplace IMI listing <https://aws.amazon.com/marketplace/pp/prodview-hkuxx4h2vpjba?sr=0-1&ref_=beagle&applicationId=AWS-Marketplace-Console>`_
+(listed for free). This image contains the latest version of the IMI including all required software dependencies on an Amazon Machine Image (AMI).
+An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
 
-.. figure:: img/main_console.png
+On the listing page click "Continue to Subscribe".
+
+.. figure:: img/marketplace_listing.png
   :width: 600 px
 
-In the EC2 console, you can see your current selected region in the top right.
+On the following page click "Continue to Configuration".
+
+.. figure:: img/subscription.png
+  :width: 600 px
+
+Select desired region and IMI version and click "Continue to Launch". 
 Choosing a region closer to your physical location will improve your network connectivity, 
 but may result in increased costs compared to using the region where GEOS-Chem data are hosted (us-east-1, N.Virginia).
 
-.. figure:: img/region_list.png
-  :width: 300 px
-
-.. _choose_ami-label:
-
-In the EC2 console, click on "Instances" and click "Launch Instances".
-
-.. figure:: img/instance.png
+.. figure:: img/configuration.png
   :width: 600 px
 
-Under the "Application and OS Images (Amazon Machine Image)" section, search for and select ``TODO:AMI_ID`` or ``TODO:AMI_NAME``, filtering for Community AMIs.
-This image contains the latest version of the IMI including all required software dependencies.
-An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
+On the launch screen select "Launch through EC2" and then click launch.
 
-.. figure:: img/search_ami.png
+.. figure:: img/launch_screen.png
+  :width: 600 px
+
+
+.. _choose_ami-label:
 
 Now it's time to specify the hardware for running your system. Hardware choices differ primarily in CPU and RAM counts. 
 
 You can select from a large number of instance types in the "Instance Type" section. 
 The IMI will run more quickly with a higher number of CPUs. 
-TODO: choose ideal computational node. 
+ 
 Choose the c5.9xlarge instance type, which includes 36 CPU cores and 72GB of RAM. 
 Depending on your use case you may choose a different instance type with more/less cores and memory.
 
