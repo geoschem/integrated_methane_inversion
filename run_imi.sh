@@ -82,6 +82,8 @@ InversionPath=$(pwd -P)
 ##=======================================================================
 
 # Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
+mkdir -p -v ${RunDirs}
+tropomiCache=${RunDirs}/data_TROPOMI
 if "$isAWS"; then
     { # test if instance has access to TROPOMI bucket
         stdout=`aws s3 ls s3://meeo-s5p`
@@ -90,11 +92,13 @@ if "$isAWS"; then
         printf "IMI $RunName Aborted."
         exit 1
     }
-    tropomiCache=${RunDirs}/data_TROPOMI
     mkdir -p -v $tropomiCache
     printf "Downloading TROPOMI data from S3\n"
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
     printf "\nFinished TROPOMI download\n"
+else
+    # use existing tropomi data and create a symlink to it
+    ln -s $DataPathTROPOMI $tropomiCache
 fi
 
 ##=======================================================================

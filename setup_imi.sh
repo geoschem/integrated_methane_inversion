@@ -397,6 +397,12 @@ fi # SetupTemplateRunDir
 
 preview_start=$(date +%s)
 if  "$DoPreview"; then
+    set -x
+
+    if ! "$isAWS"; then
+	# Load environment with modules for running GEOS-Chem Classic
+        source ${GEOSChemEnv}
+    fi
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
@@ -469,10 +475,13 @@ if  "$DoPreview"; then
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
     # Submit preview GEOS-Chem job to job scheduler
-    sbatch -W ${RunName}_Preview.run; wait;
-
+    if "$UseSlurm"; then
+        sbatch -W ${RunName}_Preview.run; wait;
+    else
+        ./${RunName}_Preview.run
+    fi
     # Run preview script
-    config_path=${InversionPath}/config.yml
+    config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
     tropomi_cache=${RunDirs}/data_TROPOMI
@@ -815,10 +824,7 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_geoschem
     mkdir -p inversion/data_sensitivities
-    if ! "$isAWS"; then
-        mkdir -p inversion/data_TROPOMI
-        ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
-    fi
+    
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
