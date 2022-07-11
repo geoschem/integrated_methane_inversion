@@ -53,13 +53,13 @@ if "$isAWS"; then
         cpu_count="$((cpu_count-1))"
     fi
 
-    # Activate Conda environment
+    # Source Conda environment file
     source $CondaFile
-    conda activate $CondaEnv
-else
-    # Activate Conda environment
-    source activate $CondaEnv
+
 fi
+
+# Activate Conda environment
+conda activate $CondaEnv
 
 ##=======================================================================
 ## Download Boundary Conditions files if requested
@@ -195,13 +195,9 @@ LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
 LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
 LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
 LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+rm ~/foo.nc
 Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
 Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
-
-if ! "$isAWS"; then
-    # Purge software modules if not on AWS
-    module purge; module list
-fi
 
 ##=======================================================================
 ## Set up template run directory
@@ -378,11 +374,6 @@ if "$SetupTemplateRundir"; then
         exit 999
     fi
     printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build_info for details\n\n"
-
-    if ! "$isAWS"; then
-	# Purge software modules
-        module purge; module list
-    fi
     
     # Navigate back to top-level directory
     cd ..

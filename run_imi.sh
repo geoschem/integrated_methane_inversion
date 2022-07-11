@@ -89,7 +89,7 @@ if "$isAWS"; then
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
         printf "\nError: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions.\n"
-        printf "IMI $RunName Aborted."
+        printf "IMI $RunName Aborted.\n"
         exit 1
     }
     mkdir -p -v $tropomiCache
@@ -112,8 +112,14 @@ if "$RunSetup"; then
     cd ${InversionPath}
 
     if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
+		if [ ! -f "${GEOSChemEnv}" ]; then
+			printf "\nGEOS-Chem environment file does not exist!"
+			printf "\nIMI $RunName Aborted\n"
+			exit 1
+		else
+	        # Load environment with modules for compiling GEOS-Chem Classic
+    	    source ${GEOSChemEnv}
+    	fi
     fi
 
     # Run the setup script
@@ -191,8 +197,6 @@ if "$DoInversion"; then
     cd ${RunDirs}/inversion
 
     if ! "$isAWS"; then
-        # Replace nCPUs, partitions
-
         # Activate Conda environment
         printf "\nActivating conda environment: ${CondaEnv}\n"
         conda activate $CondaEnv
@@ -243,6 +247,11 @@ if "$DoPosterior"; then
     python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
+	if ! "$isAWS"; then
+    	# Load environment with NCO
+    	source ${NCOEnv}
+	fi
+
     # Sample GEOS-Chem atmosphere with TROPOMI
     function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
@@ -251,6 +260,7 @@ if "$DoPosterior"; then
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    rm ~/foo.nc
     FetchTROPOMI="False"
     isPost="True"
 
@@ -260,11 +270,6 @@ if "$DoPosterior"; then
 
 fi
 posterior_end=$(date +%s)
-
-# Remove temporary files
-if "$isAWS"; then
-    rm -f /home/ubuntu/foo.nc
-fi
 
 printf "\n=== DONE RUNNING THE IMI ===\n"
 
