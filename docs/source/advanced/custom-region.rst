@@ -10,7 +10,7 @@ IMI to other regions, but this requires either using global meteorological field
 computationally expensive (not recommended) or cropping global meteorological fields via
 a pre-processing step.
 
-To facilite cropping global meteorological fields, a sample script (`crop_met.sh <../../../src/utilities/crop_met.sh>`_) has been included with
+To facilite cropping global meteorological fields, a sample script (`crop_met.sh <https://github.com/geoschem/integrated_methane_inversion/tree/main/src/utilities/crop_met.sh>`_) has been included with
 the IMI. This script utilizes the `Climate Data Operators (CDO) <https://code.mpimet.mpg.de/projects/cdo>`_ .
 It also includes an option to first download global meteorological fields
 at 0.25\ |deg| x 0.3125\ |deg| resolution. The global files are large (approx. 300G per month),
