@@ -111,6 +111,9 @@ OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 ## Path to GEOS-Chem input data
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
+## Path to TROPOMI Data
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
+
 ## Environment files
 ## See envs/README to create the Conda environment specified below
 NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"

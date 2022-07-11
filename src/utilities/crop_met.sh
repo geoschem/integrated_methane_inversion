@@ -1,0 +1,117 @@
+#!/bin/bash
+
+# This script will download 0.25x0.3125 degree global GEOS-FP meteorogical
+# files in netCDF format and crop them to a user-defined region. Once files
+# have been cropped, the global files may be removed to free up disk space
+# using the RemoveGlobalMet option.
+
+##############################################################################
+# Custom to Harvard FAS RC cluster:
+#SBATCH -n 4
+#SBATCH -N 1
+#SBATCH -t 0-12:00
+#SBATCH -p huce_intel
+#SBATCH --mem=2000
+#SBATCH --mail-type=END
+
+# Load modules for CDO
+module load intel/17.0.4-fasrc01
+module load cdo/1.9.4-fasrc02
+##############################################################################
+
+##############################################################################
+# USER SETTINGS:
+##############################################################################
+
+# Create a 2-letter region ID (e.g. NA=North America, EU=Europe, AS=Asia)
+NestedRegion="SA"  # South America
+
+# Bounds of the cropped domain
+LonMin=-85.0
+LonMax=-33.0
+LatMin=-56.0
+LatMax=13.0
+
+# Directory containing global met fields
+DownloadGlobalMet=true
+RemoveGlobalMet=false
+GlobalDir="./GEOS_0.25x0.3125/GEOS_FP"
+
+# Directory for storing cropped met fields
+RegionalDir="./GEOS_0.25x0.3125_${NestedRegion}/GEOS_FP"
+
+# Download and crop constant meteorology fields? This file is required
+# by GEOS-Che, but only needs to be processed once per region (i.e. set
+# to false upon subsequent executions of this script)
+ProcessConstantFields=true
+
+# Dates to process
+Year=2022
+StartMonth=1
+EndMonth=1
+
+##############################################################################
+# Routine crop_met begins here!
+##############################################################################
+
+# Create directories if they don't already exist
+if [[ ! -d $GlobalDir/$Year ]] ; then
+    mkdir -p -v $GlobalDir
+fi
+if [[ ! -d $RegionalDir/$Year ]] ; then
+    mkdir -p -v $RegionalDir/$Year
+fi
+
+# Download and crop constant met fields
+# For 0.25x0.3125 GEOS-FP meteorology, the timestamp of these fields is 20110101
+if "$ProcessConstantFields"; then
+    wget -r -nH --cut-dirs=3 -e robots=off -q -P "${GlobalDir}" "http://geoschemdata.wustl.edu/ExtData/GEOS_0.25x0.3125/GEOS_FP/2011/01/GEOSFP.20110101.CN.025x03125.nc"
+    mkdir -p -v $RegionalDir/2011/01
+    cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax ${GlobalDir}/2011/01/GEOSFP.20110101.CN.025x03125.nc ${RegionalDir}/2011/01/GEOSFP.20110101.CN.025x03125.${NestedRegion}.nc
+fi
+
+# Loop over months
+for (( Month=$StartMonth; Month<=$EndMonth; Month++)); do
+
+    # Set mm string
+    if (( $Month < 10 )); then
+        mm="0${Month}"
+    else
+        mm="${Month}"
+    fi
+    
+    # Download global meteorology fields for this month
+    if "$DownloadGlobalMet"; then
+	printf "Downloading global meteorology files for ${Year}/${mm}"
+	wget -r -nH --cut-dirs=3 -e robots=off -nv -o "download_met.log" -P "${GlobalDir}" -A "*.nc" "http://geoschemdata.wustl.edu/ExtData/GEOS_0.25x0.3125/GEOS_FP/${Year}/${mm}/"
+	echo "Done downloading global meteorology files"
+    fi
+    # Path to global files
+    InPath="${GlobalDir}/${Year}/${mm}"
+
+    # Create directory if it doesn't exist
+    if [[ ! -d $RegionalDir/$Year/$mm ]]; then
+	mkdir -p -v $RegionalDir/$Year/$mm
+    fi
+
+    for file in $InPath/*.nc*; do
+
+	# Output filename
+	fOut=${file##*/}                   # Remove input path
+	fOut=${fOut%.*}                    # Remove file suffix
+	fOut=${fOut}.${NestedRegion}.nc    # Append region ID
+	fOut=$RegionalDir/$Year/$mm/$fOut  # Prepend output file path
+
+	echo $fOut
+
+	# Crop global files
+	cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax $file $fOut 
+
+    done
+
+    # Download global met fields for this month
+    if "$RemoveGlobalMet"; then
+	rm -rf $InPath
+    fi
+    
+done
