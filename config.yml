@@ -28,7 +28,8 @@ NestedGrid: true
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AS" : Asia ([-11,55],[60,150]) 
 ##     "EU" : Europe ([33,61],[-30,70])
-##     "NA" : North America ([10,70],[-140,-40]) 
+##     "NA" : North America ([10,70],[-140,-40])
+##     "SA" : South America ([-56,13], [-85,-33])
 ##     ""   : Use for global met fields (global simulation/custom nested grids)
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
 NestedRegion: "NA"
