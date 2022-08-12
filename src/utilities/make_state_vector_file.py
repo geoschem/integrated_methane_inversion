@@ -5,53 +5,23 @@ from sklearn.cluster import KMeans
 
 def get_nested_grid_bounds(land_cover_pth):
     """
-    Get the lat/lon bounds of the nested grid window (NA, EU, AS) for the inversion.
-    The land cover file path specifies the window.
+    Get the lat/lon bounds of the nested grid window for the inversion.
+    The land cover file specifies the window.
     """
 
-    if "NA" in land_cover_pth:
-        if "GEOSFP" in land_cover_pth:
-            minLat_allowed = 9.75
-            maxLat_allowed = 60
-            minLon_allowed = -130
-            maxLon_allowed = -60
-        elif "MERRA2" in land_cover_pth:
-            minLat_allowed = 10
-            maxLat_allowed = 70
-            minLon_allowed = -140
-            maxLon_allowed = -40
-    elif "EU" in land_cover_pth:
-        if "GEOSFP" in land_cover_pth:
-            minLat_allowed = 32.75
-            maxLat_allowed = 61.25
-            minLon_allowed = -15
-            maxLon_allowed = 40
-        elif "MERRA2" in land_cover_pth:
-            minLat_allowed = 30
-            maxLat_allowed = 70
-            minLon_allowed = -30
-            maxLon_allowed = 50
-    elif "AS" in land_cover_pth:
-        if "GEOSFP" in land_cover_pth:
-            minLat_allowed = -11
-            maxLat_allowed = 55
-            minLon_allowed = 60
-            maxLon_allowed = 150
-        elif "MERRA2" in land_cover_pth:
-            minLat_allowed = -11
-            maxLat_allowed = 55
-            minLon_allowed = 60
-            maxLon_allowed = 150
-    else:
-        raise ValueError("Land cover file path contains no NA/EU/AS token.")
+    land_cover = xr.load_dataset(land_cover_pth)
+    minLat_allowed = np.min(land_cover.lat.values)
+    maxLat_allowed = np.max(land_cover.lat.values)
+    minLon_allowed = np.min(land_cover.lon.values)
+    maxLon_allowed = np.max(land_cover.lon.values)
 
     return minLat_allowed, maxLat_allowed, minLon_allowed, maxLon_allowed
 
 
 def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth):
     """
-    Check whether input lat/lon bounds are compatible with (contained within) the nested grid window (NA, EU, or AS).
-    The land cover file path specifies the window.
+    Check whether input lat/lon bounds are compatible with (contained within) the nested grid window.
+    The land cover file specifies the window.
     """
 
     (
@@ -103,7 +73,7 @@ def make_state_vector_file(
         ds_statevector []     : xarray dataset containing state vector field formatted for HEMCO
 
     Notes
-        - Land cover file default can be something like 'GEOSFP.20200101.CN.025x03125.NA.nc'
+        - Land cover file looks like 'GEOSFP.20200101.CN.025x03125.NA.nc'
     """
 
     # Load land cover data
@@ -118,7 +88,7 @@ def make_state_vector_file(
     )
     if not compatible:
         raise ValueError(
-            "Region of interest not contained within selected NestedRegion (NA, EU, AS; see config.yml)."
+            "Region of interest not contained within selected NestedRegion (AS, EU, etc. - see config.yml)."
         )
 
     # Define bounds of inversion domain
