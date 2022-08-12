@@ -6,7 +6,7 @@ from sklearn.cluster import KMeans
 def get_nested_grid_bounds(land_cover_pth):
     """
     Get the lat/lon bounds of the nested grid window for the inversion.
-    The land cover file specifies the window.
+    The land cover file path specifies the window.
     """
 
     land_cover = xr.load_dataset(land_cover_pth)
@@ -21,7 +21,7 @@ def get_nested_grid_bounds(land_cover_pth):
 def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth):
     """
     Check whether input lat/lon bounds are compatible with (contained within) the nested grid window.
-    The land cover file specifies the window.
+    The land cover file path specifies the window.
     """
 
     (
@@ -82,13 +82,13 @@ def make_state_vector_file(
     # Group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
 
-    # Check compatibility of region of interest with nesting window (NA, EU, AS)
+    # Check compatibility of region of interest with nesting window
     compatible = check_nested_grid_compatibility(
         lat_min, lat_max, lon_min, lon_max, land_cover_pth
     )
     if not compatible:
         raise ValueError(
-            "Region of interest not contained within selected NestedRegion (AS, EU, etc. - see config.yml)."
+            "Region of interest not contained within selected NestedRegion; see config.yml)."
         )
 
     # Define bounds of inversion domain
