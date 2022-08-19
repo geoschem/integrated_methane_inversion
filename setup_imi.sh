@@ -389,7 +389,6 @@ fi # SetupTemplateRunDir
 
 preview_start=$(date +%s)
 if  "$DoPreview"; then
-    set -x
 
     if ! "$isAWS"; then
 	# Load environment with modules for running GEOS-Chem Classic
