@@ -51,9 +51,9 @@ def sum_total_emissions(emissions, areas, mask):
     return float(total)
 
 
-def count_obs_in_mask(mask, df):
+def filter_obs_with_mask(mask, df):
     """
-    Count the number of observations in a boolean mask
+    Select observations lying within a boolean mask
     mask is boolean xarray data array
     df is pandas dataframe with lat, lon, etc.
     """
@@ -76,9 +76,21 @@ def count_obs_in_mask(mask, df):
             bad_ind.append(k)
 
     # Drop bad indexes and count remaining entries
-    df_copy = df.copy()
-    df_copy = df_copy.drop(df_copy.index[bad_ind])
-    n_obs = len(df_copy)
+    df_filtered = df.copy()
+    df_filtered = df_filtered.drop(df_filtered.index[bad_ind])
+
+    return df_filtered
+
+
+def count_obs_in_mask(mask, df):
+    """
+    Count the number of observations in a boolean mask
+    mask is boolean xarray data array
+    df is pandas dataframe with lat, lon, etc.
+    """
+
+    df_filtered = filter_obs_with_mask(mask, df)
+    n_obs = len(df_filtered)
 
     return n_obs
 

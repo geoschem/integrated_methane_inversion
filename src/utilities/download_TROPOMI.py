@@ -184,7 +184,6 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
                     f.write("\n")
 
     os.chmod(DATA_DOWNLOAD_SCRIPT, 0o755)
-    print("Downloading TROPOMI data from AWS")
     # Run the data download script
     # Remove the file afterwards
     status = subprocess.call(DATA_DOWNLOAD_SCRIPT)

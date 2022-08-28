@@ -23,6 +23,7 @@ the following items in the inversion directory after completing an inversion:
          - TROPOMI observations
          - virtual TROPOMI observations of the GEOS-Chem reference simulation 
          - elements of the Jacobian matrix
+         
        | for each TROPOMI orbit relevant to the inversion.
        | 
        | All quantities have been "converted" to 1D fields indexed by latitude and longitude.
@@ -31,6 +32,7 @@ the following items in the inversion directory after completing an inversion:
        
          - TROPOMI observations
          - virtual TROPOMI observations of the GEOS-Chem posterior simulation
+         
        | for each TROPOMI orbit relevant to the inversion.
        |
        | All quantities have been "converted" to 1D fields indexed by latitude and longitude.

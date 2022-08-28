@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+#SBATCH -N 1
+#SBATCH -n 1
+
 import numpy as np
 import xarray as xr
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import yaml
 import os
@@ -320,7 +325,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_prior_emissions.png"), dpi=150)
+    plt.savefig(os.path.join(preview_dir, "preview_prior_emissions.png"), bbox_inches='tight', dpi=150)
 
     # Plot observations
     fig = plt.figure(figsize=(10, 8))
@@ -339,7 +344,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_observations.png"), dpi=150)
+    plt.savefig(os.path.join(preview_dir, "preview_observations.png"), bbox_inches='tight', dpi=150)
 
     # Plot albedo
     fig = plt.figure(figsize=(10, 8))
@@ -358,7 +363,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_albedo.png"), dpi=150)
+    plt.savefig(os.path.join(preview_dir, "preview_albedo.png"), bbox_inches='tight', dpi=150)
 
     # Plot observation density
     fig = plt.figure(figsize=(10, 8))
@@ -377,7 +382,7 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_observation_density.png"), dpi=150)
+    plt.savefig(os.path.join(preview_dir, "preview_observation_density.png"), bbox_inches='tight', dpi=150)
 
 
 if __name__ == "__main__":

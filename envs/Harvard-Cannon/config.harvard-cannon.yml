@@ -19,7 +19,8 @@ NestedGrid: true
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##    "AS" : Asia ([-11,55],[60,150]) 
 ##    "EU" : Europe ([33,61],[-30,70])
-##    "NA" : North America ([10,70],[-140,-40]) 
+##    "NA" : North America ([10,70],[-140,-40])
+##    "SA" : South America ([-56,13], [-85,-33])
 ##    ""   : Use for global met fields (global simulation/custom nested grids)
 NestedRegion: "NA"
 
@@ -38,7 +39,7 @@ BufferDeg: 5
 LandThreshold: 0.25
 
 ## Custom state vector
-StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_Permian_1week/StateVector.nc"
+StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_IMI/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
@@ -57,10 +58,10 @@ Met: "geosfp"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
-SetupJacobianRuns: true
-SetupInversion: true
-SetupPosteriorRun: true
+SetupSpinupRun: false
+SetupJacobianRuns: false
+SetupInversion: false
+SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
@@ -82,7 +83,6 @@ PerturbValue: 1.5
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false
-UseSeparateWetlandSF: false
 UseOHSF: false
 
 ## Save out hourly diagnostics from GEOS-Chem?
@@ -111,6 +111,9 @@ OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 
 ## Path to GEOS-Chem input data
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+
+## Path to TROPOMI Data
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
 
 ## Environment files
 ## See envs/README to create the Conda environment specified below

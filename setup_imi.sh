@@ -12,7 +12,7 @@
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\n=== PARSING CONFIG FILE ===\n"
+printf "\n=== PARSING CONFIG FILE (setup_imi.sh) ===\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then
@@ -39,7 +39,8 @@ SpinupEnd=${StartDate}
 # Use global boundary condition files for initial conditions
 UseBCsForRestart=true
 
-printf "Activating conda environment: ${CondaEnv}\n"
+printf "\nActivating conda environment: ${CondaEnv}\n"
+eval "$(conda shell.bash hook)"
 if "$isAWS"; then
     # Get max process count for spinup, production, and run_inversion scripts
     output=$(echo $(slurmd -C))
@@ -55,12 +56,11 @@ if "$isAWS"; then
 
     # Source Conda environment file
     source $CondaFile
-    # Activate Conda environment
-    conda activate $CondaEnv
-else
-    # Activate Conda environment
-    source activate $CondaEnv
+
 fi
+
+# Activate Conda environment
+conda activate $CondaEnv
 
 ##=======================================================================
 ## Download Boundary Conditions files if requested
@@ -74,7 +74,7 @@ if "$BCdryrun"; then
     else
         START=${StartDate}
     fi
-    printf "Downloading boundary condition data for $START to $EndDate"
+    printf "\nDownloading boundary condition data for $START to $EndDate\n"
     python src/utilities/download_bc.py ${START} ${EndDate} ${BCpath}
 
 fi
@@ -83,13 +83,15 @@ fi
 ## Download initial restart file if requested
 ##=======================================================================
 if "$RestartDownload"; then
-    if [ ! -f "${RestartFilePrefix}${SpinupStart}_0000z.nc4" ]; then
-        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 ${RestartFilePrefix}${SpinupStart}_0000z.nc4
+    RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
+    if [ ! -f "$RestartFile" ]; then
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
     fi
-    if [ ! -f "${RestartFilePreviewPrefix}${SpinupStart}_0000z.nc4" ]; then
-        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 ${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
+    RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
+    if [ ! -f "$RestartFilePreview" ]; then
+        aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
     fi
-fi    
+fi
 
 ##=======================================================================
 ## Define met and grid fields for HEMCO_Config.rc
@@ -133,8 +135,9 @@ GCClassicPath="${InversionPath}/GCClassic"
 RunFilesPath="${GCClassicPath}/run"
 
 # Create working directory if it doesn't exist yet
-if [ ! -d "${OutputPath}/${RunName}" ]; then
-    mkdir -p -v ${OutputPath}/${RunName}
+RunDirs="${OutputPath}/${RunName}"
+if [ ! -d "${RunDirs}" ]; then
+    mkdir -p -v ${RunDirs}
 fi
 
 ##=======================================================================
@@ -158,21 +161,21 @@ if "$CreateAutomaticRectilinearStateVectorFile"; then
     StateVectorFName="StateVector.nc"
 
     # Create state vector file
-    cd ${OutputPath}/$RunName
+    cd ${RunDirs}
 
     # Copy state vector creation script to working directory
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    printf "Calling make_state_vector_file.py\n"
+    printf "\nCalling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
-    printf "=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
 else
 
-    # Copy custom state vector to $OutputPath/$RunName directory for later use
-    cp $StateVectorFile ${OutputPath}/${RunName}/StateVector.nc
+    # Copy custom state vector to $RunDirs directory for later use
+    cp $StateVectorFile ${RunDirs}/StateVector.nc
 
 fi
 
@@ -182,79 +185,76 @@ if ! "$isAWS"; then
 fi
 
 # Determine number of elements in state vector file
-function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; rm -f ~/foo.nc ; }
-nElements=$(ncmax StateVector ${OutputPath}/${RunName}/StateVector.nc)
+function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
 rm ~/foo.nc
-printf "\n Number of state vector elements in this inversion = ${nElements}\n"
+printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
 # Define inversion domain lat/lon bounds
-function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; rm -f ~/foo.nc ; }
-LonMinInvDomain=$(ncmin lon ${OutputPath}/${RunName}/StateVector.nc)
-LonMaxInvDomain=$(ncmax lon ${OutputPath}/${RunName}/StateVector.nc)
-LatMinInvDomain=$(ncmin lat ${OutputPath}/${RunName}/StateVector.nc)
-LatMaxInvDomain=$(ncmax lat ${OutputPath}/${RunName}/StateVector.nc)
+function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
+LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
+LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
+LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+rm ~/foo.nc
 Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
 Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
-
-if ! "$isAWS"; then
-    # Purge software modules if not on AWS
-    module purge
-fi
 
 ##=======================================================================
 ## Set up template run directory
 ##=======================================================================
 
-RunTemplate="${OutputPath}/${RunName}/template_run"
+runDir="template_run"
+RunTemplate="${RunDirs}/${runDir}"
 
 if "$SetupTemplateRundir"; then
 
     printf "\n=== CREATING TEMPLATE RUN DIRECTORY ===\n"
 
-    cd ${OutputPath}/${RunName}
+    cd ${GCClassicPath}/run
 
-    # Create template run directory
-    mkdir -p -v ${RunTemplate}
+    # The createRunDir.sh script assumes the file ~/.geoschem/config exists
+    # and contains the path to GEOS-Chem input data
+    if [[ ! -f ${HOME}/.geoschem/config ]]; then
+	mkdir -p ${HOME}/.geoschem
+	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
+	source ${HOME}/.geoschem/config
+    fi
 
-    # Copy run directory files directly from GEOS-Chem repository
-    cp -RLv ${RunFilesPath}/input.geos.templates/input.geos.CH4 ${RunTemplate}/input.geos
-    cp -RLv ${RunFilesPath}/HISTORY.rc.templates/HISTORY.rc.CH4 ${RunTemplate}/HISTORY.rc
-    cp -RLv ${RunFilesPath}/getRunInfo ${RunTemplate}/
-    cp -RLv ${RunFilesPath}/HEMCO_Diagn.rc.templates/HEMCO_Diagn.rc.CH4 ${RunTemplate}/HEMCO_Diagn.rc
-    cp -RLv ${RunFilesPath}/HEMCO_Config.rc.templates/HEMCO_Config.rc.CH4 ${RunTemplate}/HEMCO_Config.rc
-    cp -RLv ${RunFilesPath}/../shared/download_data.py ${RunTemplate}/
-    cp -RLv ${RunFilesPath}/../shared/download_data.yml ${RunTemplate}/
-    cp -RLv ${GCClassicPath}/src/GEOS-Chem/run/shared/species_database.yml ${RunTemplate}/
-    cp -RLv ${InversionPath}/src/geoschem_run_scripts/ch4_run.template ${RunTemplate}
+    if [[ -d ${RunTemplate} ]]; then
+	printf "\nERROR: ${RunTemplate} already exists. Please remove or set 'SetupTemplateRunDir: false' in config.yml.\n"
+	exit 9999
+    fi
 
-    cd $RunTemplate
+    # Commands to feed to createRunDir.sh
+    # Create a GEOS-FP 0.25x0.3125 nested NA CH4 run directory by default
+    # (Grid and meteorology fields will be replaced below by the settings
+    #  in config.yml)
+    cmd="3\n2\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+
+    # Create run directory
+    printf ${cmd} | ./createRunDir.sh >> createRunDir.log 2>&1
+    rm -f createRunDir.log
+    printf "\nCreated ${RunTemplate}\n"
+
+    cd ${RunTemplate}
 
     if "$isAWS"; then
 	# Update GC data download to silence output from aws commands
 	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
     fi
 
-    # Update settings in input.geos
-    sed -i -e "s:{DATE1}:${StartDate}:g" \
-           -e "s:{DATE2}:${EndDate}:g" \
-           -e "s:{TIME1}:000000:g" \
-           -e "s:{TIME2}:000000:g" \
-           -e "s:{MET}:${Met}:g" \
-           -e "s:{DATA_ROOT}:${DataPath}:g" \
-           -e "s:{SIM}:CH4:g" \
-           -e "s:{RES}:${gridResLong}:g" \
-           -e "s:{LON_RANGE}:${Lons}:g" \
-           -e "s:{LAT_RANGE}:${Lats}:g" \
-           -e "s:{CENTER_180}:T:g" \
-           -e "s:{HALF_POLAR}:T:g" \
-           -e "s:{NLEV}:47:g" \
-           -e "s:{BUFFER_ZONE}:3 3 3 3:g" input.geos
-    if "$NestedGrid"; then
-	sed -i -e "s:{NESTED_SIM}:T:g" \
-               -e "s|timestep \[sec\]: 600|timestep \[sec\]: 300|g" \
-               -e "s|timestep \[sec\]: 1200|timestep \[sec\]: 600|g" input.geos
-    else
-	sed -i -e "s:{NESTED_SIM}:F:g" input.geos
+    # Modify input.geos based on settings in config.yml
+    sed -i -e "s:20190101:${StartDate}:g" \
+           -e "s:20190201:${EndDate}:g" \
+           -e "s:GEOSFP:${Met}:g" \
+           -e "s:0.25x0.3125:${gridResLong}:g" \
+           -e "s:-130.0  -60.0:${Lons}:g" \
+           -e "s:9.75  60.0:${Lats}:g" input.geos
+    if [ "$NestedGrid" == "false" ]; then
+	sed -i -e "Nested grid simulation? : T|Nested grid simulation? : F|g" \
+               -e "s|timestep \[sec\]: 600|timestep \[sec\]: 1200|g" \
+               -e "s|timestep \[sec\]: 300|timestep \[sec\]: 600|g" input.geos
     fi
 
     # For CH4 inversions always turn analytical inversion on
@@ -262,14 +262,14 @@ if "$SetupTemplateRundir"; then
     NEW="Do analytical inversion?: T"
     sed -i "s/$OLD/$NEW/g" input.geos
 
-    # Turn on analytical inversion option in HEMCO_Config.rc also
+    # Also turn on analytical inversion option in HEMCO_Config.rc
     OLD="--> AnalyticalInv          :       false"
     NEW="--> AnalyticalInv          :       true "
     sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
 
     # Modify path to state vector file in HEMCO_Config.rc
     OLD=" StateVector.nc"
-    NEW=" ${OutputPath}/${RunName}/StateVector.nc"
+    NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
     # Turn other options on/off according to settings above
@@ -289,18 +289,13 @@ if "$SetupTemplateRundir"; then
 	sed -i "s/$OLD/$NEW/g" input.geos
     fi
     if "$UseEmisSF"; then
-	OLD=" => Use emis scale factr: F"
-	NEW=" => Use emis scale factr: T"
-	sed -i "s/$OLD/$NEW/g" input.geos
-    fi
-    if "$UseSeparateWetlandSF"; then
-	OLD=" => Use sep. wetland SFs: F"
-	NEW=" => Use sep. wetland SFs: T"
+	OLD="Use emis scale factor   : F"
+	NEW="Use emis scale factor   : T"
 	sed -i "s/$OLD/$NEW/g" input.geos
     fi
     if "$UseOHSF"; then
-	OLD=" => Use OH scale factors: F"
-	NEW=" => Use OH scale factors: T"
+	OLD="Use OH scale factors    : F"
+	NEW="Use OH scale factors    : T"
 	sed -i "s/$OLD/$NEW/g" input.geos
     fi
     if "$PLANEFLIGHT"; then
@@ -316,9 +311,13 @@ if "$SetupTemplateRundir"; then
 	sed -i "s/$OLD/$NEW/g" input.geos
     fi
 
-    # Set up HEMCO_Config.rc
-    sed -i -e "/### BEGIN SECTION SETTINGS/r ${GCClassicPath}/run/HEMCO_Config.rc.templates/header.gmao"                     HEMCO_Config.rc
-    sed -i -e "/# --- Meteorology fields for FlexGrid ---/r ${GCClassicPath}/run/HEMCO_Config.rc.templates/met_fields.gmao"  HEMCO_Config.rc
+    # Modify HEMCO_Config.rc based on settings in config.yml
+    # Use cropped met fields (add the region to both METDIR and the met files)
+    if [ ! -z "$NestedRegion" ]; then
+	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
+        sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
+    fi
 
     # Determine length of inversion period in days
     InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
@@ -327,29 +326,17 @@ if "$SetupTemplateRundir"; then
     if (( ${InvPeriodLength} < 32 )); then
         sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
     fi
-    # Otherwise the Monthly diagnostic output frequency is used
-    sed -i -e "s:{VERBOSE}:0:g" \
-           -e "s:{WARNINGS}:1:g" \
-           -e "s:{DATA_ROOT}:${DataPath}:g" \
-           -e "s:{GRID_DIR}:${gridDir}:g" \
-           -e "s:{MET_DIR}:${metDir}:g" \
-           -e "s:{NATIVE_RES}:${native}:g" \
-           -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
 
-    if [ ! -z "$NestedRegion" ]; then
-        sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc
-    fi
-    if [ "$NestedGrid" == "T" ]; then
-        OLD="--> GC_BCs                 :       false "
-        NEW="--> GC_BCs                 :       true  "
+    # Modify path to BC files
+    sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
+    if [ "$NestedGrid" == "false" ]; then
+        OLD="--> GC_BCs                 :       true "
+        NEW="--> GC_BCs                 :       false"
         sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
     fi
 
-    # Set up HISTORY.rc
-    # Use monthly output by default
-    sed -i -e "s:{FREQUENCY}:00000100 000000:g" \
-           -e "s:{DURATION}:00000100 000000:g" \
-           -e "s:'CH4':#'CH4':g" \
+    # Modify HISTORY.rc
+    sed -i -e "s:'CH4':#'CH4':g" \
            -e "s:'Metrics:#'Metrics:g" HISTORY.rc
     
     # If turned on, save out hourly CH4 concentrations to daily files
@@ -363,30 +350,36 @@ if "$SetupTemplateRundir"; then
 	# Load environment with modules for compiling GEOS-Chem Classic
         source ${GEOSChemEnv}
     fi
+
+    # Remove sample restart file
+    rm -f GEOSChem.Restart.20190101_0000z.nc4
+
+    # Create directory for restart files
+    mkdir -p Restarts
+
+    # Copy template run script
+    cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
     
     # Compile GEOS-Chem and store executable in template run directory
-    mkdir build; cd build
-    cmake ${InversionPath}/GCClassic
-    cmake . -DRUNDIR=..
-    make -j install
+    printf "\nCompiling GEOS-Chem...\n"
+    cd build
+    cmake ${InversionPath}/GCClassic >> build_geoschem.log 2>&1
+    cmake . -DRUNDIR=..  >> build_geoschem.log 2>&1 
+    make -j install >> build_geoschem.log 2>&1
     cd ..
     if [[ -f gcclassic ]]; then
         rm -rf build
         mv build_info ../GEOSChem_build_info
     else
-        printf "GEOS-Chem build failed"
+        printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
         exit 999
     fi
-
-    if ! "$isAWS"; then
-	# Purge software modules
-        module purge
-    fi
+    printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build_info for details\n\n"
     
     # Navigate back to top-level directory
     cd ..
 
-    printf "=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
+    printf "\n=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
 
 fi # SetupTemplateRunDir
 
@@ -394,17 +387,24 @@ fi # SetupTemplateRunDir
 ##  Set up IMI preview run directory
 ##=======================================================================
 
+preview_start=$(date +%s)
 if  "$DoPreview"; then
+    set -x
+
+    if ! "$isAWS"; then
+	# Load environment with modules for running GEOS-Chem Classic
+        source ${GEOSChemEnv}
+    fi
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-        printf "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
         exit 9999
     fi
 
     printf "\n=== CREATING IMI PREVIEW RUN DIRECTORY ===\n"
 
-    cd ${OutputPath}/${RunName}
+    cd ${RunDirs}
     
     # Define the preview run name
     PreviewName="${RunName}_Preview"
@@ -414,17 +414,16 @@ if  "$DoPreview"; then
     mkdir -p -v ${runDir}
 
     # Copy run directory files
-    cp ${RunTemplate}/*  ${runDir}
+    cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
-    mkdir -p OutputDir
-    mkdir -p Restarts
 
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    ln -s ${RestartFilePreviewPrefix}${StartDate}_0000z.nc4 GEOSChem.Restart.${StartDate}_0000z.nc4
+    RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
+    ln -s $RestartFilePreview GEOSChem.Restart.${StartDate}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
@@ -435,8 +434,7 @@ if  "$DoPreview"; then
     # Update settings in input.geos
     sed -i -e "s|${EndDate}|${PreviewEnd}|g" \
            -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|{PERTURBATION}|1.0|g" \
-           -e "s|{ELEMENT}|0|g" input.geos
+           input.geos
 
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
@@ -455,12 +453,12 @@ if  "$DoPreview"; then
 
     ### Perform dry run if requested
     if "$PreviewDryRun"; then
-        printf "Executing dry-run for preview run...\n"
+        printf "\nExecuting dry-run for preview run...\n"
         ./gcclassic --dryrun &> log.dryrun
         ./download_data.py log.dryrun aws
     fi
 
-    printf "=== DONE CREATING PREVIEW RUN DIRECTORY ===\n"
+    printf "\n=== DONE CREATING PREVIEW RUN DIRECTORY ===\n"
 
     ##===============##
     ##  Run preview  ##
@@ -469,13 +467,16 @@ if  "$DoPreview"; then
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
     # Submit preview GEOS-Chem job to job scheduler
-    sbatch -W ${RunName}_Preview.run; wait;
-
+    if "$UseSlurm"; then
+        sbatch -W ${RunName}_Preview.run; wait;
+    else
+        ./${RunName}_Preview.run
+    fi
     # Run preview script
-    config_path=${InversionPath}/config.yml
-    state_vector_path=${OutputPath}/${RunName}/StateVector.nc
-    preview_dir=${OutputPath}/${RunName}/${runDir}
-    tropomi_cache=${OutputPath}/${RunName}/data_TROPOMI
+    config_path=${InversionPath}/${ConfigFile}
+    state_vector_path=${RunDirs}/StateVector.nc
+    preview_dir=${RunDirs}/${runDir}
+    tropomi_cache=${RunDirs}/data_TROPOMI
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # if running end to end script with sbatch then use
@@ -491,7 +492,7 @@ if  "$DoPreview"; then
     else
         python $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
-    printf "=== DONE RUNNING IMI PREVIEW ===\n"
+    printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
     # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
     eval $(parse_yaml ${preview_dir}/preview_diagnostics.txt) 
@@ -505,6 +506,7 @@ if  "$DoPreview"; then
     cd ..
 
 fi 
+preview_end=$(date +%s)
 
 ##=======================================================================
 ##  Set up spinup run directory
@@ -514,13 +516,13 @@ if  "$SetupSpinupRun"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-        printf "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
         exit 9999
     fi
 
     printf "\n=== CREATING SPINUP RUN DIRECTORY ===\n"
     
-    cd ${OutputPath}/${RunName}
+    cd ${RunDirs}
     
     # Define the run directory name
     SpinupName="${RunName}_Spinup"
@@ -530,27 +532,26 @@ if  "$SetupSpinupRun"; then
     mkdir -p -v ${runDir}
 
     # Copy run directory files
-    cp ${RunTemplate}/*  ${runDir}
+    cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
-    mkdir -p OutputDir
-    mkdir -p Restarts
 
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    ln -s ${RestartFilePrefix}${SpinupStart}_0000z.nc4 GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
+    ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+	printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
     fi
     
     # Update settings in input.geos
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" \
            -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|{PERTURBATION}|1.0|g" \
-           -e "s|{ELEMENT}|0|g" input.geos
+           input.geos
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
@@ -574,7 +575,7 @@ if  "$SetupSpinupRun"; then
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
-        printf "Executing dry-run for spinup run...\n"
+        printf "\nExecuting dry-run for spinup run...\n"
         ./gcclassic --dryrun &> log.dryrun
         ./download_data.py log.dryrun aws
     fi
@@ -582,7 +583,7 @@ if  "$SetupSpinupRun"; then
     # Navigate back to top-level directory
     cd ..
 
-    printf "=== DONE CREATING SPINUP RUN DIRECTORY ===\n"
+    printf "\n=== DONE CREATING SPINUP RUN DIRECTORY ===\n"
 
 fi # SetupSpinupRun
 
@@ -594,13 +595,13 @@ if  "$SetupPosteriorRun"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-        printf "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
         exit 9999
     fi
 
     printf "\n=== CREATING POSTERIOR RUN DIRECTORY ===\n"
     
-    cd ${OutputPath}/${RunName}
+    cd ${RunDirs}
     
     # Define the run directory name
     PosteriorName="${RunName}_Posterior"
@@ -610,10 +611,8 @@ if  "$SetupPosteriorRun"; then
     mkdir -p -v ${runDir}
 
     # Copy run directory files
-    cp ${RunTemplate}/*  ${runDir}
+    cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
-    mkdir -p OutputDir
-    mkdir -p Restarts
 
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
@@ -624,9 +623,9 @@ if  "$SetupPosteriorRun"; then
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
     else
+        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+        ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
-            RestartFile=${DataPath}/BoundaryConditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
-            ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
         fi
@@ -634,13 +633,12 @@ if  "$SetupPosteriorRun"; then
     
     # Update settings in input.geos
     sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|Use emis scale factr    : F|Use emis scale factr    : T|g" \
-           -e "s|{PERTURBATION}|1.0|g" \
-           -e "s|{ELEMENT}|0|g" input.geos
+           -e "s|Use emis scale factor   : F|Use emis scale factor   : T|g" \
+           input.geos
 
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-           -e "s|gridded_posterior.nc|${OutputPath}/${RunName}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
+           -e "s|gridded_posterior.nc|${RunDirs}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
@@ -664,7 +662,7 @@ if  "$SetupPosteriorRun"; then
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
-        printf "Executing dry-run for posterior run...\n"
+        printf "\nExecuting dry-run for posterior run...\n"
         ./gcclassic --dryrun &> log.dryrun
         ./download_data.py log.dryrun aws
     fi
@@ -672,7 +670,7 @@ if  "$SetupPosteriorRun"; then
     # Navigate back to top-level directory
     cd ..
 
-    printf "=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
+    printf "\n=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
     
 fi # SetupPosteriorRun
 
@@ -684,23 +682,23 @@ if "$SetupJacobianRuns"; then
 
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/input.geos ]]; then
-        printf "Template run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
         exit 9999
     fi
 
     printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
     
-    cd ${OutputPath}/${RunName}
+    cd ${RunDirs}
 
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
     # Copy run scripts
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RunName}:g" jacobian_runs/run_jacobian_simulations.sh
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
     if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
+        sed -i -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
     fi
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
@@ -736,10 +734,8 @@ if "$SetupJacobianRuns"; then
 	mkdir -p -v ${runDir}
 
 	# Copy run directory files
-	cp ${RunTemplate}/*  ${runDir}
+	cp -r ${RunTemplate}/*  ${runDir}
 	cd $runDir
-	mkdir -p OutputDir
-	mkdir -p Restarts
 
 	# Link to GEOS-Chem executable instead of having a copy in each rundir
 	rm -rf gcclassic
@@ -750,19 +746,16 @@ if "$SetupJacobianRuns"; then
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
+	    RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+	    ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
 	    if "$UseBCsForRestart"; then
-            RestartFile=${BCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
-            ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-	    if [ $x -eq 0 ]; then
-		printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
-	    fi
-        fi
+		sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            fi
 	fi
    
 	# Update settings in input.geos
-	sed -i -e "s:{PERTURBATION}:${PerturbValue}:g" \
-	       -e "s:{ELEMENT}:${xUSE}:g" input.geos
+	sed -i -e "s|Emiss perturbation  : 1.0|Emiss perturbation  : ${PerturbValue}|g" \
+	       -e "s|State vector elem. #: 0|State vector elem. #: ${xUSE}|g" input.geos
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -792,7 +785,7 @@ if "$SetupJacobianRuns"; then
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
         if "$ProductionDryRun"; then
-            printf "Executing dry-run for production runs...\n"
+            printf "\nExecuting dry-run for production runs...\n"
             ./gcclassic --dryrun &> log.dryrun
             ./download_data.py log.dryrun aws
         fi
@@ -806,7 +799,7 @@ if "$SetupJacobianRuns"; then
 
     done
 
-    printf "=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
+    printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
 
 fi  # SetupJacobianRuns
 
@@ -823,10 +816,7 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_geoschem
     mkdir -p inversion/data_sensitivities
-    if ! "$isAWS"; then
-        mkdir -p inversion/data_TROPOMI
-        ln -s /n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data inversion/data_TROPOMI
-    fi
+    
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
@@ -853,7 +843,7 @@ if "$SetupInversion"; then
                -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
     fi
     
-    printf "=== DONE SETTING UP INVERSION DIRECTORY ===\n"
+    printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 
 fi #SetupInversion
 
@@ -862,4 +852,8 @@ if "$isAWS"; then
     rm -f /home/ubuntu/foo.nc
 fi
 
+# Run time
+echo "Statistics (setup):"
+echo "Preview runtime (s): $(( $preview_end - $preview_start ))"
+echo "Note: this is part of the Setup runtime reported by run_imi.sh"
 exit 0
