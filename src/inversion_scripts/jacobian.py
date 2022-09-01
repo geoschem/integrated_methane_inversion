@@ -385,20 +385,21 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
 
     Returns
         output         [dict[]]   : flat list of dictionaries the following fields:
-                                    - lat                : gridcell latitude
-                                    - lon                : gridcell longitude
-                                    - iGC                : longitude index value
-                                    - jGC                : latitude index value
-                                    - lat_sat            : averaged tropomi latitude
-                                    - lon_sat            : averaged tropomi longitude
-                                    - overlap_area       : averaged overlap area with gridcell
-                                    - p_sat              : averaged pressure for sat
-                                    - dry_air_subcolumns : averaged
-                                    - apriori            : averaged
-                                    - avkern             : averaged average kernel
-                                    - time               : averaged time
-                                    - methane            : averaged methane
-                                    - observation_count  : number of observations averaged in cell
+                                    - lat                 : gridcell latitude
+                                    - lon                 : gridcell longitude
+                                    - iGC                 : longitude index value
+                                    - jGC                 : latitude index value
+                                    - lat_sat             : averaged tropomi latitude
+                                    - lon_sat             : averaged tropomi longitude
+                                    - overlap_area        : averaged overlap area with gridcell
+                                    - p_sat               : averaged pressure for sat
+                                    - dry_air_subcolumns  : averaged
+                                    - apriori             : averaged
+                                    - avkern              : averaged average kernel
+                                    - time                : averaged time
+                                    - methane             : averaged methane
+                                    - observation_count   : number of observations averaged in cell
+                                    - observation_weights : area weights for the observation
 
     """
     n_obs = len(sat_ind[0])
@@ -463,31 +464,35 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
                 ).area
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)
-        if not total_overlap_area == 0:
-            # map observation into the gridcell with the most ovrlap area TODO: update this strategy?
-            max_index = overlap_area.argmax()
-            # get the matching dictionary for the gridcell with the most overlap area
-            gridcell_dict = gridcell_dicts[ij_GC[max_index][0]][ij_GC[max_index][1]]
-            gridcell_dict["lat_sat"].append(TROPOMI["latitude"][iSat, jSat])
-            gridcell_dict["lon_sat"].append(TROPOMI["longitude"][iSat, jSat])
-            gridcell_dict["overlap_area"].append(max(overlap_area))
-            gridcell_dict["p_sat"].append(TROPOMI["pressures"][iSat, jSat, :])
-            gridcell_dict["dry_air_subcolumns"].append(
-                TROPOMI["dry_air_subcolumns"][iSat, jSat, :]
-            )
-            gridcell_dict["apriori"].append(
-                TROPOMI["methane_profile_apriori"][iSat, jSat, :]
-            )
-            gridcell_dict["avkern"].append(TROPOMI["column_AK"][iSat, jSat, :])
-            gridcell_dict[
-                "time"
-            ].append(  # convert times to epoch time to make taking the mean easier
-                int(pd.to_datetime(str(TROPOMI["utctime"][iSat])).strftime("%s"))
-            )
-            gridcell_dict["methane"].append(
-                TROPOMI["methane"][iSat, jSat]
-            )  # Actual TROPOMI methane column observation
-            gridcell_dict["observation_count"] += 1  # increment the observation count
+        for index, overlap in enumerate(overlap_area):
+            if not overlap == 0:
+                # get the matching dictionary for the gridcell with the most overlap area
+                gridcell_dict = gridcell_dicts[ij_GC[index][0]][ij_GC[index][1]]
+                gridcell_dict["lat_sat"].append(TROPOMI["latitude"][iSat, jSat])
+                gridcell_dict["lon_sat"].append(TROPOMI["longitude"][iSat, jSat])
+                gridcell_dict["overlap_area"].append(max(overlap_area))
+                gridcell_dict["p_sat"].append(TROPOMI["pressures"][iSat, jSat, :])
+                gridcell_dict["dry_air_subcolumns"].append(
+                    TROPOMI["dry_air_subcolumns"][iSat, jSat, :]
+                )
+                gridcell_dict["apriori"].append(
+                    TROPOMI["methane_profile_apriori"][iSat, jSat, :]
+                )
+                gridcell_dict["avkern"].append(TROPOMI["column_AK"][iSat, jSat, :])
+                gridcell_dict[
+                    "time"
+                ].append(  # convert times to epoch time to make taking the mean easier
+                    int(pd.to_datetime(str(TROPOMI["utctime"][iSat])).strftime("%s"))
+                )
+                gridcell_dict["methane"].append(
+                    TROPOMI["methane"][iSat, jSat]
+                )  # Actual TROPOMI methane column observation
+                # record weights for averaging later
+                gridcell_dict["observation_weights"].append(
+                    overlap / total_overlap_area
+                )
+                # increment the observation count based on overlap area
+                gridcell_dict["observation_count"] += overlap / total_overlap_area
 
     # filter out gridcells without any observations
     gridcell_dicts = [
@@ -495,10 +500,22 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     ]
     # mean observation values for each gridcell
     for gridcell_dict in gridcell_dicts:
-        gridcell_dict["lat_sat"] = np.mean(gridcell_dict["lat_sat"])
-        gridcell_dict["lon_sat"] = np.mean(gridcell_dict["lon_sat"])
-        gridcell_dict["overlap_area"] = np.mean(gridcell_dict["overlap_area"])
-        gridcell_dict["methane"] = np.mean(gridcell_dict["methane"])
+        gridcell_dict["lat_sat"] = np.average(
+            gridcell_dict["lat_sat"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["lon_sat"] = np.average(
+            gridcell_dict["lon_sat"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["overlap_area"] = np.average(
+            gridcell_dict["overlap_area"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["methane"] = np.average(
+            gridcell_dict["methane"],
+            weights=gridcell_dict["observation_weights"],
+        )
         # take mean of epoch times and then convert gc filename time string
         gridcell_dict["time"] = (
             pd.to_datetime(
@@ -508,12 +525,26 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
             .strftime("%Y%m%d_%H")
         )
         # for multi-dimensional arrays, we only take the mean across the 0 axis
-        gridcell_dict["p_sat"] = np.mean(gridcell_dict["p_sat"], axis=0)
-        gridcell_dict["dry_air_subcolumns"] = np.mean(
-            gridcell_dict["dry_air_subcolumns"], axis=0
+        gridcell_dict["p_sat"] = np.average(
+            gridcell_dict["p_sat"],
+            axis=0,
+            weights=gridcell_dict["observation_weights"],
         )
-        gridcell_dict["apriori"] = np.mean(gridcell_dict["apriori"], axis=0)
-        gridcell_dict["avkern"] = np.mean(gridcell_dict["avkern"], axis=0)
+        gridcell_dict["dry_air_subcolumns"] = np.average(
+            gridcell_dict["dry_air_subcolumns"],
+            axis=0,
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["apriori"] = np.average(
+            gridcell_dict["apriori"],
+            axis=0,
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["avkern"] = np.average(
+            gridcell_dict["avkern"],
+            axis=0,
+            weights=gridcell_dict["observation_weights"],
+        )
     return gridcell_dicts
 
 
@@ -575,6 +606,7 @@ def get_gridcell_list(lons, lats):
                     "lat_sat": [],
                     "lon_sat": [],
                     "observation_count": 0,
+                    "observation_weights": [],
                 }
             )
     gricells = np.array(gricells).reshape(len(lons), len(lats))
