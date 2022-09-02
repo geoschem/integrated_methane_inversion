@@ -589,13 +589,13 @@ def get_gridcell_list(lons, lats):
         lats     [float[]]      : list of gc latitudes for region of interest
 
     Returns
-        gricells [dict[][]]     : 2D array of dicts representing a gridcell
+        gridcells [dict[][]]     : 2D array of dicts representing a gridcell
     """
     # create array of dictionaries to represent gridcells
-    gricells = []
+    gridcells = []
     for i in range(len(lons)):
         for j in range(len(lats)):
-            gricells.append(
+            gridcells.append(
                 {
                     "lat": lats[j],
                     "lon": lons[i],
@@ -614,8 +614,8 @@ def get_gridcell_list(lons, lats):
                     "observation_weights": [],
                 }
             )
-    gricells = np.array(gricells).reshape(len(lons), len(lats))
-    return gricells
+    gridcells = np.array(gridcells).reshape(len(lons), len(lats))
+    return gridcells
 
 
 def apply_average_tropomi_operator(
@@ -756,7 +756,7 @@ def apply_average_tropomi_operator(
         obs_GC[i, 1] = virtual_tropomi  # Virtual TROPOMI methane column observation
         obs_GC[i, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
         obs_GC[i, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
-        obs_GC[i, 4] = gridcell_dict["observation_count"]
+        obs_GC[i, 4] = gridcell_dict["observation_count"]  # observation counts
 
     # Output
     output = {}
