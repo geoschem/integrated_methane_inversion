@@ -502,7 +502,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     gridcell_dicts = [
         item for item in gridcell_dicts.flatten() if item["observation_count"] > 0
     ]
-    # mean observation values for each gridcell
+    # weighted average observation values for each gridcell
     for gridcell_dict in gridcell_dicts:
         gridcell_dict["lat_sat"] = np.average(
             gridcell_dict["lat_sat"],
@@ -528,7 +528,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
             .round("60min")
             .strftime("%Y%m%d_%H")
         )
-        # for multi-dimensional arrays, we only take the mean across the 0 axis
+        # for multi-dimensional arrays, we only take the average across the 0 axis
         gridcell_dict["p_sat"] = np.average(
             gridcell_dict["p_sat"],
             axis=0,
@@ -662,33 +662,31 @@ def apply_average_tropomi_operator(
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
     sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
 
-    # reprocess and average tropomi data, but we need the lat/lons of gc gridcells
+    # get the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
+
+    # map tropomi obs into gridcells and average the observations 
+    # into each gridcell. Only returns gridcells containing observations
     obs_mapped_to_gc = average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind)
-    n_obs = len(obs_mapped_to_gc)
+    n_gridcells = len(obs_mapped_to_gc)
 
     if build_jacobian:
         # Initialize Jacobian K
-        jacobian_K = np.zeros([n_obs, n_elements], dtype=np.float32)
+        jacobian_K = np.zeros([n_gridcells, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
 
-    # Initialize a list to store the dates we want to look at
-    all_strdate = []
-
-    # For each TROPOMI observation
-    for gridcell_dict in obs_mapped_to_gc:
-        # Get the date and hour
-        all_strdate.append(gridcell_dict["time"])
+    # create list to store the dates/hour of each gridcell
+    all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
     all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
 
-    # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
-    obs_GC = np.zeros([n_obs, 6], dtype=np.float32)
+    # Initialize array with n_gridcells rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
+    obs_GC = np.zeros([n_gridcells, 6], dtype=np.float32)
     obs_GC.fill(np.nan)
 
-    # For each TROPOMI observation:
+    # For each gridcell dict with tropomi obs:
     for i, gridcell_dict in enumerate(obs_mapped_to_gc):
 
         # Get GEOS-Chem data for the date of the observation:
@@ -699,11 +697,6 @@ def apply_average_tropomi_operator(
         strdate = gridcell_dict["time"]
         GEOSCHEM = all_date_gc[strdate]
 
-        # Otherwise, initialize tropomi virtual xch4 and virtual sensitivity as zero
-        area_weighted_virtual_tropomi = 0  # virtual tropomi xch4
-        area_weighted_virtual_tropomi_sensitivity = 0  # virtual tropomi sensitivity
-
-        # For each GEOS-Chem grid cell that touches the TROPOMI pixel:
         # Get GEOS-Chem pressure edges for the cell
         p_gc = GEOSCHEM["PEDGE"][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
         # Get GEOS-Chem methane for the cell
@@ -727,10 +720,7 @@ def apply_average_tropomi_operator(
             / sum(dry_air_subcolumns)
             * 1e9
         )  # ppb
-        # Weight by overlapping area (to be divided out later) and add to sum
-        area_weighted_virtual_tropomi += (
-            gridcell_dict["overlap_area"] * virtual_tropomi_gridcellIndex
-        )  # ppb m2
+
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:
             # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
@@ -757,33 +747,20 @@ def apply_average_tropomi_operator(
             ) / sum(
                 dry_air_subcolumns
             )  # mixing ratio, unitless
-            # Weight by overlapping area (to be divided out later) and add to sum
-            area_weighted_virtual_tropomi_sensitivity += (
-                gridcell_dict["overlap_area"] * tropomi_sensitivity_gridcellIndex
-            )  # m2
-
-        # Compute virtual TROPOMI observation as weighted mean by overlapping area
-        # i.e., need to divide out area [m2] from the previous step
-        virtual_tropomi = area_weighted_virtual_tropomi / gridcell_dict["overlap_area"]
 
         # Save actual and virtual TROPOMI data
         obs_GC[i, 0] = gridcell_dict[
             "methane"
         ]  # Actual TROPOMI methane column observation
-        obs_GC[i, 1] = virtual_tropomi  # Virtual TROPOMI methane column observation
+        obs_GC[i, 1] = virtual_tropomi_gridcellIndex  # Virtual TROPOMI methane column observation
         obs_GC[i, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
         obs_GC[i, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
         obs_GC[i, 4] = gridcell_dict["observation_count"]
-        # obs_GC[i, 4] = iSat  # TROPOMI index of longitude # TODO ??
-        # obs_GC[i, 5] = jSat  # TROPOMI index of latitude # TODO ??
 
         if build_jacobian:
             # Compute TROPOMI sensitivity as weighted mean by overlapping area
             # i.e., need to divide out area [m2] from the previous step
-            jacobian_K[i, :] = (
-                area_weighted_virtual_tropomi_sensitivity
-                / gridcell_dict["overlap_area"]
-            )
+            jacobian_K[i, :] = tropomi_sensitivity_gridcellIndex
 
     # Output
     output = {}
