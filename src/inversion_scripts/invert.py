@@ -128,8 +128,9 @@ def do_inversion(
         obs_GC = obs_GC[ind, :]
 
         # weight obs_err based on the observation count to prevent overfitting
-        # Note: weighting function defined by Zichong for his 
+        # Note: weighting function defined by Zichong Chen for his 
         # middle east inversions. May need to be tuned based on region.
+        # TODO: add paper citation when published
         obsWeight = 1.02 - (obs_GC[:, 4] * .02)
         obs_error = obsWeight * obs_err
         
