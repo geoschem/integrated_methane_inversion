@@ -376,7 +376,8 @@ def nearest_loc(query_location, reference_grid, tolerance=0.5):
 def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     """
     Map TROPOMI observations into appropriate gc gridcells. Then average all
-    observations within a gridcell for processing.
+    observations within a gridcell for processing. Use area weighting if 
+    observation overlaps multiple gridcells.
 
     Arguments
         TROPOMI        [dict]   : Dict of tropomi data
@@ -466,7 +467,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
         total_overlap_area = sum(overlap_area)
 
         # iterate through any gridcells with observation overlap
-        # weight each observation if observation extent overlaps with multiple 
+        # weight each observation if observation extent overlaps with multiple
         # gridcells
         for index, overlap in enumerate(overlap_area):
             if not overlap == 0:
@@ -665,7 +666,7 @@ def apply_average_tropomi_operator(
     # get the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
 
-    # map tropomi obs into gridcells and average the observations 
+    # map tropomi obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
     obs_mapped_to_gc = average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind)
     n_gridcells = len(obs_mapped_to_gc)
@@ -715,7 +716,7 @@ def apply_average_tropomi_operator(
         sat_CH4_molm2 = sat_CH4 * 1e-9 * dry_air_subcolumns  # mol m-2
         # Derive the column-averaged XCH4 that TROPOMI would see over this ground cell
         # using eq. 46 from TROPOMI Methane ATBD, Hasekamp et al. 2019
-        virtual_tropomi_gridcellIndex = (
+        virtual_tropomi = (
             sum(apriori + avkern * (sat_CH4_molm2 - apriori))
             / sum(dry_air_subcolumns)
             * 1e9
@@ -742,7 +743,7 @@ def apply_average_tropomi_operator(
                 np.tile(dry_air_subcolumns, (n_elements, 1))
             )  # mol m-2
             # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
-            tropomi_sensitivity_gridcellIndex = np.sum(
+            jacobian_K[i, :] = np.sum(
                 avkern_tiled * sat_deltaCH4 * dry_air_subcolumns_tiled, 0
             ) / sum(
                 dry_air_subcolumns
@@ -752,15 +753,10 @@ def apply_average_tropomi_operator(
         obs_GC[i, 0] = gridcell_dict[
             "methane"
         ]  # Actual TROPOMI methane column observation
-        obs_GC[i, 1] = virtual_tropomi_gridcellIndex  # Virtual TROPOMI methane column observation
+        obs_GC[i, 1] = virtual_tropomi  # Virtual TROPOMI methane column observation
         obs_GC[i, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
         obs_GC[i, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
         obs_GC[i, 4] = gridcell_dict["observation_count"]
-
-        if build_jacobian:
-            # Compute TROPOMI sensitivity as weighted mean by overlapping area
-            # i.e., need to divide out area [m2] from the previous step
-            jacobian_K[i, :] = tropomi_sensitivity_gridcellIndex
 
     # Output
     output = {}
