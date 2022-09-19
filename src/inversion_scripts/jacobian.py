@@ -1,17 +1,65 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
 import glob
 import numpy as np
 import re
 import os
 import datetime
 from utils import save_obj
-from operators.TROPOMI_operator import apply_average_tropomi_operator
+from operators.TROPOMI_operator import (
+    apply_average_tropomi_operator,
+    apply_tropomi_operator,
+)
+
+
+def apply_operator(operator, params):
+    """
+    Run the chosen operator based on selected instrument
+
+    Arguments
+        operator [str]    : Data conversion operator to use
+        params   [dict]   : parameters to run the given operator
+    Returns
+        output   [dict]   : Dictionary with:
+                            - obs_GC : GEOS-Chem and TROPOMI methane data
+                            - TROPOMI methane
+                            - GEOS-Chem methane
+                            - TROPOMI lat, lon
+                            - TROPOMI lat index, lon index
+                              If build_jacobian=True, also include:
+                                - K      : Jacobian matrix
+    """
+    if operator == "TROPOMI_average":
+        return apply_average_tropomi_operator(
+            params["filename"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["build_jacobian"],
+            params["sensi_cache"],
+        )
+    elif operator == "TROPOMI":
+        return apply_tropomi_operator(
+            params["filename"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["build_jacobian"],
+            params["sensi_cache"],
+        )
+    else:
+        raise ValueError("Error: invalid operator selected.")
 
 
 if __name__ == "__main__":
-    import sys
 
     startday = sys.argv[1]
     endday = sys.argv[2]
@@ -34,10 +82,12 @@ if __name__ == "__main__":
         build_jacobian = True
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
+        vizdir = f"{workdir}/data_visualization"
     else:  # if sampling posterior simulation
         build_jacobian = False
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
+        vizdir = f"{workdir}/data_visualization_posterior"
     xlim = [lonmin, lonmax]
     ylim = [latmin, latmax]
     gc_startdate = np.datetime64(datetime.datetime.strptime(start, "%Y-%m-%d %H:%M:%S"))
@@ -75,22 +125,44 @@ if __name__ == "__main__":
         # If not yet processed, run apply_average_tropomi_operator()
         if not os.path.isfile(f"{outputdir}/{date}_GCtoTROPOMI.pkl"):
             print("Applying TROPOMI operator...")
-            output = apply_average_tropomi_operator(
-                filename,
-                n_elements,
-                gc_startdate,
-                gc_enddate,
-                xlim,
-                ylim,
-                gc_cache,
-                build_jacobian,
-                sensi_cache,
+
+            output = apply_operator(
+                "TROPOMI_average",
+                {
+                    "filename": filename,
+                    "n_elements": n_elements,
+                    "gc_startdate": gc_startdate,
+                    "gc_enddate": gc_enddate,
+                    "xlim": xlim,
+                    "ylim": ylim,
+                    "gc_cache": gc_cache,
+                    "build_jacobian": build_jacobian,
+                    "sensi_cache": sensi_cache,
+                },
             )
+
+            # we also save out the unaveraged tropomi operator for visualization purposes
+            viz_output = apply_operator(
+                "TROPOMI",
+                {
+                    "filename": filename,
+                    "n_elements": n_elements,
+                    "gc_startdate": gc_startdate,
+                    "gc_enddate": gc_enddate,
+                    "xlim": xlim,
+                    "ylim": ylim,
+                    "gc_cache": gc_cache,
+                    "build_jacobian": build_jacobian,
+                    "sensi_cache": sensi_cache,
+                },
+            )
+
             if output == None:
                 continue
 
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
+            save_obj(output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
 
     print(f"Wrote files to {outputdir}")
