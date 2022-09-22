@@ -291,4 +291,7 @@ if [[ -f ${InversionPath}/imi_output.log ]]; then
     cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
 
+# copy config file to run directory
+cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
+
 exit 0
