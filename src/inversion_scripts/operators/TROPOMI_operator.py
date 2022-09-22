@@ -4,7 +4,7 @@ import pandas as pd
 import datetime
 from shapely.geometry import Polygon
 from utils import filter_tropomi
-from operator_utilities import (
+from operators.operator_utilities import (
     get_gc_lat_lon,
     read_all_geoschem,
     merge_pressure_grids,

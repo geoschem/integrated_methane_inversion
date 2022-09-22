@@ -816,6 +816,7 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_geoschem
     mkdir -p inversion/data_sensitivities
+    mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/

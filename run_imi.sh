@@ -241,6 +241,7 @@ if "$DoPosterior"; then
 
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
+    mkdir -p data_visualization_posterior
     mkdir -p data_geoschem_posterior
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_geoschem_posterior"
@@ -292,6 +293,7 @@ if [[ -f ${InversionPath}/imi_output.log ]]; then
 fi
 
 # copy config file to run directory
+cd $InversionPath
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 exit 0
