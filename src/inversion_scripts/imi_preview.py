@@ -22,7 +22,7 @@ from utils import (
     filter_tropomi,
 )
 from joblib import Parallel, delayed
-from jacobian import read_tropomi
+from operators.TROPOMI_operator import read_tropomi
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
