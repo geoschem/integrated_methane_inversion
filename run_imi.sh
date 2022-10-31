@@ -98,7 +98,9 @@ if "$isAWS"; then
     printf "\nFinished TROPOMI download\n"
 else
     # use existing tropomi data and create a symlink to it
-    ln -s $DataPathTROPOMI $tropomiCache
+    if [[ ! -L $tropomiCache ]]; then
+	ln -s $DataPathTROPOMI $tropomiCache
+    fi
 fi
 
 ##=======================================================================

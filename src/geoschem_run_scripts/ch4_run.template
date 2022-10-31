@@ -3,7 +3,7 @@
 ##SBATCH -c 8
 ##SBATCH -N 1
 ##SBATCH -t 0-06:00
-##SBATCH --mem=6000
+##SBATCH --mem=32000
 ##SBATCH --mail-type=END
 
 # Set the proper # of threads for OpenMP
