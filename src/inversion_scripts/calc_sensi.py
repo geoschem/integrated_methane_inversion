@@ -1,6 +1,8 @@
 import numpy as np
 import xarray as xr
 import datetime
+import gc
+import netCDF4 as nc
 from joblib import Parallel, delayed
 from utils import zero_pad_num_hour
 
@@ -22,7 +24,6 @@ def calc_sensi(
     """
     Loops over output data from GEOS-Chem perturbation simulations to compute sensitivities
     for the Jacobian matrix.
-
     Arguments
         nelements      [int]   : Number of state vector elements
         perturbation   [float] : Size of perturbation (e.g., 0.5)
@@ -31,9 +32,7 @@ def calc_sensi(
         run_dirs_pth   [str]   : Path to directory containing GC Jacobian run directories
         run_name       [str]   : Simulation run name; e.g. 'CH4_Jacobian'
         sensi_save_pth [str]   : Path to save the sensitivity data
-
     Resulting 'sensi' files look like:
-
         <xarray.Dataset>
         Dimensions:  (grid: 1207, lat: 105, lev: 47, lon: 87)
         Coordinates:
@@ -43,9 +42,7 @@ def calc_sensi(
         * grid     (grid) int32 1 2 3 4 5 6 7 8 ... 1201 1202 1203 1204 1205 1206 1207
         Data variables:
             sensi    (grid, lev, lat, lon) float32 0.0 0.0 0.0 0.0 ... 0.0 0.0 0.0 0.0
-
     Pseudocode summary:
-
         for each day:
             load the base run SpeciesConc file
             nlon = count the number of longitudes
@@ -62,7 +59,9 @@ def calc_sensi(
                     sensi[element,:,:,:] = sens
                 save sensi as netcdf with appropriate coordinate variables
     """
-
+        
+    # ref = nc.Dataset(f"{sensi_save_pth}/ref.nc")
+    
     # Make date range
     days = []
     dt = datetime.datetime.strptime(startday, "%Y%m%d")
@@ -80,34 +79,41 @@ def calc_sensi(
     # For each day
     for d in days:
         # Load the base run SpeciesConc file
-        base_data = xr.load_dataset(
-            f"{run_dirs_pth}/{run_name}_0000/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
+        base_data = xr.open_dataset(
+            f"{run_dirs_pth}/{run_name}_0000/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4",
+            chunks='auto'
         )
+        base_var = base_data["SpeciesConc_CH4"]
         # Count nlat, nlon, nlev
         nlon = len(base_data["lon"])  # 52
         nlat = len(base_data["lat"])  # 61
         nlev = len(base_data["lev"])  # 47
+        base_data.close()
+        
+        # Save this data into numpy array so we don't need to read files in loop
+        pert_datas = []
+        for e in elements:
+            elem = zero_pad_num(e + 1)
+            pert_data = xr.open_dataset(
+                f"{run_dirs_pth}/{run_name}_{elem}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4",
+                chunks='auto'
+            )
+            pert_datas.append(pert_data)
+            pert_data.close()
+        
         # For each hour
         def process(h):
             # Get the base run data for the hour
-            base = base_data["SpeciesConc_CH4"][h, :, :, :]
+            base = base_var[h, :, :, :]
             # Initialize sensitivities array
             sensi = np.empty((nelements, nlev, nlat, nlon))
             sensi.fill(np.nan)
             # For each state vector element
             for e in elements:
-                # State vector elements are numbered 1..nelements
-                elem = zero_pad_num(e + 1)
-                # Load the SpeciesConc file for the current element and day
-                pert_data = xr.load_dataset(
-                    f"{run_dirs_pth}/{run_name}_{elem}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
-                )
-                # Get the data for the current hour
-                pert = pert_data["SpeciesConc_CH4"][h, :, :, :]
+                pert = pert_datas[e]["SpeciesConc_CH4"][h, :, :, :]                
                 # Compute and store the sensitivities
-                sensitivities = (pert.values - base.values) / perturbation
-                sensi[e, :, :, :] = sensitivities
-            # Save sensi as netcdf with appropriate coordinate variables
+                sensi[e, :, :, :] = (pert.values - base.values) / perturbation
+            # Save out sensitivities as compressed array
             sensi = xr.DataArray(
                 sensi,
                 coords=(
@@ -118,13 +124,20 @@ def calc_sensi(
                 ),
                 dims=["element", "lev", "lat", "lon"],
                 name="Sensitivities",
-            )
-            sensi = sensi.to_dataset()
-            sensi.to_netcdf(f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc")
+            )           
+            sensi2 = sensi.to_dataset()
+            # Compression is in encoding -> can increase complevel to make it more compressed
+            comp = dict(zlib=True, complevel=1)
+            encoding = {var: comp for var in sensi2.data_vars}
+            sensi2.to_netcdf(f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc", encoding=encoding)
+            sensi.close()
+            sensi2.close()
 
         results = Parallel(n_jobs=-1)(delayed(process)(hour) for hour in hours)
+        gc.collect() # Probably not necessary
+        print("date {} complete".format(d))
+    
     print(f"Saved GEOS-Chem sensitivity files to {sensi_save_pth}")
-
 
 if __name__ == "__main__":
     import sys
@@ -136,6 +149,8 @@ if __name__ == "__main__":
     run_dirs_pth = sys.argv[5]
     run_name = sys.argv[6]
     sensi_save_pth = sys.argv[7]
+    print("STARTDAY", startday)
+    print("ENDDAY", endday)
 
     calc_sensi(
         nelements,
