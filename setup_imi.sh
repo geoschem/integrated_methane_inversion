@@ -478,7 +478,7 @@ if  "$DoPreview"; then
         chmod +x $preview_file
         sbatch -W $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
-        python $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache
+        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
@@ -606,7 +606,7 @@ if  "$SetupPosteriorRun"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    RestartFileFromSpinup=../spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    RestartFileFromSpinup=../../spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     else
