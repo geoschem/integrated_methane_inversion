@@ -197,8 +197,8 @@ LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
 LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
 LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
 rm ~/foo.nc
-Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
-Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
+Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
+Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
 ##=======================================================================
 ## Set up template run directory
@@ -215,6 +215,7 @@ if "$SetupTemplateRundir"; then
 
     # The createRunDir.sh script assumes the file ~/.geoschem/config exists
     # and contains the path to GEOS-Chem input data
+	export GC_USER_REGISTERED=true
     if [[ ! -f ${HOME}/.geoschem/config ]]; then
 	mkdir -p ${HOME}/.geoschem
 	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
@@ -247,10 +248,10 @@ if "$SetupTemplateRundir"; then
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
-           -e "s:GEOSFP:${Met}:g" \
+           -e "s:geosfp:${Met}:g" \
            -e "s:0.25x0.3125:${gridResLong}:g" \
-           -e "s:-130.0  -60.0:${Lons}:g" \
-           -e "s:9.75  60.0:${Lats}:g" geoschem_config.yml
+           -e "s:-130.0,  -60.0:${Lons}:g" \
+           -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
 
     # For CH4 inversions always turn analytical inversion on
     sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
