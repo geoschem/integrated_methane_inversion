@@ -32,6 +32,9 @@ else
     ConfigFile="config.yml"
 fi
 
+# Check all necessary config variables are present
+python src/utilities/sanitize_input_yaml.py $ConfigFile || imi_failed
+
 # Get configuration
 source src/utilities/parse_yaml.sh
 eval $(parse_yaml ${ConfigFile})
