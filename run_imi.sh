@@ -32,6 +32,14 @@ else
     ConfigFile="config.yml"
 fi
 
+
+if ! "$isAWS"; then
+    # Activate Conda environment
+    printf "\nActivating conda environment: ${CondaEnv}\n"
+    eval "$(conda shell.bash hook)"
+    conda activate $CondaEnv
+fi
+
 # Check all necessary config variables are present
 python src/utilities/sanitize_input_yaml.py $ConfigFile || imi_failed
 
