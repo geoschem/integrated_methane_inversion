@@ -92,7 +92,9 @@ if __name__ == "__main__":
     missing_input_vars = [x for x in required_vars if x not in inputted_config]
     for var in missing_input_vars:
         message = (
-            + "Error: Missing input variable: {var}. Please add to config.yml file."
+            "Error: Missing input variable: "
+            + var
+            + ". Please add to config.yml file."
             + "\n More information on config variables are available at:"
             + "https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html"
         )
