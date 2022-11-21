@@ -476,7 +476,7 @@ if  "$DoPreview"; then
         fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
-        sbatch -W $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
