@@ -36,6 +36,16 @@ fi
 source src/utilities/parse_yaml.sh
 eval $(parse_yaml ${ConfigFile})
 
+if ! "$isAWS"; then
+    # Activate Conda environment
+    printf "\nActivating conda environment: ${CondaEnv}\n"
+    eval "$(conda shell.bash hook)"
+    conda activate $CondaEnv
+fi
+
+# Check all necessary config variables are present
+python src/utilities/sanitize_input_yaml.py $ConfigFile || imi_failed
+
 # Set path to IMI runs
 RunDirs="${OutputPath}/${RunName}"
 
@@ -98,7 +108,9 @@ if "$isAWS"; then
     printf "\nFinished TROPOMI download\n"
 else
     # use existing tropomi data and create a symlink to it
-    ln -s $DataPathTROPOMI $tropomiCache
+    if [[ ! -L $tropomiCache ]]; then
+	ln -s $DataPathTROPOMI $tropomiCache
+    fi
 fi
 
 ##=======================================================================

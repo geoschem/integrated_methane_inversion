@@ -3,9 +3,19 @@ Using custom regions with the IMI
 
 .. include:: <isonum.txt>
 
-The IMI version currently supports regions within North America (10\ |deg|\ N-70\ |deg|\ N, 40\ |deg|\ W-140\ |deg|\ W), Europe
-(33\ |deg|\ N-61\ |deg|\ N, 30\ |deg|\ W-70\ |deg|\ E), and Asia (11\ |deg|\ S-55\ |deg|\ N, 60\ |deg|\ E-150\ |deg|\ E).
-These are the default nested-grid windows used in GEOS-Chem for which pre-cut meteorological files are available. You may apply the
+The IMI supports regions within the following
+domains:
+
+* Africa: 37\ |deg|\ S-40\ |deg|\ N, 20\ |deg|\ W-53\ |deg|\ E
+* Asia: 11\ |deg|\ S-55\ |deg|\ N, 60\ |deg|\ E-150\ |deg|\ E
+* Europe: (33\ |deg|\ N-61\ |deg|\ N, 30\ |deg|\ W-70\ |deg|\ E
+* Middle East: 12\ |deg|\ N-44\ |deg|\ N, 20\ |deg|\ W-70\ |deg|\ E
+* North America: 10\ |deg|\ N-70\ |deg|\ N, 140\ |deg|\ W-40\ |deg|\ W
+* Oceania 50\ |deg|\ S-5\ |deg|\ N, 110\ |deg|\ E-180\ |deg|\ E
+* Russia 41\ |deg|\ N-83\ |deg|\ N, 19\ |deg|\ E-180\ |deg|\ E
+* South America 59\ |deg|\ S-16\ |deg|\ N, 88\ |deg|\ W-31\ |deg|\ W
+  
+These are the nested-grid windows used in GEOS-Chem for which pre-cut meteorological files are available. You may apply the
 IMI to other regions, but this requires either using global meteorological fields which can be 
 computationally expensive (not recommended) or cropping global meteorological fields via
 a pre-processing step.

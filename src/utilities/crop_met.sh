@@ -7,10 +7,10 @@
 
 ##############################################################################
 # Custom to Harvard FAS RC cluster:
-#SBATCH -n 4
+#SBATCH -n 1
 #SBATCH -N 1
-#SBATCH -t 0-12:00
-#SBATCH -p huce_intel
+#SBATCH -t 0-6:00
+#SBATCH -p huce_cascade
 #SBATCH --mem=2000
 #SBATCH --mail-type=END
 
@@ -27,10 +27,10 @@ module load cdo/1.9.4-fasrc02
 NestedRegion="SA"  # South America
 
 # Bounds of the cropped domain
-LonMin=-85.0
-LonMax=-33.0
-LatMin=-56.0
-LatMax=13.0
+LonMin=-88.0
+LonMax=-31.0
+LatMin=-59.0
+LatMax=16.0
 
 # Directory containing global met fields
 DownloadGlobalMet=true
@@ -80,11 +80,13 @@ for (( Month=$StartMonth; Month<=$EndMonth; Month++)); do
         mm="${Month}"
     fi
     
+    printf "Processing month $mm\n"
+
     # Download global meteorology fields for this month
     if "$DownloadGlobalMet"; then
-	printf "Downloading global meteorology files for ${Year}/${mm}"
+	printf "Downloading global meteorology files for ${Year}/${mm}\n"
 	wget -r -nH --cut-dirs=3 -e robots=off -nv -o "download_met.log" -P "${GlobalDir}" -A "*.nc" "http://geoschemdata.wustl.edu/ExtData/GEOS_0.25x0.3125/GEOS_FP/${Year}/${mm}/"
-	echo "Done downloading global meteorology files"
+	printf "Done downloading global meteorology files\n"
     fi
     # Path to global files
     InPath="${GlobalDir}/${Year}/${mm}"
