@@ -2,12 +2,12 @@
 ## Overview:
 
 This directory contains the source code for setting up and running the
-Integrated Methane Inversion with GEOS-Chem.
+[Integrated Methane Inversion](https://imi.seas.harvard.edu/) with GEOS-Chem.
 
 
 ## Documentation:
 
-Please see the [imi-readthedocs site](https://imi.readthedocs.io)
+Please see the [IMI readthedocs site](https://imi.readthedocs.io)
 
 
 ## Reference:
