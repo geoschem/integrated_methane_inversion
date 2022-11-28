@@ -268,7 +268,7 @@ if "$SetupTemplateRundir"; then
 
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
-    sed -i -e "s|Use emis scale factor   : F|Use emis scale factor   : T|g" input.geos
+    sed -i -e "s|use_emission_scale_factor: false|use_emission_scale_factor: true|g" geoschem_config.yml
     sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
     fi
