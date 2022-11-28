@@ -22,7 +22,7 @@ from utils import (
     filter_tropomi,
 )
 from joblib import Parallel, delayed
-from jacobian import read_tropomi
+from operators.TROPOMI_operator import read_tropomi
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -75,7 +75,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     return tropomi_data
 
 
-def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
+def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -89,12 +89,12 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     # redirect output to log file
-    if config["isAWS"]:
-        output_file = open(
-            "/home/ubuntu/integrated_methane_inversion/imi_output.log", "a"
-        )
-        sys.stdout = output_file
-        sys.stderr = output_file
+    output_file = open(
+        f"{inversion_path}/imi_output.log", "a"
+    )
+    sys.stdout = output_file
+    sys.stderr = output_file
+    
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
@@ -388,9 +388,10 @@ def imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache):
 if __name__ == "__main__":
     import sys
 
-    config_path = sys.argv[1]
-    state_vector_path = sys.argv[2]
-    preview_dir = sys.argv[3]
-    tropomi_cache = sys.argv[4]
+    inversion_path = sys.argv[1]
+    config_path = sys.argv[2]
+    state_vector_path = sys.argv[3]
+    preview_dir = sys.argv[4]
+    tropomi_cache = sys.argv[5]
 
-    imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache)
+    imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)

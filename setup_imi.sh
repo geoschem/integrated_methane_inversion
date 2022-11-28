@@ -197,8 +197,8 @@ LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
 LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
 LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
 rm ~/foo.nc
-Lons="${LonMinInvDomain} ${LonMaxInvDomain}"
-Lats="${LatMinInvDomain} ${LatMaxInvDomain}"
+Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
+Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
 ##=======================================================================
 ## Set up template run directory
@@ -215,6 +215,7 @@ if "$SetupTemplateRundir"; then
 
     # The createRunDir.sh script assumes the file ~/.geoschem/config exists
     # and contains the path to GEOS-Chem input data
+	export GC_USER_REGISTERED=true
     if [[ ! -f ${HOME}/.geoschem/config ]]; then
 	mkdir -p ${HOME}/.geoschem
 	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
@@ -244,23 +245,16 @@ if "$SetupTemplateRundir"; then
 	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
     fi
 
-    # Modify input.geos based on settings in config.yml
+    # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
-           -e "s:GEOSFP:${Met}:g" \
+           -e "s:geosfp:${Met}:g" \
            -e "s:0.25x0.3125:${gridResLong}:g" \
-           -e "s:-130.0  -60.0:${Lons}:g" \
-           -e "s:9.75  60.0:${Lats}:g" input.geos
-    if [ "$NestedGrid" == "false" ]; then
-	sed -i -e "Nested grid simulation? : T|Nested grid simulation? : F|g" \
-               -e "s|timestep \[sec\]: 600|timestep \[sec\]: 1200|g" \
-               -e "s|timestep \[sec\]: 300|timestep \[sec\]: 600|g" input.geos
-    fi
+           -e "s:-130.0,  -60.0:${Lons}:g" \
+           -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
 
     # For CH4 inversions always turn analytical inversion on
-    OLD="Do analytical inversion?: F"
-    NEW="Do analytical inversion?: T"
-    sed -i "s/$OLD/$NEW/g" input.geos
+    sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
 
     # Also turn on analytical inversion option in HEMCO_Config.rc
     OLD="--> AnalyticalInv          :       false"
@@ -274,41 +268,40 @@ if "$SetupTemplateRundir"; then
 
     # Turn other options on/off according to settings above
     if "$GOSAT"; then
-	OLD="Use GOSAT obs operator? : F"
-	NEW="Use GOSAT obs operator? : T"
-	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="GOSAT: false"
+	NEW="GOSAT: true"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$TCCON"; then
-	OLD="Use TCCON obs operator? : F"
-	NEW="Use TCCON obs operator? : T"
-	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="TCCON: false"
+	NEW="TCCON: true"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$AIRS"; then
-	OLD="Use AIRS obs operator?  : F"
-	NEW="Use AIRS obs operator?  : T"
-	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="AIR: false"
+	NEW="AIR: true"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$UseEmisSF"; then
-	OLD="Use emis scale factor   : F"
-	NEW="Use emis scale factor   : T"
-	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="use_emission_scale_factor: false"
+	NEW="use_emission_scale_factor: true"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$UseOHSF"; then
-	OLD="Use OH scale factors    : F"
-	NEW="Use OH scale factors    : T"
-	sed -i "s/$OLD/$NEW/g" input.geos
+	OLD="use_OH_scale_factors: false"
+	NEW="use_OH_scale_factors: true"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$PLANEFLIGHT"; then
 	mkdir -p Plane_Logs
-	OLD="Turn on plane flt diag? : F"
-	NEW="Turn on plane flt diag? : T"
-	sed -i "s/$OLD/$NEW/g" input.geos
-	OLD="Flight track info file  : Planeflight.dat.YYYYMMDD"
-	NEW="Flight track info file  : Planeflights\/Planeflight.dat.YYYYMMDD"
-	sed -i "s/$OLD/$NEW/g" input.geos
-	OLD="Output file name        : plane.log.YYYYMMDD"
-	NEW="Output file name        : Plane_Logs\/plane.log.YYYYMMDD"
-	sed -i "s/$OLD/$NEW/g" input.geos
+	sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
+	
+	OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
+	NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+	OLD="output_file: plane.log.YYYYMMDD"
+	NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
 
     # Modify HEMCO_Config.rc based on settings in config.yml
@@ -352,10 +345,7 @@ if "$SetupTemplateRundir"; then
     fi
 
     # Remove sample restart file
-    rm -f GEOSChem.Restart.20190101_0000z.nc4
-
-    # Create directory for restart files
-    mkdir -p Restarts
+    rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
@@ -396,7 +386,7 @@ if  "$DoPreview"; then
     fi
 
     # Make sure template run directory exists
-    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
         exit 9999
     fi
@@ -422,7 +412,7 @@ if  "$DoPreview"; then
 
     # Link to restart file
     RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
-    ln -s $RestartFilePreview GEOSChem.Restart.${StartDate}_0000z.nc4
+    ln -s $RestartFilePreview Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
     fi
@@ -430,10 +420,9 @@ if  "$DoPreview"; then
     # End date for the preview simulation
     PreviewEnd=$(date --date="${StartDate} +1 day" +%Y%m%d)
 
-    # Update settings in input.geos
-    sed -i -e "s|${EndDate}|${PreviewEnd}|g" \
-           -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           input.geos
+    # Update settings in geoschem_config.yml
+    sed -i -e "s|${EndDate}|${PreviewEnd}|g" geoschem_config.yml
+    sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
 
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
@@ -487,9 +476,9 @@ if  "$DoPreview"; then
         fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
-        sbatch -W $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
-        python $preview_file $config_path $state_vector_path $preview_dir $tropomi_cache
+        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
@@ -514,7 +503,7 @@ preview_end=$(date +%s)
 if  "$SetupSpinupRun"; then
 
     # Make sure template run directory exists
-    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
         exit 9999
     fi
@@ -540,17 +529,16 @@ if  "$SetupSpinupRun"; then
 
     # Link to restart file
     RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
-    ln -s $RestartFile GEOSChem.Restart.${SpinupStart}_0000z.nc4
+    ln -s $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
 	printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
     fi
     
-    # Update settings in input.geos
+    # Update settings in geoschem_config.yml
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
-           -e "s|${EndDate}|${SpinupEnd}|g" \
-           -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           input.geos
+           -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
+    sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
@@ -593,7 +581,7 @@ fi # SetupSpinupRun
 if  "$SetupPosteriorRun"; then
 
     # Make sure template run directory exists
-    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
         exit 9999
     fi
@@ -618,23 +606,22 @@ if  "$SetupPosteriorRun"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    RestartFileFromSpinup=../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    RestartFileFromSpinup=../../spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     else
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
         fi
     fi
     
-    # Update settings in input.geos
-    sed -i -e "s|Do analytical inversion?: T|Do analytical inversion?: F|g" \
-           -e "s|Use emis scale factor   : F|Use emis scale factor   : T|g" \
-           input.geos
-
+    # Update settings in geoschem_config.yml
+    sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
+    sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
+    
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
@@ -680,7 +667,7 @@ fi # SetupPosteriorRun
 if "$SetupJacobianRuns"; then
 
     # Make sure template run directory exists
-    if [[ ! -f ${RunTemplate}/input.geos ]]; then
+    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
         exit 9999
     fi
@@ -741,20 +728,20 @@ if "$SetupJacobianRuns"; then
 	ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    RestartFileFromSpinup=../../spinup_run/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    RestartFileFromSpinup=../../../spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
 	    RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-	    ln -s $RestartFile GEOSChem.Restart.${StartDate}_0000z.nc4
+	    ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 	    if "$UseBCsForRestart"; then
 		sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
             fi
 	fi
    
-	# Update settings in input.geos
-	sed -i -e "s|Emiss perturbation  : 1.0|Emiss perturbation  : ${PerturbValue}|g" \
-	       -e "s|State vector elem. #: 0|State vector elem. #: ${xUSE}|g" input.geos
+	# Update settings in geoschem_config.yml
+	sed -i -e "s|emission_perturbation: 1.0|emission_perturbation: ${PerturbValue}|g" \
+	       -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -815,10 +802,13 @@ if "$SetupInversion"; then
     mkdir -p inversion/data_converted
     mkdir -p inversion/data_geoschem
     mkdir -p inversion/data_sensitivities
+    mkdir -p inversion/data_visualization
+    mkdir -p inversion/operators
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
