@@ -27,7 +27,7 @@ def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
     while dt < dt_max:
         dt_start_str = str(dt)[0:10].replace("-", "")
         dt_start_int = int(dt_start_str)
-        delta = datetime.timedelta(days=stepsize_days)
+        delta = datetime.timedelta(days=int(stepsize_days))
         dt += delta
         dt_end_str = str(dt)[0:10].replace("-", "")
         dt_end_int = int(dt_end_str)
