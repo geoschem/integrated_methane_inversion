@@ -7,9 +7,15 @@ isAWS: true
 UseSlurm: true
 SafeMode: true
 
+## Kalman filter options
+KalmanMode: true
+UpdateFreqDays: 7
+NudgeFactor: 0.1
+FirstPeriod: 1
+
 ## Period of interest
 StartDate: 20180501
-EndDate: 20180508
+EndDate: 20180601
 SpinupMonths: 1
 
 ## Region of interest

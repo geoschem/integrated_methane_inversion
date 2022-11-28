@@ -272,6 +272,13 @@ if "$SetupTemplateRundir"; then
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
+    # Modify HEMCO_Config.rc if running Kalman filter
+    if "$KalmanMode"; then
+    sed -i -e "s|Use emis scale factor   : F|Use emis scale factor   : T|g" input.geos
+    sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
+           -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+    fi
+
     # Turn other options on/off according to settings above
     if "$GOSAT"; then
 	OLD="Use GOSAT obs operator? : F"
