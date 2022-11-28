@@ -434,6 +434,7 @@ if  "$DoPreview"; then
 
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
+    sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
@@ -548,6 +549,9 @@ if  "$SetupSpinupRun"; then
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
     sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
+
+    # Update settings in HEMCO_Config.rc
+    sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
