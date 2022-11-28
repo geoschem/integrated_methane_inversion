@@ -50,7 +50,7 @@ Region of interest
      - Boolean for using the GEOS-Chem nested grid simulation. Must be
        ``true`` for IMI regional inversions.
    * - ``NestedRegion``
-     - Nesting domain for the inversion. Select ``AS`` for Asia, ``EU`` for Europe, or ``NA`` for North America. For global met fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available nested-grid domains.
+     - Nesting domain for the inversion. Select ``AF`` for Africa, ``AS`` for Asia, ``EU`` for Europe, ``ME`` for the Middle East, ``NA`` for North America, ``OC`` for Oceania, ``RU`` for Russia, or ``SA`` for South America. For global met fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available nested-grid domains.
 
 State vector 
 ~~~~~~~~~~~~

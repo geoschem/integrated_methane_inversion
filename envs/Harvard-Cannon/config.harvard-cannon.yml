@@ -17,10 +17,14 @@ NestedGrid: true
 
 ## Select nested grid region for using pre-cropped met fields
 ##   Current options are listed below with ([lat],[lon]) bounds:
+##    "AF" : Africa ([-37,40], [-20,53])
 ##    "AS" : Asia ([-11,55],[60,150]) 
 ##    "EU" : Europe ([33,61],[-30,70])
+##    "ME" : Middle East ([12,44], [-20,70])
 ##    "NA" : North America ([10,70],[-140,-40])
-##    "SA" : South America ([-56,13], [-85,-33])
+##    "OC" : Oceania ([-50,5], [110,180])
+##    "RU" : Russia ([41,83], [19,180])
+##    "SA" : South America ([-59,16], [-88,-31])
 ##    ""   : Use for global met fields (global simulation/custom nested grids)
 NestedRegion: "NA"
 
@@ -127,12 +131,12 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
-BCpath: "/n/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2"
+BCpath: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##  NOTE: Must have AWS CLI enabled

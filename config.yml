@@ -32,10 +32,14 @@ NestedGrid: true
 
 ## Select nested grid region (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
+##     "AF" : Africa ([-37,40], [-20,53])
 ##     "AS" : Asia ([-11,55],[60,150]) 
 ##     "EU" : Europe ([33,61],[-30,70])
+##     "ME" : Middle East ([12,44], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
-##     "SA" : South America ([-56,13], [-85,-33])
+##     "OC" : Oceania ([-50,5], [110,180])
+##     "RU" : Russia ([41,83], [19,180])
+##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global met fields (global simulation/custom nested grids)
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
 NestedRegion: "NA"
@@ -53,7 +57,7 @@ ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/Permi
 ## Inversion
 PriorError: 0.5
 ObsError: 15
-Gamma: 0.25
+Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
