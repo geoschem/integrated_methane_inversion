@@ -430,11 +430,15 @@ if  "$DoPreview"; then
     # Update settings in geoschem_config.yml
     sed -i -e "s|${EndDate}|${PreviewEnd}|g" geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-    sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
 
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
-    sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+
+    # Update for Kalman filter option
+    if "$KalmanMode"; then
+        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
+        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+    fi
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
@@ -548,10 +552,12 @@ if  "$SetupSpinupRun"; then
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-    sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
 
-    # Update settings in HEMCO_Config.rc
-    sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+    # Update for Kalman filter option
+    if "$KalmanMode"; then
+        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
+        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+    fi
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
