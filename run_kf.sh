@@ -177,12 +177,12 @@ StateVectorFile="${RunDirs}/StateVector.nc"
 InversionDir="${RunDirs}/inversion_template"
 
 # Define Kalman filter update periods
-python src/kf_scripts/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
+python ${InversionPath}/src/kf_scripts/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
 PeriodsFile="${RunDirs}/periods.csv"
 nPeriods=$(($(wc -l < ${PeriodsFile}) - 1))
 
 # Create unit scale factor file
-python src/kf_scripts/make_unit_sf.py $StateVectorFile $RunDirs; wait
+python ${InversionPath}/src/kf_scripts/make_unit_sf.py $StateVectorFile $RunDirs; wait
 
 # Create directory to archive prior scale factors for each inversion period
 mkdir -p ${RunDirs}/archive_sf
@@ -192,7 +192,7 @@ function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | c
 nElements=$(ncmax StateVector ${StateVectorFile})
 
 # Kalman filter loop
-for ((i=$StartPeriod;i<=$nPeriods;i++)); do
+for ((i=StartPeriod;i<=nPeriods;i++)); do
     
     ##=======================================================================
     ##  Setup (dates, emission scale factors)
@@ -213,12 +213,12 @@ for ((i=$StartPeriod;i<=$nPeriods;i++)); do
     echo "Start, End: $StartDate_i, $EndDate_i"
 
     # Set dates in input.geos for prior, perturbation, and posterior runs
-    python src/kf_scripts/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir; wait
-    python src/kf_scripts/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir; wait
+    python ${InversionPath}/src/kf_scripts/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir; wait
+    python ${InversionPath}/src/kf_scripts/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir; wait
     echo "Edited Start/End dates in input.geos for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
 
     # Prepare initial (prior) emission scale factors for the current period
-    python src/kf_scripts/prepare_sf.py $i ${RunDirs} $NudgeFactor; wait
+    python ${InversionPath}/src/kf_scripts/prepare_sf.py $i ${RunDirs} $NudgeFactor; wait
 
     ##=======================================================================
     ##  Submit Jacobian simulations
@@ -277,7 +277,7 @@ for ((i=$StartPeriod;i<=$nPeriods;i++)); do
     inversion_end=$(date +%s)
 
     # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
-    python multiply_posteriors.py $i ${RunDirs}; wait
+    python ${InversionPath}/src/kf_scripts/multiply_posteriors.py $i ${RunDirs}; wait
     echo "Multiplied posterior scale factors over record"
 
     ##=======================================================================
@@ -370,7 +370,7 @@ for ((i=$StartPeriod;i<=$nPeriods;i++)); do
     cd ${InversionPath}
 
     # Delete unneeded daily restart files from Jacobian and posterior directories
-    python src/kf_scripts/cull_restarts.py $JacobianRunsDir $postdir $STARTDAY_i $ENDDAY_i
+    python ${InversionPath}/src/kf_scripts/cull_restarts.py $JacobianRunsDir $postdir $STARTDAY_i $ENDDAY_i
     echo "Culled extra daily restart files"
 
     # Move to next time step
