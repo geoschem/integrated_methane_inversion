@@ -170,11 +170,16 @@ eval "$(conda shell.bash hook)"
 source $CondaFile
 conda activate $CondaEnv
 
-# Key directories
+# Key files and directories
 JacobianRunsDir="${RunDirs}/jacobian_runs"
 PosteriorRunDir="${RunDirs}/posterior_run"
 StateVectorFile="${RunDirs}/StateVector.nc"
 InversionDir="${RunDirs}/inversion_template"
+
+# Create a parent directory for the Kalman filter inversions
+# Include a link to the state vector file for use with run_inversion.sh
+mkdir -p ${RunDirs}/kf_inversions
+ln -s $StateVectorFile $RunDirs/kf_inversions/StateVector.nc
 
 # Define Kalman filter update periods
 python ${InversionPath}/src/kf_scripts/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
@@ -202,8 +207,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
     echo -e "\nPeriod ${i}"
 
     # Create inversion directory for the period
-    mkdir -p ${RunDirs}/kf_inversions
-    cp -r ${RunDirs}/inversion_template ${RunDirs}/kf_inversions/period${i}
+    cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${i}
 
     # Get Start/End dates of current period from periods.csv
     ithLine=$(sed "$((i+2))q;d" $PeriodsFile)
@@ -309,7 +313,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
             PrevDir="${RunDirs}/posterior_run"
         fi
         printf "\n=== Calling postproc_diags.py for posterior ===\n"
-        python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+        python ${InversionPath}/src/kf_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
         printf "\n=== DONE -- postproc_diags.py ===\n"
 
         # Build directory for hourly posterior GEOS-Chem output data
@@ -318,7 +322,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         GCsourcepth="${PosteriorRunDir}/OutputDir"
         GCDir="./data_geoschem_posterior"
         printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-        python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+        python ${InversionPath}/src/kf_scripts/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
         printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
         if ! "$isAWS"; then
@@ -339,7 +343,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         isPost="True"
 
         printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-        python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+        python ${InversionPath}/src/kf_scripts/jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
         printf "\n=== DONE sampling the posterior simulation ===\n\n"
 
     fi
