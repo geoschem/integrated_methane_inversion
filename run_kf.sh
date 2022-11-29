@@ -206,7 +206,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
     cp -r ${RunDirs}/inversion_template ${RunDirs}/kf_inversions/period${i}
 
     # Get Start/End dates of current period from periods.csv
-    ithLine=$(sed "$((i+1))q;d" $PeriodsFile)
+    ithLine=$(sed "$((i+2))q;d" $PeriodsFile)
     ithDates=(${ithLine//,/ })
     StartDate_i=${ithDates[0]}
     EndDate_i=${ithDates[1]}

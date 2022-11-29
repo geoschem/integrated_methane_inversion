@@ -1,10 +1,11 @@
 import os
 import sys
+import yaml
 
 
 def change_dates(new_start_date, new_end_date, directory_to_edit):
     """
-    Replace input.geos start and end dates in selected directory,
+    Replace geoschem_config.yml start and end dates in selected directory,
     including all GEOS-Chem run directories if a parent directory
 
     Arguments
@@ -13,13 +14,13 @@ def change_dates(new_start_date, new_end_date, directory_to_edit):
         directory_to_edit [str] : Directory containing GEOS-Chem run directories
     """
 
-    # Define desired input.geos date strings
-    new_start_line = "Start YYYYMMDD, hhmmss  : " + new_start_date + " 000000\n"
-    new_end_line = "End   YYYYMMDD, hhmmss  : " + new_end_date + " 000000\n"
+    # Define desired geoschem_config.yml date strings
+    new_start_line = f"  start_date: [{new_start_date}, 000000]\n"
+    new_end_line = f"  end_date: [{new_end_date}, 000000]\n"
 
     # Determine run directories to edit
     contents = os.listdir(directory_to_edit)
-    if "input.geos" in contents:
+    if "geoschem_config.yml" in contents:
         rundirs = [directory_to_edit]
     else:
         rundirs = [
@@ -30,15 +31,14 @@ def change_dates(new_start_date, new_end_date, directory_to_edit):
 
     # Process them
     for d in rundirs:
-        pth = os.path.join(d, "input.geos")
-        # Read the file and define target strings
+        pth = os.path.join(d, "geoschem_config.yml")
         with open(pth, "r") as file:
             filedata = file.read()
         with open(pth, "r") as file:
             for line in file:
-                if line.startswith("Start"):
+                if line.startswith("  start_date:"):
                     old_start_line = line
-                if line.startswith("End"):
+                if line.startswith("  end_date:"):
                     old_end_line = line
         # Replace the target string
         filedata = filedata.replace(old_start_line, new_start_line)
