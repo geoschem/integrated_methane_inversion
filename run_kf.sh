@@ -275,7 +275,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         fi
         sbatch -W run_inversion.sh; wait;
             
-        printf "\n=== DONE RUNNING INVERSION ===\n"
+        printf "=== DONE RUNNING INVERSION ===\n\n"
 
     fi
     inversion_end=$(date +%s)
@@ -301,7 +301,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         # Submit job to job scheduler
         printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
         sbatch -W ${RunName}_Posterior.run; wait;
-        printf "\n=== DONE POSTERIOR SIMULATION ===\n"
+        printf "=== DONE POSTERIOR SIMULATION ===\n"
 
         cd ${RunDirs}/kf_inversions/period${i}
 
@@ -314,7 +314,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         fi
         printf "\n=== Calling postproc_diags.py for posterior ===\n"
         python ${InversionPath}/src/kf_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
-        printf "\n=== DONE -- postproc_diags.py ===\n"
+        printf "=== DONE -- postproc_diags.py ===\n"
 
         # Build directory for hourly posterior GEOS-Chem output data
         mkdir -p data_converted_posterior
@@ -323,7 +323,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         GCDir="./data_geoschem_posterior"
         printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
         python ${InversionPath}/src/kf_scripts/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-        printf "\n=== DONE -- setup_gc_cache.py ===\n"
+        printf "=== DONE -- setup_gc_cache.py ===\n"
 
         if ! "$isAWS"; then
             # Load environment with NCO
