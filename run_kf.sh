@@ -307,13 +307,13 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
 
         # Fill missing data (first hour of simulation) in posterior output
         PosteriorRunDir="${RunDirs}/posterior_run"
-        if (( ${i} == 1 )); then
+        if (( i == 1 )); then
             PrevDir="${RunDirs}/spinup_run"
         else
             PrevDir="${RunDirs}/posterior_run"
         fi
         printf "\n=== Calling postproc_diags.py for posterior ===\n"
-        python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+        python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i; wait
         printf "=== DONE -- postproc_diags.py ===\n"
 
         # Build directory for hourly posterior GEOS-Chem output data
@@ -322,7 +322,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         GCsourcepth="${PosteriorRunDir}/OutputDir"
         GCDir="./data_geoschem_posterior"
         printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-        python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+        python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate_i $EndDate_i $GCsourcepth $GCDir; wait
         printf "=== DONE -- setup_gc_cache.py ===\n"
 
         if ! "$isAWS"; then
@@ -343,7 +343,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         isPost="True"
 
         printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-        python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+        python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
         printf "=== DONE sampling the posterior simulation ===\n\n"
 
     fi
@@ -351,12 +351,12 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
 
     # Make a copy of the posterior output/diags files for postproc_diags.py
     copydir="${PosteriorRunDir}/CH4_posterior_0000/OutputDir"
-    cp ${copydir}/GEOSChem.SpeciesConc.${ENDDAY_i}_0000z.nc4 ${copydir}/GEOSChem.SpeciesConc.Copy.${ENDDAY_i}_0000z.nc4
-    cp ${copydir}/GEOSChem.LevelEdgeDiags.${ENDDAY_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${ENDDAY_i}_0000z.nc4
+    cp ${copydir}/GEOSChem.SpeciesConc.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.SpeciesConc.Copy.${EndDate_i}_0000z.nc4
+    cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
 
     # Copy Restart file from posterior run directory to Jacobian run directories
-    for ((x=0;x<=${nElements};x++)); do
+    for ((x=0;x<=nElements;x++)); do
        # Add zeros to string name
        if [ $x -lt 10 ]; then
           xstr="000${x}"
@@ -367,14 +367,14 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
        else
           xstr="${x}"
        fi
-       cp ${PosteriorRunDir}/CH4_posterior_0000/GEOSChem.Restart.${ENDDAY_i}_0000z.nc4 ${JacobianRunsDir}/CH4_Jacobian_${xstr}/
+       cp ${PosteriorRunDir}/CH4_posterior_0000/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/CH4_Jacobian_${xstr}/
     done
     echo "Copied posterior restart to $((x-1)) Jacobian run directories for next iteration"
    
     cd ${InversionPath}
 
     # Delete unneeded daily restart files from Jacobian and posterior directories
-    python ${InversionPath}/src/kf_scripts/cull_restarts.py $JacobianRunsDir $postdir $STARTDAY_i $ENDDAY_i
+    python ${InversionPath}/src/kf_scripts/cull_restarts.py $JacobianRunsDir $postdir $StartDate_i $EndDate_i
 
     # Move to next time step
     echo -e "Moving to next iteration\n"
