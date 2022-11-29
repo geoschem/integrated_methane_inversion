@@ -197,7 +197,8 @@ function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | c
 nElements=$(ncmax StateVector ${StateVectorFile})
 
 # Kalman filter loop
-for ((i=StartPeriod;i<=nPeriods;i++)); do
+# NOTE: FirstPeriod is defined in config.yml
+for ((i=FirstPeriod;i<=nPeriods;i++)); do
     
     ##=======================================================================
     ##  Setup (dates, emission scale factors)
@@ -210,7 +211,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
     cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${i}
 
     # Get Start/End dates of current period from periods.csv
-    ithLine=$(sed "$((i+2))q;d" $PeriodsFile)
+    ithLine=$(sed "$((i+1))q;d" $PeriodsFile)
     ithDates=(${ithLine//,/ })
     StartDate_i=${ithDates[0]}
     EndDate_i=${ithDates[1]}
@@ -270,8 +271,8 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         fi
 
         # Execute inversion driver script
-        if (( ${i} > 1 )); then
-            sed -i "s,FirstSimSwitch=true,FirstSimSwitch=false,g" kf_inversions/period${i}/run_inversion.sh
+        if (( i > 1 )); then
+            sed -i "s,FirstSimSwitch=true,FirstSimSwitch=false,g" run_inversion.sh
         fi
         sbatch -W run_inversion.sh; wait;
             
@@ -355,7 +356,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
     cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
 
-    # Copy Restart file from posterior run directory to Jacobian run directories
+    # Make link to restart file from posterior run directory in each Jacobian run directory
     for ((x=0;x<=nElements;x++)); do
        # Add zeros to string name
        if [ $x -lt 10 ]; then
@@ -367,14 +368,14 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
        else
           xstr="${x}"
        fi
-       cp ${PosteriorRunDir}/CH4_posterior_0000/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/CH4_Jacobian_${xstr}/
+       ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/Restarts/${RunName}_${xstr}/.
     done
     echo "Copied posterior restart to $((x-1)) Jacobian run directories for next iteration"
    
     cd ${InversionPath}
 
     # Delete unneeded daily restart files from Jacobian and posterior directories
-    python ${InversionPath}/src/kf_scripts/cull_restarts.py $JacobianRunsDir $postdir $StartDate_i $EndDate_i
+    # python ${InversionPath}/src/kf_scripts/cull_restarts.py $JacobianRunsDir $PosteriorRunDir $StartDate_i $EndDate_i
 
     # Move to next time step
     echo -e "Moving to next iteration\n"
