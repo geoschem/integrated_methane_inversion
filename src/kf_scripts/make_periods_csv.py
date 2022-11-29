@@ -31,7 +31,7 @@ def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
         dt += delta
         dt_end_str = str(dt)[0:10].replace("-", "")
         dt_end_int = int(dt_end_str)
-        if dt < dt_max:
+        if dt <= dt_max:
             starts.append(dt_start_int)
             ends.append(dt_end_int)
 
