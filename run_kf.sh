@@ -375,7 +375,6 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
 
     # Delete unneeded daily restart files from Jacobian and posterior directories
     python ${InversionPath}/src/kf_scripts/cull_restarts.py $JacobianRunsDir $postdir $STARTDAY_i $ENDDAY_i
-    echo "Culled extra daily restart files"
 
     # Move to next time step
     echo -e "Moving to next iteration\n"
