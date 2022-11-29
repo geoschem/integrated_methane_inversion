@@ -313,7 +313,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
             PrevDir="${RunDirs}/posterior_run"
         fi
         printf "\n=== Calling postproc_diags.py for posterior ===\n"
-        python ${InversionPath}/src/kf_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+        python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
         printf "=== DONE -- postproc_diags.py ===\n"
 
         # Build directory for hourly posterior GEOS-Chem output data
@@ -322,7 +322,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         GCsourcepth="${PosteriorRunDir}/OutputDir"
         GCDir="./data_geoschem_posterior"
         printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-        python ${InversionPath}/src/kf_scripts/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+        python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
         printf "=== DONE -- setup_gc_cache.py ===\n"
 
         if ! "$isAWS"; then
@@ -343,7 +343,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         isPost="True"
 
         printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-        python ${InversionPath}/src/kf_scripts/jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+        python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
         printf "\n=== DONE sampling the posterior simulation ===\n\n"
 
     fi
