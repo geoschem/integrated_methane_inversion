@@ -23,7 +23,7 @@ setup_start=$(date +%s)
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\n=== PARSING CONFIG FILE (run_imi.sh) ===\n"
+printf "\nParsing config file (run_imi.sh)\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then
@@ -93,9 +93,9 @@ if "$isAWS"; then
         exit 1
     }
     mkdir -p -v $tropomiCache
-    printf "Downloading TROPOMI data from S3\n"
+    printf "\nDownloading TROPOMI data from S3\n"
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    printf "\nFinished TROPOMI download\n"
+    printf "Finished TROPOMI download\n"
 else
     # use existing tropomi data and create a symlink to it
     ln -s $DataPathTROPOMI $tropomiCache
@@ -179,7 +179,7 @@ InversionDir="${RunDirs}/inversion_template"
 # Create a parent directory for the Kalman filter inversions
 # Include a link to the state vector file for use with run_inversion.sh
 mkdir -p ${RunDirs}/kf_inversions
-ln -s $StateVectorFile $RunDirs/kf_inversions/StateVector.nc
+ln -sf $StateVectorFile $RunDirs/kf_inversions/StateVector.nc
 
 # Define Kalman filter update periods
 python ${InversionPath}/src/kf_scripts/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
@@ -246,7 +246,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
         # check if any jacobians exited with non-zero exit code
         [ ! -f ".error_status_file.txt" ] || imi_failed
 
-        printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
+        printf "=== DONE JACOBIAN SIMULATIONS ===\n"
 
     fi
     jacobian_end=$(date +%s)
@@ -344,7 +344,7 @@ for ((i=StartPeriod;i<=nPeriods;i++)); do
 
         printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
         python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
-        printf "\n=== DONE sampling the posterior simulation ===\n\n"
+        printf "=== DONE sampling the posterior simulation ===\n\n"
 
     fi
     posterior_end=$(date +%s)
