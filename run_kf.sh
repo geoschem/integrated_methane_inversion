@@ -137,8 +137,10 @@ if "$RunSetup"; then
     # Run the setup script
     ./setup_imi.sh ${ConfigFile}; wait;
 
-    # Rename inversion directory as template directory
-    mv ${RunDirs}/inversion ${RunDirs}/inversion_template
+    if "$SetupInversion"; then
+        # Rename inversion directory as template directory
+        mv ${RunDirs}/inversion ${RunDirs}/inversion_template
+    fi
 
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 
@@ -376,17 +378,17 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
 
         # Make link to restart file from posterior run directory in each Jacobian run directory
         for ((x=0;x<=nElements;x++)); do
-        # Add zeros to string name
-        if [ $x -lt 10 ]; then
-            xstr="000${x}"
-        elif [ $x -lt 100 ]; then
-            xstr="00${x}"
-        elif [ $x -lt 1000 ]; then
-            xstr="0${x}"
-        else
-            xstr="${x}"
-        fi
-        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${xstr}/Restarts/.
+            # Add zeros to string name
+            if [ $x -lt 10 ]; then
+                xstr="000${x}"
+            elif [ $x -lt 100 ]; then
+                xstr="00${x}"
+            elif [ $x -lt 1000 ]; then
+                xstr="0${x}"
+            else
+                xstr="${x}"
+            fi
+            ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${xstr}/Restarts/.
         done
         echo "Copied posterior restart to $((x-1)) Jacobian run directories for next iteration"
     
@@ -398,8 +400,8 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         # Move to next time step
         echo -e "Moving to next iteration\n"
 
-fi
+    done
 
-done
+fi
 
 exit 0
