@@ -320,6 +320,7 @@ for ((i=FirstPeriod;i<=nPeriods;i++)); do
         # Build directory for hourly posterior GEOS-Chem output data
         mkdir -p data_converted_posterior
         mkdir -p data_geoschem_posterior
+        mkdir -p data_visualization_posterior
         GCsourcepth="${PosteriorRunDir}/OutputDir"
         GCDir="./data_geoschem_posterior"
         printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
@@ -351,7 +352,7 @@ for ((i=FirstPeriod;i<=nPeriods;i++)); do
     posterior_end=$(date +%s)
 
     # Make a copy of the posterior output/diags files for postproc_diags.py
-    copydir="${PosteriorRunDir}/CH4_posterior_0000/OutputDir"
+    copydir="${PosteriorRunDir}/OutputDir"
     cp ${copydir}/GEOSChem.SpeciesConc.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.SpeciesConc.Copy.${EndDate_i}_0000z.nc4
     cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
@@ -368,7 +369,7 @@ for ((i=FirstPeriod;i<=nPeriods;i++)); do
        else
           xstr="${x}"
        fi
-       ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/Restarts/${RunName}_${xstr}/.
+       ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${xstr}/Restarts/.
     done
     echo "Copied posterior restart to $((x-1)) Jacobian run directories for next iteration"
    
