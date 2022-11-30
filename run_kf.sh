@@ -270,10 +270,13 @@ for ((i=FirstPeriod;i<=nPeriods;i++)); do
             conda activate $CondaEnv
         fi
 
-        # Execute inversion driver script
+        # Modify inversion driver script to reflect current inversion period
+        sed -i "s|data_TROPOMI\"|data_TROPOMI\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
         if (( i > 1 )); then
             sed -i "s,FirstSimSwitch=true,FirstSimSwitch=false,g" run_inversion.sh
         fi
+        
+        # Execute inversion driver script
         sbatch -W run_inversion.sh; wait;
             
         printf "=== DONE RUNNING INVERSION ===\n\n"

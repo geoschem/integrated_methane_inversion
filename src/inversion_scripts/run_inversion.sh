@@ -47,7 +47,8 @@ JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
 tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
 
-# Only matters for Kalman filter inversions, to be implemented in a future version of the IMI
+# For Kalman filter: assume first inversion period (( i = 1 )) by default
+# Switch is flipped to false automatically if (( i > 1 ))
 FirstSimSwitch=true
 
 printf "\n=== EXECUTING RUN_INVERSION.SH ===\n"
