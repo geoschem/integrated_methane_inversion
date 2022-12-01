@@ -12,7 +12,7 @@
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\n=== PARSING CONFIG FILE (setup_imi.sh) ===\n"
+printf "\nParsing config file (setup_imi.sh)\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then
@@ -167,10 +167,10 @@ if "$CreateAutomaticRectilinearStateVectorFile"; then
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    printf "\nCalling make_state_vector_file.py\n"
+    printf "Calling make_state_vector_file.py\n"
     python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
 
-    printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    printf "=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
 else
 
@@ -188,7 +188,7 @@ fi
 function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
 nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
 rm ~/foo.nc
-printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
+printf "\nNumber of state vector elements in this inversion = ${nElements}\n"
 
 # Define inversion domain lat/lon bounds
 function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
@@ -236,7 +236,7 @@ if "$SetupTemplateRundir"; then
     # Create run directory
     printf ${cmd} | ./createRunDir.sh >> createRunDir.log 2>&1
     rm -f createRunDir.log
-    printf "\nCreated ${RunTemplate}\n"
+    printf "Created ${RunTemplate}\n"
 
     cd ${RunTemplate}
 
@@ -358,7 +358,7 @@ if "$SetupTemplateRundir"; then
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
     
     # Compile GEOS-Chem and store executable in template run directory
-    printf "\nCompiling GEOS-Chem...\n"
+    printf "Compiling GEOS-Chem...\n"
     cd build
     cmake ${InversionPath}/GCClassic >> build_geoschem.log 2>&1
     cmake . -DRUNDIR=..  >> build_geoschem.log 2>&1 
@@ -371,12 +371,12 @@ if "$SetupTemplateRundir"; then
         printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
         exit 999
     fi
-    printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build_info for details\n\n"
+    printf "Done compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build_info for details\n"
     
     # Navigate back to top-level directory
     cd ..
 
-    printf "\n=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
+    printf "=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
 
 fi # SetupTemplateRunDir
 

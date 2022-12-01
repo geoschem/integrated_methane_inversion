@@ -23,7 +23,7 @@ setup_start=$(date +%s)
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\nParsing config file (run_imi.sh)\n"
+printf "\nParsing config file (run_kf.sh)\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then

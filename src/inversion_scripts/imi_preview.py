@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#SBATCH -N 1
-#SBATCH -n 1
+# SBATCH -N 1
+# SBATCH -n 1
 
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import yaml
 import os
@@ -75,7 +76,14 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     return tropomi_data
 
 
-def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache):
+def imi_preview(
+    inversion_path,
+    config_path,
+    state_vector_path,
+    preview_dir,
+    tropomi_cache,
+    kalman_mode=False,
+):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -89,12 +97,10 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     # redirect output to log file
-    output_file = open(
-        f"{inversion_path}/imi_output.log", "a"
-    )
+    output_file = open(f"{inversion_path}/imi_output.log", "a")
     sys.stdout = output_file
     sys.stderr = output_file
-    
+
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
@@ -193,6 +199,15 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     if num_obs < 1:
         sys.exit("Error: No observations found in region of interest")
     outstring2 = f"Found {num_obs} observations in the region of interest"
+
+    # If Kalman filter mode, count observations per inversion period
+    if kalman_mode:
+        periods_file_path = f"{preview_dir}/../periods.csv"
+        df_periods = pd.read_csv(periods_file_path)
+        n_periods = len(df_periods)
+        n_obs_per_period = np.round(num_obs / n_periods)
+        outstring2 = f"Found {n_obs_per_period} observations in the region of interest per inversion period, for {n_periods} period(s)"
+
     print("\n" + outstring2)
 
     # ----------------------------------
@@ -202,6 +217,8 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     # State vector, observations
     n = last_ROI_element  # Number of state vector elements in the ROI
     m = num_obs / n  # Number of observations per state vector element
+    if kalman_mode:
+        m = n_obs_per_period / n  # Number of obs per inversion period, per element
 
     # Other parameters
     if config["Res"] == "0.25x0.3125":
@@ -284,6 +301,8 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     outputtextfile.write("##" + outstring4 + "\n")
     outputtextfile.write("##" + outstring6 + "\n")
     outputtextfile.write("##" + outstring7 + "\n")
+    if kalman_mode:
+        outputtextfile.write("## Expected DOFS per inversion period:")
     outputtextfile.write(outstring5)
     outputtextfile.close()
 
@@ -325,7 +344,11 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_prior_emissions.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_prior_emissions.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
 
     # Plot observations
     fig = plt.figure(figsize=(10, 8))
@@ -344,7 +367,11 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_observations.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_observations.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
 
     # Plot albedo
     fig = plt.figure(figsize=(10, 8))
@@ -363,7 +390,9 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_albedo.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_albedo.png"), bbox_inches="tight", dpi=150
+    )
 
     # Plot observation density
     fig = plt.figure(figsize=(10, 8))
@@ -382,7 +411,11 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_observation_density.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_observation_density.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
 
 
 if __name__ == "__main__":
@@ -394,4 +427,7 @@ if __name__ == "__main__":
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
 
-    imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)
+    imi_preview(
+        inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+    )
+

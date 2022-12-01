@@ -74,7 +74,7 @@ def prepare_sf(period_number, base_directory, nudge_factor):
             p = p + 1
 
             # Get the original HEMCO emissions for period p
-            hemco_emis_path = os.path.join(prior_cache, hemco_list[p])
+            hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
             original_emis = xr.load_dataset(hemco_emis_path)
             original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
 
