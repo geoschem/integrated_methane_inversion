@@ -77,12 +77,7 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
 
 
 def imi_preview(
-    inversion_path,
-    config_path,
-    state_vector_path,
-    preview_dir,
-    tropomi_cache,
-    kalman_mode=False,
+    inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache,
 ):
     """
     Function to perform preview
@@ -112,6 +107,11 @@ def imi_preview(
 
     # Define mask for ROI, to be used below
     mask = state_vector_labels <= last_ROI_element
+
+    # Kalman mode?
+    kalman_mode = False
+    if config["KalmanMode"].lower() == "true":
+        kalman_mode = True
 
     # ----------------------------------
     # Total prior emissions
