@@ -142,8 +142,9 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 if __name__ == "__main__":
     import sys
 
-    period_number = sys.argv[1]
-    base_directory = sys.argv[2]
-    nudge_factor = sys.argv[3]
+    config_path = sys.argv[1]
+    period_number = sys.argv[2]
+    base_directory = sys.argv[3]
+    nudge_factor = sys.argv[4]
 
-    prepare_sf(period_number, base_directory, nudge_factor)
+    prepare_sf(config_path, period_number, base_directory, nudge_factor)
