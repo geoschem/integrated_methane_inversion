@@ -168,12 +168,12 @@ def imi_preview(
     xch4 = []
     albedo = []
 
-    # read in and filter tropomi observations (uses parallel processing)
+    # Read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
         for file_path in tropomi_paths
     )
-    # remove any problematic observation dicts (eg. corrupted data file)
+    # Remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
 
     for dict in observation_dicts:
@@ -197,9 +197,9 @@ def imi_preview(
 
     # If Kalman filter mode, count observations per inversion period
     if config["KalmanMode"]:
-        periods_file_path = f"{preview_dir}/../periods.csv"
-        df_periods = pd.read_csv(periods_file_path)
-        n_periods = len(df_periods)
+        startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
+        endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
+        n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {n_obs_per_period} observations in the region of interest per inversion period, for {n_periods} period(s)"
 
