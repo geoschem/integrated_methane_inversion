@@ -58,7 +58,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     diags_file = [f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f][0]
     diags_path = os.path.join(preview_cache, diags_file)
 
-    # Get state vector, grid-cell areas, mask, & original emissions from preview
+    # Get state vector, grid-cell areas, mask
     statevector = xr.load_dataset(statevector_path)
     areas = xr.load_dataset(diags_path)["AREA"]
     state_vector_labels = statevector["StateVector"]
@@ -66,6 +66,8 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
     )
     mask = state_vector_labels <= last_ROI_element
+
+    # Get original emissions from preview, for first inversion period
     original_emis = xr.load_dataset(diags_path)
     original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
 
