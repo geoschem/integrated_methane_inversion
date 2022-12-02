@@ -81,7 +81,7 @@ if ! "$PrecomputedJacobian"; then
         fi
         PrevDir=$SpinupDir
     else
-        PrevDir=%$PosteriorRunDir
+        PrevDir=$PosteriorRunDir
         if [[ ! -d ${PosteriorRunDir} ]]; then
         printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
         exit 1
