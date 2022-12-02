@@ -132,7 +132,9 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         hemco_emis_path = os.path.join(hemco_emis_dir, hemco_list[0])
 
     # Print the current total emissions in the region of interest
-    emis = sf["ScaleFactor"] * xr.load_dataset(hemco_emis_path)
+    original_emis = xr.load_dataset(hemco_emis_path)
+    original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
+    emis = sf["ScaleFactor"] * original_emis
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
 
