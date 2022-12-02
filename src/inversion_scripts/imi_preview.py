@@ -201,7 +201,7 @@ def imi_preview(
         endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
         n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
         n_obs_per_period = np.round(num_obs / n_periods)
-        outstring2 = f"Found {n_obs_per_period} observations in the region of interest per inversion period, for {n_periods} period(s)"
+        outstring2 = f"Found {int(n_obs_per_period)} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
 
     print("\n" + outstring2)
 
