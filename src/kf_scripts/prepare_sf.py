@@ -126,14 +126,11 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
     else:
 
-        # If this is the first inversion period, use HEMCO diags from the spinup run
-        hemco_emis_dir = os.path.join(base_directory, "spinup_run/OutputDir")
-        hemco_list = [f for f in os.listdir(hemco_emis_dir) if "HEMCO" in f]
-        hemco_emis_path = os.path.join(hemco_emis_dir, hemco_list[0])
+        # If this is the first inversion period, use HEMCO diags from the preview run
+        original_emis = xr.load_dataset(diags_path)
+        original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
 
     # Print the current total emissions in the region of interest
-    original_emis = xr.load_dataset(hemco_emis_path)
-    original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
     emis = sf["ScaleFactor"] * original_emis
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
