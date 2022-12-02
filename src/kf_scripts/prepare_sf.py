@@ -119,9 +119,10 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Reset buffer area to 1 # TODO Do we want this feature?
             # sf["SF_Nonwetland"] = sf["SF_Nonwetland"].where(sf["Clusters"] <= 235)  # Replace buffers with nan
             # sf["SF_Nonwetland"] = sf["SF_Nonwetland"].fillna(1)  # Fill nan with 1
-            print(
-                f"Used HEMCO emissions up to week {p} to prepare prior scaling factors for this week."
-            )
+
+        print(
+            f"Used HEMCO emissions up to week {p} to prepare prior scaling factors for this week."
+        )
 
     # Ensure good netcdf attributes for HEMCO
     sf.lat.attrs["units"] = "degrees_north"
