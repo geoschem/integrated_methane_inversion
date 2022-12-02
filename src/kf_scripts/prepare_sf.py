@@ -41,6 +41,9 @@ def prepare_sf(period_number, base_directory, nudge_factor):
         nudge_factor    [float] : Weight applied to original prior when nudging (default = 0.1)
     """
 
+    # Fix nudge_factor type
+    nudge_factor = float(nudge_factor)
+
     # Define some useful paths
     unit_sf_path = os.path.join(base_directory, "unit_sf.nc")
     statevector_path = os.path.join(base_directory, "StateVector.nc")
