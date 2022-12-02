@@ -108,11 +108,6 @@ def imi_preview(
     # Define mask for ROI, to be used below
     mask = state_vector_labels <= last_ROI_element
 
-    # Kalman mode?
-    kalman_mode = False
-    if config["KalmanMode"].lower() == "true":
-        kalman_mode = True
-
     # ----------------------------------
     # Total prior emissions
     # ----------------------------------
@@ -201,7 +196,7 @@ def imi_preview(
     outstring2 = f"Found {num_obs} observations in the region of interest"
 
     # If Kalman filter mode, count observations per inversion period
-    if kalman_mode:
+    if config["KalmanMode"]:
         periods_file_path = f"{preview_dir}/../periods.csv"
         df_periods = pd.read_csv(periods_file_path)
         n_periods = len(df_periods)
@@ -217,7 +212,7 @@ def imi_preview(
     # State vector, observations
     n = last_ROI_element  # Number of state vector elements in the ROI
     m = num_obs / n  # Number of observations per state vector element
-    if kalman_mode:
+    if config["KalmanMode"]:
         m = n_obs_per_period / n  # Number of obs per inversion period, per element
 
     # Other parameters
@@ -301,7 +296,7 @@ def imi_preview(
     outputtextfile.write("##" + outstring4 + "\n")
     outputtextfile.write("##" + outstring6 + "\n")
     outputtextfile.write("##" + outstring7 + "\n")
-    if kalman_mode:
+    if config["KalmanMode"]:
         outputtextfile.write("## Expected DOFS per inversion period:")
     outputtextfile.write(outstring5)
     outputtextfile.close()
