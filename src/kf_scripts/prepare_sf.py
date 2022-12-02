@@ -124,6 +124,18 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             f"Used HEMCO emissions up to week {p} to prepare prior scaling factors for this week."
         )
 
+    else:
+
+        # If this is the first inversion period, use HEMCO diags from the spinup run
+        hemco_emis_dir = os.path.join(base_directory, "spinup_run/OutputDir")
+        hemco_list = [f for f in os.listdir(hemco_emis_dir) if "HEMCO" in f]
+        hemco_emis_path = os.path.join(hemco_emis_dir, hemco_list[0])
+
+    # Print the current total emissions in the region of interest
+    emis = sf["ScaleFactor"] * xr.load_dataset(hemco_emis_path)
+    total_emis = sum_total_emissions(emis, areas, mask)
+    print(f"Total prior emission = {total_emis} Tg a-1")
+
     # Ensure good netcdf attributes for HEMCO
     sf.lat.attrs["units"] = "degrees_north"
     sf.lat.attrs["long_name"] = "Latitude"
