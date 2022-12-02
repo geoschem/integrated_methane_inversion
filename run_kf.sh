@@ -239,7 +239,7 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         echo "Edited Start/End dates in input.geos for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
 
         # Prepare initial (prior) emission scale factors for the current period
-        python ${InversionPath}/src/kf_scripts/prepare_sf.py $i ${RunDirs} $NudgeFactor; wait
+        python ${InversionPath}/src/kf_scripts/prepare_sf.py $ConfigFile $i ${RunDirs} $NudgeFactor; wait
 
         ##=======================================================================
         ##  Submit Jacobian simulations

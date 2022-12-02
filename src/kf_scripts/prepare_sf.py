@@ -1,6 +1,7 @@
 import xarray as xr
 import os
 import numpy as np
+import yaml
 
 
 def sum_total_emissions(emissions, areas, mask):
@@ -26,7 +27,7 @@ def sum_total_emissions(emissions, areas, mask):
     return float(total)
 
 
-def prepare_sf(period_number, base_directory, nudge_factor):
+def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     """
     Function to prepare scale factors for HEMCO emissions. 
     
@@ -41,6 +42,9 @@ def prepare_sf(period_number, base_directory, nudge_factor):
         nudge_factor    [float] : Weight applied to original prior when nudging (default = 0.1)
     """
 
+    # Read config file
+    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+
     # Fix nudge_factor type
     nudge_factor = float(nudge_factor)
 
@@ -54,9 +58,14 @@ def prepare_sf(period_number, base_directory, nudge_factor):
     diags_file = [f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f][0]
     diags_path = os.path.join(preview_cache, diags_file)
 
-    # Get state vector and grid-cell areas
+    # Get state vector, grid-cell areas, mask
     statevector = xr.load_dataset(statevector_path)
     areas = xr.load_dataset(diags_path)["AREA"]
+    state_vector_labels = statevector["StateVector"]
+    last_ROI_element = int(
+        np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
+    )
+    mask = state_vector_labels <= last_ROI_element
 
     # Initialize unit scale factors
     sf = xr.load_dataset(unit_sf_path)
@@ -97,12 +106,8 @@ def prepare_sf(period_number, base_directory, nudge_factor):
             )  # TODO nudge_factor is currently inverse of what's in the paper, i.e. 0.1 instead of 0.9
 
             # Sum emissions
-            current_total = sum_total_emissions(
-                current_posterior_emis, areas, statevector
-            )
-            nudged_total = sum_total_emissions(
-                nudged_posterior_emis, areas, statevector
-            )
+            current_total = sum_total_emissions(current_posterior_emis, areas, mask)
+            nudged_total = sum_total_emissions(nudged_posterior_emis, areas, mask)
 
             # Get the final posterior emissions
             lambda_scaler = current_total / nudged_total
