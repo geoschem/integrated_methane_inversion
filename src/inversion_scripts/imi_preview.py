@@ -301,7 +301,7 @@ def imi_preview(
     outputtextfile.write("##" + outstring7 + "\n")
     if config["KalmanMode"]:
         outputtextfile.write("##Expected DOFS per inversion period:" + "\n")
-    outputtextfile.write(outstring5)
+    outputtextfile.write(outstring5 + "\n")
     outputtextfile.close()
 
     # Prepare plot data for prior
