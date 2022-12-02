@@ -299,6 +299,8 @@ def imi_preview(
     outputtextfile.write("##" + outstring4 + "\n")
     outputtextfile.write("##" + outstring6 + "\n")
     outputtextfile.write("##" + outstring7 + "\n")
+    if config["KalmanMode"]:
+        outputtextfile.write("## Expected DOFS per inversion period:" + "\n")
     outputtextfile.write(outstring5)
     outputtextfile.close()
 
