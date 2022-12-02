@@ -247,9 +247,12 @@ def imi_preview(
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)}"
     outstring5 = f"expectedDOFS: {np.round(dofs,5)}"
+    addstr = ""
+    if config["KalmanMode"]:
+        addstr = "per inversion period"
     print(outstring3)
     print(outstring4)
-    print(outstring5)
+    print(outstring5 + addstr)
 
     # ----------------------------------
     # Estimate dollar cost
@@ -296,8 +299,6 @@ def imi_preview(
     outputtextfile.write("##" + outstring4 + "\n")
     outputtextfile.write("##" + outstring6 + "\n")
     outputtextfile.write("##" + outstring7 + "\n")
-    if config["KalmanMode"]:
-        outputtextfile.write("## Expected DOFS per inversion period:")
     outputtextfile.write(outstring5)
     outputtextfile.close()
 
