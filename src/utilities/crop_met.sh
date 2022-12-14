@@ -109,6 +109,9 @@ for (( Month=$StartMonth; Month<=$EndMonth; Month++)); do
 	# Crop global files
 	cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax $file $fOut 
 
+	# Chunk and compress (deflate level=5) files
+	nc_chunk.pl $fOut 5
+	
     done
 
     # Download global met fields for this month
