@@ -549,9 +549,10 @@ def estimate_averaging_kernel(inversion_path, config_path, state_vector_path, pr
 if __name__ == "__main__":
     import sys
 
-    config_path = sys.argv[1]
-    state_vector_path = sys.argv[2]
-    preview_dir = sys.argv[3]
-    tropomi_cache = sys.argv[4]
+    inversion_path = sys.argv[1]
+    config_path = sys.argv[2]
+    state_vector_path = sys.argv[3]
+    preview_dir = sys.argv[4]
+    tropomi_cache = sys.argv[5]
 
-    imi_preview(config_path, state_vector_path, preview_dir, tropomi_cache)
+    imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)

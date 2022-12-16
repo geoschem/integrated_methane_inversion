@@ -8,7 +8,7 @@ def get_nested_grid_bounds(land_cover_pth):
     Get the lat/lon bounds of the nested grid window for the inversion.
     The land cover file path specifies the window.
     """
-        
+
     land_cover = xr.load_dataset(land_cover_pth)
     minLat_allowed = np.min(land_cover.lat.values)
     maxLat_allowed = np.max(land_cover.lat.values)
@@ -73,7 +73,7 @@ def make_state_vector_file(
         ds_statevector []     : xarray dataset containing state vector field formatted for HEMCO
 
     Notes
-        - Land cover file default can be something like 'GEOSFP.20200101.CN.025x03125.NA.nc'
+        - Land cover file looks like 'GEOSFP.20200101.CN.025x03125.NA.nc'
     """
 
     # Load land cover data
