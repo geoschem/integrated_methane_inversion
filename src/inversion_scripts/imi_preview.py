@@ -498,20 +498,24 @@ def estimate_averaging_kernel(inversion_path, config_path, state_vector_path, pr
     df["xch4"] = xch4
     df["swir_albedo"] = albedo
 
-    # Count the number of observations in the region of interest
-    num_obs = count_obs_in_mask(mask, df)
-    if num_obs < 1:
-        sys.exit("Error: No observations found in region of interest")
-    outstring2 = f"Found {num_obs} observations in the region of interest"
-    print("\n" + outstring2)
+    # extract num_obs and emissions for each cluster in ROI
+    num_obs = []
+    emissions = []
+    for i in range(1, last_ROI_element+1):
+        mask = state_vector_labels == i
+        # Count the number of observations in each element
+        num_obs.append(count_obs_in_mask(mask, df))
 
+        # append the prior emissions for each element (in Tg/y)
+        emissions.append(sum_total_emissions(prior, areas, mask))
+        # TODO do this in parallel
+        
     # ----------------------------------
     # Estimate information content
     # ----------------------------------
 
     # State vector, observations
-    n = last_ROI_element  # Number of state vector elements in the ROI
-    m = num_obs / n  # Number of observations per state vector element
+    m = num_obs  # Number of observations per state vector element
 
     # Other parameters
     if config["Res"] == "0.25x0.3125":
@@ -526,21 +530,20 @@ def estimate_averaging_kernel(inversion_path, config_path, state_vector_path, pr
     alpha = 0.4  # Simple parameterization of turbulence
 
     # Change units of total prior emissions
-    total_prior_emissions_kgs = (
-        total_prior_emissions * 1e9 / (3600 * 24 * 365)
+    emissions_kgs = (
+        emissions * 1e9 / (3600 * 24 * 365)
     )  # kg/s from Tg/y
-    total_prior_emissions_kgs_per_element = (
-        total_prior_emissions_kgs / L ** 2 / n
+    emissions_kgs_per_m2 = (
+        emissions_kgs / L ** 2 
     )  # kg/m2/s from kg/s, per element
 
     # Error standard deviations with updated units
-    sA = config["PriorError"] * total_prior_emissions_kgs_per_element
+    sA = config["PriorError"] * emissions_kgs_per_m2
     sO = config["ObsError"] * 1e-9
 
-    # Averaging kernel sensitivity for each grid element, and dofs
+    # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
     a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
-    # dofs = n * a
     return a
 
 if __name__ == "__main__":
