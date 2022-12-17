@@ -39,12 +39,20 @@ create_statevector() {
 # Usage:
 #   reduce_dimension
 reduce_dimension() {
+    # First run the Preview
+    # run_preview
+    # Make sure template run directory exists
+    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
+        exit 9999
+    fi
+
     # Run preview script
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
-    preview_dir=${RunDirs}/${runDir}
+    preview_dir=${RunDirs}/preview_run
     tropomi_cache=${RunDirs}/data_TROPOMI
-    aggregation_file=${InversionPath}/src/inversion_scripts/aggregation.py
+    aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
@@ -53,8 +61,9 @@ reduce_dimension() {
             sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/
+        export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts
         chmod +x $aggregation_file
-        sbatch -W $aggregation_file $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi

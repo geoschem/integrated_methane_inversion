@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import yaml
 import os
 import datetime
+import time
 import cartopy.crs as ccrs
 import colorcet as cc
 from utils import (
@@ -385,7 +386,7 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     plt.savefig(os.path.join(preview_dir, "preview_observation_density.png"), bbox_inches='tight', dpi=150)
 
 
-def estimate_averaging_kernel(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache):
+def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropomi_cache):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -398,13 +399,7 @@ def estimate_averaging_kernel(inversion_path, config_path, state_vector_path, pr
 
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    # redirect output to log file
-    output_file = open(
-        f"{inversion_path}/imi_output.log", "a"
-    )
-    sys.stdout = output_file
-    sys.stderr = output_file
-    
+
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
@@ -501,21 +496,31 @@ def estimate_averaging_kernel(inversion_path, config_path, state_vector_path, pr
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
     emissions = []
+    tic = time.perf_counter()
     for i in range(1, last_ROI_element+1):
         mask = state_vector_labels == i
-        # Count the number of observations in each element
-        num_obs.append(count_obs_in_mask(mask, df))
 
         # append the prior emissions for each element (in Tg/y)
         emissions.append(sum_total_emissions(prior, areas, mask))
         # TODO do this in parallel
+    toc = time.perf_counter()
+    print(f"time to extract emissions: {toc-tic}")
+
+    tic = time.perf_counter()
+    for i in range(1, last_ROI_element+1):
+        mask = state_vector_labels == i
+        # Count the number of observations in each element
+        num_obs.append(count_obs_in_mask(mask, df))
+    toc = time.perf_counter()
+    print(f"time to extract num obs: {toc-tic}")
         
     # ----------------------------------
     # Estimate information content
     # ----------------------------------
 
     # State vector, observations
-    m = num_obs  # Number of observations per state vector element
+    emissions = np.array(emissions)
+    m = np.array(num_obs)  # Number of observations per state vector element
 
     # Other parameters
     if config["Res"] == "0.25x0.3125":

@@ -10,6 +10,7 @@ import pandas as pd
 import yaml
 import copy
 import sys
+import time
 from inversion_scripts.imi_preview import estimate_averaging_kernel
 # clustering
 from sklearn.cluster import KMeans
@@ -316,8 +317,9 @@ def calculate_prior_ms(xa_abs, sa_vec, state_vector):
 
     return xa, xa_abs, sa_vec
 
-def generate_clustering_pairs():
+def generate_clustering_pairs(desiredNum):
     # TODO implement me
+    print(f"implement me to create clustering pairs: {desiredNum}")
     return [(1, 15), (2, 48)]
 
 if __name__ == "__main__":
@@ -327,12 +329,22 @@ if __name__ == "__main__":
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    output_file = open(
+        f"{inversion_path}/imi_output.log", "a"
+    )
+    sys.stdout = output_file
+    sys.stderr = output_file
 
-    sensitivities = estimate_averaging_kernel(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)
+    print("Starting aggregation")
+    tic = time.perf_counter()
+    sensitivities = estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropomi_cache)
+    toc = time.perf_counter()
+    print(f"generated sensitivity time: {toc-tic}")
     original_clusters = xr.open_dataset(state_vector_path)
     cluster_pairs = generate_clustering_pairs(config["NumberOfElements"])
-    new_sv = update_sv_clusters(state_vector_path, sensitivities, cluster_pairs, config["nBufferClusters"])
-    
+    new_sv = update_sv_clusters(original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"])
+    original_clusters.close()
+
     # replace original statevector file
     print(f"Saving file {state_vector_path}")
     new_sv.to_netcdf(state_vector_path)

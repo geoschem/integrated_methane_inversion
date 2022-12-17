@@ -184,21 +184,20 @@ Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
 Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
 ##=======================================================================
+## Set up template run directory
+##=======================================================================
+runDir="template_run"
+RunTemplate="${RunDirs}/${runDir}"
+if "$SetupTemplateRundir"; then
+    setup_template
+fi
+
+##=======================================================================
 ## Reduce state vector dimension
 ##=======================================================================
 if "$ReducedDimensionStateVector"; then
     reduce_dimension
 fi
-
-##=======================================================================
-## Set up template run directory
-##=======================================================================
-runDir="template_run"
-RunTemplate="${RunDirs}/${runDir}"
-
-if "$SetupTemplateRundir"; then
-    setup_template
-fi # SetupTemplateRunDir
 
 ##=======================================================================
 ##  Set up IMI preview run directory
