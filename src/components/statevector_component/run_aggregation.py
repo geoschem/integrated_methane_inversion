@@ -4,7 +4,7 @@ import sys
 import math
 
 sys.path.append('.')
-import inversion_lucas as inv
+import integrated_methane_inversion.src.inversion_scripts.clustering.aggregation as inv
 
 import xarray as xr
 import numpy as np

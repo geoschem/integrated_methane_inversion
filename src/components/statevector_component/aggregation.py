@@ -1,21 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+#SBATCH -N 1
+#SBATCH -n 1
+
 import xarray as xr
 import numpy as np
 import pandas as pd
+import yaml
 import copy
-import math
-
+import sys
+from inversion_scripts.imi_preview import estimate_averaging_kernel
 # clustering
 from sklearn.cluster import KMeans
-
-# Import information for plotting in a consistent fashion
-import sys
-
-sys.path.append("./python/")
-
-##########################
-### PLOTTING FUNCTIONS ###
-##########################
-
 
 def match_data_to_clusters(data, clusters, default_value=0):
     result = clusters.copy()
@@ -61,7 +58,7 @@ def crop_state_vector(state_vector, lats, lons):
     )
 
 
-def zero_buffer_elements(clusters, num_buffer_elems=8):
+def zero_buffer_elements(clusters, num_buffer_elems):
     """
     Return clusters with buffer elements set to 0 and
     buffers with roi set to 0
@@ -87,25 +84,27 @@ def scale_buffer_elements(scale_number, buffer):
 
 
 def update_sv_clusters(
-    orig_xr_clusters, sensitivities, clustering_options, method="kmeans"
+    orig_xr_clusters, sensitivities, clustering_options, num_buffer_elems, method="kmeans"
 ):
     """
     Description:
         Reduce a given statevector based on the averaging kernel sensitivities and inputted
         aggregation scheme
     arguments:
-        orig_xr_clusters    [][] xarray dataset: the mapping from the grid cells to state
+        orig_xr_clusters    [][]: xarray dataset: the mapping from the grid cells to state
                             vector number
         sensitivities       [int]: the native resolution diagonal of the averaging
                             kernel estimate. Only sensitivites for the ROI
         clustering_options  [(tuple)]: list of tuples representing the desired
                                 aggregation scheme eg. [(1,15), (2,46)] would result in
                                 15 native resolution elements and 23 2-cell elements
+        num_buffer_elems    int: number of buffer elements in statevector
     """
     if method == "kmeans":
         # set buffer elements to 0, retain buffer labels for rejoining
         roi_labels, buffer_labels = zero_buffer_elements(
-            orig_xr_clusters["StateVector"]
+            orig_xr_clusters["StateVector"],
+            num_buffer_elems
         )
         orig_xr_clusters["StateVector"] = roi_labels
 
@@ -137,36 +136,9 @@ def update_sv_clusters(
             new_sv["StateVector"].dims,
             np.where(new_sv_labels == 0, buffer_labels, new_sv_labels),
         )
-
     else:
         raise ("Error: Invalid Clustering Method Inputted. Valid values are: 'kmeans'.")
     return new_sv
-
-
-# def plot_multiscale_grid(self, clusters, **kw):
-#     # Get KW
-#     title = kw.pop('title', '')
-#     fig_kwargs = kw.pop('fig_kwargs', {})
-#     title_kwargs = kw.pop('title_kwargs', {})
-#     map_kwargs = kw.pop('map_kwargs', {})
-#     kw['colors'] = kw.pop('colors', 'black')
-#     kw['linewidths'] = kw.pop('linewidths', 1)
-
-#     # Plot
-#     nstate = len(np.unique(self.state_vector)[1:])
-#     data = self.match_data_to_clusters(self.state_vector,
-#                                        clusters, default_value=0)
-#     data_zoomed = zoom(data.values, 50, order=0, mode='nearest')
-#     fig, ax = fp.get_figax(maps=True, lats=data.lat, lons=data.lon,
-#                            **fig_kwargs)
-#     ax.contour(data_zoomed, levels=np.arange(0, nstate, 1),
-#                extent=[data.lon.min(), data.lon.max(),
-#                        data.lat.min(), data.lat.max()],
-#                **kw)
-#     ax = fp.add_title(ax, title, **title_kwargs)
-#     ax = fp.format_map(ax, data.lat, data.lon, **map_kwargs)
-
-#     return fig, ax
 
 ############################################
 ### REDUCED DIMENSION JACOBIAN FUNCTIONS ###
@@ -343,3 +315,24 @@ def calculate_prior_ms(xa_abs, sa_vec, state_vector):
     )
 
     return xa, xa_abs, sa_vec
+
+def generate_clustering_pairs():
+    # TODO implement me
+    return [(1, 15), (2, 48)]
+
+if __name__ == "__main__":
+    inversion_path = sys.argv[1]
+    config_path = sys.argv[2]
+    state_vector_path = sys.argv[3]
+    preview_dir = sys.argv[4]
+    tropomi_cache = sys.argv[5]
+    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+
+    sensitivities = estimate_averaging_kernel(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)
+    original_clusters = xr.open_dataset(state_vector_path)
+    cluster_pairs = generate_clustering_pairs(config["NumberOfElements"])
+    new_sv = update_sv_clusters(state_vector_path, sensitivities, cluster_pairs, config["nBufferClusters"])
+    
+    # replace original statevector file
+    print(f"Saving file {state_vector_path}")
+    new_sv.to_netcdf(state_vector_path)

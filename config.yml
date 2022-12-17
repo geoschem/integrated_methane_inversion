@@ -44,6 +44,12 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 
+## Clustering Options
+ReducedDimensionStateVector: true
+NumberOfElements: 45
+ClusteringPairs: [(1, 15), (2, 38)]
+ForcedNativeResolutionPixels: [(31.5, -104)]
+
 ## Custom state vector
 StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
