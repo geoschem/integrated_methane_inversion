@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#SBATCH -N 1
-#SBATCH -n 1
+# SBATCH -N 1
+# SBATCH -n 1
 
 import xarray as xr
 import numpy as np
@@ -12,8 +12,10 @@ import copy
 import sys
 import time
 from inversion_scripts.imi_preview import estimate_averaging_kernel
+
 # clustering
 from sklearn.cluster import KMeans
+
 
 def match_data_to_clusters(data, clusters, default_value=0):
     result = clusters.copy()
@@ -73,7 +75,7 @@ def zero_buffer_elements(clusters, num_buffer_elems):
 
 def scale_buffer_elements(scale_number, buffer):
     """
-    Scales buffer elements by the difference in elements between 
+    Scales buffer elements by the difference in elements between
     the original and scaled cluster elements
     """
     # replace 0's with nan, scale buffer, then replace nan with 0
@@ -85,7 +87,11 @@ def scale_buffer_elements(scale_number, buffer):
 
 
 def update_sv_clusters(
-    orig_xr_clusters, sensitivities, clustering_options, num_buffer_elems, method="kmeans"
+    orig_xr_clusters,
+    sensitivities,
+    clustering_options,
+    num_buffer_elems,
+    method="kmeans",
 ):
     """
     Description:
@@ -104,8 +110,7 @@ def update_sv_clusters(
     if method == "kmeans":
         # set buffer elements to 0, retain buffer labels for rejoining
         roi_labels, buffer_labels = zero_buffer_elements(
-            orig_xr_clusters["StateVector"],
-            num_buffer_elems
+            orig_xr_clusters["StateVector"], num_buffer_elems
         )
         orig_xr_clusters["StateVector"] = roi_labels
 
@@ -140,6 +145,7 @@ def update_sv_clusters(
     else:
         raise ("Error: Invalid Clustering Method Inputted. Valid values are: 'kmeans'.")
     return new_sv
+
 
 ############################################
 ### REDUCED DIMENSION JACOBIAN FUNCTIONS ###
@@ -263,7 +269,7 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
     for i, n in enumerate(n_cells[1:]):
         # Get cluster size
         if n_cluster_size is None:
-            raise('Error: n_cluster_size is None')
+            raise ("Error: n_cluster_size is None")
         else:
             cluster_size = n_cluster_size[i]
 
@@ -317,10 +323,35 @@ def calculate_prior_ms(xa_abs, sa_vec, state_vector):
 
     return xa, xa_abs, sa_vec
 
-def generate_clustering_pairs(desiredNum):
-    # TODO implement me
-    print(f"implement me to create clustering pairs: {desiredNum}")
-    return [(1, 15), (2, 48)]
+
+def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
+    """
+        validate cluster pairs and transform them into the expected format.
+    """
+    num_clusters = int(sv.max()) - num_buffer_cells
+    new_cluster_pairs = []
+
+    for cells_per_cluster, num_clusters in cluster_pairs:
+        native_cells = num_clusters * cells_per_cluster
+        total_native_cells_requested += native_cells
+        new_cluster_pairs.append((cells_per_cluster, native_cells))
+
+    remainder = num_clusters - total_native_cells_requested
+    if remainder < 0:
+        raise (
+            f"Error in cluster pairs: too many pixels requested."
+            + f" {num_clusters} native resolution pixels and "
+            + f"requested cluster pairings use {total_native_cells_requested} pixels."
+        )
+    elif remainder != 0:
+        print(
+            "Warning: Cluster pairings do not use all native pixels."
+            + f"Adding additional cluster pairing: {(remainder, remainder)}."
+        )
+        new_cluster_pairs = new_cluster_pairs.append((remainder, remainder))
+
+    return cluster_pairs
+
 
 if __name__ == "__main__":
     inversion_path = sys.argv[1]
@@ -329,20 +360,25 @@ if __name__ == "__main__":
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    output_file = open(
-        f"{inversion_path}/imi_output.log", "a"
-    )
+    output_file = open(f"{inversion_path}/imi_output.log", "a")
     sys.stdout = output_file
     sys.stderr = output_file
 
+    original_clusters = xr.open_dataset(state_vector_path)
+    cluster_pairs = config["ClusteringPairs"]
+    cluster_pairs = generate_cluster_pairs(
+        original_clusters["StateVector"], config["nBufferClusters"], cluster_pairs
+    )
     print("Starting aggregation")
     tic = time.perf_counter()
-    sensitivities = estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropomi_cache)
+    sensitivities = estimate_averaging_kernel(
+        config_path, state_vector_path, preview_dir, tropomi_cache
+    )
     toc = time.perf_counter()
     print(f"generated sensitivity time: {toc-tic}")
-    original_clusters = xr.open_dataset(state_vector_path)
-    cluster_pairs = generate_clustering_pairs(config["NumberOfElements"])
-    new_sv = update_sv_clusters(original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"])
+    new_sv = update_sv_clusters(
+        original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"]
+    )
     original_clusters.close()
 
     # replace original statevector file

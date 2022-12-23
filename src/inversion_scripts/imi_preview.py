@@ -507,7 +507,8 @@ def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropo
     print(f"time to extract emissions: {toc-tic}")
 
     tic = time.perf_counter()
-    observation_counts = add_observation_counts(df, state_vector .25, .3125)
+    # TODO conditionally set lat/lon steps
+    observation_counts = add_observation_counts(df, state_vector, .25, .3125)
     for i in range(1, last_ROI_element+1):
         mask = state_vector_labels == i
         num_obs.append(np.nansum(observation_counts["count"].where(mask).values))

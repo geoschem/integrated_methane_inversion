@@ -42,16 +42,27 @@ reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
     # First run the Preview
     if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "Preview dir not detected. Running the IMI Preview as a prerequisite."
+        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
         run_preview
     fi
 
     # Run preview script
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
+    native_state_vector_path=${RunDirs}/NativeStateVector.nc
+
     preview_dir=${RunDirs}/preview_run
     tropomi_cache=${RunDirs}/data_TROPOMI
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
+
+    if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
+        printf "\nCopying native state vector file to NativeStateVector.nc \n"
+        cp state_vector_path native_state_vector_path
+    else
+        # replace state vector file with clean, native resolution state vector
+        cp native_state_vector_path state_vector_path
+    fi
+
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
