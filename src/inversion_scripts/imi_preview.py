@@ -490,8 +490,8 @@ def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropo
     df = pd.DataFrame()
     df["lat"] = lat
     df["lon"] = lon
-    df["xch4"] = xch4
-    df["swir_albedo"] = albedo
+    df["count"] = np.ones(len(lat))
+    # df["swir_albedo"] = albedo
 
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
@@ -507,10 +507,10 @@ def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropo
     print(f"time to extract emissions: {toc-tic}")
 
     tic = time.perf_counter()
+    observation_counts = add_observation_counts(df, state_vector .25, .3125)
     for i in range(1, last_ROI_element+1):
         mask = state_vector_labels == i
-        # Count the number of observations in each element
-        num_obs.append(count_obs_in_mask(mask, df))
+        num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
     toc = time.perf_counter()
     print(f"time to extract num obs: {toc-tic}")
         
@@ -550,6 +550,24 @@ def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropo
     k = alpha * (Mair * L * g / (Mch4 * U * p))
     a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
     return a
+
+def add_observation_counts(df, state_vector, lat_step, lon_step):
+    """
+    Given arbitrary observation coordinates in a pandas df, group 
+    them by gridcell and return the number of observations mapped 
+    onto the statevector dataset
+    """
+    to_lon = lambda x: np.floor(x / lon_step) * lon_step
+    to_lat = lambda x: np.floor(x / lat_step) * lat_step
+
+    df = df.rename(columns={"lon": "old_lon", "lat": "old_lat"})
+
+    df["lat"] = to_lat(df.old_lat)
+    df["lon"] = to_lon(df.old_lon)
+    groups = df.groupby(["lat", "lon"])
+
+    counts_ds = groups.sum().to_xarray().drop_vars(["old_lat", "old_lon"])
+    return xr.merge([counts_ds, state_vector])
 
 if __name__ == "__main__":
     import sys
