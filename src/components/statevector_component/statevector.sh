@@ -39,12 +39,11 @@ create_statevector() {
 # Usage:
 #   reduce_dimension
 reduce_dimension() {
+    printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
     # First run the Preview
-    # run_preview
-    # Make sure template run directory exists
-    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
-        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
-        exit 9999
+    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
+        printf "Preview dir not detected. Running the IMI Preview as a prerequisite."
+        run_preview
     fi
 
     # Run preview script
@@ -67,4 +66,5 @@ reduce_dimension() {
     else
         python $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
+    printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 }
