@@ -35,38 +35,17 @@ def match_data_to_clusters(data, clusters, default_value=0):
     return result
 
 
-def crop_state_vector(state_vector, lats, lons):
-    """
-    Description:
-        crop state vector so that only region of interest elements
-        remain.
-    arguments:
-        state_vector    [][] xarray dataset: the mapping from the grid cells to state
-                            vector number
-    Returns:            xarray dataset containing state vector elements without buffer elements
-    """
-    # TODO: handle more than just rectangular regions of interest
-    return (
-        state_vector.where(
-            (
-                state_vector.lat
-                <= max(lats)
-                & (state_vector.lat >= min(lats))
-                & (state_vector.lon >= min(lons))
-                & (state_vector.lon <= max(lons))
-            )
-        )
-        .dropna("lat", how="all")
-        .dropna("lon", how="all")
-    )
-
-
 def zero_buffer_elements(clusters, num_buffer_elems):
     """
-    Return clusters with buffer elements set to 0 and
-    buffers with roi set to 0
+    Description:
+        Return clusters with buffer elements set to 0 and
+        buffers with roi set to 0
+    arguments:
+        clusters            [][] : xarray dataarray: the mapping
+                                  from the grid cells to state vector number
+        num_buffer_elems    int  : number of buffer elements in the state vector
+    Returns:                tuple: zeroed buffer area and zeroed roi
     """
-    # TODO: replace default buffer elements setting
     buffer_threshold = int(clusters.max()) - num_buffer_elems
     result = (clusters <= buffer_threshold) * clusters
     buffers = (clusters > buffer_threshold) * clusters
@@ -326,7 +305,7 @@ def calculate_prior_ms(xa_abs, sa_vec, state_vector):
 
 def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
     """
-        validate cluster pairs and transform them into the expected format.
+    validate cluster pairs and transform them into the expected format.
     """
     num_clusters = int(sv.max()) - num_buffer_cells
     new_cluster_pairs = []

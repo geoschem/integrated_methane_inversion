@@ -3,7 +3,7 @@
 
 #SBATCH -N 1
 #SBATCH -n 1
-
+import sys
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -497,24 +497,34 @@ def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropo
     num_obs = []
     emissions = []
     tic = time.perf_counter()
-    for i in range(1, last_ROI_element+1):
-        mask = state_vector_labels == i
 
+    # set resolution specific variables
+    if config["Res"] == "0.25x0.3125":
+        L = 25 * 1000  # Rough length scale of state vector element [m]
+        lat_step = .25
+        lon_step = .3125
+    elif config["Res"] == "0.5x0.625":
+        lat_step = .25
+        lon_step = .3125
+        L = 50 * 1000  # Rough length scale of state vector element [m]
+
+    # bin observations into gridcells and map onto statevector
+    observation_counts = add_observation_counts(df, state_vector, lat_step, lon_step)
+
+    # parallel processing function
+    def process(i):
+        mask = state_vector_labels == i
         # append the prior emissions for each element (in Tg/y)
         emissions.append(sum_total_emissions(prior, areas, mask))
-        # TODO do this in parallel
-    toc = time.perf_counter()
-    print(f"time to extract emissions: {toc-tic}")
-
-    tic = time.perf_counter()
-    # TODO conditionally set lat/lon steps
-    observation_counts = add_observation_counts(df, state_vector, .25, .3125)
-    for i in range(1, last_ROI_element+1):
-        mask = state_vector_labels == i
+        # append the number of obs in each element
         num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
+
+    # in parallel, create lists of emissions and number of observations for each 
+    # cluster element
+    Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element+1))
     toc = time.perf_counter()
-    print(f"time to extract num obs: {toc-tic}")
-        
+    print(f"time to extract emissions and num obs: {toc-tic}")
+
     # ----------------------------------
     # Estimate information content
     # ----------------------------------
@@ -524,10 +534,6 @@ def estimate_averaging_kernel(config_path, state_vector_path, preview_dir, tropo
     m = np.array(num_obs)  # Number of observations per state vector element
 
     # Other parameters
-    if config["Res"] == "0.25x0.3125":
-        L = 25 * 1000  # Rough length scale of state vector element [m]
-    elif config["Res"] == "0.5x0.625":
-        L = 50 * 1000  # Rough length scale of state vector element [m]
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
     p = 101325  # Surface pressure [Pa = kg/m/s2]
     g = 9.8  # Gravity [m/s2]
@@ -571,7 +577,6 @@ def add_observation_counts(df, state_vector, lat_step, lon_step):
     return xr.merge([counts_ds, state_vector])
 
 if __name__ == "__main__":
-    import sys
 
     inversion_path = sys.argv[1]
     config_path = sys.argv[2]
