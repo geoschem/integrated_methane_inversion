@@ -40,13 +40,14 @@ create_statevector() {
 #   reduce_dimension
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
-    # First run the Preview
+
+    # First run the Preview if necessary to get prior emissions
     if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
         printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
         run_preview
     fi
 
-    # Run preview script
+    # set input variables
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
@@ -56,6 +57,7 @@ reduce_dimension() {
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
     if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
+        # copy the original state vector file for subsequent statevector generations
         printf "\nCopying native state vector file to NativeStateVector.nc \n"
         cp state_vector_path native_state_vector_path
     else

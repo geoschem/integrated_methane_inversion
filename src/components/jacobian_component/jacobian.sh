@@ -2,6 +2,7 @@
 
 # Functions available in this file include:
 #   - setup_jacobian 
+#   - run_jacobian 
 
 # Description: Setup jacobian run directory
 # Usage:
@@ -127,4 +128,28 @@ setup_jacobian() {
     done
 
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
+}
+
+# Description: Run jacobian simulations
+# Usage:
+#   run_jacobian
+run_jacobian() {
+    jacobian_start=$(date +%s)
+    printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
+
+    cd ${RunDirs}/jacobian_runs
+
+    if ! "$isAWS"; then
+        # Load environment with modules for compiling GEOS-Chem Classic
+        source ${GEOSChemEnv} 
+    fi
+
+    # Submit job to job scheduler
+    ./submit_jacobian_simulations_array.sh; wait;
+
+    # check if any jacobians exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed
+
+    printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
+    jacobian_end=$(date +%s)
 }

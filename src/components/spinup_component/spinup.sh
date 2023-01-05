@@ -2,6 +2,7 @@
 
 # Functions available in this file include:
 #   - setup_spinup 
+#   - run_spinup 
 
 # Description: Setup Spinup Directory
 # Usage:
@@ -76,4 +77,28 @@ setup_spinup() {
     cd ..
 
     printf "\n=== DONE CREATING SPINUP RUN DIRECTORY ===\n"
+}
+
+# Description: Run Spinup Directory
+# Usage:
+#   run_spinup
+run_spinup() {
+    spinup_start=$(date +%s)
+    printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
+
+    cd ${RunDirs}/spinup_run
+
+    if ! "$isAWS"; then
+        # Load environment with modules for compiling GEOS-Chem Classic
+        source ${GEOSChemEnv}
+    fi
+
+    # Submit job to job scheduler
+    sbatch -W ${RunName}_Spinup.run; wait;
+
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed
+
+    printf "\n=== DONE SPINUP SIMULATION ===\n"
+    spinup_end=$(date +%s)
 }

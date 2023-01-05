@@ -16,6 +16,18 @@ imi_failed() {
     exit 1
 }
 
+##=======================================================================
+## Import Shell functions
+##=======================================================================
+source src/components/setup_component/setup.sh
+source src/components/template_component/template.sh
+source src/components/statevector_component/statevector.sh
+source src/components/preview_component/preview.sh
+source src/components/spinup_component/spinup.sh
+source src/components/jacobian_component/jacobian.sh
+source src/components/inversion_component/inversion.sh
+source src/components/posterior_component/posterior.sh
+
 start_time=$(date)
 setup_start=$(date +%s)
 
@@ -116,174 +128,38 @@ fi
 ##=======================================================================
 ##  Run the setup script
 ##=======================================================================
-
 if "$RunSetup"; then
-
-    printf "\n=== RUNNING SETUP SCRIPT ===\n"
-
-    cd ${InversionPath}
-
-    if ! "$isAWS"; then
-		if [ ! -f "${GEOSChemEnv}" ]; then
-			printf "\nGEOS-Chem environment file does not exist!"
-			printf "\nIMI $RunName Aborted\n"
-			exit 1
-		else
-	        # Load environment with modules for compiling GEOS-Chem Classic
-    	    source ${GEOSChemEnv}
-    	fi
-    fi
-
-    # Run the setup script
-    ./setup_imi.sh ${ConfigFile}; wait;
-
-    printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
-
+    setup_imi
 fi
 setup_end=$(date +%s)
-
 
 ##=======================================================================
 ##  Submit spinup simulation
 ##=======================================================================
-
-spinup_start=$(date +%s)
 if  "$DoSpinup"; then
-
-    printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
-
-    cd ${RunDirs}/spinup_run
-
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
-    # Submit job to job scheduler
-    sbatch -W ${RunName}_Spinup.run; wait;
-
-    # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed
-
-    printf "\n=== DONE SPINUP SIMULATION ===\n"
-    
+    run_spinup
 fi
-spinup_end=$(date +%s)
 
 ##=======================================================================
 ##  Submit Jacobian simulation
 ##=======================================================================
-
-jacobian_start=$(date +%s)
 if "$DoJacobian"; then
-
-    printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
-
-    cd ${RunDirs}/jacobian_runs
-
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv} 
-    fi
-
-    # Submit job to job scheduler
-    ./submit_jacobian_simulations_array.sh; wait;
-
-    # check if any jacobians exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed
-
-    printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
-
+    run_jacobian
 fi
-jacobian_end=$(date +%s)
 
 ##=======================================================================
 ##  Process data and run inversion
 ##=======================================================================
-
-inversion_start=$(date +%s)
 if "$DoInversion"; then
-
-    printf "\n=== RUNNING INVERSION ===\n"
-
-    cd ${RunDirs}/inversion
-
-    if ! "$isAWS"; then
-        # Activate Conda environment
-        printf "\nActivating conda environment: ${CondaEnv}\n"
-        eval "$(conda shell.bash hook)"
-        conda activate $CondaEnv
-    fi
-
-    # Execute inversion driver script
-    sbatch -W run_inversion.sh; wait;
-        
-    printf "\n=== DONE RUNNING INVERSION ===\n"
-
+    run_inversion
 fi
-inversion_end=$(date +%s)
 
 ##=======================================================================
 ##  Submit posterior simulation and process the output
 ##=======================================================================
-
-posterior_start=$(date +%s)
 if "$DoPosterior"; then
-
-    cd ${RunDirs}/posterior_run
-    
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
-    # Submit job to job scheduler
-    printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch -W ${RunName}_Posterior.run; wait;
-    printf "\n=== DONE POSTERIOR SIMULATION ===\n"
-
-    cd ${RunDirs}/inversion
-
-    # Fill missing data (first hour of simulation) in posterior output
-    PosteriorRunDir="${RunDirs}/posterior_run"
-    PrevDir="${RunDirs}/spinup_run"
-    printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
-    printf "\n=== DONE -- postproc_diags.py ===\n"
-
-    # Build directory for hourly posterior GEOS-Chem output data
-    mkdir -p data_converted_posterior
-    mkdir -p data_visualization_posterior
-    mkdir -p data_geoschem_posterior
-    GCsourcepth="${PosteriorRunDir}/OutputDir"
-    GCDir="./data_geoschem_posterior"
-    printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-    python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "\n=== DONE -- setup_gc_cache.py ===\n"
-
-	if ! "$isAWS"; then
-    	# Load environment with NCO
-    	source ${NCOEnv}
-	fi
-
-    # Sample GEOS-Chem atmosphere with TROPOMI
-    function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
-    LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
-    FetchTROPOMI="False"
-    isPost="True"
-
-    printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
-    printf "\n=== DONE sampling the posterior simulation ===\n\n"
-
+    run_posterior
 fi
-posterior_end=$(date +%s)
 
 printf "\n=== DONE RUNNING THE IMI ===\n"
 

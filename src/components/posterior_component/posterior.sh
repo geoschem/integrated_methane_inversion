@@ -2,6 +2,7 @@
 
 # Functions available in this file include:
 #   - setup_posterior 
+#   - run_posterior 
 
 # Description: Setup posterior GCClassic run directory
 # Usage:
@@ -84,4 +85,64 @@ setup_posterior() {
     cd ..
 
     printf "\n=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
+}
+
+
+# Description: Run posterior simulation and process output
+# Usage:
+#   setup_posterior
+run_posterior() {
+    posterior_start=$(date +%s)
+    cd ${RunDirs}/posterior_run
+    
+    if ! "$isAWS"; then
+        # Load environment with modules for compiling GEOS-Chem Classic
+        source ${GEOSChemEnv}
+    fi
+
+    # Submit job to job scheduler
+    printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
+    sbatch -W ${RunName}_Posterior.run; wait;
+    printf "\n=== DONE POSTERIOR SIMULATION ===\n"
+
+    cd ${RunDirs}/inversion
+
+    # Fill missing data (first hour of simulation) in posterior output
+    PosteriorRunDir="${RunDirs}/posterior_run"
+    PrevDir="${RunDirs}/spinup_run"
+    printf "\n=== Calling postproc_diags.py for posterior ===\n"
+    python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+    printf "\n=== DONE -- postproc_diags.py ===\n"
+
+    # Build directory for hourly posterior GEOS-Chem output data
+    mkdir -p data_converted_posterior
+    mkdir -p data_visualization_posterior
+    mkdir -p data_geoschem_posterior
+    GCsourcepth="${PosteriorRunDir}/OutputDir"
+    GCDir="./data_geoschem_posterior"
+    printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
+    python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+    printf "\n=== DONE -- setup_gc_cache.py ===\n"
+
+	if ! "$isAWS"; then
+    	# Load environment with NCO
+    	source ${NCOEnv}
+	fi
+
+    # Sample GEOS-Chem atmosphere with TROPOMI
+    function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+    function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
+    LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
+    LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
+    LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
+    LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    rm ~/foo.nc
+    FetchTROPOMI="False"
+    isPost="True"
+
+    printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+    printf "\n=== DONE sampling the posterior simulation ===\n\n"
+    posterior_end=$(date +%s)
 }

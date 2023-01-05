@@ -2,6 +2,7 @@
 
 # Functions available in this file include:
 #   - setup_inversion 
+#   - run_inversion 
 
 # Description: Setup inversion run directory
 # Usage:
@@ -45,4 +46,27 @@ setup_inversion() {
     fi
     
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
+}
+
+# Description: Run inversion
+# Usage:
+#   run_inversion
+run_inversion() {
+    inversion_start=$(date +%s)
+    printf "\n=== RUNNING INVERSION ===\n"
+
+    cd ${RunDirs}/inversion
+
+    if ! "$isAWS"; then
+        # Activate Conda environment
+        printf "\nActivating conda environment: ${CondaEnv}\n"
+        eval "$(conda shell.bash hook)"
+        conda activate $CondaEnv
+    fi
+
+    # Execute inversion driver script
+    sbatch -W run_inversion.sh; wait;
+        
+    printf "\n=== DONE RUNNING INVERSION ===\n"
+    inversion_end=$(date +%s)
 }
