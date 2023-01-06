@@ -169,11 +169,11 @@ printf "\nIMI started : %s" "$start_time"
 printf "\nIMI ended   : %s" "$end_time"
 printf "\n"
 printf "\nRuntime statistics (s):"
-printf "\n Setup     : $(( $setup_end - $setup_start ))"
-printf "\n Spinup    : $(( $spinup_end - $spinup_start ))"
-printf "\n Inversion : $(( $inversion_end - $inversion_start ))"
-printf "\n Jacobian  : $(( $jacobian_end - $jacobian_start ))"
-printf "\n Posterior : $(( $posterior_end - $posterior_start ))\n\n"
+printf "\n Setup     : $( [[ ! -z $setup_end ]] && echo $(( $setup_end - $setup_start )) || echo 0 )"
+printf "\n Spinup     : $( [[ ! -z $spinup_end ]] && echo $(( $spinup_end - $spinup_start )) || echo 0 )"
+printf "\n Jacobian     : $( [[ ! -z $jacobian_end ]] && echo $(( $jacobian_end - $jacobian_start )) || echo 0 )"
+printf "\n Inversion     : $( [[ ! -z $inversion_end ]] && echo $(( $inversion_end - $inversion_start )) || echo 0 )"
+printf "\n Posterior     : $( [[ ! -z $posterior_end ]] && echo $(( $posterior_end - $posterior_start )) || echo 0 )\n\n"
 
 # copy output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then

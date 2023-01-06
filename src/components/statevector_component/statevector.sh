@@ -59,10 +59,10 @@ reduce_dimension() {
     if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
         # copy the original state vector file for subsequent statevector generations
         printf "\nCopying native state vector file to NativeStateVector.nc \n"
-        cp state_vector_path native_state_vector_path
+        cp $state_vector_path $native_state_vector_path
     else
         # replace state vector file with clean, native resolution state vector
-        cp native_state_vector_path state_vector_path
+        cp $native_state_vector_path $state_vector_path
     fi
 
     # if running end to end script with sbatch then use

@@ -307,19 +307,20 @@ def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
     """
     validate cluster pairs and transform them into the expected format.
     """
-    num_clusters = int(sv.max()) - num_buffer_cells
+    native_num_clusters = int(sv.max()) - num_buffer_cells
     new_cluster_pairs = []
+    total_native_cells_requested = 0
 
     for cells_per_cluster, num_clusters in cluster_pairs:
         native_cells = num_clusters * cells_per_cluster
         total_native_cells_requested += native_cells
         new_cluster_pairs.append((cells_per_cluster, native_cells))
 
-    remainder = num_clusters - total_native_cells_requested
+    remainder = native_num_clusters - total_native_cells_requested
     if remainder < 0:
-        raise (
+        raise Exception(
             f"Error in cluster pairs: too many pixels requested."
-            + f" {num_clusters} native resolution pixels and "
+            + f" {native_num_clusters} native resolution pixels and "
             + f"requested cluster pairings use {total_native_cells_requested} pixels."
         )
     elif remainder != 0:
