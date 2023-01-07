@@ -343,7 +343,7 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     lon = []
     xch4 = []
     albedo = []
-
+    
     # read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
@@ -351,7 +351,7 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     )
     # remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
-
+    
     for dict in observation_dicts:
         lat.extend(dict["lat"])
         lon.extend(dict["lon"])
@@ -369,7 +369,6 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
     emissions = []
-    tic = time.perf_counter()
 
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
@@ -395,8 +394,6 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     # in parallel, create lists of emissions and number of observations for each 
     # cluster element
     Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element+1))
-    toc = time.perf_counter()
-    print(f"time to extract emissions and num obs: {toc-tic}")
 
     # ----------------------------------
     # Estimate information content
