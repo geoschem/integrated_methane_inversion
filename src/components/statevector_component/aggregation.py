@@ -355,11 +355,15 @@ if __name__ == "__main__":
         config, state_vector_path, preview_dir, tropomi_cache
     )
     toc = time.perf_counter()
-    print(f"generated sensitivity time: {toc-tic}")
+    agg_start = time.perf_counter()
+    print(f"estimate_averaging_kernel time: {toc-tic}")
     new_sv = update_sv_clusters(
         original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"]
     )
     original_clusters.close()
+    agg_end = time.perf_counter()
+    print(f"update_sv_cluster time: {agg_end-agg_start}")
+
 
     # replace original statevector file
     print(f"Saving file {state_vector_path}")
