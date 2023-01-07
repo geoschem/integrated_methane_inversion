@@ -110,86 +110,6 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         config, state_vector_path, preview_dir, tropomi_cache, preview=True
     )
     mask = state_vector_labels <= last_ROI_element
-    # # ----------------------------------
-    # # Total prior emissions
-    # # ----------------------------------
-
-    # # Prior emissions
-    # preview_cache = os.path.join(preview_dir, "OutputDir")
-    # hemco_diags_file = [
-    #     f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f
-    # ][0]
-    # prior_pth = os.path.join(preview_cache, hemco_diags_file)
-    # prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
-
-    # # Compute total emissions in the region of interest
-    # areas = xr.load_dataset(prior_pth)["AREA"]
-    # total_prior_emissions = sum_total_emissions(prior, areas, mask)
-    # outstring1 = (
-    #     f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y"
-    # )
-    # print(outstring1)
-
-    # ----------------------------------
-    # Observations in region of interest
-    # ----------------------------------
-
-    # Paths to tropomi data files
-    # tropomi_files = [f for f in os.listdir(tropomi_cache) if ".nc" in f]
-    # tropomi_paths = [os.path.join(tropomi_cache, f) for f in tropomi_files]
-
-    # # Latitude/longitude bounds of the inversion domain
-    # xlim = [float(state_vector.lon.min()), float(state_vector.lon.max())]
-    # ylim = [float(state_vector.lat.min()), float(state_vector.lat.max())]
-
-    # # Start and end dates of the inversion
-    # startday = str(config["StartDate"])
-    # endday = str(config["EndDate"])
-    # start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
-    # end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
-    # startdate_np64 = np.datetime64(
-    #     datetime.datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
-    # )
-    # enddate_np64 = np.datetime64(
-    #     datetime.datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
-    #     - datetime.timedelta(days=1)
-    # )
-
-    # # Only consider tropomi files within date range (in case more are present)
-    # tropomi_paths = [
-    #     p
-    #     for p in tropomi_paths
-    #     if int(p.split("____")[1][0:8]) >= int(startday)
-    #     and int(p.split("____")[1][0:8]) < int(endday)
-    # ]
-    # tropomi_paths.sort()
-
-    # # Open tropomi files and filter data
-    # lat = []
-    # lon = []
-    # xch4 = []
-    # albedo = []
-
-    # # read in and filter tropomi observations (uses parallel processing)
-    # observation_dicts = Parallel(n_jobs=-1)(
-    #     delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
-    #     for file_path in tropomi_paths
-    # )
-    # # remove any problematic observation dicts (eg. corrupted data file)
-    # observation_dicts = list(filter(None, observation_dicts))
-
-    # for dict in observation_dicts:
-    #     lat.extend(dict["lat"])
-    #     lon.extend(dict["lon"])
-    #     xch4.extend(dict["xch4"])
-    #     albedo.extend(dict["swir_albedo"])
-
-    # # Assemble in dataframe
-    # df = pd.DataFrame()
-    # df["lat"] = lat
-    # df["lon"] = lon
-    # df["xch4"] = xch4
-    # df["swir_albedo"] = albedo
 
     # Count the number of observations in the region of interest
     num_obs = count_obs_in_mask(mask, df)
@@ -197,50 +117,6 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         sys.exit("Error: No observations found in region of interest")
     outstring2 = f"Found {num_obs} observations in the region of interest"
     print("\n" + outstring2)
-
-    # ----------------------------------
-    # Estimate information content
-    # ----------------------------------
-
-    # # State vector, observations
-    # n = last_ROI_element  # Number of state vector elements in the ROI
-    # m = num_obs / n  # Number of observations per state vector element
-
-    # # Other parameters
-    # if config["Res"] == "0.25x0.3125":
-    #     L = 25 * 1000  # Rough length scale of state vector element [m]
-    # elif config["Res"] == "0.5x0.625":
-    #     L = 50 * 1000  # Rough length scale of state vector element [m]
-    # U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
-    # p = 101325  # Surface pressure [Pa = kg/m/s2]
-    # g = 9.8  # Gravity [m/s2]
-    # Mair = 0.029  # Molar mass of air [kg/mol]
-    # Mch4 = 0.01604  # Molar mass of methane [kg/mol]
-    # alpha = 0.4  # Simple parameterization of turbulence
-
-    # # Change units of total prior emissions
-    # total_prior_emissions_kgs = (
-    #     total_prior_emissions * 1e9 / (3600 * 24 * 365)
-    # )  # kg/s from Tg/y
-    # total_prior_emissions_kgs_per_element = (
-    #     total_prior_emissions_kgs / L ** 2 / n
-    # )  # kg/m2/s from kg/s, per element
-
-    # # Error standard deviations with updated units
-    # sA = config["PriorError"] * total_prior_emissions_kgs_per_element
-    # sO = config["ObsError"] * 1e-9
-
-    # # Averaging kernel sensitivity for each grid element, and dofs
-    # k = alpha * (Mair * L * g / (Mch4 * U * p))
-    # a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
-    # dofs = n * a
-
-    # outstring3 = f"k = {np.round(sum(k),5)} kg-1 m2 s"
-    # outstring4 = f"a = {np.round(sum(a),5)}"
-    # outstring5 = f"expectedDOFS: {np.round(dofs,5)}"
-    # print(outstring3)
-    # print(outstring4)
-    # print(outstring5)
 
     # ----------------------------------
     # Estimate dollar cost
@@ -557,6 +433,9 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
     outstring5 = f"expectedDOFS: {np.round(sum(a),5)}"
+    print(outstring3)
+    print(outstring4)
+    print(outstring5)
 
     if preview:
         outstrings = f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
