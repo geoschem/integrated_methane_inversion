@@ -352,7 +352,7 @@ if __name__ == "__main__":
     print("Starting aggregation")
     tic = time.perf_counter()
     sensitivities = estimate_averaging_kernel(
-        config_path, state_vector_path, preview_dir, tropomi_cache
+        config, state_vector_path, preview_dir, tropomi_cache
     )
     toc = time.perf_counter()
     print(f"generated sensitivity time: {toc-tic}")
