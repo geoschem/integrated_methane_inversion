@@ -487,7 +487,8 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     df["lat"] = lat
     df["lon"] = lon
     df["count"] = np.ones(len(lat))
-    # df["swir_albedo"] = albedo
+    df["swir_albedo"] = albedo
+    df["xch4"] = xch4
 
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
@@ -553,7 +554,7 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     k = alpha * (Mair * L * g / (Mch4 * U * p))
     a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
 
-    outstring3 = f"k = {np.round(sum(k),5)} kg-1 m2 s"
+    outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
     outstring5 = f"expectedDOFS: {np.round(sum(a),5)}"
 
