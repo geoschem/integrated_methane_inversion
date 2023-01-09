@@ -376,8 +376,8 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
         lat_step = .25
         lon_step = .3125
     elif config["Res"] == "0.5x0.625":
-        lat_step = .25
-        lon_step = .3125
+        lat_step = .5
+        lon_step = .625
         L = 50 * 1000  # Rough length scale of state vector element [m]
 
     # bin observations into gridcells and map onto statevector

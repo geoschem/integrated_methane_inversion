@@ -339,6 +339,33 @@ def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
     return new_cluster_pairs
 
 
+def force_native_res_pixels(config, clusters, sensitivities, pairs):
+    coords = config["ForcedNativeResolutionPixels"]
+
+    # Error Handling
+    num_native_pixels = [pair[1] for pair in pairs if pair[0] == 1]
+    if len(coords) > num_native_pixels[0]:
+        message = "Error: Not enough native resolution pixels for forced coordinates."
+        +f"{len(coords)} forced coordinates, but only {num_native_pixels[0]} native pixels."
+        raise (Exception(message))
+
+    if config["Res"] == "0.25x0.3125":
+        lat_step = 0.25
+        lon_step = 0.3125
+    elif config["Res"] == "0.5x0.625":
+        lat_step = 0.5
+        lon_step = 0.625
+
+    for lat, lon in coords:
+        binned_lon = np.floor(lon / lon_step) * lon_step
+        binned_lat = np.floor(lat / lat_step) * lat_step
+        cluster_index = (
+            int(clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]) - 1
+        )
+        sensitivities[cluster_index] = 1.0
+    return sensitivities
+
+
 if __name__ == "__main__":
     inversion_path = sys.argv[1]
     config_path = sys.argv[2]
@@ -363,6 +390,10 @@ if __name__ == "__main__":
     toc = time.perf_counter()
     agg_start = time.perf_counter()
     print(f"estimate_averaging_kernel time: {toc-tic}")
+
+    sensitivities = force_native_res_pixels(
+        config, original_clusters["StateVector"], sensitivities, cluster_pairs
+    )
     new_sv = update_sv_clusters(
         original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"]
     )
