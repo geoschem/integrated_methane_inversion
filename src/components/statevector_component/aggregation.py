@@ -123,6 +123,12 @@ def update_sv_clusters(
         )
     else:
         raise ("Error: Invalid Clustering Method Inputted. Valid values are: 'kmeans'.")
+
+    # format state vector metadata
+    new_sv.StateVector.attrs["units"] = "none"
+    new_sv.StateVector.encoding["_FillValue"] = -9999
+    new_sv.StateVector.encoding["missing_value"] = -9999
+
     return new_sv
 
 
@@ -314,7 +320,7 @@ def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
     for cells_per_cluster, num_clusters in cluster_pairs:
         native_cells = num_clusters * cells_per_cluster
         total_native_cells_requested += native_cells
-        new_cluster_pairs.append((cells_per_cluster, native_cells))
+        new_cluster_pairs.append([cells_per_cluster, native_cells])
 
     remainder = native_num_clusters - total_native_cells_requested
     if remainder < 0:
@@ -326,11 +332,11 @@ def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
     elif remainder != 0:
         print(
             "Warning: Cluster pairings do not use all native pixels."
-            + f"Adding additional cluster pairing: {(remainder, remainder)}."
+            + f"Adding additional cluster pairing: {[remainder, 1]}."
         )
-        new_cluster_pairs = new_cluster_pairs.append((remainder, remainder))
+        new_cluster_pairs = new_cluster_pairs.append([remainder, remainder])
 
-    return cluster_pairs
+    return new_cluster_pairs
 
 
 if __name__ == "__main__":
@@ -363,7 +369,6 @@ if __name__ == "__main__":
     original_clusters.close()
     agg_end = time.perf_counter()
     print(f"update_sv_cluster time: {agg_end-agg_start}")
-
 
     # replace original statevector file
     print(f"Saving file {state_vector_path}")
