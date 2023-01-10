@@ -6,7 +6,6 @@
 
 import xarray as xr
 import numpy as np
-import pandas as pd
 import yaml
 import copy
 import sys
@@ -69,7 +68,7 @@ def scale_buffer_elements(scale_number, buffer):
     arguments:
         scale_number      int : how much to reduce buffer elements by
         buffer            [][]: ndarray buffer element statevector
-    Returns:              [][]: ndarray of scaled buffer elements 
+    Returns:              [][]: ndarray of scaled buffer elements
     """
     # replace 0's with nan, scale buffer, then replace nan with 0
     buffer = buffer.where(buffer != 0)
@@ -200,7 +199,9 @@ def kmeans_clustering(label_idx, clusters, n_cluster_size):
     return labels
 
 
-def aggregate_cells(clusters, orig_state_vector, sensitivities, n_cells, n_cluster_size=None):
+def aggregate_cells(
+    clusters, orig_state_vector, sensitivities, n_cells, n_cluster_size=None
+):
     """
     This function generates a multi-scale Jacobian on the basis
     of the information content, as given by the diagonal elements
@@ -215,11 +216,11 @@ def aggregate_cells(clusters, orig_state_vector, sensitivities, n_cells, n_clust
         orig_state_vector  [int]    : the previous state vector
         sensitivities      [float32]: the native resolution diagonal of the averaging
                                       kernel estimate
-        n_cells            [int]    : the number of native resolution grid cells to be used 
+        n_cells            [int]    : the number of native resolution grid cells to be used
                                       in the aggregation scheme (integer or list of integers);
-                                      defaults to [100, 200] 
-        n_cluster_size     [int]    : the number of native resolution grid cells to aggregate 
-                                      together at each level of aggregation; defaults to [1, 2] 
+                                      defaults to [100, 200]
+        n_cluster_size     [int]    : the number of native resolution grid cells to aggregate
+                                      together at each level of aggregation; defaults to [1, 2]
     Example:
         Passing n_cells=[100, 200], n_cluster_size=[1, 2] will
         generate a state vector where the 100 grid cells with highest
@@ -336,8 +337,8 @@ def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
         binned_lat = np.floor(lat / lat_step) * lat_step
-        cluster_index = (
-            int(clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0])
+        cluster_index = int(
+            clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
         )
         # TODO understand why the indexing is backwards
         sensitivities[-cluster_index] = 1.0

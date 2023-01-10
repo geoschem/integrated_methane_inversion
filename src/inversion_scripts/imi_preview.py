@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#SBATCH -N 1
-#SBATCH -n 1
+# SBATCH -N 1
+# SBATCH -n 1
 import sys
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import yaml
 import os
@@ -76,7 +77,9 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     return tropomi_data
 
 
-def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache):
+def imi_preview(
+    inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -90,12 +93,10 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     # redirect output to log file
-    output_file = open(
-        f"{inversion_path}/imi_output.log", "a"
-    )
+    output_file = open(f"{inversion_path}/imi_output.log", "a")
     sys.stdout = output_file
     sys.stderr = output_file
-    
+
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
@@ -164,7 +165,7 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     outputtextfile.close()
 
     # Prepare plot data for prior
-    prior_kgkm2h = prior * (1000 ** 2) * 60 * 60  # Units kg/km2/h
+    prior_kgkm2h = prior * (1000**2) * 60 * 60  # Units kg/km2/h
 
     # Prepare plot data for observations
     df_means = df.copy(deep=True)
@@ -201,7 +202,11 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_prior_emissions.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_prior_emissions.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
 
     # Plot observations
     fig = plt.figure(figsize=(10, 8))
@@ -220,7 +225,11 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_observations.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_observations.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
 
     # Plot albedo
     fig = plt.figure(figsize=(10, 8))
@@ -239,7 +248,9 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_albedo.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_albedo.png"), bbox_inches="tight", dpi=150
+    )
 
     # Plot observation density
     fig = plt.figure(figsize=(10, 8))
@@ -258,10 +269,16 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
         mask=mask,
         only_ROI=False,
     )
-    plt.savefig(os.path.join(preview_dir, "preview_observation_density.png"), bbox_inches='tight', dpi=150)
+    plt.savefig(
+        os.path.join(preview_dir, "preview_observation_density.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
 
 
-def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_cache, preview=False):
+def estimate_averaging_kernel(
+    config, state_vector_path, preview_dir, tropomi_cache, preview=False
+):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -343,7 +360,7 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     lon = []
     xch4 = []
     albedo = []
-    
+
     # read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
@@ -351,7 +368,7 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     )
     # remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
-    
+
     for dict in observation_dicts:
         lat.extend(dict["lat"])
         lon.extend(dict["lon"])
@@ -373,11 +390,11 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
         L = 25 * 1000  # Rough length scale of state vector element [m]
-        lat_step = .25
-        lon_step = .3125
+        lat_step = 0.25
+        lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":
-        lat_step = .5
-        lon_step = .625
+        lat_step = 0.5
+        lon_step = 0.625
         L = 50 * 1000  # Rough length scale of state vector element [m]
 
     # bin observations into gridcells and map onto statevector
@@ -391,9 +408,9 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
         # append the number of obs in each element
         num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
 
-    # in parallel, create lists of emissions and number of observations for each 
+    # in parallel, create lists of emissions and number of observations for each
     # cluster element
-    Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element+1))
+    Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element + 1))
 
     # ----------------------------------
     # Estimate information content
@@ -412,12 +429,8 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     alpha = 0.4  # Simple parameterization of turbulence
 
     # Change units of total prior emissions
-    emissions_kgs = (
-        emissions * 1e9 / (3600 * 24 * 365)
-    )  # kg/s from Tg/y
-    emissions_kgs_per_m2 = (
-        emissions_kgs / L ** 2 
-    )  # kg/m2/s from kg/s, per element
+    emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
+    emissions_kgs_per_m2 = emissions_kgs / L**2  # kg/m2/s from kg/s, per element
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
@@ -425,7 +438,7 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
 
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
+    a = sA**2 / (sA**2 + (sO / k) ** 2 / m)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
@@ -435,16 +448,19 @@ def estimate_averaging_kernel(config, state_vector_path, preview_dir, tropomi_ca
     print(outstring5)
 
     if preview:
-        outstrings = f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
+        outstrings = (
+            f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
+        )
         time_delta = enddate_np64 - startdate_np64
         return a, df, time_delta, prior, outstrings
     else:
         return a
 
+
 def add_observation_counts(df, state_vector, lat_step, lon_step):
     """
-    Given arbitrary observation coordinates in a pandas df, group 
-    them by gridcell and return the number of observations mapped 
+    Given arbitrary observation coordinates in a pandas df, group
+    them by gridcell and return the number of observations mapped
     onto the statevector dataset
     """
     to_lon = lambda x: np.floor(x / lon_step) * lon_step
@@ -459,6 +475,7 @@ def add_observation_counts(df, state_vector, lat_step, lon_step):
     counts_ds = groups.sum().to_xarray().drop_vars(["old_lat", "old_lon"])
     return xr.merge([counts_ds, state_vector])
 
+
 if __name__ == "__main__":
 
     inversion_path = sys.argv[1]
@@ -467,4 +484,6 @@ if __name__ == "__main__":
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
 
-    imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)
+    imi_preview(
+        inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+    )
