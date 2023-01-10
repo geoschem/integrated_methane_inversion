@@ -11,7 +11,7 @@ import yaml
 import copy
 import sys
 import time
-from inversion_scripts.imi_preview import estimate_averaging_kernel
+from integrated_methane_inversion.src.inversion_scripts.imi_preview import estimate_averaging_kernel
 
 # clustering
 from sklearn.cluster import KMeans
@@ -79,27 +79,28 @@ def update_sv_clusters(
     arguments:
         orig_xr_clusters    [][]: xarray dataset: the mapping from the grid cells to state
                             vector number
-        sensitivities       [int]: the native resolution diagonal of the averaging
+        sensitivities       [float32]: the native resolution diagonal of the averaging
                             kernel estimate. Only sensitivites for the ROI
-        clustering_options  [(tuple)]: list of tuples representing the desired
-                                aggregation scheme eg. [(1,15), (2,46)] would result in
+        clustering_options  [[tuple]]: list of tuples representing the desired
+                                aggregation scheme eg. [[1,15], [2,46]] would result in
                                 15 native resolution elements and 23 2-cell elements
         num_buffer_elems    int: number of buffer elements in statevector
     """
     if method == "kmeans":
+        clusters_copy = orig_xr_clusters.copy()
         # set buffer elements to 0, retain buffer labels for rejoining
         roi_labels, buffer_labels = zero_buffer_elements(
-            orig_xr_clusters["StateVector"], num_buffer_elems
+            clusters_copy["StateVector"], num_buffer_elems
         )
-        orig_xr_clusters["StateVector"] = roi_labels
+        clusters_copy["StateVector"] = roi_labels
 
-        new_sv = orig_xr_clusters.copy()
-        sv_element_list = np.arange(1, orig_xr_clusters["StateVector"].max() + 1, 1)
+        new_sv = clusters_copy.copy()
+        sv_element_list = np.arange(1, clusters_copy["StateVector"].max() + 1, 1)
         aggregation_sizes = [item[0] for item in clustering_options]
         num_aggregation_elements = [item[1] for item in clustering_options]
 
         new_cluster_labels = aggregate_cells(
-            orig_xr_clusters["StateVector"],
+            clusters_copy["StateVector"],
             sv_element_list,
             sensitivities,
             num_aggregation_elements,
@@ -107,11 +108,11 @@ def update_sv_clusters(
         )
 
         new_sv_labels = match_data_to_clusters(
-            new_cluster_labels, orig_xr_clusters["StateVector"]
+            new_cluster_labels, clusters_copy["StateVector"]
         )
 
         # scale buffer elements to correct label range
-        cluster_number_diff = int(orig_xr_clusters["StateVector"].max()) - int(
+        cluster_number_diff = int(clusters_copy["StateVector"].max()) - int(
             new_sv_labels.max()
         )
         buffer_labels = scale_buffer_elements(cluster_number_diff, buffer_labels)
@@ -206,7 +207,7 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
         clusters            [][] ndarray: the mapping from the grid cells to state
                             vector number
         orig_state_vector   [int]: the previous state vector #* just a list of 1:num_vs_element?
-        dofs                [int]: the native resolution diagonal of the averaging
+        dofs                [float32]: the native resolution diagonal of the averaging
                             kernel estimate #* reasonable to use random 0-1 values? 2d like the clusters?
         rf                  int: the native resolution regularization factor #* not actually a parameter?
         n_cells             [int]: the number of native resolution grid
@@ -251,7 +252,7 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
     n_cells = np.append(0, n_cells)
     nidx = np.cumsum(n_cells)
     # * I dont understand why this is in a loop (1,100), (2,200) or maybe what ncells is?
-    for i, n in enumerate(n_cells[1:]):
+    for i, _ in enumerate(n_cells[1:]):
         # Get cluster size
         if n_cluster_size is None:
             raise ("Error: n_cluster_size is None")
@@ -280,8 +281,6 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
     new_rf = rf * len(new_elements) / len(orig_elements)
 
     print("Number of state vector elements: %d" % len(ux))
-    print(summ, summ_cnt)
-    print("... Complete ...\n")
 
     return new_sv
 
@@ -360,9 +359,10 @@ def force_native_res_pixels(config, clusters, sensitivities, pairs):
         binned_lon = np.floor(lon / lon_step) * lon_step
         binned_lat = np.floor(lat / lat_step) * lat_step
         cluster_index = (
-            int(clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]) - 1
+            int(clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0])
         )
-        sensitivities[cluster_index] = 1.0
+        # TODO understand why the indexing is backwards
+        sensitivities[-cluster_index] = 1.0
     return sensitivities
 
 
