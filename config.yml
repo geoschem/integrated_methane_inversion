@@ -46,7 +46,6 @@ LandThreshold: 0.25
 
 ## Clustering Options
 ReducedDimensionStateVector: true
-NumberOfElements: 45
 ClusteringPairs:
   - [1, 15]
   - [2, 24]
