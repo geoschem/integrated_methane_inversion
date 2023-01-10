@@ -11,13 +11,22 @@ import yaml
 import copy
 import sys
 import time
-from integrated_methane_inversion.src.inversion_scripts.imi_preview import estimate_averaging_kernel
+from inversion_scripts.imi_preview import estimate_averaging_kernel
 
 # clustering
 from sklearn.cluster import KMeans
 
 
 def match_data_to_clusters(data, clusters, default_value=0):
+    """
+    Description:
+        match 1D list of elements to 2D statevector
+    arguments:
+        data                [int]: data to infill into 2D statevector
+        clusters            [][] : xarray dataarray: the mapping from
+                                   the grid cells to state vector number
+    Returns:                [][] : filled with new values
+    """
     result = clusters.copy()
     c_array = result.values
     c_idx = np.where(c_array > 0)
@@ -54,8 +63,13 @@ def zero_buffer_elements(clusters, num_buffer_elems):
 
 def scale_buffer_elements(scale_number, buffer):
     """
-    Scales buffer elements by the difference in elements between
-    the original and scaled cluster elements
+    Description:
+        Scales buffer elements by the difference in elements between
+        the original and scaled cluster elements
+    arguments:
+        scale_number      int : how much to reduce buffer elements by
+        buffer            [][]: ndarray buffer element statevector
+    Returns:              [][]: ndarray of scaled buffer elements 
     """
     # replace 0's with nan, scale buffer, then replace nan with 0
     buffer = buffer.where(buffer != 0)
@@ -139,26 +153,20 @@ def update_sv_clusters(
 def kmeans_clustering(label_idx, clusters, n_cluster_size):
     #   n_cells, n_cluster_size=None):
 
-    # * dofs isn't used???
-    # * is label_idx the indices of clusters with native res?
     # get indices of native resolution clusters
     # u, ind, counts = np.unique(clusters, return_index=True, return_counts=True)
     # unique_mask = [c == 1 for c in counts]
     # label_idx = ind[unique_mask]
 
-    # * clusters is 2d and labels is 1d?
     # Initialize the labels and set the labels of interest to
     # non zero values
     labels = np.zeros(int(clusters.max()))  # Get zeros of nstate dimension
     labels[label_idx] = label_idx + 1  # Fix for pythonic indexing
 
-    # * not sure if I need to use this func because my original sv is already labelled?
-    # * so labels might just be sv.values?
     # Move the labels into a 2D cluster format to get lat/lon information
     # so we can cluster proximate grid cells
     labels = match_data_to_clusters(labels, clusters)
 
-    # * are labels of interest the ones with high dofs? Not sure where dofs comes in here
     # Move to a dataframe and only choose the labels of interest (label_idx)
     labels = labels.to_dataframe("labels").reset_index()
     labels = labels[labels["labels"] > 0]
@@ -174,7 +182,6 @@ def kmeans_clustering(label_idx, clusters, n_cluster_size):
     ## labels to the grid cells.
     ## I specify the random_state to avoid variations between test rounds
     ## since Kmeans has a degree of randomness
-    # * As is, this looks like it would fit based on spatial proximity?
     labels_new = KMeans(n_clusters=n_clusters, random_state=0)
     labels_new = labels_new.fit(labels[["lat", "lon"]])
 
@@ -193,7 +200,7 @@ def kmeans_clustering(label_idx, clusters, n_cluster_size):
     return labels
 
 
-def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=None):
+def aggregate_cells(clusters, orig_state_vector, sensitivities, n_cells, n_cluster_size=None):
     """
     This function generates a multi-scale Jacobian on the basis
     of the information content, as given by the diagonal elements
@@ -204,19 +211,15 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
     desired number of grid cells and the number of grid cells per
     cluster for each aggregation level. It accepts the following
     arguments:
-        clusters            [][] ndarray: the mapping from the grid cells to state
-                            vector number
-        orig_state_vector   [int]: the previous state vector #* just a list of 1:num_vs_element?
-        dofs                [float32]: the native resolution diagonal of the averaging
-                            kernel estimate #* reasonable to use random 0-1 values? 2d like the clusters?
-        rf                  int: the native resolution regularization factor #* not actually a parameter?
-        n_cells             [int]: the number of native resolution grid
-                            cells to be used in the aggregation
-                            scheme (integer or list of integers);
-                            defaults to [100, 200] #* what are subsequent indices used for?
-        n_cluster_size      [int]: the number of native resolution grid
-                            cells to aggregate together at each level
-                            of aggregation; defaults to [1, 2] #* what is this used for?
+        clusters           [][]     : ndarray mapping from the grid cells to state vector number
+        orig_state_vector  [int]    : the previous state vector
+        sensitivities      [float32]: the native resolution diagonal of the averaging
+                                      kernel estimate
+        n_cells            [int]    : the number of native resolution grid cells to be used 
+                                      in the aggregation scheme (integer or list of integers);
+                                      defaults to [100, 200] 
+        n_cluster_size     [int]    : the number of native resolution grid cells to aggregate 
+                                      together at each level of aggregation; defaults to [1, 2] 
     Example:
         Passing n_cells=[100, 200], n_cluster_size=[1, 2] will
         generate a state vector where the 100 grid cells with highest
@@ -226,24 +229,12 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
         2. The final state vector will have dimension 200.
     """
 
-    print("... Generating multiscale grid ...")
-    rf = 1.0
-
     new_sv = copy.deepcopy(orig_state_vector)  # (New state vector)
-    dofs = copy.deepcopy(dofs)
-    orig_elements, orig_counts = np.unique(orig_state_vector, return_counts=True)
-
-    # For any grid cells previously added to the state vector,
-    # set significance to 0
-    # if np.any(orig_counts > 1): # If we aggregated together any grid cells
-    #     print('Ignoring previously optimized grid cells.')
-    #     dofs[orig_counts == 1] = 0 # Then assume that any grid cells with
-    # only one element are previously optimized
-    ## Note to Lucas: I think this might be wrong...?
+    sensitivities = copy.deepcopy(sensitivities)
 
     # Get the indices associated with the most significant
     # grid boxes
-    sig_idx = dofs.argsort()[::-1]
+    sig_idx = sensitivities.argsort()[::-1]
 
     # Initialize the new state vector
     new_sv = np.zeros(len(orig_state_vector))
@@ -251,7 +242,7 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
     # Iterate through n_cells
     n_cells = np.append(0, n_cells)
     nidx = np.cumsum(n_cells)
-    # * I dont understand why this is in a loop (1,100), (2,200) or maybe what ncells is?
+
     for i, _ in enumerate(n_cells[1:]):
         # Get cluster size
         if n_cluster_size is None:
@@ -264,8 +255,6 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
         sub_sig_idx = sig_idx[nidx[i] : nidx[i + 1]]
 
         # Get the new labels
-        # * params don't match function?
-        # new_labels = kmeans_clustering(sub_sig_idx, clusters, cluster_size, n_cells)
         new_labels = kmeans_clustering(sub_sig_idx, clusters, cluster_size)
 
         # Adjust the labels (which are from 1 to m) to match the range
@@ -273,53 +262,31 @@ def aggregate_cells(clusters, orig_state_vector, dofs, n_cells, n_cluster_size=N
         new_sv[new_labels["labels"]] = new_labels["new_labels"] + new_sv.max()
 
     # Print information about state vector
-    ux, ux_cnt = np.unique(new_sv, return_counts=True)
-    summ, summ_cnt = np.unique(ux_cnt, return_counts=True)
-
-    # Adjust the rf
-    new_elements, counts = np.unique(new_sv, return_counts=True)
-    new_rf = rf * len(new_elements) / len(orig_elements)
-
+    ux = np.unique(new_sv)
     print("Number of state vector elements: %d" % len(ux))
 
     return new_sv
 
 
-def calculate_k_ms(forward_model, state_vector):
-    k_ms = pd.DataFrame(forward_model)
-    k_ms = k_ms.groupby(state_vector, axis=1).sum()
-    k = np.array(k_ms)
-    return k
-
-
-def calculate_prior_ms(xa_abs, sa_vec, state_vector):
-    xa_abs_ms = pd.DataFrame(xa_abs).groupby(state_vector).sum()
-
-    xa_abs = np.array(xa_abs_ms).reshape(
-        -1,
-    )
-    xa = np.ones(len(xa_abs)).reshape(
-        -1,
-    )
-    sa_vec = 0.25 * np.ones(len(xa_abs)).reshape(
-        -1,
-    )
-
-    return xa, xa_abs, sa_vec
-
-
-def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
+def generate_cluster_pairs(clusters, num_buffer_cells, cluster_pairs):
     """
-    validate cluster pairs and transform them into the expected format.
+    Description:
+        Generate cluster pairs expected by aggregation algorithm
+        and validate inputted values
+    arguments:
+        clusters         [][]     : ndarray of statevector clusters
+        num_buffer_cells int      : num buffer elements in inversion domain
+        cluster_pairs    [(tuple)]: cluster pairings
+    Returns:             [(tuple)]: updated cluster pairings
     """
-    native_num_clusters = int(sv.max()) - num_buffer_cells
+    native_num_clusters = int(clusters.max()) - num_buffer_cells
     new_cluster_pairs = []
     total_native_cells_requested = 0
 
     for cells_per_cluster, num_clusters in cluster_pairs:
         native_cells = num_clusters * cells_per_cluster
         total_native_cells_requested += native_cells
-        new_cluster_pairs.append([cells_per_cluster, native_cells])
+        new_cluster_pairs.append((cells_per_cluster, native_cells))
 
     remainder = native_num_clusters - total_native_cells_requested
     if remainder < 0:
@@ -333,16 +300,27 @@ def generate_cluster_pairs(sv, num_buffer_cells, cluster_pairs):
             "Warning: Cluster pairings do not use all native pixels."
             + f"Adding additional cluster pairing: {[remainder, 1]}."
         )
-        new_cluster_pairs = new_cluster_pairs.append([remainder, remainder])
+        new_cluster_pairs = new_cluster_pairs.append((remainder, remainder))
 
     return new_cluster_pairs
 
 
-def force_native_res_pixels(config, clusters, sensitivities, pairs):
+def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
+    """
+    Description:
+        Forces native resolution for specified coordinates in config file
+        by setting the corresponding sensitivity to 1.0
+    arguments:
+        config           {dict}   : imi config file
+        clusters         [][]     : ndarray statevector clusters
+        sensitivities    [double] : list of avging kernel senstivities
+        cluster_pairs    [(tuple)]: cluster pairings
+    Returns:             [double] : updated sensitivities
+    """
     coords = config["ForcedNativeResolutionPixels"]
 
     # Error Handling
-    num_native_pixels = [pair[1] for pair in pairs if pair[0] == 1]
+    num_native_pixels = [pair[1] for pair in cluster_pairs if pair[0] == 1]
     if len(coords) > num_native_pixels[0]:
         message = "Error: Not enough native resolution pixels for forced coordinates."
         +f"{len(coords)} forced coordinates, but only {num_native_pixels[0]} native pixels."

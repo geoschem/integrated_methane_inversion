@@ -50,7 +50,8 @@ NumberOfElements: 45
 ClusteringPairs:
   - [1, 15]
   - [2, 24]
-ForcedNativeResolutionPixels: [(31.5, -104)]
+ForcedNativeResolutionPixels: 
+  - [31.5, -104]
 
 ## Custom state vector
 StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
