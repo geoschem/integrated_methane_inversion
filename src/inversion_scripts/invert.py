@@ -130,7 +130,10 @@ def do_inversion(
         # weight obs_err based on the observation count to prevent overfitting
         # Note: weighting function defined by Zichong Chen for his 
         # middle east inversions. May need to be tuned based on region.
-        # TODO: add paper citation when published
+        # From Chen et al. 2023:
+        # "Satellite quantification of methane emissions and oil/gas methane 
+        # intensities from individual countries in the Middle East and North 
+        # Africa: implications for climate action"
         obsWeight = 1.02 - (obs_GC[:, 4] * .02)
         obs_error = obsWeight * obs_err
         
