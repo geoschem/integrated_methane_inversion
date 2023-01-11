@@ -318,7 +318,11 @@ def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    coords = config["ForcedNativeResolutionPixels"]
+    coords = config["ForcedNativeResolutionElements"]
+
+    if coords is None:
+        # No forced pixels inputted
+        return sensitivities
 
     # Error Handling
     num_native_pixels = [pair[1] for pair in cluster_pairs if pair[0] == 1]
@@ -370,9 +374,10 @@ if __name__ == "__main__":
     agg_start = time.perf_counter()
     print(f"estimate_averaging_kernel time: {toc-tic}")
 
-    sensitivities = force_native_res_pixels(
-        config, original_clusters["StateVector"], sensitivities, cluster_pairs
-    )
+    if "ForcedNativeResolutionElements" in config.keys():
+        sensitivities = force_native_res_pixels(
+            config, original_clusters["StateVector"], sensitivities, cluster_pairs
+        )
     new_sv = update_sv_clusters(
         original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"]
     )

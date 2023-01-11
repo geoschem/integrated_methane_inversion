@@ -67,6 +67,19 @@ State vector
    * - ``LandThreshold``
      - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file. Default value is ``0.25``.
 
+Clustering Options
+^^^^^^^^^^^^^^^^^^
+For more information on using the clustering options take a look at the `clustering options page <../advanced/using-clustering-options.html>`__.
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+   * - ``ReducedDimensionStateVector``
+     - Boolean for whether to reduce the dimension of the statevector from the native resolution version by clustering elements. If ``false`` the native state vector is used with no dimension reduction.
+   * - ``ClusteringPairs``
+     - Pairing information used for statevector dimension. For example, if the pairings [1, 15] and [2, 24] are given, then the resultant state vector will have 15 native resolution gridcell elements and 24 2-gridcell elements. Any remaining native resolution grid cells are aggregated into a single element.
+   * - ``ForcedNativeResolutionElements``
+     - yaml list of of coordinates that you would like to force as native resolution state vector elements [lat, lon]. This is useful for ensuring hotspot locations are at the highest available resolution. 
+
 Custom/pre-generated state vector
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Use them to :doc:`create a custom state vector file <../advanced/custom-state-vector>` from a shapefile in conjunction with the ``statevector_from_shapefile.ipynb`` jupyter notebook located at::
@@ -95,7 +108,7 @@ Inversion
    * - ``ObsError``
      - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
    * - ``Gamma``
-     - Regularization parameter; typically between 0 and 1. Default value is ``0.25``.
+     - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
 
