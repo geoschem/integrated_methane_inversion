@@ -70,9 +70,11 @@ State vector
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
 For more information on using the clustering options take a look at the `clustering options page <../advanced/using-clustering-options.html>`__.
+
 .. list-table::
    :widths: 30, 70
    :class: tight-table
+
    * - ``ReducedDimensionStateVector``
      - Boolean for whether to reduce the dimension of the statevector from the native resolution version by clustering elements. If ``false`` the native state vector is used with no dimension reduction.
    * - ``ClusteringPairs``

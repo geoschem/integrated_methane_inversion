@@ -42,6 +42,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    advanced/running-with-tmux.rst
    advanced/setting-up-jupyter.rst
    advanced/custom-state-vector.rst
+   advanced/using-clustering-options.rst
    advanced/custom-prior-emissions-hemco.rst
    advanced/custom-region.rst
    advanced/inversion-ensemble.rst

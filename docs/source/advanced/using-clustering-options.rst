@@ -12,24 +12,20 @@ large number of elements this can limit the feasibility of running the IMI -- ei
 prohibitively high AWS costs or compute time. Clustering your state vector elements reduces 
 the number of state vector elements by aggregating elements together. 
 
-IMI clustering scheme
----------------------
-The IMI clustering algorithm uses simplified version of the k-means method described 
-`in Nesser et al., 2021 <https://doi.org/10.5194/amt-14-5521-2021>`_ to maintain native 
-resolution in areas with high information content (high prior emissions, high observation 
-density), while aggregating cells with low information content.
-
 Using the IMI clustering config options
 ---------------------------------------
 To enable the IMI clustering options in the imi config file set 
 ``ReducedDimensionStateVector: true``. This enables the clustering component of the IMI. 
 Once enabled the IMI uses your specified ``ClusteringPairs`` to aggregate state vector elements 
-within your domain of interest (excluding buffer elements). eg: 
+within your domain of interest (excluding buffer elements). eg:
+
 ::
+
     ReducedDimensionStateVector: true
     ClusteringPairs:
       - [1, 15]
       - [2, 24]
+
 
 Each clustering pair consists of the the aggregation level and the number of cells you are 
 allocating with the aggregation level. In the above example, the user is requesting 15 native 
@@ -47,8 +43,10 @@ Additionally, the ``ForcedNativeResolutionElements`` is a configuration option t
 specify areas that you would like to maintain high resolution for. Eg:
 
 ::
+    
     ForcedNativeResolutionElements:
       - [31.5, -104]
+
 
 For instance, if the user suspects a location to be an emission hotspot they can specify the 
 lat/lon coordinates as in the example above and the clustering algorithm will ensure that the
@@ -58,6 +56,12 @@ preserve the element, you must have enough native resolution pixels specified in
 
 Note: The IMI preserves the original state vector file as NativeStateVector.nc in your run directory.
 
+IMI clustering scheme
+---------------------
+The IMI clustering algorithm uses simplified version of the k-means method described 
+`in Nesser et al., 2021 <https://doi.org/10.5194/amt-14-5521-2021>`_ to maintain native 
+resolution in areas with high information content (high prior emissions, high observation 
+density), while aggregating cells with low information content.
 
 Reducing computational cost while maintaining inversion quality
 ---------------------------------------------------------------
