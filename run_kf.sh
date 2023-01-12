@@ -305,6 +305,9 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         python ${InversionPath}/src/kf_scripts/multiply_posteriors.py $i ${RunDirs}; wait
         echo "Multiplied posterior scale factors over record"
 
+        # Print total posterior emissions
+        python ${InversionPath}/src/kf_scripts/print_posterior_emissions.py $ConfigPath $i ${RunDirs}; wait
+
         ##=======================================================================
         ##  Submit posterior simulation and process the output
         ##=======================================================================

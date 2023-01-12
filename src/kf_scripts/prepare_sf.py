@@ -3,28 +3,8 @@ import os
 import numpy as np
 import yaml
 
-
-def sum_total_emissions(emissions, areas, mask):
-    """
-    Function to sum total emissions across the region of interest.
-    
-    Copied from src/inversion_scripts/utils.py
-
-    Arguments:
-        emissions : xarray data array for emissions across inversion domain
-        areas     : xarray data array for grid-cell areas across inversion domain
-        mask      : xarray data array binary mask for the region of interest
-
-    Returns:
-        Total emissions in Tg/y
-    """
-
-    s_per_d = 86400
-    d_per_y = 365
-    tg_per_kg = 1e-9
-    emissions_in_kg_per_s = emissions * areas * mask
-    total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
-    return float(total)
+sys.path.append("../inversion_scripts/")
+from utils import sum_total_emissions
 
 
 def prepare_sf(config_path, period_number, base_directory, nudge_factor):
