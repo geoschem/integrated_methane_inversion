@@ -3,8 +3,28 @@
 Quick start guide
 =================
 
+1. Register with us
+-------------------
+We encourage new users to email the IMI team at 
+**integrated-methane-inversion@g.harvard.edu** with a 
+description of your project and the organization you are affiliated with. Knowing our user base helps us to 
+prioritize new features and updates to the IMI. Additionally, registered users can 
+`contact us for support <../reference/SUPPORT.html>`__ and will receive notifications of any critical 
+bugfixes or new releases/features added to the IMI.
 
-1. Create an Amazon Web Services (AWS) account
+Template introduction email:
+
+.. code-block:: text
+
+  Hello IMI Team!
+
+  My name is <insert name here> and I am affiliated with <insert-organization>. 
+  We work on <research-interests> and are interested in using the IMI to <insert-application>. 
+  Here is the link to our research page: <insert-link>. Please send us updates on any future 
+  releases or critical bugfixes to the IMI.
+
+
+2. Create an Amazon Web Services (AWS) account
 ----------------------------------------------
 
 If you do not already have an AWS account, you'll need to sign up for one.
@@ -28,7 +48,7 @@ For more information on costs, see :doc:`Tips for Minimizing AWS costs <minimizi
 
 .. _s3-permissions-label:
 
-2. Add S3 user permissions
+3. Add S3 user permissions
 --------------------------
 
 Default input data for the IMI are stored in the Amazon Simple Storage Service (S3). 
@@ -46,7 +66,7 @@ Instructions to create an IAM role with full S3 access are provided in the
 For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
-3. Launch an instance with the IMI
+4. Launch an instance with the IMI
 ----------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and go to the  
@@ -136,7 +156,7 @@ You now have your own system running on the cloud! Note that you will be charged
 
 .. _login_ec2-label:
 
-4. Login to your instance
+5. Login to your instance
 -------------------------
 
 Select your instance and click on the "Connect" button (shown in the figure above) near the blue "Launch Instance" button to show this instruction page:
@@ -163,7 +183,7 @@ Select your instance and click on the "Connect" button (shown in the figure abov
 Once you've followed the above instructions, you should see a "Welcome to Ubuntu" message indicating you've logged into your new EC2 instance.
 
 
-5. Configure the IMI
+6. Configure the IMI
 --------------------
 
 Navigate to the IMI setup directory::
@@ -179,7 +199,7 @@ See the :doc:`IMI configuration file page <imi-config-file>` for information on 
 Also see the :doc:`common configurations page <../other/common-configurations>`.
 
 
-6. Run the IMI
+7. Run the IMI
 --------------
 After editing the configuration file, you can run the IMI by executing the following command::
   
@@ -197,7 +217,7 @@ Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmu
 .. note::
   We strongly recommend using the :doc:`IMI preview feature <imi-preview>` before running an inversion.
 
-7. Visualize results with Python
+8. Visualize results with Python
 --------------------------------
 
 When your inversion is complete, you can use the visualization notebook provided with the IMI to quickly inspect the results.
@@ -217,7 +237,7 @@ averaging kernel sensitivities, and more.
 
 .. _shutdown-label:
 
-8. Shut down the instance
+9. Shut down the instance
 -------------------------
 
 When you are ready to end your session, right-click on the instance in the AWS EC2 console to get this menu:
@@ -236,8 +256,8 @@ There are two options for ending the session: "Stop" (temporary shutdown) or "Te
 
 .. _s3storage-label:
 
-9. Store data on S3
--------------------
+10. Store data on S3
+--------------------
 
 S3 is our preferred cloud storage platform due to cost and ease of access. 
 
