@@ -1,8 +1,10 @@
 import numpy as np
 import xarray as xr
 from functools import partial
-import pyproj
 from shapely.geometry.polygon import Polygon
+from pyproj import Geod
+from functools import partial
+from itertools import product
 import shapely.ops as ops
 import cartopy
 import cartopy.crs as ccrs
@@ -207,3 +209,21 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
         & (tropomi_data["swir_albedo"] > 0.05)
         & (tropomi_data["blended_albedo"] < 0.85)
     )
+
+def calculate_area_in_km(coordinate_list):
+    """
+    Description:
+        Calculate area in km of a polygon given a list of coordinates
+    Arguments
+        coordinate_list  [tuple]: list of lat/lon coordinates. 
+                         coordinates must be in correct polygon order 
+    Returns:
+        int: area in km of polygon
+    """
+
+    polygon = Polygon(coordinate_list)
+
+    geod = Geod(ellps='clrk66')
+    poly_area, _ = geod.geometry_area_perimeter(polygon)
+
+    return abs(poly_area) * 1e-6
