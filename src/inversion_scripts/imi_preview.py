@@ -131,7 +131,9 @@ def imi_preview(
     # Reference area = area of 24-39 N 95-111W
     reference_cost = 20
     reference_num_compute_hours = 10
-    reference_area_km = calculate_area_in_km([(-111, 24), (-95, 24), (-95, 39), (-111, 39)])
+    reference_area_km = calculate_area_in_km(
+        [(-111, 24), (-95, 24), (-95, 39), (-111, 39)]
+    )
     hours_in_month = 31 * 24
     reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
     num_state_variables = np.nanmax(state_vector_labels.values)
@@ -139,7 +141,12 @@ def imi_preview(
 
     lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
     lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
-    coords = [(lons[0], lats[0]), (lons[1], lats[0]), (lons[1], lats[1]), (lons[0], lats[1])]
+    coords = [
+        (lons[0], lats[0]),
+        (lons[1], lats[0]),
+        (lons[1], lats[1]),
+        (lons[0], lats[1]),
+    ]
     inversion_area_km = calculate_area_in_km(coords)
 
     if config["Res"] == "0.25x0.3125":
