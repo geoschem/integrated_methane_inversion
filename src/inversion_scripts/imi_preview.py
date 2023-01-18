@@ -275,14 +275,50 @@ def imi_preview(
         dpi=150,
     )
 
+    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        sensitivities_da,
+        cmap=cc.cm.CET_L19,
+        lon_bounds=None,
+        lat_bounds=None,
+        title="Estimated Averaging kernel sensitivities",
+        cbar_label="Sensitivity",
+        only_ROI=True,
+        state_vector_labels=state_vector_labels,
+        last_ROI_element=last_ROI_element,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_estimated_sensitivities.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+
+def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+    """
+    maps sensitivities onto 2D xarray Datarray for visualization
+    """
+    s = sv.copy().rename({"StateVector": "Sensitivities"})
+    mask = s["Sensitivities"] <= last_ROI_element
+    s["Sensitivities"] = s["Sensitivities"].where(mask)
+    # map sensitivities onto corresponding xarray DataArray
+    for i in range(1, last_ROI_element + 1):
+        mask = sv["StateVector"] == i
+        s = xr.where(mask, sensitivities[i - 1], s)
+
+    return s
+
 
 def estimate_averaging_kernel(
     config, state_vector_path, preview_dir, tropomi_cache, preview=False
 ):
     """
-    Function to perform preview
-    Requires preview simulation to have been run already (to generate HEMCO diags)
-    Requires TROPOMI data to have been downloaded already
+    Estimates the averaging kernel sensitivities using prior emissions
+    and the number of observations available in each grid cell
     """
 
     # ----------------------------------
