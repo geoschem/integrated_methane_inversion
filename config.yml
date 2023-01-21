@@ -49,7 +49,7 @@ ReducedDimensionStateVector: false
 ClusteringPairs:
   - [1, 15]
   - [2, 24]
-ForcedNativeResolutionPixels: 
+ForcedNativeResolutionElements: 
   - [31.5, -104]
   
 ## Custom state vector

@@ -18,30 +18,20 @@ from sklearn.cluster import KMeans
 
 def match_data_to_clusters(data, clusters, default_value=0):
     """
-    Description:
-        match 1D list of elements to 2D statevector
-    arguments:
-        data                [int]: data to infill into 2D statevector
-        clusters            [][] : xarray dataarray: the mapping from
-                                   the grid cells to state vector number
-    Returns:                [][] : filled with new values
+     Description:
+         match 1D list of elements to 2D statevector
+     arguments:
+         data                [int]: data to infill into 2D statevector
+         clusters            [][] : xarray dataarray: the mapping from
+                                    the grid cells to state vector number
+     Returns:                [][] : filled with new values
     """
     result = clusters.copy()
-    c_array = result.values
-    c_idx = np.where(c_array > 0)
-    c_val = c_array[c_idx]
-    row_idx = [r for _, r, _ in sorted(zip(c_val, c_idx[0], c_idx[1]))]
-    col_idx = [c for _, _, c in sorted(zip(c_val, c_idx[0], c_idx[1]))]
-    idx = (row_idx, col_idx)
-
-    d_idx = np.where(c_array == 0)
-
-    c_array[c_idx] = data
-    c_array[d_idx] = default_value
-    result.values = c_array
-
+    # map sensitivities onto corresponding xarray DataArray
+    for i in range(1, int(result.max()) + 1):
+        mask = result == i
+        result = xr.where(mask, data[i - 1], result)
     return result
-
 
 def zero_buffer_elements(clusters, num_buffer_elems):
     """
@@ -302,8 +292,9 @@ def generate_cluster_pairs(clusters, num_buffer_cells, cluster_pairs):
             + f"Adding additional cluster pairing: {[remainder, 1]}."
         )
         new_cluster_pairs = new_cluster_pairs.append((remainder, remainder))
-
-    return new_cluster_pairs
+    
+    # sort cluster pairs in ascending order
+    return sorted(new_cluster_pairs, key=lambda x: x[0])
 
 
 def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
@@ -344,8 +335,7 @@ def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
         cluster_index = int(
             clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
         )
-        # TODO understand why the indexing is backwards
-        sensitivities[-cluster_index] = 1.0
+        sensitivities[cluster_index-1] = 1.0
     return sensitivities
 
 
