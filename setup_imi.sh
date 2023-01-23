@@ -124,10 +124,10 @@ elif [ "$Res" == "0.25x0.3125" ]; then
     gridResLong="${Res}"
 fi
 
-if [ -z "$NestedRegion" ]; then
-    gridDir="$Res"
-else
+if $NestedGrid; then
     gridDir="${Res}_${NestedRegion}"
+else
+    gridDir="$Res"
 fi
 
 # Define path to GEOS-Chem run directory files
@@ -149,7 +149,11 @@ if "$CreateAutomaticRectilinearStateVectorFile"; then
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
+    if $NestedGrid ]; then
+	LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
+    else
+	LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${LandCoverFileExtension}"
+    fi
 
     if "$isAWS"; then
 	# Download land cover file
@@ -168,7 +172,7 @@ if "$CreateAutomaticRectilinearStateVectorFile"; then
     chmod 755 make_state_vector_file.py
 
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
+    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters $NestedGrid
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
@@ -231,7 +235,11 @@ if "$SetupTemplateRundir"; then
     # Create a GEOS-FP 0.25x0.3125 nested NA CH4 run directory by default
     # (Grid and meteorology fields will be replaced below by the settings
     #  in config.yml)
-    cmd="3\n2\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+    if $NestedGrid; then
+	cmd="3\n2\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+    else
+	cmd="3\n2\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+    fi
 
     # Create run directory
     printf ${cmd} | ./createRunDir.sh >> createRunDir.log 2>&1
@@ -248,10 +256,14 @@ if "$SetupTemplateRundir"; then
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
-           -e "s:geosfp:${Met}:g" \
-           -e "s:0.25x0.3125:${gridResLong}:g" \
-           -e "s:-130.0,  -60.0:${Lons}:g" \
-           -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
+           -e "s:geosfp:${Met}:g" geoschem_config.yml
+    if $NestedGrid; then
+        sed -i -e "s:0.25x0.3125:${gridResLong}:g" \
+               -e "s:-130.0,  -60.0:${Lons}:g" \
+               -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
+    else
+	sed -i -e "s:4.0x5.0:${gridResLong}:g" geoschem_config.yml
+    fi
 
     # For CH4 inversions always turn analytical inversion on
     sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
@@ -322,11 +334,6 @@ if "$SetupTemplateRundir"; then
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
-    if [ "$NestedGrid" == "false" ]; then
-        OLD="--> GC_BCs                 :       true "
-        NEW="--> GC_BCs                 :       false"
-        sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
-    fi
 
     # Modify HISTORY.rc
     sed -i -e "s:'CH4':#'CH4':g" \

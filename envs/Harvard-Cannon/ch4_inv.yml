@@ -242,4 +242,4 @@ dependencies:
   - zict=2.0.0=py_0
   - zlib=1.2.12=h166bdaf_1
   - zstd=1.4.8=ha95c52a_1
-prefix: /n/seasasfs02/msulprizio/python/miniconda/envs/ch4_inv
+prefix: ~/python/miniconda/envs/ch4_inv

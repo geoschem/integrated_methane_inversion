@@ -32,8 +32,12 @@ def download_landcover_files(config):
     elif config["Res"] == "0.25x0.3125":
         gridRes = "025x03125"
 
-    LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['NestedRegion']}.{LandCoverFileExtension}"
-    s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['NestedRegion']}.{LandCoverFileExtension}"
+    if len(config["NestedRegion"]) == 2:
+        LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['NestedRegion']}.{LandCoverFileExtension}"
+        s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['NestedRegion']}.{LandCoverFileExtension}"
+    else:
+        LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{LandCoverFileExtension}"
+        s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{LandCoverFileExtension}"
 
     # run the aws command to download the files
     command = f"aws s3 cp --request-payer=requester {s3_lc_path} {LandCoverFile}"

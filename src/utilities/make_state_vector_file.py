@@ -3,9 +3,9 @@ import xarray as xr
 from sklearn.cluster import KMeans
 
 
-def get_nested_grid_bounds(land_cover_pth):
+def get_grid_bounds(land_cover_pth):
     """
-    Get the lat/lon bounds of the nested grid window for the inversion.
+    Get the lat/lon bounds of the grid window for the inversion.
     The land cover file path specifies the window.
     """
 
@@ -18,9 +18,9 @@ def get_nested_grid_bounds(land_cover_pth):
     return minLat_allowed, maxLat_allowed, minLon_allowed, maxLon_allowed
 
 
-def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth):
+def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth):
     """
-    Check whether input lat/lon bounds are compatible with (contained within) the nested grid window.
+    Check whether input lat/lon bounds are compatible with (contained within) the regional grid window.
     The land cover file path specifies the window.
     """
 
@@ -29,7 +29,7 @@ def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cov
         maxLat_allowed,
         minLon_allowed,
         maxLon_allowed,
-    ) = get_nested_grid_bounds(land_cover_pth)
+    ) = get_grid_bounds(land_cover_pth)
 
     if (
         lat_min < minLat_allowed
@@ -54,6 +54,7 @@ def make_state_vector_file(
     buffer_deg=5,
     land_threshold=0.25,
     k_buffer_clust=8,
+    is_regional=True
 ):
     """
     Generates the state vector file for an analytical inversion.
@@ -68,6 +69,7 @@ def make_state_vector_file(
         buffer_deg     [float] : Width of k-means buffer area in degrees
         land_threshold [float] : Minimum land fraction to include pixel as a state vector element
         k_buffer_clust [int]   : Number of buffer clusters for k-means
+        is_regional    [bool]  : Using a regional grid?
 
     Returns
         ds_statevector []     : xarray dataset containing state vector field formatted for HEMCO
@@ -82,14 +84,21 @@ def make_state_vector_file(
     # Group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
 
-    # Check compatibility of region of interest with nesting window
-    compatible = check_nested_grid_compatibility(
-        lat_min, lat_max, lon_min, lon_max, land_cover_pth
-    )
-    if not compatible:
-        raise ValueError(
-            "Region of interest not contained within selected NestedRegion; see config.yml)."
-        )
+    # Check compatibility of region of interest
+    if is_regional:
+       compatible = check_grid_compatibility(
+           lat_min, lat_max, lon_min, lon_max, land_cover_pth
+       )
+       if not compatible:
+           raise ValueError(
+               "Region of interest not contained within selected NestedRegion; see config.yml)."
+           )
+
+    # For global inversions exclude Antarctica and limit max_lat to avoid
+    # HEMCO error when reading netCDF file
+    if not is_regional:
+        lat_max = 88.0
+        lat_min = -60.0
 
     # Define bounds of inversion domain
     (
@@ -97,7 +106,7 @@ def make_state_vector_file(
         maxLat_allowed,
         minLon_allowed,
         maxLon_allowed,
-    ) = get_nested_grid_bounds(land_cover_pth)
+    ) = get_grid_bounds(land_cover_pth)
     lon_min_inv_domain = np.max([lon_min - buffer_deg, minLon_allowed])
     lon_max_inv_domain = np.min([lon_max + buffer_deg, maxLon_allowed])
     lat_min_inv_domain = np.max([lat_min - buffer_deg, minLat_allowed])
@@ -134,22 +143,24 @@ def make_state_vector_file(
 
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
-    buffer_area = statevector.values == 0
+    if is_regional:
+        buffer_area = statevector.values == 0
 
-    # Get image coordinates of all pixels in buffer area
-    irows = np.arange(buffer_area.shape[0])
-    icols = np.arange(buffer_area.shape[1])
-    irows = np.transpose(np.tile(irows, (len(icols), 1)))
-    icols = np.tile(icols, (len(irows), 1))
-    irows_good = irows[buffer_area > 0]
-    icols_good = icols[buffer_area > 0]
-    coords = [[icols_good[j], irows_good[j]] for j in range(len(irows_good))]
+        # Get image coordinates of all pixels in buffer area
+        irows = np.arange(buffer_area.shape[0])
+        icols = np.arange(buffer_area.shape[1])
+        irows = np.transpose(np.tile(irows, (len(icols), 1)))
+        icols = np.tile(icols, (len(irows), 1))
+        irows_good = irows[buffer_area > 0]
+        icols_good = icols[buffer_area > 0]
+        coords = [[icols_good[j], irows_good[j]] for j in range(len(irows_good))]
 
-    # K-means
-    X = np.array(coords)
-    kmeans = KMeans(n_clusters=k_buffer_clust, random_state=0).fit(X)
+        # K-means
+        X = np.array(coords)
+        kmeans = KMeans(n_clusters=k_buffer_clust, random_state=0).fit(X)
 
     # Assign pixels to state vector
+    # -------------------------------------------------------------------------
     highres_statevector_max = np.nanmax(statevector.values)
     n_rows = statevector.shape[0]
     n_cols = statevector.shape[1]
@@ -194,6 +205,7 @@ if __name__ == "__main__":
     buffer_deg = float(sys.argv[7])
     land_threshold = float(sys.argv[8])
     k_buffer_clust = int(sys.argv[9])
+    is_regional = sys.argv[10].lower() == 'true'
 
     make_state_vector_file(
         land_cover_pth,
@@ -205,4 +217,5 @@ if __name__ == "__main__":
         buffer_deg,
         land_threshold,
         k_buffer_clust,
+        is_regional,
     )
