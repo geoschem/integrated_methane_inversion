@@ -281,7 +281,7 @@ def imi_preview(
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
         ax,
-        sensitivities_da,
+        sensitivities_da["Sensitivities"],
         cmap=cc.cm.CET_L19,
         lon_bounds=None,
         lat_bounds=None,
