@@ -9,7 +9,7 @@ def download_landcover_files(config):
 
     # conditionally set variables to create s3 and landcover file paths
     gridDir = (
-        f"{config['Res']}_{config['NestedRegion']}" if len(config["NestedRegion"]) == 2 else ""
+        f"{config['Res']}_{config['RegionID']}" if len(config["RegionID"]) == 2 else ""
     )
 
     if config["Met"] == "geosfp":
@@ -32,9 +32,9 @@ def download_landcover_files(config):
     elif config["Res"] == "0.25x0.3125":
         gridRes = "025x03125"
 
-    if len(config["NestedRegion"]) == 2:
-        LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['NestedRegion']}.{LandCoverFileExtension}"
-        s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['NestedRegion']}.{LandCoverFileExtension}"
+    if len(config["RegionID"]) == 2:
+        LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['RegionID']}.{LandCoverFileExtension}"
+        s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{config['RegionID']}.{LandCoverFileExtension}"
     else:
         LandCoverFile = f"{DataPath}/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{LandCoverFileExtension}"
         s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{metUC}.{constYr}0101.CN.{gridRes}.{LandCoverFileExtension}"

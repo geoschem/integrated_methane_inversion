@@ -12,19 +12,10 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
-## Region of interest
-##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
-##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -105
-LonMax: -103
-LatMin: 31
-LatMax: 33
+## Use regional simulation?
+IsRegional: true
 
-## Use nested grid simulation?
-##   Must be "true" for IMI regional inversions
-NestedGrid: true
-
-## Select nested grid region (for using pre-cropped meteorological fields)
+## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AF" : Africa ([-37,40], [-20,53])
 ##     "AS" : Asia ([-11,55],[60,150]) 
@@ -34,9 +25,17 @@ NestedGrid: true
 ##     "OC" : Oceania ([-50,5], [110,180])
 ##     "RU" : Russia ([41,83], [19,180])
 ##     "SA" : South America ([-59,16], [-88,-31])
-##     ""   : Use for global met fields (global simulation/custom nested grids)
+##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-NestedRegion: "NA"
+RegionID: "NA"
+
+## Region of interest
+##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
+##   Otherwise lat/lon bounds are determined from StateVectorFile
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 34
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -55,8 +54,11 @@ Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
-##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
+##   Options are 0.25x0.3125, 2x2.5, or 4x5
 Res: "0.25x0.3125"
+
+## Meteorology
+##   Options are geosfp or merra2
 Met: "geosfp"
 
 ## Setup modules
@@ -140,7 +142,7 @@ RestartDownload: true
 RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
-## Path to GEOS-Chem boundary condition files (for nested grid simulations)
+## Path to GEOS-Chem boundary condition files (for regional simulations)
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 
 ## Options to download missing GEOS-Chem input data from AWS S3

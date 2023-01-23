@@ -12,21 +12,22 @@ StartDate: 20180501
 EndDate: 20180502
 SpinupMonths: 1
 
-## Use nested grid simulation?
-NestedGrid: true
+## Is this a regional inversion?
+IsRegional: true
 
-## Select nested grid region for using pre-cropped met fields
+## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
-##    "AF" : Africa ([-37,40], [-20,53])
-##    "AS" : Asia ([-11,55],[60,150]) 
-##    "EU" : Europe ([33,61],[-30,70])
-##    "ME" : Middle East ([12,44], [-20,70])
-##    "NA" : North America ([10,70],[-140,-40])
-##    "OC" : Oceania ([-50,5], [110,180])
-##    "RU" : Russia ([41,83], [19,180])
-##    "SA" : South America ([-59,16], [-88,-31])
-##    ""   : Use for global met fields (global simulation/custom nested grids)
-NestedRegion: "NA"
+##     "AF" : Africa ([-37,40], [-20,53])
+##     "AS" : Asia ([-11,55],[60,150]) 
+##     "EU" : Europe ([33,61],[-30,70])
+##     "ME" : Middle East ([12,44], [-20,70])
+##     "NA" : North America ([10,70],[-140,-40])
+##     "OC" : Oceania ([-50,5], [110,180])
+##     "RU" : Russia ([41,83], [19,180])
+##     "SA" : South America ([-59,16], [-88,-31])
+##     ""   : Use for global global simulation or custom regions
+##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
+RegionID: "NA"
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
@@ -34,7 +35,7 @@ NestedRegion: "NA"
 LonMin: -105
 LonMax: -104
 LatMin: 31
-LatMax: 32
+LatMax: 33
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -49,18 +50,16 @@ ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 ## Inversion
 PriorError: 0.5
 ObsError: 15
-Gamma: 0.25
+Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
-## Options are 0.25x0.3125, 2x2.5, or 4x5
+##   Options are 0.25x0.3125, 2x2.5, or 4x5
 Res: "0.25x0.3125"
 
 ## Meteorology
-## Options are geosfp or merra2
+##   Options are geosfp or merra2
 Met: "geosfp"
-
-##   Other grid settings
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
@@ -82,9 +81,21 @@ DoPosterior: false
 DoPreview: false
 DOFSThreshold: 0
 
-##------------------------------------------------------------------
-## Settings for GEOS-Chem simulations
-##------------------------------------------------------------------
+##====================================================================
+##
+## Advanced Settings (optional)
+##
+##====================================================================
+
+## These settings are intended for advanced users who wish to:
+##   a. modify additional GEOS-Chem options, or
+##   b. run the IMI on a local cluster.
+## They can be ignored for any standard cloud application of the IMI.
+
+##--------------------------------------------------------------------
+## Additional settings for GEOS-Chem simulations
+##--------------------------------------------------------------------
+
 ## Jacobian settings
 PerturbValue: 1.5
 
@@ -109,9 +120,9 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
-##------------------------------------------------------------------
-## Settings for running on local cluster
-##------------------------------------------------------------------
+##--------------------------------------------------------------------
+## Settings for running on a local cluster
+##--------------------------------------------------------------------
 
 ## Path for IMI runs and output
 OutputPath: "/n/holyscratch01/jacob_lab/$USER"
@@ -137,7 +148,7 @@ RestartDownload: false
 RestartFilePrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 RestartFilePreviewPrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 
-## Path to GEOS-Chem boundary condition files (for nested grid simulations)
+## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
 BCpath: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2"
 

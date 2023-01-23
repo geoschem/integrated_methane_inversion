@@ -124,8 +124,8 @@ elif [ "$Res" == "0.25x0.3125" ]; then
     gridResLong="${Res}"
 fi
 
-if $NestedGrid; then
-    gridDir="${Res}_${NestedRegion}"
+if $IsRegional; then
+    gridDir="${Res}_${RegionID}"
 else
     gridDir="$Res"
 fi
@@ -149,15 +149,15 @@ if "$CreateAutomaticRectilinearStateVectorFile"; then
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    if $NestedGrid ]; then
-	LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
+    if $isRegional; then
+	LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${RegionID}.${LandCoverFileExtension}"
     else
 	LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${LandCoverFileExtension}"
     fi
 
     if "$isAWS"; then
 	# Download land cover file
-	s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
+	s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${RegionID}.${LandCoverFileExtension}"
 	aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
     fi
 
@@ -172,7 +172,7 @@ if "$CreateAutomaticRectilinearStateVectorFile"; then
     chmod 755 make_state_vector_file.py
 
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters $NestedGrid
+    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters $isRegional
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
@@ -232,12 +232,13 @@ if "$SetupTemplateRundir"; then
     fi
 
     # Commands to feed to createRunDir.sh
-    # Create a GEOS-FP 0.25x0.3125 nested NA CH4 run directory by default
-    # (Grid and meteorology fields will be replaced below by the settings
-    #  in config.yml)
-    if $NestedGrid; then
+    # Grid and meteorology fields will be replaced below by the settings
+    #  in config.yml
+    if $isRegional; then
+	# Create a GEOS-FP 0.25x0.3125 nested NA CH4 run directory
 	cmd="3\n2\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
     else
+	# Create a GEOS-FP 4x5 CH4 run directory
 	cmd="3\n2\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     fi
 
@@ -257,7 +258,7 @@ if "$SetupTemplateRundir"; then
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
            -e "s:geosfp:${Met}:g" geoschem_config.yml
-    if $NestedGrid; then
+    if $isRegional; then
         sed -i -e "s:0.25x0.3125:${gridResLong}:g" \
                -e "s:-130.0,  -60.0:${Lons}:g" \
                -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
@@ -318,10 +319,10 @@ if "$SetupTemplateRundir"; then
 
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
-    if [ ! -z "$NestedRegion" ]; then
-	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc
-	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
-        sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
+    if [ ! $IsRegional ]; then
+	sed -i -e "s:GEOS_${native}:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_${native}:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+        sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
     # Determine length of inversion period in days

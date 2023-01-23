@@ -91,7 +91,7 @@ def make_state_vector_file(
        )
        if not compatible:
            raise ValueError(
-               "Region of interest not contained within selected NestedRegion; see config.yml)."
+               "Region of interest not contained within selected RegionID; see config.yml)."
            )
 
     # For global inversions exclude Antarctica and limit max_lat to avoid
