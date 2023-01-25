@@ -26,10 +26,11 @@ def match_data_to_clusters(data, clusters, default_value=0):
                                     the grid cells to state vector number
      Returns:                [][] : filled with new values
     """
+    reference = clusters.copy() # reference copy for determining mapped elements
     result = clusters.copy()
     # map sensitivities onto corresponding xarray DataArray
-    for i in range(1, int(result.max()) + 1):
-        mask = result == i
+    for i in range(1, int(reference.max()) + 1):
+        mask = reference == i
         result = xr.where(mask, data[i - 1], result)
     return result
 

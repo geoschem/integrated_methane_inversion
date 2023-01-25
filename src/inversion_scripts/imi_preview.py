@@ -422,16 +422,17 @@ def estimate_averaging_kernel(
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
     emissions = []
+    L = [] # Rough length scale of state vector element [m]
 
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
-        L = 25 * 1000  # Rough length scale of state vector element [m]
+        L_native = 25 * 1000  # Rough length scale of native state vector element [m]
         lat_step = 0.25
         lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
-        L = 50 * 1000  # Rough length scale of state vector element [m]
+        L_native = 50 * 1000  # Rough length scale of native state vector element [m]
 
     # bin observations into gridcells and map onto statevector
     observation_counts = add_observation_counts(df, state_vector, lat_step, lon_step)
@@ -441,6 +442,8 @@ def estimate_averaging_kernel(
         mask = state_vector_labels == i
         # append the prior emissions for each element (in Tg/y)
         emissions.append(sum_total_emissions(prior, areas, mask))
+        # append the calculated length scale of element
+        L.append(L_native * state_vector_labels.where(mask).count().item())
         # append the number of obs in each element
         num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
 
@@ -455,6 +458,7 @@ def estimate_averaging_kernel(
     # State vector, observations
     emissions = np.array(emissions)
     m = np.array(num_obs)  # Number of observations per state vector element
+    L = np.array(L)
 
     # Other parameters
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
@@ -466,7 +470,7 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / L**2  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / np.power(L, 2)  # kg/m2/s from kg/s, per element
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
