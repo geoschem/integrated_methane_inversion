@@ -107,7 +107,7 @@ def imi_preview(
     )
 
     # # Define mask for ROI, to be used below
-    a, df, time_delta, prior, outstrings = estimate_averaging_kernel(
+    a, df, num_days, prior, outstrings = estimate_averaging_kernel(
         config, state_vector_path, preview_dir, tropomi_cache, preview=True
     )
     mask = state_vector_labels <= last_ROI_element
@@ -132,7 +132,6 @@ def imi_preview(
     hours_in_month = 31 * 24
     reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
     num_state_variables = np.nanmax(state_vector_labels.values)
-    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
     if config["Res"] == "0.25x0.3125":
         res_factor = 1
     elif config["Res"] == "0.5x0.625":
@@ -422,7 +421,7 @@ def estimate_averaging_kernel(
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
     emissions = []
-    L = [] # Rough length scale of state vector element [m]
+    L = []  # Rough length scale of state vector element [m]
 
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
@@ -470,11 +469,22 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / np.power(L, 2)  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / np.power(
+        L, 2
+    )  # kg/m2/s from kg/s, per element
+    
+    time_delta = enddate_np64 - startdate_np64
+    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
+    p = np.sum(m)/len(m)/num_days
+    
+    # create g(P) scaling factor for observational error
+    s_superO_p = calculate_superobservation_error(config["ObsError"], p)
+    s_superO_1 = calculate_superobservation_error(config["ObsError"], 1)
+    gP = s_superO_p**2/s_superO_1**2
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
-    sO = config["ObsError"] * 1e-9
+    sO = gP * config["ObsError"] * 1e-9
 
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
@@ -491,10 +501,29 @@ def estimate_averaging_kernel(
         outstrings = (
             f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
         )
-        time_delta = enddate_np64 - startdate_np64
-        return a, df, time_delta, prior, outstrings
+        return a, df, num_days, prior, outstrings
     else:
         return a
+
+
+def calculate_superobservation_error(sO, p):
+    """
+    Returns the estimated observational error accounting for superobservations.
+    Using eqn (5) from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
+    Args:
+        sO : float
+            observational error specified in config file
+        p  : float
+            average number of observations contained within each superobservation
+    Returns:
+         s_super: float
+            observational error for superobservations
+    """
+    # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
+    r_retrieval = 0.55
+    s_transport = 4.5
+    s_super = sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
+    return s_super
 
 
 def add_observation_counts(df, state_vector, lat_step, lon_step):
