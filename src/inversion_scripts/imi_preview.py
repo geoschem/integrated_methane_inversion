@@ -472,15 +472,15 @@ def estimate_averaging_kernel(
     emissions_kgs_per_m2 = emissions_kgs / np.power(
         L, 2
     )  # kg/m2/s from kg/s, per element
-    
+
     time_delta = enddate_np64 - startdate_np64
     num_days = np.round((time_delta) / np.timedelta64(1, "D"))
-    p = np.sum(m)/len(m)/num_days
-    
+    p = np.sum(m) / len(m) / num_days
+
     # create g(P) scaling factor for observational error
     s_superO_p = calculate_superobservation_error(config["ObsError"], p)
     s_superO_1 = calculate_superobservation_error(config["ObsError"], 1)
-    gP = s_superO_p**2/s_superO_1**2
+    gP = s_superO_p**2 / s_superO_1**2
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
@@ -522,7 +522,9 @@ def calculate_superobservation_error(sO, p):
     # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
     r_retrieval = 0.55
     s_transport = 4.5
-    s_super = sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
+    s_super = np.sqrt(
+        sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
+    )
     return s_super
 
 
