@@ -3,6 +3,7 @@
 
 #SBATCH -N 1
 #SBATCH -n 1
+#SBATCH --mem=16000
 
 import numpy as np
 import xarray as xr
