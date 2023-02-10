@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import glob
 import numpy as np
@@ -134,8 +134,8 @@ def do_inversion(
         # "Satellite quantification of methane emissions and oil/gas methane 
         # intensities from individual countries in the Middle East and North 
         # Africa: implications for climate action"
-        s_superO_p = np.array([calculate_superobservation_error(obs_err, p) for p in obs_GC[:, 4]])
-        s_superO_1 = np.ones(len(s_superO_p))*calculate_superobservation_error(config["ObsError"], 1)
+        s_superO_1 = calculate_superobservation_error(obs_err, 1)
+        s_superO_p = np.array([calculate_superobservation_error(obs_err, p)  if p >= 1 else s_superO_1 for p in obs_GC[:, 4]])
         gP = s_superO_p**2 / s_superO_1**2
         obs_error = gP * obs_err
         
