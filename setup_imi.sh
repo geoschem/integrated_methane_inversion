@@ -606,7 +606,7 @@ if  "$SetupPosteriorRun"; then
     ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    RestartFileFromSpinup=../../spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     else
@@ -728,7 +728,7 @@ if "$SetupJacobianRuns"; then
 	ln -s ${RunTemplate}/gcclassic .
 
     # Link to restart file
-    RestartFileFromSpinup=../../../spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
