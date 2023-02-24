@@ -183,7 +183,9 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
     # Activate Conda environment
     printf "\nActivating conda environment: ${CondaEnv}\n"
     eval "$(conda shell.bash hook)"
-    source $CondaFile
+    if "$isAWS"; then
+        source $CondaFile
+    fi
     conda activate $CondaEnv
 
     # Key files and directories
@@ -209,6 +211,10 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
     mkdir -p ${RunDirs}/archive_sf
 
     # Number of state vector elements
+    if ! "$isAWS"; then
+        # Load environment with NCO
+        source ${NCOEnv}
+    fi
     function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     nElements=$(ncmax StateVector ${StateVectorFile})
 
