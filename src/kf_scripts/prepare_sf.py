@@ -3,8 +3,6 @@ import os
 import sys
 import numpy as np
 import yaml
-
-sys.path.append("../inversion_scripts/")
 from utils import sum_total_emissions
 
 
@@ -131,7 +129,6 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
 
 if __name__ == "__main__":
-    import sys
 
     config_path = sys.argv[1]
     period_number = sys.argv[2]

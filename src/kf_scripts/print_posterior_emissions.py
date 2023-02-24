@@ -3,8 +3,6 @@ import numpy as np
 import os
 import sys
 import yaml
-
-sys.path.append("../inversion_scripts/")
 from utils import sum_total_emissions
 
 
