@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import glob
 import numpy as np
@@ -134,8 +134,10 @@ def do_inversion(
         # "Satellite quantification of methane emissions and oil/gas methane 
         # intensities from individual countries in the Middle East and North 
         # Africa: implications for climate action"
-        obsWeight = 1.02 - (obs_GC[:, 4] * .02)
-        obs_error = obsWeight * obs_err
+        s_superO_1 = calculate_superobservation_error(obs_err, 1)
+        s_superO_p = np.array([calculate_superobservation_error(obs_err, p)  if p >= 1 else s_superO_1 for p in obs_GC[:, 4]])
+        gP = s_superO_p**2 / s_superO_1**2
+        obs_error = gP * obs_err
         
         # check to make sure obs_err isn't negative, set 1 as default value
         obs_error = [obs if obs > 0 else 1 for obs in obs_error]
@@ -195,6 +197,27 @@ def do_inversion(
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
+# TODO Dry this out
+def calculate_superobservation_error(sO, p):
+    """
+    Returns the estimated observational error accounting for superobservations.
+    Using eqn (5) from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
+    Args:
+        sO : float
+            observational error specified in config file
+        p  : float
+            average number of observations contained within each superobservation
+    Returns:
+         s_super: float
+            observational error for superobservations
+    """
+    # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
+    r_retrieval = 0.55
+    s_transport = 4.5
+    s_super = np.sqrt(
+        sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
+    )
+    return s_super
 
 if __name__ == "__main__":
     import sys

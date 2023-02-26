@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# SBATCH -N 1
-# SBATCH -n 1
+#SBATCH -N 1
+#SBATCH -n 1
 import sys
 import numpy as np
 import xarray as xr
@@ -108,7 +108,7 @@ def imi_preview(
     )
 
     # # Define mask for ROI, to be used below
-    a, df, time_delta, prior, outstrings = estimate_averaging_kernel(
+    a, df, num_days, prior, outstrings = estimate_averaging_kernel(
         config, state_vector_path, preview_dir, tropomi_cache, preview=True
     )
     mask = state_vector_labels <= last_ROI_element
@@ -137,7 +137,6 @@ def imi_preview(
     hours_in_month = 31 * 24
     reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
     num_state_variables = np.nanmax(state_vector_labels.values)
-    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
 
     lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
     lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
@@ -292,14 +291,50 @@ def imi_preview(
         dpi=150,
     )
 
+    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        sensitivities_da["Sensitivities"],
+        cmap=cc.cm.CET_L19,
+        lon_bounds=None,
+        lat_bounds=None,
+        title="Estimated Averaging kernel sensitivities",
+        cbar_label="Sensitivity",
+        only_ROI=True,
+        state_vector_labels=state_vector_labels,
+        last_ROI_element=last_ROI_element,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_estimated_sensitivities.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+
+def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+    """
+    maps sensitivities onto 2D xarray Datarray for visualization
+    """
+    s = sv.copy().rename({"StateVector": "Sensitivities"})
+    mask = s["Sensitivities"] <= last_ROI_element
+    s["Sensitivities"] = s["Sensitivities"].where(mask)
+    # map sensitivities onto corresponding xarray DataArray
+    for i in range(1, last_ROI_element + 1):
+        mask = sv["StateVector"] == i
+        s = xr.where(mask, sensitivities[i - 1], s)
+
+    return s
+
 
 def estimate_averaging_kernel(
     config, state_vector_path, preview_dir, tropomi_cache, preview=False
 ):
     """
-    Function to perform preview
-    Requires preview simulation to have been run already (to generate HEMCO diags)
-    Requires TROPOMI data to have been downloaded already
+    Estimates the averaging kernel sensitivities using prior emissions
+    and the number of observations available in each grid cell
     """
 
     # ----------------------------------
@@ -403,16 +438,17 @@ def estimate_averaging_kernel(
     # extract num_obs and emissions for each cluster in ROI
     num_obs = []
     emissions = []
+    L = []  # Rough length scale of state vector element [m]
 
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
-        L = 25 * 1000  # Rough length scale of state vector element [m]
+        L_native = 25 * 1000  # Rough length scale of native state vector element [m]
         lat_step = 0.25
         lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
-        L = 50 * 1000  # Rough length scale of state vector element [m]
+        L_native = 50 * 1000  # Rough length scale of native state vector element [m]
 
     # bin observations into gridcells and map onto statevector
     observation_counts = add_observation_counts(df, state_vector, lat_step, lon_step)
@@ -422,6 +458,8 @@ def estimate_averaging_kernel(
         mask = state_vector_labels == i
         # append the prior emissions for each element (in Tg/y)
         emissions.append(sum_total_emissions(prior, areas, mask))
+        # append the calculated length scale of element
+        L.append(L_native * state_vector_labels.where(mask).count().item())
         # append the number of obs in each element
         num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
 
@@ -436,6 +474,7 @@ def estimate_averaging_kernel(
     # State vector, observations
     emissions = np.array(emissions)
     m = np.array(num_obs)  # Number of observations per state vector element
+    L = np.array(L)
 
     # Other parameters
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
@@ -447,7 +486,12 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / L**2  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / np.power(
+        L, 2
+    )  # kg/m2/s from kg/s, per element
+
+    time_delta = enddate_np64 - startdate_np64
+    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
@@ -468,11 +512,9 @@ def estimate_averaging_kernel(
         outstrings = (
             f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
         )
-        time_delta = enddate_np64 - startdate_np64
-        return a, df, time_delta, prior, outstrings
+        return a, df, num_days, prior, outstrings
     else:
         return a
-
 
 def add_observation_counts(df, state_vector, lat_step, lon_step):
     """
