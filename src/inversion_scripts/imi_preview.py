@@ -22,6 +22,7 @@ from utils import (
     count_obs_in_mask,
     plot_field,
     filter_tropomi,
+    calculate_area_in_km,
 )
 from joblib import Parallel, delayed
 from operators.TROPOMI_operator import read_tropomi
@@ -127,11 +128,26 @@ def imi_preview(
     # Reference number of state variables = 243
     # Reference number of days = 31
     # Reference cost for EC2 storage = $50 per month
+    # Reference area = area of 24-39 N 95-111W
     reference_cost = 20
     reference_num_compute_hours = 10
+    reference_area_km = calculate_area_in_km(
+        [(-111, 24), (-95, 24), (-95, 39), (-111, 39)]
+    )
     hours_in_month = 31 * 24
     reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
     num_state_variables = np.nanmax(state_vector_labels.values)
+
+    lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
+    lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
+    coords = [
+        (lons[0], lats[0]),
+        (lons[1], lats[0]),
+        (lons[1], lats[1]),
+        (lons[0], lats[1]),
+    ]
+    inversion_area_km = calculate_area_in_km(coords)
+
     if config["Res"] == "0.25x0.3125":
         res_factor = 1
     elif config["Res"] == "0.5x0.625":
@@ -139,7 +155,8 @@ def imi_preview(
     additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
     expected_cost = (
         (reference_cost + additional_storage_cost)
-        * (num_state_variables / 243) ** 2
+        * (num_state_variables / 243)
+        * (inversion_area_km / reference_area_km)
         * (num_days / 31)
         * res_factor
     )
