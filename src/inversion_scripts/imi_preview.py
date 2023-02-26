@@ -1,18 +1,20 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #SBATCH -N 1
 #SBATCH -n 1
-
+import sys
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import yaml
 import os
 import datetime
+import time
 import cartopy.crs as ccrs
 import colorcet as cc
 from utils import (
@@ -75,7 +77,9 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     return tropomi_data
 
 
-def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache):
+def imi_preview(
+    inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
@@ -89,12 +93,237 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     # redirect output to log file
-    output_file = open(
-        f"{inversion_path}/imi_output.log", "a"
-    )
+    output_file = open(f"{inversion_path}/imi_output.log", "a")
     sys.stdout = output_file
     sys.stderr = output_file
-    
+
+    # Open the state vector file
+    state_vector = xr.load_dataset(state_vector_path)
+    state_vector_labels = state_vector["StateVector"]
+
+    # Identify the last element of the region of interest
+    last_ROI_element = int(
+        np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
+    )
+
+    # # Define mask for ROI, to be used below
+    a, df, num_days, prior, outstrings = estimate_averaging_kernel(
+        config, state_vector_path, preview_dir, tropomi_cache, preview=True
+    )
+    mask = state_vector_labels <= last_ROI_element
+
+    # Count the number of observations in the region of interest
+    num_obs = count_obs_in_mask(mask, df)
+    if num_obs < 1:
+        sys.exit("Error: No observations found in region of interest")
+    outstring2 = f"Found {num_obs} observations in the region of interest"
+    print("\n" + outstring2)
+
+    # ----------------------------------
+    # Estimate dollar cost
+    # ----------------------------------
+
+    # Estimate cost by scaling reference cost of $20 for one-month Permian inversion
+    # Reference number of state variables = 243
+    # Reference number of days = 31
+    # Reference cost for EC2 storage = $50 per month
+    reference_cost = 20
+    reference_num_compute_hours = 10
+    hours_in_month = 31 * 24
+    reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
+    num_state_variables = np.nanmax(state_vector_labels.values)
+    if config["Res"] == "0.25x0.3125":
+        res_factor = 1
+    elif config["Res"] == "0.5x0.625":
+        res_factor = 0.5
+    additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
+    expected_cost = (
+        (reference_cost + additional_storage_cost)
+        * (num_state_variables / 243) ** 2
+        * (num_days / 31)
+        * res_factor
+    )
+
+    outstring6 = (
+        f"approximate cost = ${np.round(expected_cost,2)} for on-demand instance"
+    )
+    outstring7 = f"                 = ${np.round(expected_cost/3,2)} for spot instance"
+    print(outstring6)
+    print(outstring7)
+
+    # ----------------------------------
+    # Output
+    # ----------------------------------
+
+    # Write preview diagnostics to text file
+    outputtextfile = open(os.path.join(preview_dir, "preview_diagnostics.txt"), "w+")
+    outputtextfile.write("##" + outstring2 + "\n")
+    outputtextfile.write("##" + outstring6 + "\n")
+    outputtextfile.write("##" + outstring7 + "\n")
+    outputtextfile.write(outstrings)
+    outputtextfile.close()
+
+    # Prepare plot data for prior
+    prior_kgkm2h = prior * (1000**2) * 60 * 60  # Units kg/km2/h
+
+    # Prepare plot data for observations
+    df_means = df.copy(deep=True)
+    df_means["lat"] = np.round(df_means["lat"], 1)  # Bin to 0.1x0.1 degrees
+    df_means["lon"] = np.round(df_means["lon"], 1)
+    df_means = df_means.groupby(["lat", "lon"]).mean()
+    ds = df_means.to_xarray()
+
+    # Prepare plot data for observation counts
+    df_counts = df.copy(deep=True).drop(["xch4", "swir_albedo"], axis=1)
+    df_counts["counts"] = 1
+    df_counts["lat"] = np.round(df_counts["lat"], 1)  # Bin to 0.1x0.1 degrees
+    df_counts["lon"] = np.round(df_counts["lon"], 1)
+    df_counts = df_counts.groupby(["lat", "lon"]).sum()
+    ds_counts = df_counts.to_xarray()
+
+    plt.rcParams.update({"font.size": 18})
+
+    # Plot prior emissions
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        prior_kgkm2h,
+        cmap=cc.cm.linear_kryw_5_100_c67_r,
+        plot_type="pcolormesh",
+        vmin=0,
+        vmax=14,
+        lon_bounds=None,
+        lat_bounds=None,
+        levels=21,
+        title="Prior emissions",
+        cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
+        mask=mask,
+        only_ROI=False,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_prior_emissions.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+    # Plot observations
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        ds["xch4"],
+        cmap="Spectral_r",
+        plot_type="pcolormesh",
+        vmin=1800,
+        vmax=1850,
+        lon_bounds=None,
+        lat_bounds=None,
+        title="TROPOMI $X_{CH4}$",
+        cbar_label="Column mixing ratio (ppb)",
+        mask=mask,
+        only_ROI=False,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_observations.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+    # Plot albedo
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        ds["swir_albedo"],
+        cmap="magma",
+        plot_type="pcolormesh",
+        vmin=0,
+        vmax=0.4,
+        lon_bounds=None,
+        lat_bounds=None,
+        title="SWIR Albedo",
+        cbar_label="Albedo",
+        mask=mask,
+        only_ROI=False,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_albedo.png"), bbox_inches="tight", dpi=150
+    )
+
+    # Plot observation density
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        ds_counts["counts"],
+        cmap="Blues",
+        plot_type="pcolormesh",
+        vmin=0,
+        vmax=np.nanmax(ds_counts["counts"].values),
+        lon_bounds=None,
+        lat_bounds=None,
+        title="Observation density",
+        cbar_label="Number of observations",
+        mask=mask,
+        only_ROI=False,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_observation_density.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        sensitivities_da["Sensitivities"],
+        cmap=cc.cm.CET_L19,
+        lon_bounds=None,
+        lat_bounds=None,
+        title="Estimated Averaging kernel sensitivities",
+        cbar_label="Sensitivity",
+        only_ROI=True,
+        state_vector_labels=state_vector_labels,
+        last_ROI_element=last_ROI_element,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_estimated_sensitivities.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+
+def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+    """
+    maps sensitivities onto 2D xarray Datarray for visualization
+    """
+    s = sv.copy().rename({"StateVector": "Sensitivities"})
+    mask = s["Sensitivities"] <= last_ROI_element
+    s["Sensitivities"] = s["Sensitivities"].where(mask)
+    # map sensitivities onto corresponding xarray DataArray
+    for i in range(1, last_ROI_element + 1):
+        mask = sv["StateVector"] == i
+        s = xr.where(mask, sensitivities[i - 1], s)
+
+    return s
+
+
+def estimate_averaging_kernel(
+    config, state_vector_path, preview_dir, tropomi_cache, preview=False
+):
+    """
+    Estimates the averaging kernel sensitivities using prior emissions
+    and the number of observations available in each grid cell
+    """
+
+    # ----------------------------------
+    # Setup
+    # ----------------------------------
+
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
@@ -123,7 +352,7 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     areas = xr.load_dataset(prior_pth)["AREA"]
     total_prior_emissions = sum_total_emissions(prior, areas, mask)
     outstring1 = (
-        f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y"
+        f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y \n"
     )
     print(outstring1)
 
@@ -185,29 +414,52 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     df = pd.DataFrame()
     df["lat"] = lat
     df["lon"] = lon
-    df["xch4"] = xch4
+    df["count"] = np.ones(len(lat))
     df["swir_albedo"] = albedo
+    df["xch4"] = xch4
 
-    # Count the number of observations in the region of interest
-    num_obs = count_obs_in_mask(mask, df)
-    if num_obs < 1:
-        sys.exit("Error: No observations found in region of interest")
-    outstring2 = f"Found {num_obs} observations in the region of interest"
-    print("\n" + outstring2)
+    # extract num_obs and emissions for each cluster in ROI
+    num_obs = []
+    emissions = []
+    L = []  # Rough length scale of state vector element [m]
+
+    # set resolution specific variables
+    if config["Res"] == "0.25x0.3125":
+        L_native = 25 * 1000  # Rough length scale of native state vector element [m]
+        lat_step = 0.25
+        lon_step = 0.3125
+    elif config["Res"] == "0.5x0.625":
+        lat_step = 0.5
+        lon_step = 0.625
+        L_native = 50 * 1000  # Rough length scale of native state vector element [m]
+
+    # bin observations into gridcells and map onto statevector
+    observation_counts = add_observation_counts(df, state_vector, lat_step, lon_step)
+
+    # parallel processing function
+    def process(i):
+        mask = state_vector_labels == i
+        # append the prior emissions for each element (in Tg/y)
+        emissions.append(sum_total_emissions(prior, areas, mask))
+        # append the calculated length scale of element
+        L.append(L_native * state_vector_labels.where(mask).count().item())
+        # append the number of obs in each element
+        num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
+
+    # in parallel, create lists of emissions and number of observations for each
+    # cluster element
+    Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element + 1))
 
     # ----------------------------------
     # Estimate information content
     # ----------------------------------
 
     # State vector, observations
-    n = last_ROI_element  # Number of state vector elements in the ROI
-    m = num_obs / n  # Number of observations per state vector element
+    emissions = np.array(emissions)
+    m = np.array(num_obs)  # Number of observations per state vector element
+    L = np.array(L)
 
     # Other parameters
-    if config["Res"] == "0.25x0.3125":
-        L = 25 * 1000  # Rough length scale of state vector element [m]
-    elif config["Res"] == "0.5x0.625":
-        L = 50 * 1000  # Rough length scale of state vector element [m]
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
     p = 101325  # Surface pressure [Pa = kg/m/s2]
     g = 9.8  # Gravity [m/s2]
@@ -216,177 +468,57 @@ def imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tro
     alpha = 0.4  # Simple parameterization of turbulence
 
     # Change units of total prior emissions
-    total_prior_emissions_kgs = (
-        total_prior_emissions * 1e9 / (3600 * 24 * 365)
-    )  # kg/s from Tg/y
-    total_prior_emissions_kgs_per_element = (
-        total_prior_emissions_kgs / L ** 2 / n
+    emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
+    emissions_kgs_per_m2 = emissions_kgs / np.power(
+        L, 2
     )  # kg/m2/s from kg/s, per element
 
+    time_delta = enddate_np64 - startdate_np64
+    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
+
     # Error standard deviations with updated units
-    sA = config["PriorError"] * total_prior_emissions_kgs_per_element
+    sA = config["PriorError"] * emissions_kgs_per_m2
     sO = config["ObsError"] * 1e-9
 
-    # Averaging kernel sensitivity for each grid element, and dofs
+    # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA ** 2 / (sA ** 2 + (sO / k) ** 2 / m)
-    dofs = n * a
+    a = sA**2 / (sA**2 + (sO / k) ** 2 / m)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
-    outstring4 = f"a = {np.round(a,5)}"
-    outstring5 = f"expectedDOFS: {np.round(dofs,5)}"
+    outstring4 = f"a = {np.round(a,5)} \n"
+    outstring5 = f"expectedDOFS: {np.round(sum(a),5)}"
     print(outstring3)
     print(outstring4)
     print(outstring5)
 
-    # ----------------------------------
-    # Estimate dollar cost
-    # ----------------------------------
+    if preview:
+        outstrings = (
+            f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
+        )
+        return a, df, num_days, prior, outstrings
+    else:
+        return a
 
-    # Estimate cost by scaling reference cost of $20 for one-month Permian inversion
-    # Reference number of state variables = 243
-    # Reference number of days = 31
-    # Reference cost for EC2 storage = $50 per month
-    reference_cost = 20
-    reference_num_compute_hours = 10
-    hours_in_month = 31 * 24
-    reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
-    num_state_variables = np.nanmax(state_vector_labels.values)
-    num_days = np.round((enddate_np64 - startdate_np64) / np.timedelta64(1, "D"))
-    if config["Res"] == "0.25x0.3125":
-        res_factor = 1
-    elif config["Res"] == "0.5x0.625":
-        res_factor = 0.5
-    additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
-    expected_cost = (
-        (reference_cost + additional_storage_cost)
-        * (num_state_variables / 243) ** 2
-        * (num_days / 31)
-        * res_factor
-    )
+def add_observation_counts(df, state_vector, lat_step, lon_step):
+    """
+    Given arbitrary observation coordinates in a pandas df, group
+    them by gridcell and return the number of observations mapped
+    onto the statevector dataset
+    """
+    to_lon = lambda x: np.floor(x / lon_step) * lon_step
+    to_lat = lambda x: np.floor(x / lat_step) * lat_step
 
-    outstring6 = (
-        f"approximate cost = ${np.round(expected_cost,2)} for on-demand instance"
-    )
-    outstring7 = f"                 = ${np.round(expected_cost/3,2)} for spot instance"
-    print(outstring6)
-    print(outstring7)
+    df = df.rename(columns={"lon": "old_lon", "lat": "old_lat"})
 
-    # ----------------------------------
-    # Output
-    # ----------------------------------
+    df["lat"] = to_lat(df.old_lat)
+    df["lon"] = to_lon(df.old_lon)
+    groups = df.groupby(["lat", "lon"])
 
-    # Write preview diagnostics to text file
-    outputtextfile = open(os.path.join(preview_dir, "preview_diagnostics.txt"), "w+")
-    outputtextfile.write("##" + outstring1 + "\n")
-    outputtextfile.write("##" + outstring2 + "\n")
-    outputtextfile.write("##" + outstring3 + "\n")
-    outputtextfile.write("##" + outstring4 + "\n")
-    outputtextfile.write("##" + outstring6 + "\n")
-    outputtextfile.write("##" + outstring7 + "\n")
-    outputtextfile.write(outstring5)
-    outputtextfile.close()
-
-    # Prepare plot data for prior
-    prior_kgkm2h = prior * (1000 ** 2) * 60 * 60  # Units kg/km2/h
-
-    # Prepare plot data for observations
-    df_means = df.copy(deep=True)
-    df_means["lat"] = np.round(df_means["lat"], 1)  # Bin to 0.1x0.1 degrees
-    df_means["lon"] = np.round(df_means["lon"], 1)
-    df_means = df_means.groupby(["lat", "lon"]).mean()
-    ds = df_means.to_xarray()
-
-    # Prepare plot data for observation counts
-    df_counts = df.copy(deep=True).drop(["xch4", "swir_albedo"], axis=1)
-    df_counts["counts"] = 1
-    df_counts["lat"] = np.round(df_counts["lat"], 1)  # Bin to 0.1x0.1 degrees
-    df_counts["lon"] = np.round(df_counts["lon"], 1)
-    df_counts = df_counts.groupby(["lat", "lon"]).sum()
-    ds_counts = df_counts.to_xarray()
-
-    plt.rcParams.update({"font.size": 18})
-
-    # Plot prior emissions
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        prior_kgkm2h,
-        cmap=cc.cm.linear_kryw_5_100_c67_r,
-        plot_type="pcolormesh",
-        vmin=0,
-        vmax=14,
-        lon_bounds=None,
-        lat_bounds=None,
-        levels=21,
-        title="Prior emissions",
-        cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-        mask=mask,
-        only_ROI=False,
-    )
-    plt.savefig(os.path.join(preview_dir, "preview_prior_emissions.png"), bbox_inches='tight', dpi=150)
-
-    # Plot observations
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        ds["xch4"],
-        cmap="Spectral_r",
-        plot_type="pcolormesh",
-        vmin=1800,
-        vmax=1850,
-        lon_bounds=None,
-        lat_bounds=None,
-        title="TROPOMI $X_{CH4}$",
-        cbar_label="Column mixing ratio (ppb)",
-        mask=mask,
-        only_ROI=False,
-    )
-    plt.savefig(os.path.join(preview_dir, "preview_observations.png"), bbox_inches='tight', dpi=150)
-
-    # Plot albedo
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        ds["swir_albedo"],
-        cmap="magma",
-        plot_type="pcolormesh",
-        vmin=0,
-        vmax=0.4,
-        lon_bounds=None,
-        lat_bounds=None,
-        title="SWIR Albedo",
-        cbar_label="Albedo",
-        mask=mask,
-        only_ROI=False,
-    )
-    plt.savefig(os.path.join(preview_dir, "preview_albedo.png"), bbox_inches='tight', dpi=150)
-
-    # Plot observation density
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        ds_counts["counts"],
-        cmap="Blues",
-        plot_type="pcolormesh",
-        vmin=0,
-        vmax=np.nanmax(ds_counts["counts"].values),
-        lon_bounds=None,
-        lat_bounds=None,
-        title="Observation density",
-        cbar_label="Number of observations",
-        mask=mask,
-        only_ROI=False,
-    )
-    plt.savefig(os.path.join(preview_dir, "preview_observation_density.png"), bbox_inches='tight', dpi=150)
+    counts_ds = groups.sum().to_xarray().drop_vars(["old_lat", "old_lon"])
+    return xr.merge([counts_ds, state_vector])
 
 
 if __name__ == "__main__":
-    import sys
 
     inversion_path = sys.argv[1]
     config_path = sys.argv[2]
@@ -394,4 +526,6 @@ if __name__ == "__main__":
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
 
-    imi_preview(inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache)
+    imi_preview(
+        inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+    )

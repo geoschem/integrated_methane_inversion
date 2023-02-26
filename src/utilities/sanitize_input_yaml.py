@@ -33,6 +33,7 @@ config_required = [
     "NestedGrid",
     "NestedRegion",
     "CreateAutomaticRectilinearStateVectorFile",
+    "ReducedDimensionStateVector",
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
