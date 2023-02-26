@@ -13,7 +13,7 @@ EndDate: 20180502
 SpinupMonths: 1
 
 ## Is this a regional inversion?
-IsRegional: false
+isRegional: false
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -43,6 +43,14 @@ nBufferClusters: 0
 BufferDeg: 0
 LandThreshold: 0.25
 
+## Clustering Options
+ReducedDimensionStateVector: false
+ClusteringPairs:
+  - [1, 15]
+  - [2, 24]
+ForcedNativeResolutionElements: 
+  - [31.5, -104]
+  
 ## Custom state vector
 StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Global_IMI/StateVector.nc"
 ShapeFile: "None"
@@ -64,7 +72,7 @@ Met: "geosfp"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: false
+SetupSpinupRun: true
 SetupJacobianRuns: false
 SetupInversion: false
 SetupPosteriorRun: false
@@ -72,7 +80,7 @@ SetupPosteriorRun: false
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: false
+DoSpinup: true
 DoJacobian: false
 DoInversion: false
 DoPosterior: false
@@ -137,7 +145,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
 ## See envs/README to create the Conda environment specified below
 NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
 GEOSChemEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
-CondaEnv: "ch4_inv"
+CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled

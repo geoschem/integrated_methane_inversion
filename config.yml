@@ -12,8 +12,8 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
-## Use regional simulation?
-IsRegional: true
+## Is this a regional inversion?
+isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -43,6 +43,14 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 
+## Clustering Options
+ReducedDimensionStateVector: false
+ClusteringPairs:
+  - [1, 15]
+  - [2, 24]
+ForcedNativeResolutionElements: 
+  - [31.5, -104]
+  
 ## Custom state vector
 StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
