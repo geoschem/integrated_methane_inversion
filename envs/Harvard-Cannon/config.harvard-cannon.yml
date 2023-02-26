@@ -9,7 +9,7 @@ SafeMode: true
 
 ## Period of interest
 StartDate: 20180501
-EndDate: 20180502
+EndDate: 20180508
 SpinupMonths: 1
 
 ## Use nested grid simulation?
@@ -123,7 +123,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
 ## See envs/README to create the Conda environment specified below
 NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
 GEOSChemEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
-CondaEnv: "ch4_inv"
+CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
