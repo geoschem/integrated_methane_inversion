@@ -765,11 +765,17 @@ if "$SetupJacobianRuns"; then
 	# Only save out hourly pressure fields to daily files for base run
 	if [ $x -eq 0 ]; then
 	    if "$HourlyCH4"; then
-                sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                       -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                       -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-                       -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+            sed -i -e 's/'\''Restart/#'\''Restart/g' \
+                   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+                   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
 	    fi
+    # For all other runs, just disable Restarts
+    else
+        if "$HourlyCH4"; then
+            sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
+        fi
 	fi
 
 	# Create run script from template
