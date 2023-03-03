@@ -43,3 +43,12 @@ def print_posterior_emissions(config_path, period_number, base_directory):
 
     # Print
     print(f"Total posterior emission = {total_emis} Tg a-1")
+
+
+if __name__ == "__main__":
+
+    config_path = sys.argv[1]
+    period_number = sys.argv[2]
+    base_directory = sys.argv[3]
+
+    print_posterior_emissions(config_path, period_number, base_directory)
