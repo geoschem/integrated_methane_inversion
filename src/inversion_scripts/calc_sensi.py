@@ -90,7 +90,7 @@ def calc_sensi(
         # For each hour
         def process(h):
             # Get the base run data for the hour
-            base = base_data["SpeciesConc_CH4"][h, :, :, :]
+            base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
             # Initialize sensitivities array
             sensi = np.empty((nelements, nlev, nlat, nlon))
             sensi.fill(np.nan)
@@ -103,7 +103,7 @@ def calc_sensi(
                     f"{run_dirs_pth}/{run_name}_{elem}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
                 )
                 # Get the data for the current hour
-                pert = pert_data["SpeciesConc_CH4"][h, :, :, :]
+                pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
                 sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
