@@ -42,6 +42,14 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 
+## Clustering Options
+ReducedDimensionStateVector: false
+ClusteringPairs:
+  - [1, 15]
+  - [2, 24]
+ForcedNativeResolutionElements: 
+  - [31.5, -104]
+
 ## Custom state vector
 StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_IMI/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
