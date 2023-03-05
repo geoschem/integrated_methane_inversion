@@ -99,9 +99,13 @@ run_preview() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
-        # set number of cores to run preview with
+        # set number of cores and memory to run preview with
         if "$isAWS"; then
-            sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
+            sed -i -e "s:#SBATCH -n 8:#SBATCH -n ${cpu_count}:g" \
+                   -e "s:#SBATCH --mem:##SBATCH --mem:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
+        else
+            sed -i -e "s:##SBATCH:#SBATCH:g" \
+                   -e "s:{PREVIEW_MEMORY}:${PreviewMemory}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
