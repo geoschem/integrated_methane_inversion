@@ -101,7 +101,7 @@ run_preview() {
     if "$UseSlurm"; then
         # set number of cores and memory to run preview with
         if "$isAWS"; then
-            sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" \
+            sed -i -e "s:#SBATCH -n 8:#SBATCH -n ${cpu_count}:g" \
                    -e "s:#SBATCH --mem:##SBATCH --mem:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         else
             sed -i -e "s:##SBATCH:#SBATCH:g" \
