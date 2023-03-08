@@ -163,6 +163,6 @@ if __name__ == "__main__":
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
-            save_obj(output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
+            save_obj(viz_output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
 
     print(f"Wrote files to {outputdir}")
