@@ -60,6 +60,10 @@ def apply_average_tropomi_operator(
     # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
     sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
 
+    # Number of TROPOMI observations
+    n_obs = len(sat_ind[0])
+    print("Found", n_obs, "TROPOMI observations.")
+
     # get the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
 
@@ -215,7 +219,7 @@ def apply_tropomi_operator(
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
-    print("Found", n_obs, "TROPOMI observations.")
+    # print("Found", n_obs, "TROPOMI observations.")
 
     # If need to build Jacobian from GEOS-Chem perturbation simulation sensitivity data:
     if build_jacobian:
@@ -568,7 +572,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
 
     """
     n_obs = len(sat_ind[0])
-    print("Found", n_obs, "TROPOMI observations.")
+    # print("Found", n_obs, "TROPOMI observations.")
     gc_lats = gc_lat_lon["lat"]
     gc_lons = gc_lat_lon["lon"]
     gridcell_dicts = get_gridcell_list(gc_lons, gc_lats)
@@ -670,20 +674,16 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     # weighted average observation values for each gridcell
     for gridcell_dict in gridcell_dicts:
         gridcell_dict["lat_sat"] = np.average(
-            gridcell_dict["lat_sat"],
-            weights=gridcell_dict["observation_weights"],
+            gridcell_dict["lat_sat"], weights=gridcell_dict["observation_weights"],
         )
         gridcell_dict["lon_sat"] = np.average(
-            gridcell_dict["lon_sat"],
-            weights=gridcell_dict["observation_weights"],
+            gridcell_dict["lon_sat"], weights=gridcell_dict["observation_weights"],
         )
         gridcell_dict["overlap_area"] = np.average(
-            gridcell_dict["overlap_area"],
-            weights=gridcell_dict["observation_weights"],
+            gridcell_dict["overlap_area"], weights=gridcell_dict["observation_weights"],
         )
         gridcell_dict["methane"] = np.average(
-            gridcell_dict["methane"],
-            weights=gridcell_dict["observation_weights"],
+            gridcell_dict["methane"], weights=gridcell_dict["observation_weights"],
         )
         # take mean of epoch times and then convert gc filename time string
         gridcell_dict["time"] = (
