@@ -94,7 +94,11 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
             # Get the final posterior emissions
             lambda_scaler = current_total / nudged_total
-            scaled_nudged_posterior_emis = nudged_posterior_emis * lambda_scaler
+            nudged_posterior_roi = nudged_posterior_emis * mask
+            nudged_posterior_buf = nudged_posterior_emis * abs(mask - 1)
+            scaled_nudged_posterior_emis = (
+                nudged_posterior_buf + nudged_posterior_roi * lambda_scaler
+            )
 
             # Get the final posterior scale factors
             sf["ScaleFactor"] = scaled_nudged_posterior_emis / original_emis
