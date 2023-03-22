@@ -15,21 +15,22 @@ from sklearn.cluster import KMeans
 
 def match_data_to_clusters(data, clusters, default_value=0):
     """
-     Description:
-         match 1D list of elements to 2D statevector
-     arguments:
-         data                [int]: data to infill into 2D statevector
-         clusters            [][] : xarray dataarray: the mapping from
-                                    the grid cells to state vector number
-     Returns:                [][] : filled with new values
+    Description:
+        match 1D list of elements to 2D statevector
+    arguments:
+        data                [int]: data to infill into 2D statevector
+        clusters            [][] : xarray dataarray: the mapping from
+                                   the grid cells to state vector number
+    Returns:                [][] : filled with new values
     """
-    reference = clusters.copy() # reference copy for determining mapped elements
+    reference = clusters.copy()  # reference copy for determining mapped elements
     result = clusters.copy()
     # map sensitivities onto corresponding xarray DataArray
     for i in range(1, int(reference.max()) + 1):
         mask = reference == i
         result = xr.where(mask, data[i - 1], result)
     return result
+
 
 def zero_buffer_elements(clusters, num_buffer_elems):
     """
@@ -289,8 +290,19 @@ def generate_cluster_pairs(clusters, num_buffer_cells, cluster_pairs):
             "Warning: Cluster pairings do not use all native pixels."
             + f"Adding additional cluster pairing: {[remainder, 1]}."
         )
-        new_cluster_pairs = new_cluster_pairs.append((remainder, remainder))
-    
+        remaining_pixels = True
+        # add to existing cluster pair if same size
+        # otherwise create new cluster pair
+        for i in range(len(new_cluster_pairs)):
+            if new_cluster_pairs[i][0] == remainder:
+                new_cluster_pairs[i] = (
+                    new_cluster_pairs[i][0],
+                    new_cluster_pairs[i][1] + remainder,
+                )
+                remaining_pixels = False
+        if remaining_pixels:
+            new_cluster_pairs.append((remainder, remainder))
+
     # sort cluster pairs in ascending order
     return sorted(new_cluster_pairs, key=lambda x: x[0])
 
@@ -333,7 +345,7 @@ def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
         cluster_index = int(
             clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
         )
-        sensitivities[cluster_index-1] = 1.0
+        sensitivities[cluster_index - 1] = 1.0
     return sensitivities
 
 

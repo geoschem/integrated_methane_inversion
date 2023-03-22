@@ -46,7 +46,7 @@ setup_template() {
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
-           -e "s:geosfp:${Met}:g" \
+           -e "s:GEOSFP:${metUC}:g" \
            -e "s:0.25x0.3125:${gridResLong}:g" \
            -e "s:-130.0,  -60.0:${Lons}:g" \
            -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
@@ -105,8 +105,8 @@ setup_template() {
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
     if [ ! -z "$NestedRegion" ]; then
-	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc
-	sed -i -e "s:GEOS_${native}:GEOS_${native}_${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
+	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${NestedRegion}\/${metDir}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${NestedRegion}\/${metDir}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${NestedRegion}:g" HEMCO_Config.rc.gmao_metfields
     fi
 

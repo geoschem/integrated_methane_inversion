@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#SBATCH -N 1
-#SBATCH -n 1
+# SBATCH -N 1
+# SBATCH -n 8
+# SBATCH --mem={PREVIEW_MEMORY}
+
 import sys
 import numpy as np
 import xarray as xr
@@ -438,11 +440,6 @@ def estimate_averaging_kernel(
     df["swir_albedo"] = albedo
     df["xch4"] = xch4
 
-    # extract num_obs and emissions for each cluster in ROI
-    num_obs = []
-    emissions = []
-    L = []  # Rough length scale of state vector element [m]
-
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
         L_native = 25 * 1000  # Rough length scale of native state vector element [m]
@@ -459,16 +456,22 @@ def estimate_averaging_kernel(
     # parallel processing function
     def process(i):
         mask = state_vector_labels == i
-        # append the prior emissions for each element (in Tg/y)
-        emissions.append(sum_total_emissions(prior, areas, mask))
+        # prior emissions for each element (in Tg/y)
+        emissions_temp = sum_total_emissions(prior, areas, mask)
         # append the calculated length scale of element
-        L.append(L_native * state_vector_labels.where(mask).count().item())
+        L_temp = L_native * state_vector_labels.where(mask).count().item()
         # append the number of obs in each element
-        num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
+        num_obs_temp = np.nansum(observation_counts["count"].where(mask).values)
+        return emissions_temp, L_temp, num_obs_temp
 
-    # in parallel, create lists of emissions and number of observations for each
-    # cluster element
-    Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element + 1))
+    # in parallel, create lists of emissions, number of observations,
+    # and rough length scale for each cluster element in ROI
+    result = Parallel(n_jobs=-1)(
+        delayed(process)(i) for i in range(1, last_ROI_element + 1)
+    )
+
+    # unpack list of tuples into individual lists
+    emissions, L, num_obs = [list(item) for item in zip(*result)]
 
     # ----------------------------------
     # Estimate information content
@@ -580,7 +583,6 @@ def add_observation_counts(df, state_vector, lat_step, lon_step):
 
 
 if __name__ == "__main__":
-
     inversion_path = sys.argv[1]
     config_path = sys.argv[2]
     state_vector_path = sys.argv[3]
