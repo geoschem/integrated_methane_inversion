@@ -20,3 +20,4 @@ dependencies:
   - geopandas=0.10.2
   - regionmask=0.9.0
   - ipykernel=6.15.0
+  - jupyter
