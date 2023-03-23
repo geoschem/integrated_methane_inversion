@@ -423,14 +423,11 @@ def estimate_averaging_kernel(
     # remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
 
-    num_succesful_files = 0
     for dict in observation_dicts:
         lat.extend(dict["lat"])
         lon.extend(dict["lon"])
         xch4.extend(dict["xch4"])
         albedo.extend(dict["swir_albedo"])
-        if len(dict["lat"]) > 0:
-            num_succesful_files += 1
 
     # Assemble in dataframe
     df = pd.DataFrame()
@@ -498,24 +495,30 @@ def estimate_averaging_kernel(
 
     time_delta = enddate_np64 - startdate_np64
     num_days = np.round((time_delta) / np.timedelta64(1, "D"))
-    # num_orbits = (num_days * 24 * 60) / 100 # 100 minutes per orbit for tropomi
-    # remove values of m < 1 for superobservation adjustment
-    # m_reduced = [num_obs if num_obs >= 1 else 0 for num_obs in m]
-    m_per_superobs = m / num_succesful_files
+
+    # calculate the number of orbits in the given time period
+    num_orbits = (num_days * 24 * 60) / 100  # 100 minutes per orbit for tropomi
+
+    # rough estimate number of superobservations per orbit
+    m_per_superobs = m / num_orbits
 
     # create g(P) scaling factor for observational error
-    # calculate_superobservation_error(config["ObsError"], m_per_superobs)
-    print(m_per_superobs)
     s_superO_1 = calculate_superobservation_error(config["ObsError"], 1)
-    s_superO_p = np.array([calculate_superobservation_error(config["ObsError"], num_obs) for num_obs in m_per_superobs])
-
+    s_superO_p = np.array(
+        [
+            calculate_superobservation_error(config["ObsError"], num_obs)
+            for num_obs in m_per_superobs
+        ]
+    )
     gP = s_superO_p**2 / s_superO_1**2
-    # gP = s_superO_1**2 / s_superO_1**2
+
+    # remove any scalings greater than 1 to prevent increases in the observational error.
     gP = np.where(gP < 1, gP, 1)
-    print(f"gP: {gP}")
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
+
+    # scale observational error by gP
     sO = gP * config["ObsError"] * 1e-9
 
     # Averaging kernel sensitivity for each grid element
@@ -557,9 +560,6 @@ def calculate_superobservation_error(sO, p):
     s_super = np.sqrt(
         sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
     )
-    print(f"p: {p}")
-    print("s_super")
-    print(s_super)
     return s_super
 
 
