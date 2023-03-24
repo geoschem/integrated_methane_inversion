@@ -337,12 +337,27 @@ def generate_cluster_pairs(sensitivities, desired_element_num, num_buffer_elemen
             + "Remember to take into account the number of buffer elements."
         )
 
-    sensitivities.sort(reverse=True)
+    # sort sensitivities in ascending order
+    sensitivities = np.sort(sensitivities)[::-1]
+
+
+    # determine dofs threshold for each cluster and create optimal pairings
     target_dofs_per_cluster = sum(sensitivities) / desired_element_num
-    pairs = find_cluster_pairs(
+    cluster_pairs = find_cluster_pairs(
         sensitivities, target_dofs_per_cluster, desired_element_num
     )
-    return list(pairs.items())
+
+    # put cluster pairs into format expected by clustering algorithm
+    cluster_pairs = list(cluster_pairs.items())
+    print(f"Generated cluster pairings: {cluster_pairs}")
+    new_cluster_pairs = []
+
+    for cells_per_cluster, num_clusters in cluster_pairs:
+        native_cells = num_clusters * cells_per_cluster
+        new_cluster_pairs.append((cells_per_cluster, native_cells))
+
+    # sort cluster pairs in ascending order
+    return sorted(new_cluster_pairs, key=lambda x: x[0])
 
 
 def force_native_res_pixels(config, clusters, sensitivities):
