@@ -44,9 +44,7 @@ LandThreshold: 0.25
 
 ## Clustering Options
 ReducedDimensionStateVector: false
-ClusteringPairs:
-  - [1, 15]
-  - [2, 24]
+NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
 

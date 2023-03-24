@@ -258,56 +258,94 @@ def aggregate_cells(
     return new_sv
 
 
-def generate_cluster_pairs(clusters, num_buffer_cells, cluster_pairs):
+def find_cluster_pairs(
+    sorted_sensitivities, max_dofs, desired_elements, cluster_pairs={}
+):
     """
     Description:
-        Generate cluster pairs expected by aggregation algorithm
-        and validate inputted values
+        Recursively generate optimal clustering pairs based on the
+        maximum dofs allowed per cluster and the desired number of
+        state vector elements.
     arguments:
-        clusters         [][]     : ndarray of statevector clusters
-        num_buffer_cells int      : num buffer elements in inversion domain
-        cluster_pairs    [(tuple)]: cluster pairings
-    Returns:             [(tuple)]: updated cluster pairings
+        sorted_sensitivities     [] : ndarray of sensitivities sorted in descending order
+        max_dofs              float : maximum dofs per state vector element
+        desired_elements        int : number of desired elements in state vector
+        cluster_pairs           dict: optimally distributed clustering pairs
+    Returns:                    dict: optimal cluster pairings
     """
-    native_num_clusters = int(clusters.max()) - num_buffer_cells
-    new_cluster_pairs = []
-    total_native_cells_requested = 0
+    # determine the number of elements that should be aggregated
+    # based on the number of elements left to be distributed
+    # and the maximum dofs per cluster
+    elements_left = desired_elements - sum(cluster_pairs.values())
+    if elements_left == 1:
+        subset = np.arange(len(sorted_sensitivities))
+    else:
+        # aggregate the number of cells that have a cumulative sum
+        # below the dofs threshold
+        # assert a minimum of 1 cell per cluster
+        cumsum_sensitivities = np.cumsum(sorted_sensitivities)
+        subset = np.where(cumsum_sensitivities < max_dofs)[0]
+        subset = subset if len(subset) > 0 else [0]
 
-    for cells_per_cluster, num_clusters in cluster_pairs:
-        native_cells = num_clusters * cells_per_cluster
-        total_native_cells_requested += native_cells
-        new_cluster_pairs.append((cells_per_cluster, native_cells))
+    # handle cases where too few clusters would be created by
+    # adding additional native resolution clusters
+    if (elements_left - 1) > (len(sorted_sensitivities) - len(subset)):
+        subset = [0]
 
-    remainder = native_num_clusters - total_native_cells_requested
-    if remainder < 0:
+    # update dictionary with the new cluster pairing
+    native_cells = len(subset)
+    if native_cells in cluster_pairs.keys():
+        cluster_pairs[native_cells] = cluster_pairs[native_cells] + 1
+    else:
+        cluster_pairs[native_cells] = 1
+
+    # delete the sensitivities that have been assigned a pairing
+    sorted_sensitivities = np.delete(sorted_sensitivities, subset)
+
+    # recursively find the next pairing
+    if len(sorted_sensitivities) == 0:
+        return cluster_pairs
+    else:
+        return find_cluster_pairs(
+            sorted_sensitivities, max_dofs, desired_elements, cluster_pairs
+        )
+
+
+def generate_cluster_pairs(sensitivities, desired_element_num, num_buffer_elements):
+    """
+    Description:
+        Generate optimal clustering pairs
+    arguments:
+        sensitivities        [] : averaging kernel sensitivities
+        desired_element_num int : desired number of state vector elements
+        num_buffer_elements int : number of buffer elements
+    Returns:          [(tuple)] : optimal cluster pairings
+    """
+    desired_element_num = desired_element_num - num_buffer_elements
+    # Error handling
+    if desired_element_num < 0:
         raise Exception(
-            f"Error in cluster pairs: too many pixels requested."
-            + f" {native_num_clusters} native resolution pixels and "
-            + f"requested cluster pairings use {total_native_cells_requested} pixels."
+            f"Error in clustering algorithm: too few clusters requested."
+            + f"requested {desired_element_num} clusters."
+            + "Remember to take into account the number of buffer elements."
         )
-    elif remainder != 0:
-        print(
-            "Warning: Cluster pairings do not use all native pixels."
-            + f"Adding additional cluster pairing: {[remainder, 1]}."
+    if desired_element_num > len(sensitivities):
+        raise Exception(
+            f"Error in clustering algorithm: too many clusters requested."
+            + f" {len(sensitivities)} native resolution elements and "
+            + f"requested {desired_element_num} elements."
+            + "Remember to take into account the number of buffer elements."
         )
-        remaining_pixels = True
-        # add to existing cluster pair if same size
-        # otherwise create new cluster pair
-        for i in range(len(new_cluster_pairs)):
-            if new_cluster_pairs[i][0] == remainder:
-                new_cluster_pairs[i] = (
-                    new_cluster_pairs[i][0],
-                    new_cluster_pairs[i][1] + remainder,
-                )
-                remaining_pixels = False
-        if remaining_pixels:
-            new_cluster_pairs.append((remainder, remainder))
 
-    # sort cluster pairs in ascending order
-    return sorted(new_cluster_pairs, key=lambda x: x[0])
+    sensitivities.sort(reverse=True)
+    target_dofs_per_cluster = sum(sensitivities) / desired_element_num
+    pairs = find_cluster_pairs(
+        sensitivities, target_dofs_per_cluster, desired_element_num
+    )
+    return list(pairs.items())
 
 
-def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
+def force_native_res_pixels(config, clusters, sensitivities):
     """
     Description:
         Forces native resolution for specified coordinates in config file
@@ -324,13 +362,6 @@ def force_native_res_pixels(config, clusters, sensitivities, cluster_pairs):
     if coords is None:
         # No forced pixels inputted
         return sensitivities
-
-    # Error Handling
-    num_native_pixels = [pair[1] for pair in cluster_pairs if pair[0] == 1]
-    if len(coords) > num_native_pixels[0]:
-        message = "Error: Not enough native resolution pixels for forced coordinates."
-        +f"{len(coords)} forced coordinates, but only {num_native_pixels[0]} native pixels."
-        raise (Exception(message))
 
     if config["Res"] == "0.25x0.3125":
         lat_step = 0.25
@@ -361,29 +392,21 @@ if __name__ == "__main__":
     sys.stderr = output_file
 
     original_clusters = xr.open_dataset(state_vector_path)
-    cluster_pairs = config["ClusteringPairs"]
-    cluster_pairs = generate_cluster_pairs(
-        original_clusters["StateVector"], config["nBufferClusters"], cluster_pairs
-    )
     print("Starting aggregation")
-    tic = time.perf_counter()
     sensitivities = estimate_averaging_kernel(
         config, state_vector_path, preview_dir, tropomi_cache
     )
-    toc = time.perf_counter()
-    agg_start = time.perf_counter()
-    print(f"estimate_averaging_kernel time: {toc-tic}")
-
     if "ForcedNativeResolutionElements" in config.keys():
         sensitivities = force_native_res_pixels(
-            config, original_clusters["StateVector"], sensitivities, cluster_pairs
+            config, original_clusters["StateVector"], sensitivities
         )
+    cluster_pairs = generate_cluster_pairs(
+        sensitivities, config["NumberOfElements"], config["nBufferClusters"]
+    )
     new_sv = update_sv_clusters(
         original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"]
     )
     original_clusters.close()
-    agg_end = time.perf_counter()
-    print(f"update_sv_cluster time: {agg_end-agg_start}")
 
     # replace original statevector file
     print(f"Saving file {state_vector_path}")
