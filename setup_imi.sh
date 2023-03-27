@@ -651,8 +651,8 @@ if  "$SetupPosteriorRun"; then
                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
-               -e 's/Restart.frequency:          '\''End/Restart.frequency:          '\''Daily/g' \
-               -e 's/Restart.duration:           '\''End/Restart.duration:           '\''Daily/g' HISTORY.rc
+               -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
+               -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi
 
     # Create run script from template
