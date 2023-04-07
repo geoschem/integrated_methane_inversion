@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: IMI manual
+    url: https://imi.readthedocs.io/en/stable
+    about: Click this link to read the IMI manual.
