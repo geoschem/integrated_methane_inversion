@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#SBATCH -c 24
+#SBATCH -N 1
+#SBATCH -t 0-24:00
+#SBATCH --partition=seas_compute,huce_cascade,huce_intel
+#SBATCH --mem=15000
+#SBATCH --mail-type=END
+
+###############################################################################
+## Instructions
+## source ~/envs/gcc_cmake.gfortran102_cannon.env
+###############################################################################
+
+# Set the proper # of threads for OpenMP
+# SLURM_CPUS_PER_TASK ensures this matches the number you set with -c above
+export OMP_NUM_THREADS=24
+source ~/envs/gcc_cmake.gfortran102_cannon.env
+# Run GEOS_Chem.  The "time" command will return CPU and wall times.
+# Stdout and stderr will be directed to the "GC.log" log file
+# (you can change the log file name below if you wish)
+srun -c $OMP_NUM_THREADS time -p ./gcclassic >> GC.log
+
+# Exit normally
+exit 0
+#EOC
