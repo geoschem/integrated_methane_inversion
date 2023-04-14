@@ -58,6 +58,14 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
                 continue
             elif date < np.datetime64("2022-07-26"):
                 subdir = "RPRO"
+                # handle corner case where a single orbit file would not be downloaded
+                if date == np.datetime64("2022-07-25"):
+                    download_str = "aws s3 cp --only-show-errors "
+                    + f"{remote_root}OFFL/L2__CH4___/{year}/{month}/{day}/"
+                    + "S5P_OFFL_L2__CH4____20220725T235519_20220726T013649_24780_03_020400_20220727T154716.nc"
+                    + f" {Sat_datadir}"
+                    f.write(download_str)
+                    f.write("\n")
             # use offline data for dates after 2022-07-25
             else:
                 subdir = "OFFL"
