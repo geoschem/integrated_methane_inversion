@@ -497,10 +497,10 @@ def estimate_averaging_kernel(
     num_days = np.round((time_delta) / np.timedelta64(1, "D"))
 
     # calculate the number of orbits in the given time period
-    num_orbits = (num_days * 24 * 60) / 100  # 100 minutes per orbit for tropomi
+    # num_orbits = (num_days * 24 * 60) / 100  # 100 minutes per orbit for tropomi
 
     # rough estimate number of superobservations per orbit
-    m_per_superobs = m / num_orbits
+    m_per_superobs = m / num_days
 
     # create g(P) scaling factor for observational error
     s_superO_1 = calculate_superobservation_error(config["ObsError"], 1)
@@ -519,11 +519,10 @@ def estimate_averaging_kernel(
     sA = config["PriorError"] * emissions_kgs_per_m2
 
     # scale observational error by gP
-    sO = gP * config["ObsError"] * 1e-9
-
+    sO = config["ObsError"] * 1e-9
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (sO / k) ** 2 / m)
+    a = sA**2 / (sA**2 + ((sO / k) ** 2)*gP)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
