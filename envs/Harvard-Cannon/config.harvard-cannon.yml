@@ -9,7 +9,7 @@ SafeMode: true
 
 ## Period of interest
 StartDate: 20180501
-EndDate: 20180502
+EndDate: 20180508
 SpinupMonths: 1
 
 ## Use nested grid simulation?
@@ -41,6 +41,14 @@ CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
+
+## Clustering Options
+ReducedDimensionStateVector: false
+ClusteringPairs:
+  - [1, 15]
+  - [2, 24]
+ForcedNativeResolutionElements: 
+  - [31.5, -104]
 
 ## Custom state vector
 StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_IMI/StateVector.nc"
@@ -123,7 +131,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
 ## See envs/README to create the Conda environment specified below
 NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
 GEOSChemEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
-CondaEnv: "ch4_inv"
+CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
@@ -133,6 +141,9 @@ RestartDownload: false
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
 RestartFilePrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 RestartFilePreviewPrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
+
+## amount of memory to allocate with slurm
+PreviewMemory: 16000
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command

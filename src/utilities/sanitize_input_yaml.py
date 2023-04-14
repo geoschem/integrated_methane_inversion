@@ -15,7 +15,9 @@ config_required_aws = [
 ]
 
 # variables only required by local cluster
-config_required_local_cluster = []
+config_required_local_cluster = [
+    "PreviewMemory",
+]
 
 # variables required on all systems
 config_required = [
@@ -33,6 +35,7 @@ config_required = [
     "NestedGrid",
     "NestedRegion",
     "CreateAutomaticRectilinearStateVectorFile",
+    "ReducedDimensionStateVector",
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
