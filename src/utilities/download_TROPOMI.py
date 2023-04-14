@@ -24,7 +24,7 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
     # s3://meeo-s5p/RPRO/L2__CH4___/YYYY/MM/DD/*.nc
     # --no-sign-request
     print(f"{startdate}, {enddate}")
-    # list of all dates between startdate and enddate inclusive
+    # list of all dates between startdate and enddate excluding enddate
     download_dates = np.arange(startdate, enddate, dtype="datetime64[D]")
 
     # we create a bash script to download the data using the aws cli
