@@ -215,7 +215,7 @@ def apply_tropomi_operator(
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
-    # print("Found", n_obs, "TROPOMI observations.")
+    print("Found", n_obs, "TROPOMI observations.")
 
     # If need to build Jacobian from GEOS-Chem perturbation simulation sensitivity data:
     if build_jacobian:
@@ -265,8 +265,8 @@ def apply_tropomi_operator(
         corners_lon_index = []
         corners_lat_index = []
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], GEOSCHEM["lon"], tolerance=dlon)
-            jGC = nearest_loc(latitude_bounds[l], GEOSCHEM["lat"], tolerance=dlat)
+            iGC = nearest_loc(longitude_bounds[l], GEOSCHEM["lon"], tolerance=max(dlon,0.5))
+            jGC = nearest_loc(latitude_bounds[l], GEOSCHEM["lat"], tolerance=max(dlat,0.5))
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
         # If the tolerance in nearest_loc() is not satisfied, skip the observation
@@ -571,6 +571,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     print("Found", n_obs, "TROPOMI observations.")
     gc_lats = gc_lat_lon["lat"]
     gc_lons = gc_lat_lon["lon"]
+    dlon = np.median(np.diff(gc_lat_lon["lon"])) # GEOS-Chem lon resolution
+    dlat = np.median(np.diff(gc_lat_lon["lat"])) # GEOS-Chem lon resolution
     gridcell_dicts = get_gridcell_list(gc_lons, gc_lats)
 
     for k in range(n_obs):
@@ -584,8 +586,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
         corners_lat_index = []
 
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], gc_lons)
-            jGC = nearest_loc(latitude_bounds[l], gc_lats)
+            iGC = nearest_loc(longitude_bounds[l], gc_lons, tolerance=max(dlon,0.5))
+            jGC = nearest_loc(latitude_bounds[l], gc_lats, tolerance=max(dlat,0.5))
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
 
@@ -599,8 +601,6 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
 
         # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
         overlap_area = np.zeros(len(gc_coords))
-        dlon = gc_lons[1] - gc_lons[0]
-        dlat = gc_lats[1] - gc_lats[0]
 
         # Polygon representing TROPOMI pixel
         polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
