@@ -114,19 +114,6 @@ if ! "$PrecomputedJacobian"; then
     python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache; wait
     printf "DONE -- calc_sensi.py\n\n"
 
-# else
-# 
-#     # Replace the (empty) data_sensitivities folder with a symlink to the
-#     # sensitivities from the reference inversion w/ precomputed Jacobian.
-#     if "$KalmanMode"; then
-#         precomputedSensiCache=${ReferenceRunDir}/kf_inversions/period${i}/data_sensitivities
-#     else
-#         precomputedSensiCache=${ReferenceRunDir}/inversion/data_sensitivities
-#     fi
-#     # mv rather than rm, to prevent accidental deletion of original data_sensitivities/ ?
-#     mv data_sensitivities temp_dir
-#     ln -s $precomputedSensiCache $sensiCache
-# 
 fi
 
 #=======================================================================

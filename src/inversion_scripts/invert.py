@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os
 import glob
 import numpy as np
 from netCDF4 import Dataset
-import xarray as xr
-import pickle
 from utils import load_obj
 
 

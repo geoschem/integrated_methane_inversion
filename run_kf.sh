@@ -190,6 +190,7 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
 
     # Key files and directories
     JacobianRunsDir="${RunDirs}/jacobian_runs"
+    PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
     PosteriorRunDir="${RunDirs}/posterior_run"
     StateVectorFile="${RunDirs}/StateVector.nc"
     InversionDir="${RunDirs}/inversion_template"
@@ -304,9 +305,7 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
                 printf "=== DONE PRIOR SIMULATION ===\n"
 
                 # Get Jacobian scale factors
-                sf_archive=${RunDirs}/archive_sf
-                ref_archive=${ReferenceRunDir}/archive_sf
-                python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $i $RunDirs $sf_archive $ref_archive; wait
+                python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $i $RunDirs $ReferenceRunDir; wait
                 printf "Got Jacobian scale factors\n"
 
             fi

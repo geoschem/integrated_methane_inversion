@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 
 
-def get_jacobian_scalefactors(period_number, base_directory, sf_archive, ref_archive):
+def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     """
     Running sensitivity inversions with pre-constructed Jacobian may require scaling the 
     Jacobian to match updated prior estimates. This is because the Jacobian is defined
@@ -16,25 +16,42 @@ def get_jacobian_scalefactors(period_number, base_directory, sf_archive, ref_arc
 
     Arguments
         period_number  [int]   : Current inversion period, starting from 1
-        base_directory [str]   : The base directory for the inversion, where e.g., "preview_sim/" resides
-        sf_archive     [str]   : Path to archive of prior/posterior scale factors
-        ref_archive    [str]   : Path to archive of scale factors from original inversion
+        inv_directory [str]   : The base directory for the inversion, where e.g., "preview_sim/" resides
+        ref_directory  [str]   : The base directory for the reference inversion
     
     Returns
         sf_K           [float] : Scale factors to be applied to the Jacobian matrix
     """
 
     # Get target and reference scale factors (prior) for current period
+    sf_archive = os.path.join(inv_directory, "archive_sf")
+    ref_archive = os.path.join(ref_directory, "archive_sf")
     sf_path = os.path.join(sf_archive, f"prior_sf_period{period_number}.nc")
     sf_path_ref = os.path.join(ref_archive, f"prior_sf_period{period_number}.nc")
     sf = xr.load_dataset(sf_path)["ScaleFactor"]
     sf_ref = xr.load_dataset(sf_path_ref)["ScaleFactor"]
 
+    # Get HEMCO diagnostics for current inversion and reference inversion
+    #  The HEMCO diags emissions are needed to calculate Jacobian scale
+    #  factors for sensitivity inversions that change the prior inventory
+    run_name = inv_directory.split("/")[-1]
+    ref_run_name = ref_directory.split("/")[-1]
+    prior_sim = os.path.join(inv_directory, "jacobian_runs", f"{run_name}_0000")
+    ref_prior_sim = os.path.join(ref_directory, "jacobian_runs", f"{ref_run_name}_0000")
+    hemco_list = [f for f in os.listdir(prior_sim) if "HEMCO" in f]
+    hemco_list.sort()
+    ref_hemco_list = [f for f in os.listdir(ref_prior_sim) if "HEMCO" in f]
+    ref_hemco_list.sort()
+    pth = os.path.join(prior_sim, hemco_list[period_number - 1])
+    ref_pth = os.path.join(ref_prior_sim, ref_hemco_list[period_number - 1])
+    hemco_emis = xr.load_dataset(pth)["EmisCH4_Total"].isel(time=0, drop=True)
+    ref_hemco_emis = xr.load_dataset(ref_pth)["EmisCH4_Total"].isel(time=0, drop=True)
+
     # Get scale factors to apply to the Jacobian matrix K
-    statevector_path = os.path.join(base_directory, "StateVector.nc")
+    statevector_path = os.path.join(inv_directory, "StateVector.nc")
     statevector = xr.load_dataset(statevector_path)["StateVector"]
     n_elements = int(np.nanmax(statevector.data))
-    sf_ratio = sf / sf_ref
+    sf_ratio = (sf * hemco_emis) / (sf_ref * ref_hemco_emis)
     sf_K = []
     for e in range(1, n_elements + 1):
         # Get scale factor for state vector element e
@@ -55,21 +72,19 @@ if __name__ == "__main__":
     import sys
 
     period_number = int(sys.argv[1])
-    base_directory = sys.argv[2]
-    sf_archive = sys.argv[3]
-    ref_archive = sys.argv[4]
+    inv_directory = sys.argv[2]
+    ref_directory = sys.argv[3]
 
     # Get the scale factors
-    out = get_jacobian_scalefactors(
-        period_number, base_directory, sf_archive, ref_archive
-    )
+    out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory)
 
     # Save them
     save_path_1 = os.path.join(
-        sf_archive, f"jacobian_scale_factors_period{period_number}.npy"
+        os.path.join(inv_directory, "archive_sf"),
+        f"jacobian_scale_factors_period{period_number}.npy",
     )
     save_path_2 = os.path.join(
-        base_directory,
+        inv_directory,
         f"kf_inversions/period{period_number}",
         f"jacobian_scale_factors.npy",
     )
