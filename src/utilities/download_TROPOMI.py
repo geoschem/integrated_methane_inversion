@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Note: requries aws cli to be installed and configured
-Description: Download TROPOMI data from meeo S3 bucket for desired dates.
-             Function can be called from another script or run as a 
-             directly as a script.               
-Example Usage as a script:
-    $ python download_TROPOMI.py 20190101 20190214 TROPOMI_data
-"""
+# Note: requries aws cli to be installed and configured
+# Description: Download TROPOMI data from meeo S3 bucket for desired dates.
+#              Function can be called from another script or run as a 
+#              directly as a script.               
+# Example Usage as a script:
+#     $ python download_TROPOMI.py 20190101 20190214 TROPOMI_data
 
 import os
 import sys
@@ -52,7 +50,7 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
             # determine download directory based on date
             # data starts on 2018-04-30
             # use reprocessed data for dates before 2022-07-26
-            # this ensures use of the v2.0.4 product
+            # this ensures use of the v2.0.4/v2.0.5 product
             if date < np.datetime64("2018-04-30"):
                 print(
                     f"Skipping TROPOMI data download for {date}, : no data from this date"
