@@ -23,7 +23,7 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
     # reprocessed: 04/30/2018 to 07/25/2022
     # s3://meeo-s5p/RPRO/L2__CH4___/YYYY/MM/DD/*.nc
     # --no-sign-request
-    print(f"{startdate}, {enddate}")
+
     # list of all dates between startdate and enddate excluding enddate
     download_dates = np.arange(startdate, enddate, dtype="datetime64[D]")
 
