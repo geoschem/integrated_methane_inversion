@@ -58,7 +58,10 @@ ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/Permi
 PriorError: 0.5
 ObsError: 15
 Gamma: 1.0
+
+## Precomputed Jacobian
 PrecomputedJacobian: false
+ReferenceRunDir: "path/to/reference/imi/output/dir"
 
 ## Grid
 ##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"

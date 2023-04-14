@@ -249,28 +249,67 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         python ${InversionPath}/src/kf_scripts/prepare_sf.py $ConfigPath $i ${RunDirs} $NudgeFactor; wait
 
         ##=======================================================================
-        ##  Submit Jacobian simulations
+        ##  Submit all Jacobian simulations OR submit only the Prior simulation
         ##=======================================================================
 
         jacobian_start=$(date +%s)
         if "$DoJacobian"; then
 
-            printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
+            if ! "$PrecomputedJacobian"; then
 
-            cd ${JacobianRunsDir}
+                printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
 
-            if ! "$isAWS"; then
-                # Load environment with modules for compiling GEOS-Chem Classic
-                source ${GEOSChemEnv} 
+                cd ${JacobianRunsDir}
+
+                if ! "$isAWS"; then
+                    # Load environment with modules for compiling GEOS-Chem Classic
+                    source ${GEOSChemEnv} 
+                fi
+
+                # Submit job to job scheduler
+                ./submit_jacobian_simulations_array.sh; wait;
+
+                # check if any jacobians exited with non-zero exit code
+                [ ! -f ".error_status_file.txt" ] || imi_failed
+
+                printf "=== DONE JACOBIAN SIMULATIONS ===\n"
+
+            else
+
+                # Replace the (empty) data_sensitivities folder with a symlink to the
+                # sensitivities from the reference inversion w/ precomputed Jacobian.
+                cd ${RunDirs}/kf_inversions/period${i}
+
+                if "$KalmanMode"; then
+                    precomputedSensiCache=${ReferenceRunDir}/kf_inversions/period${i}/data_sensitivities
+                else
+                    # Need this alternative when run_imi.sh and run_kf.sh get combined... TODO
+                    precomputedSensiCache=${ReferenceRunDir}/inversion/data_sensitivities
+                fi
+                # mv rather than rm, to prevent accidental deletion of original data_sensitivities/ ?
+                mv data_sensitivities temp_dir
+                ln -s $precomputedSensiCache data_sensitivities
+
+                # Run the prior simulation
+                cd ${JacobianRunsDir}
+            
+                if ! "$isAWS"; then
+                    # Load environment with modules for compiling GEOS-Chem Classic
+                    source ${GEOSChemEnv}
+                fi
+
+                # Submit prior simulation to job scheduler
+                printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
+                sbatch -W run_prior_simulation.sh; wait;
+                printf "=== DONE PRIOR SIMULATION ===\n"
+
+                # Get Jacobian scale factors
+                sf_archive=${RunDirs}/archive_sf
+                ref_archive=${ReferenceRunDir}/archive_sf
+                python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $i $RunDirs $sf_archive $ref_archive; wait
+                printf "Got Jacobian scale factors\n"
+
             fi
-
-            # Submit job to job scheduler
-            ./submit_jacobian_simulations_array.sh; wait;
-
-            # check if any jacobians exited with non-zero exit code
-            [ ! -f ".error_status_file.txt" ] || imi_failed
-
-            printf "=== DONE JACOBIAN SIMULATIONS ===\n"
 
         fi
         jacobian_end=$(date +%s)
@@ -308,6 +347,7 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         inversion_end=$(date +%s)
 
         # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
+        # NOTE: This also creates the posterior_sf_period{i}.nc file in archive_sf/
         python ${InversionPath}/src/kf_scripts/multiply_posteriors.py $i ${RunDirs}; wait
         echo "Multiplied posterior scale factors over record"
 
@@ -321,7 +361,7 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         posterior_start=$(date +%s)
         if "$DoPosterior"; then
 
-            cd ${RunDirs}/posterior_run
+            cd ${PosteriorRunDir}
             
             if ! "$isAWS"; then
                 # Load environment with modules for compiling GEOS-Chem Classic
@@ -336,7 +376,6 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
             cd ${RunDirs}/kf_inversions/period${i}
 
             # Fill missing data (first hour of simulation) in posterior output
-            PosteriorRunDir="${RunDirs}/posterior_run"
             if (( i == 1 )); then
                 PrevDir="${RunDirs}/spinup_run"
             else

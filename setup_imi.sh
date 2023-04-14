@@ -704,8 +704,12 @@ if "$SetupJacobianRuns"; then
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
+    cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
     if "$isAWS"; then
         sed -i -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
+        sed -i -e "/#SBATCH -t/d" jacobian_runs/run_prior_simulation.sh
     fi
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
