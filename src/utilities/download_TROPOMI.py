@@ -50,7 +50,7 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
             # determine download directory based on date
             # data starts on 2018-04-30
             # use reprocessed data for dates before 2022-07-26
-            # this ensures use of the v2.0.4/v2.0.5 product
+            # this ensures use of the v02.04.00/v02.05.00 product
             if date < np.datetime64("2018-04-30"):
                 print(
                     f"Skipping TROPOMI data download for {date}, : no data from this date"
