@@ -9,7 +9,7 @@ from netCDF4 import Dataset
 import sys
 
 import yaml
-with open("config_BCs.yml", "r") as f:
+with open("config_write_BCs.yml", "r") as f:
     config = yaml.safe_load(f)
 
 sys.path.insert(1, "../inversion_scripts/operators/")
