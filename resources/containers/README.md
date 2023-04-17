@@ -7,7 +7,7 @@ Dockerfiles contain a list of instructions to build an image with the necessary 
 ## Building the Docker image 
 To build the docker image, cd into the benchmarks/environments/ directory and run
 `$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 753979222379.dkr.ecr.us-east-1.amazonaws.com` # login to ecr
-`$ docker build -t geoschem-base-repository .`
+`$ docker build -t imi-base-repository . --platform=linux/amd64`
 If you are running docker on a machine with an arm64 processor (M1 mac) you may need to append the following flag:
 `--platform=linux/amd64`
 

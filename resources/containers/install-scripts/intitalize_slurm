@@ -1,0 +1,20 @@
+# This script sets up SLURM configuration on AWS. It is necessary because
+# instance hardware and IPs change when creating a new instance.
+# The script should be run with root permissions and is configured to run
+# automatically on system boot in the Integrated Methane Inversion AMI.
+# To update crontab job that runs at boot run the following commands:
+# (1) $ sudo su root # assume the root user
+# (2) $ crontab -l # to list existing crontab commands
+# (3) $ crontab -e # create a new crontab file using a default editor
+# (4) edit it as you see fit (eg. @reboot /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/initialize_slurm)
+# (5) save and overwrite the existing file eg. /var/spool/cron/crontabs/root
+# (6) $ exit # to exit root user access
+cp /home/al2/install-scripts/base_slurm.conf /home/al2/install-scripts/new_slurm.conf
+python /home/al2/install-scripts/configure_slurm.py
+cp /home/al2/install-scripts/new_slurm.conf /etc/slurm-llnl/slurm.conf
+rm /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
+/usr/sbin/service slurmd restart
+/usr/sbin/service slurmctld restart
+
+# Fix issue when switching instance types where node claims to be drained
+scontrol update nodename=$HOSTNAME state=idle
