@@ -1,5 +1,5 @@
 startdate: "20180401T000000"
-enddate: "20220228T235959"
+enddate: "20230228T235959"
 imidir: "/n/home06/nbalasus/IMI_BCs/integrated_methane_inversion"
 workdir: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs"
 gccache: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs/runGCC1402/OutputDir"
