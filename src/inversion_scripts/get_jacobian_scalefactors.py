@@ -31,6 +31,18 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     sf = xr.load_dataset(sf_path)["ScaleFactor"]
     sf_ref = xr.load_dataset(sf_path_ref)["ScaleFactor"]
 
+    # Reset buffer area to 1?
+    #   TODO Do we want this feature? See similar comment in prepare_sf.py
+    #        If we do, need to update prepare_sf.py and then uncomment lines here:
+    #        (untested)
+    # config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    # n_buff = config["nBufferClusters"]
+    # statevector_path = os.path.join(inv_directory, "StateVector.nc")
+    # statevector = xr.load_dataset(statevector_path)["StateVector"]
+    # n_elements = int(np.nanmax(statevector.data))
+    # sf = sf.where(statevector <= n_elements - n_buff) # Replace buffers with nan
+    # sf = sf.fillna(1) # Fill nan with 1
+
     # Get HEMCO diagnostics for current inversion and reference inversion
     #  The HEMCO diags emissions are needed to calculate Jacobian scale
     #  factors for sensitivity inversions that change the prior inventory
@@ -59,11 +71,6 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
         # Append
         sf_K.append(sf_e)
     sf_K = np.asarray(sf_K)
-
-    # Reset buffer area to 1 # TODO Do we want this feature?
-    # config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    # n_buff = config["nBufferClusters"]
-    # sf_K[-n_buff:] = 1
 
     return sf_K
 
