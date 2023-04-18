@@ -49,7 +49,8 @@ if "$RunGEOSChem"; then
 fi
 
 if "$WriteBCs"; then
-    sbatch -W -p seas_compute -t 2-00:00 --mem 64000 -c 32 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
+    cd ${imidir}/src/write_BCs
+    sbatch -W -p seas_compute -t 2-00:00 --mem 64000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
     sbatch -W -p seas_compute -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
     sbatch -W -p seas_compute -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
 fi
