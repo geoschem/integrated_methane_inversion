@@ -54,7 +54,7 @@ def make_state_vector_file(
     lon_max,
     buffer_deg=5,
     land_threshold=0.25,
-    emis_threshold=0,
+    emis_threshold=1e-12,
     k_buffer_clust=8,
 ):
     """
@@ -88,7 +88,7 @@ def make_state_vector_file(
 
     # Select / group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
-    hd = hd["EmisCH4_Oil"].drop("time").squeeze()
+    hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
     # Check compatibility of region of interest with nesting window
     compatible = check_nested_grid_compatibility(

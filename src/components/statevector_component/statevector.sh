@@ -12,11 +12,14 @@ create_statevector() {
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridRes}.20190101.nc"
 
     if "$isAWS"; then
-	# Download land cover file
+	# Download land cover and Hemco diagnostics files
 	s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
 	aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
+    s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridRes}.20190101.nc"
+    aws s3 cp --request-payer=requester ${s3_hd_path} ${HemcoDiagFile}
     fi
 
     # Output path and filename for state vector file
@@ -27,10 +30,10 @@ create_statevector() {
 
     # Copy state vector creation script to working directory
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
-    chmod 755 make_state_vector_file.py
+    chmod 755 make_state_vector_file_offshore.py
 
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
+    python make_state_vector_file_offshore.py $LandCoverFile $HemcoDiagFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $OffshoreEmisThreshold $nBufferClusters
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 }
