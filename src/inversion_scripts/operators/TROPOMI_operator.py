@@ -243,9 +243,6 @@ def apply_tropomi_operator(
     obs_GC = np.zeros([n_obs, 6], dtype=np.float32)
     obs_GC.fill(np.nan)
 
-    # Number of TROPOMI observations ignored for of geometry reasons
-    ignore_TROPOMI_obs = 0
-
     # For each TROPOMI observation:
     for k in range(n_obs):
 
