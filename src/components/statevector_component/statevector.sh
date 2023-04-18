@@ -30,10 +30,10 @@ create_statevector() {
 
     # Copy state vector creation script to working directory
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
-    chmod 755 make_state_vector_file_offshore.py
+    chmod 755 make_state_vector_file.py
 
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file_offshore.py $LandCoverFile $HemcoDiagFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $OffshoreEmisThreshold $nBufferClusters
+    python make_state_vector_file.py $LandCoverFile $HemcoDiagFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $OffshoreEmisThreshold $nBufferClusters
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 }
