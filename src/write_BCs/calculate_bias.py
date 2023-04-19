@@ -11,6 +11,13 @@ import os
 # methods/ R script.
 #######################################################
 
+# settings to adjust default smoothing windows
+# we use a +/- 15 day time window and 3x3
+# smoothing for lat/lon
+smoothing_lat_window = 3
+smoothing_lon_window = 3
+smoothing_time_window = 30
+
 # replace extreme outliers by finding values above the given percentile
 # using perc=.01 finds the highest negative bias and perc=.99 finds the 
 # highest positive bias
@@ -50,13 +57,6 @@ def smooth_3D_da(
     ).mean(skipna=True)
 
 if __name__ == "__main__":
-
-    # settings to adjust default smoothing windows
-    # we use a +/- 15 day time window and 3x3
-    # smoothing for lat/lon
-    smoothing_lat_window = 3
-    smoothing_lon_window = 3
-    smoothing_time_window = 30
 
     # access the preprocessed CH4 data
     filepath = os.path.join(config["workdir"], "step2", "Daily_CH4.nc")
