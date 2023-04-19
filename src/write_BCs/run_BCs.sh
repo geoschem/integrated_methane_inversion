@@ -31,10 +31,10 @@ if "$RunGEOSChem"; then
     cp HEMCO_Config.rc ${workdir}/runGCC1402/
     cp HISTORY.rc ${workdir}/runGCC1402/
 
-    # Modify geoschem_config.yml to match our start and end date
+    # Modify geoschem_config.yml to match our start and end date specified in the config file
     cd ${workdir}/runGCC1402
-    sed -i -e "s:20180401:${startdate:0:8}:g" \
-        -e "s:20240101:${enddate:0:8}:g" geoschem_config.yml
+    sed -i -e "s|start_date: \[[ ]*.*[ ]*\]|start_date: \[${startdate:0:8}, ${startdate:9:15}\]|g"\
+           -e "s|end_date: \[[ ]*.*[ ]*\]|end_date: \[${enddate:0:8}, ${enddate:9:15}\]|g" geoschem_config.yml
 
     # Compile GEOS-Chem
     cd ${workdir}/runGCC1402/build
