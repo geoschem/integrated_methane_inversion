@@ -10,7 +10,7 @@ with open("config_write_BCs.yml", "r") as f:
 
 if __name__ == "__main__":
 
-outputDir = os.path.join(config["workdir"], "smoothed-boundary-conditions")
+    outputDir = os.path.join(config["workdir"], "smoothed-boundary-conditions")
 
     # Read smooth biases calculated in calculate_bias.py
     with xr.open_dataset(os.path.join(config["workdir"], "step3", "Bias_4x5_dk_2_updated.nc")) as file1:
