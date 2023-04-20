@@ -33,9 +33,18 @@ ADD install-scripts/install-imi-env.sh /home/al2/install-scripts/install-imi-env
 ADD install-scripts/imi_env.yml /home/al2/install-scripts/imi_env.yml
 RUN source install-scripts/install-imi-env.sh
 
+# create user and set to default user
+RUN useradd -ms /bin/bash al2
+# USER al2
+ADD install-scripts/slurm/install-slurm.sh /home/al2/install-scripts/install-slurm.sh
+RUN source install-scripts/install-slurm.sh
+
+# slurm installation
+ADD install-scripts/slurm/base_slurm.conf /home/al2/install-scripts/base_slurm.conf
+ADD install-scripts/slurm/cgroup.conf /home/al2/install-scripts/cgroup.conf
+ADD install-scripts/slurm/configure_slurm.py /home/al2/install-scripts/configure_slurm.py
+
 ADD entrypoint.sh /home/al2/entrypoint.sh
 RUN chmod +x entrypoint.sh
 
-USER imi_user
-
-CMD [ "entrypoint.sh" ]
+CMD [ "/home/al2/entrypoint.sh" ]

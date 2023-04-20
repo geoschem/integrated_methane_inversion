@@ -22,7 +22,7 @@ second_line = (
             slurm_info[0],
             slurm_info[1],
             slurm_info[6],
-            "CoresPerSocket" + slurm_info[1][4:],
+            "SocketsPerBoard" + slurm_info[1][4:],
             "ThreadsPerCore=1 State=UNKNOWN",
         ]
     )
@@ -42,7 +42,7 @@ third_line = (
 )
 
 with open(
-    "/home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf", "a+"
+    "/home/al2/install-scripts/new_slurm.conf", "a+"
 ) as f:
     f.write("\n")
     f.write(first_line)
