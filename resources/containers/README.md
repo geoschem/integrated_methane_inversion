@@ -4,6 +4,9 @@ This directory contains the files necessary to build a docker image with all the
 # Dockerfile
 Dockerfiles contain a list of instructions to build an image with the necessary dependencies preinstalled. The Dockerfile starts with the amazonlinux:2 image available on dockerhub -- this image already contains the aws-cli. The Dockerfile then runs several installation scripts (located in the install-scripts/ directory) to install conda, spack, slurm, and any other necessary dependencies
 
+## Prerequisites
+[Docker](https://www.docker.com/) must be installed to run or build IMI docker containers.
+
 ## Building the Docker image 
 To build the docker image, cd into the benchmarks/environments/ directory and run
 `$ docker build -t imi-base-repository . --platform=linux/amd64`
@@ -18,7 +21,10 @@ $ docker tag imi-base-repository:latest 753979222379.dkr.ecr.us-east-1.amazonaws
 $ docker push 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-base-repository:latest
 ```
 ## Running the image
+This runs the built image using the default `entrypoint.sh` command:
+
 `docker run --platform=linux/amd64 imi-base-repository:latest`
+
 ## Pulling an existing image
 A fully built base image is stored on aws and can be accessed by running:
 ```
