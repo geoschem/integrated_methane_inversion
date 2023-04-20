@@ -2,6 +2,10 @@ import numpy as np
 import xarray as xr
 import os
 
+import yaml
+with open("config_write_BCs.yml", "r") as f:
+    config = yaml.safe_load(f)
+
 #######################################################
 # This script takes the preprocessed daily data 
 # from tropomi/GC simulation and calculates the bias 
