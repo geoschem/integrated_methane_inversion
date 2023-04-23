@@ -77,9 +77,9 @@ For more information on using the clustering options take a look at the `cluster
 
    * - ``ReducedDimensionStateVector``
      - Boolean for whether to reduce the dimension of the statevector from the native resolution version by clustering elements. If ``false`` the native state vector is used with no dimension reduction.
-   * - ``ClusteringPairs``
-     - Pairing information used for statevector dimension. For example, if the pairings [1, 15] and [2, 24] are given, then the resultant state vector will have 15 native resolution gridcell elements and 24 2-gridcell elements. Any remaining native resolution grid cells are aggregated into a single element.
-   * - ``ForcedNativeResolutionElements``
+   * - ``NumberOfElements``
+     - Number of elements in the reduced dimension state vector. This is only used if ``ReducedDimensionStateVector`` is ``true``.
+     * - ``ForcedNativeResolutionElements``
      - yaml list of of coordinates that you would like to force as native resolution state vector elements [lat, lon]. This is useful for ensuring hotspot locations are at the highest available resolution. 
 
 Custom/pre-generated state vector
