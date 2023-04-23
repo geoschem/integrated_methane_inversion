@@ -13,6 +13,8 @@ Important: Make sure you are in the top-level directory of the IMI source code.
 ```
 $ docker build -f resources/containers/Dockerfile -t imi-docker-image . --platform=linux/amd64
 $ docker run --platform=linux/amd64 imi-docker-image:latest
+# run with mounted volume to preserve data on host:
+$ docker run --platform=linux/amd64 --mount source=imi_output_dir,target=/home/al2/imi_output_dir imi-docker-image:latest
 ```
 ## pushing the image to remote repository
 ```
