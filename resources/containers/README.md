@@ -29,4 +29,5 @@ $ docker tag imi-docker-image:latest 753979222379.dkr.ecr.us-east-1.amazonaws.co
 $ docker push 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest
 ```
 ## pulling the image
+Note: this image is currently not publically available
 `$ docker pull 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest`
