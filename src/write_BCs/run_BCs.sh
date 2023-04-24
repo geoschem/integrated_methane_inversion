@@ -52,8 +52,14 @@ if "$RunGEOSChem"; then
 fi
 
 if "$WriteBCs"; then
+    
+    # Run python scripts
     cd ${imidir}/src/write_BCs
     sbatch -W -p seas_compute -t 2-00:00 --mem 64000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
     sbatch -W -p seas_compute -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
     sbatch -W -p seas_compute -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
+
+    # Replace the days we don't have TROPOMI data with initial GC outputs
+    cp ${workdir}/runGCC1402/OutputDir/GEOSChem.BoundaryConditions.201804{01..29}_0000z.nc4 ${workdir}/smoothed-boundary-conditions
+
 fi
