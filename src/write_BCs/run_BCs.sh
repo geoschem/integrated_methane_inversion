@@ -36,9 +36,6 @@ if "$RunGEOSChem"; then
     sed -i -e "s|start_date: \[[ ]*.*[ ]*\]|start_date: \[${startdate:0:8}, ${startdate:9:15}\]|g"\
            -e "s|end_date: \[[ ]*.*[ ]*\]|end_date: \[${enddate:0:8}, ${enddate:9:15}\]|g" geoschem_config.yml
 
-    # Modify HEMCO_Config.rc.gmao_metfields to allow us to run right up until the end of our current MET field timeseries
-    sed -i -e "s|EFY|CY|g" HEMCO_Config.rc.gmao_metfields
-
     # Compile GEOS-Chem
     cd ${workdir}/runGCC1402/build
     cmake ${imidir}/src/write_BCs/GCClassic >> build_geoschem.log 2>&1
