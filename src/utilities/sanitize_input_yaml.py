@@ -39,6 +39,7 @@ config_required = [
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
+    "OffshoreEmisThreshold",
     "StateVectorFile",
     "ShapeFile",
     "PriorError",

@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 from sklearn.cluster import KMeans
+import yaml
 
 
 def get_nested_grid_bounds(land_cover_pth):
@@ -45,42 +46,36 @@ def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cov
 
 
 def make_state_vector_file(
-    land_cover_pth,
-    hemco_diag_pth,
-    save_pth,
-    lat_min,
-    lat_max,
-    lon_min,
-    lon_max,
-    buffer_deg=5,
-    land_threshold=0.25,
-    emis_threshold=1e-12,
-    k_buffer_clust=8,
+    config_path, land_cover_pth, hemco_diag_pth, save_pth,
 ):
     """
     Generates the state vector file for an analytical inversion.
 
     Arguments
+        config_path    [str]   : Path to configuration file
         land_cover_pth [str]   : Path to land cover file
         hemco_diag_pth [str]   : Path to initial HEMCO diagnostics file
         save_pth       [str]   : Where to save the state vector file
-        lat_min        [float] : Minimum latitude
-        lat_max        [float] : Maximum latitude
-        lon_min        [float] : Minimum longitude
-        lon_max        [float] : Maximum longitude
-        buffer_deg     [float] : Width of k-means buffer area in degrees
-        land_threshold [float] : Minimum land fraction to include pixel as a state vector element
-        emis_threshold [float] : Minimum emission to include offshore pixel as a state vector element
-        k_buffer_clust [int]   : Number of buffer clusters for k-means
 
     Returns
         ds_statevector []     : xarray dataset containing state vector field formatted for HEMCO
 
     Notes
-        - Land cover file looks like 'GEOSFP.20200101.CN.025x03125.NA.nc'
+        - Land cover file looks like 'GEOSFP.20200101.CN.025x03125.NA.nc' (or 0.5-deg equivalent)
         - HEMCO diags file needs to be global, is used to include offshore emissions in state vector
-        - Land cover file and HEMCO diags file need to have the same grid
+        - Land cover file and HEMCO diags file need to have the same grid resolution
     """
+
+    # Get config
+    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    lat_min = config["LatMin"]
+    lat_max = config["LatMax"]
+    lon_min = config["LonMin"]
+    lon_max = config["LonMax"]
+    buffer_deg = config["BufferDeg"]
+    land_threshold = config["LandThreshold"]
+    emis_threshold = config["OffshoreEmisThreshold"]
+    k_buffer_clust = config["nBufferClusters"]
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
@@ -131,19 +126,12 @@ def make_state_vector_file(
     if land_threshold:
         # Where there is neither land nor emissions, replace with 0
         land = lc.where((lc > land_threshold) | (hd > emis_threshold))
-        statevector.values[land.isnull().values] = 0
+        statevector.values[land.isnull().values] = -9999
 
     # Fill in the remaining NaNs with state vector element values
     statevector.values[statevector.isnull().values] = np.arange(
         1, statevector.isnull().sum() + 1
     )[::-1]
-
-    # Now set pixels over water with no emissions to missing_value = -9999
-    if land_threshold:
-        # First, where there is neither land nor emissions, replace with NaN
-        statevector = statevector.where((lc > land_threshold) | (hd > emis_threshold))
-        # Fill with missing_value = -9999
-        statevector.values[statevector.isnull().values] = -9999
 
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
