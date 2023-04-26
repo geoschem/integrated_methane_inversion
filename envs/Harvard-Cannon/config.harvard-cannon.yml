@@ -142,8 +142,11 @@ RestartDownload: false
 RestartFilePrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 RestartFilePreviewPrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 
-## amount of memory to allocate with slurm
-PreviewMemory: 16000
+## resources to allocate to slurm jobs
+SimulationCPUs: 24
+SimulationMemory: 16000
+JacobianCPUs: 1
+JacobianMemory: 4000
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command

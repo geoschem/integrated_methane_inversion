@@ -39,11 +39,8 @@ setup_inversion() {
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
            -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
-    fi
+    # replace sbatch resource headers
+    replace_sbatch_resources $SimulationCPUs $SimulationMemory inversion/run_inversion.sh
     
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 }

@@ -68,11 +68,8 @@ setup_posterior() {
     chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
-    fi
+    # replace sbatch resource headers
+    replace_sbatch_resources $SimulationCPUs $SimulationMemory ${PosteriorName}.run
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then

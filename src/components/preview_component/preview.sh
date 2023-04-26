@@ -62,11 +62,8 @@ run_preview() {
     chmod 755 ${PreviewName}.run
     rm -f ch4_run.template
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PreviewName}.run
-    fi
+    # replace sbatch resource headers
+    replace_sbatch_resources $SimulationCPUs $SimulationMemory ${PreviewName}.run
 
     ### Perform dry run if requested
     if "$PreviewDryRun"; then
@@ -101,11 +98,11 @@ run_preview() {
     if "$UseSlurm"; then
         # set number of cores and memory to run preview with
         if "$isAWS"; then
-            sed -i -e "s:#SBATCH -n 8:#SBATCH -n ${cpu_count}:g" \
+            sed -i -e "s:#SBATCH -n 8:#SBATCH -n ${SimulationCPUs}:g" \
                    -e "s:#SBATCH --mem:##SBATCH --mem:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         else
             sed -i -e "s:##SBATCH:#SBATCH:g" \
-                   -e "s:{PREVIEW_MEMORY}:${PreviewMemory}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
+                   -e "s:{SIMULATION_MEMORY}:${SimulationMemory}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
         fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file

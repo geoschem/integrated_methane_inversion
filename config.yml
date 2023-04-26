@@ -130,6 +130,12 @@ AIRS: false
 ## Settings for running on a local cluster
 ##--------------------------------------------------------------------
 
+## resources to allocate to slurm jobs
+SimulationCPUs: 24
+SimulationMemory: 16000
+JacobianCPUs: 1
+JacobianMemory: 4000
+
 ## Path for IMI runs and output
 OutputPath: "/home/ubuntu/imi_output_dir"
 

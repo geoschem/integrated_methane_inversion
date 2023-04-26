@@ -101,14 +101,9 @@ setup_jacobian() {
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
-
-        sed -i -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ../run_jacobian_simulations.sh
-    fi
+    # replace sbatch resource headers
+    replace_sbatch_resources $JacobianCPUs $JacobianMemory ${name}.run
+    replace_sbatch_resources $JacobianCPUs $JacobianMemory ../run_jacobian_simulations.sh
 
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
@@ -148,7 +143,7 @@ run_jacobian() {
     ./submit_jacobian_simulations_array.sh; wait;
 
     # check if any jacobians exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
     jacobian_end=$(date +%s)

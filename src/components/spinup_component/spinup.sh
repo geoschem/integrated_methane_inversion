@@ -60,11 +60,8 @@ setup_spinup() {
     chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${SpinupName}.run
-    fi
+    # replace sbatch resource headers
+    replace_sbatch_resources $SimulationCPUs $SimulationMemory ${SpinupName}.run
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
@@ -97,7 +94,7 @@ run_spinup() {
     sbatch -W ${RunName}_Spinup.run; wait;
 
     # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     printf "\n=== DONE SPINUP SIMULATION ===\n"
     spinup_end=$(date +%s)

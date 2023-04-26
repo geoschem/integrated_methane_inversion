@@ -1,9 +1,9 @@
 #!/bin/bash
 
-##SBATCH -c 8
+##SBATCH -c {SIMULATION_CPUS}
 ##SBATCH -N 1
 ##SBATCH -t 0-06:00
-##SBATCH --mem=32000
+##SBATCH --mem={SIMULATION_MEMORY}
 ##SBATCH --mail-type=END
 
 # Set the proper # of threads for OpenMP
