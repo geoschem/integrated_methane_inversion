@@ -173,14 +173,6 @@ def kmeans_clustering(label_idx, clusters, n_cluster_size):
     labels_new = KMeans(n_clusters=n_clusters, random_state=0)
     labels_new = labels_new.fit(labels[["lat", "lon"]])
 
-    # Print out some information
-    label_stats = np.unique(labels_new.labels_, return_counts=True)
-    print("Number of clusters: %d" % len(label_stats[0]))
-    print("Cluster size: %d" % n_cluster_size)
-    print("Maximum number of grid boxes in a cluster: %d" % max(label_stats[1]))
-    print("Average number of grid boxes in a cluster: %.2f" % np.mean(label_stats[1]))
-    print("...")
-
     # Save the information
     labels = labels.assign(new_labels=labels_new.labels_ + 1)  # Pythonic indexing
     labels[["labels", "new_labels"]] = labels[["labels", "new_labels"]].astype(int)
@@ -251,15 +243,15 @@ def aggregate_cells(
         # of values already in the state vector
         new_sv[new_labels["labels"]] = new_labels["new_labels"] + new_sv.max()
 
-    # Print information about state vector
-    ux = np.unique(new_sv)
-    print("Number of state vector elements: %d" % len(ux))
-
     return new_sv
 
 
 def find_cluster_pairs(
-    sorted_sensitivities, max_dofs, desired_elements, cluster_pairs={}
+    sorted_sensitivities,
+    max_dofs,
+    desired_elements,
+    max_aggregation_level,
+    cluster_pairs={},
 ):
     """
     Description:
@@ -270,15 +262,21 @@ def find_cluster_pairs(
         sorted_sensitivities     [] : ndarray of sensitivities sorted in descending order
         max_dofs              float : maximum dofs per state vector element
         desired_elements        int : number of desired elements in state vector
+        max_aggregation_level   int : maximum number of elements to aggregate per cluster
         cluster_pairs           dict: optimally distributed clustering pairs
     Returns:                    dict: optimal cluster pairings
     """
+    # the number of elements that would be needed to create a background of 4x5 degree elements
+    background_elements_needed = len(sorted_sensitivities) / max_aggregation_level
+
     # determine the number of elements that should be aggregated
     # based on the number of elements left to be distributed
     # and the maximum dofs per cluster
+    # we save enough elements to create a background of 4x5
+    # degree state vector elements
     elements_left = desired_elements - sum(cluster_pairs.values())
-    if elements_left == 1:
-        subset = np.arange(len(sorted_sensitivities))
+    if elements_left == background_elements_needed:
+        subset = np.arange(0, max_aggregation_level)
     else:
         # aggregate the number of cells that have a cumulative sum
         # below the dofs threshold
@@ -289,7 +287,13 @@ def find_cluster_pairs(
 
     # handle cases where too few clusters would be created by
     # adding additional native resolution clusters
-    if (elements_left - 1) > (len(sorted_sensitivities) - len(subset)):
+    future_num_sensitivities = len(sorted_sensitivities) - len(subset)
+    if (elements_left - 1) > future_num_sensitivities:
+        subset = [0]
+
+    # handle case where adding the next cluster would result in too few clusters
+    # to create a background of 4x5 degree state vector elements
+    if (elements_left - 1) < (future_num_sensitivities / max_aggregation_level):
         subset = [0]
 
     # update dictionary with the new cluster pairing
@@ -307,21 +311,58 @@ def find_cluster_pairs(
         return cluster_pairs
     else:
         return find_cluster_pairs(
-            sorted_sensitivities, max_dofs, desired_elements, cluster_pairs
+            sorted_sensitivities,
+            max_dofs,
+            desired_elements,
+            max_aggregation_level,
+            cluster_pairs,
         )
 
 
-def generate_cluster_pairs(sensitivities, desired_element_num, num_buffer_elements):
+def get_max_aggregation_level(config, sensitivities, desired_element_num):
+    """
+    Description:
+        Returns the maximum aggregation level based on the number of desired
+        elements and the resolution. By default, if there are enough elements
+        we default to using a max aggregation level of corresponding to a 4x5
+        grid cell.
+    arguments:
+        config             {dict} : imi config file
+        sensitivities    [double] : list of avging kernel senstivities
+        desired_element_num   int : desired number of state vector elements
+    Returns:                  int : max gridcells per cluster
+    """
+    if config["Res"] == "0.25x0.3125":
+        max_aggregation_level = 256
+    elif config["Res"] == "0.5x0.625":
+        max_aggregation_level = 64
+    
+    background_elements_needed = len(sensitivities) / max_aggregation_level
+    if background_elements_needed > desired_element_num:
+        print(
+            "Warning: too few clusters to create a background of 4x5 degree state vector elements."
+            + " More state vector elements recommended. Increasing aggregation level threshold."
+        )
+        # if there are too few clusters then we set the max aggregation level
+        # to either total_native_elements/8 or total_native_elements
+        denominator = 8 if desired_element_num > 8 else 1
+        max_aggregation_level = len(sensitivities) / denominator
+        print(
+            f"Max aggregation level set to: {max_aggregation_level} elements in a cluster"
+        )
+    return max_aggregation_level
+
+
+def generate_cluster_pairs(config, sensitivities):
     """
     Description:
         Generate optimal clustering pairs
     arguments:
+        config           {dict} : imi config file
         sensitivities        [] : averaging kernel sensitivities
-        desired_element_num int : desired number of state vector elements
-        num_buffer_elements int : number of buffer elements
     Returns:          [(tuple)] : optimal cluster pairings
     """
-    desired_element_num = desired_element_num - num_buffer_elements
+    desired_element_num = config["NumberOfElements"] - config["nBufferClusters"]
     # Error handling
     if desired_element_num < 0:
         raise Exception(
@@ -336,15 +377,21 @@ def generate_cluster_pairs(sensitivities, desired_element_num, num_buffer_elemen
             + f"requested {desired_element_num} elements."
             + "Remember to take into account the number of buffer elements."
         )
-
     # sort sensitivities in ascending order
     sensitivities = np.sort(sensitivities)[::-1]
 
+    # maximum number of native elements per cluster
+    max_aggregation_level = get_max_aggregation_level(
+        config, sensitivities, desired_element_num
+    )
 
     # determine dofs threshold for each cluster and create optimal pairings
     target_dofs_per_cluster = sum(sensitivities) / desired_element_num
     cluster_pairs = find_cluster_pairs(
-        sensitivities, target_dofs_per_cluster, desired_element_num
+        sensitivities,
+        target_dofs_per_cluster,
+        desired_element_num,
+        max_aggregation_level,
     )
 
     # put cluster pairs into format expected by clustering algorithm
@@ -415,9 +462,8 @@ if __name__ == "__main__":
         sensitivities = force_native_res_pixels(
             config, original_clusters["StateVector"], sensitivities
         )
-    cluster_pairs = generate_cluster_pairs(
-        sensitivities, config["NumberOfElements"], config["nBufferClusters"]
-    )
+    cluster_pairs = generate_cluster_pairs(config, sensitivities)
+
     new_sv = update_sv_clusters(
         original_clusters, sensitivities, cluster_pairs, config["nBufferClusters"]
     )
