@@ -114,7 +114,7 @@ if __name__ == "__main__":
     prev_run_pth = sys.argv[3]
     start_day = sys.argv[4]
 
-    if "posterior" or "0000" in run_dirs_pth:
+    if "posterior" in run_dirs_pth or "0000" in run_dirs_pth:
         fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day)
     else:
         fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day)
