@@ -58,22 +58,36 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
                 continue
             elif date < np.datetime64("2022-07-26"):
                 subdir = "RPRO"
+                version = "*_020400_*"
                 # handle corner case where a single orbit file would not be downloaded
                 if date == np.datetime64("2022-07-25"):
-                    download_str = "aws s3 cp --only-show-errors "
+                    download_str = ("aws s3 cp --only-show-errors "
                     + f"{remote_root}OFFL/L2__CH4___/{year}/{month}/{day}/"
                     + "S5P_OFFL_L2__CH4____20220725T235519_20220726T013649_24780_03_020400_20220727T154716.nc"
-                    + f" {Sat_datadir}"
+                    + f" {Sat_datadir}")
                     f.write(download_str)
                     f.write("\n")
             # use offline data for dates after 2022-07-25
+            # get v020400 before 2023-03-12 and v020500 after (they are the same)
             else:
                 subdir = "OFFL"
-
+                if date < np.datetime64("2023-03-12"):
+                    version = "*_020400_*"
+                else:
+                    version = "*_020500_*"
+                    # corner case for one file on 2023-03-12 that is v020400 while the rest are v020500
+                    if date == np.datetime64("2023-03-12"):
+                        download_str = ("aws s3 cp --only-show-errors "
+                        + f"{remote_root}OFFL/L2__CH4___/{year}/{month}/{day}/"
+                        + "S5P_OFFL_L2__CH4____20230312T013758_20230312T031928_28030_03_020400_20230313T172452.nc"
+                        + f" {Sat_datadir}")
+                        f.write(download_str)
+                        f.write("\n")
+                    
             # build download string
             download_str = cmd_prefix + remote_root
             download_str = (
-                f"{download_str}{subdir}/L2__CH4___/{year}/{month}/{day}/ {Sat_datadir}"
+                f'{download_str}{subdir}/L2__CH4___/{year}/{month}/{day}/ {Sat_datadir} --exclude "*" --include "{version}"'
             )
 
             # write download string to file
