@@ -48,8 +48,12 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     #  factors for sensitivity inversions that change the prior inventory
     run_name = inv_directory.split("/")[-1]
     ref_run_name = ref_directory.split("/")[-1]
-    prior_sim = os.path.join(inv_directory, "jacobian_runs", f"{run_name}_0000")
-    ref_prior_sim = os.path.join(ref_directory, "jacobian_runs", f"{ref_run_name}_0000")
+    prior_sim = os.path.join(
+        inv_directory, "jacobian_runs", f"{run_name}_0000", "OutputDir"
+    )
+    ref_prior_sim = os.path.join(
+        ref_directory, "jacobian_runs", f"{ref_run_name}_0000", "OutputDir"
+    )
     hemco_list = [f for f in os.listdir(prior_sim) if "HEMCO" in f]
     hemco_list.sort()
     ref_hemco_list = [f for f in os.listdir(ref_prior_sim) if "HEMCO" in f]
@@ -63,6 +67,10 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     statevector_path = os.path.join(inv_directory, "StateVector.nc")
     statevector = xr.load_dataset(statevector_path)["StateVector"]
     n_elements = int(np.nanmax(statevector.data))
+    # TODO - This line assumes the spatial dist of emissions in the buffer elements is
+    #        the same in hemco_emis and ref_hemco_emis.... I think.
+    #        Should we be summing emissions in each buffer element and then dividing
+    #        the sums to get the appropriate scale factor?
     sf_ratio = (sf * hemco_emis) / (sf_ref * ref_hemco_emis)
     sf_K = []
     for e in range(1, n_elements + 1):
