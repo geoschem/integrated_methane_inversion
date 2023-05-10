@@ -49,7 +49,8 @@ export GC_F_LIB=$NETCDF_FORTRAN_HOME/lib
 export OMP_STACKSIZE=500m
 
 cd /home/al2/integrated_methane_inversion
-sbatch -W run_imi.sh resources/containers/container_config.yml; wait;
+# sbatch -W --mem 2000 -c 1 run_imi.sh resources/containers/container_config.yml; wait;
+./run_imi.sh resources/containers/container_config.yml | tee imi_output.log
 
 # Fix issue when switching instance types where node claims to be drained
 # scontrol update nodename=$HOSTNAME state=idle
