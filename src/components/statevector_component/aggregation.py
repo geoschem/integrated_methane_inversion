@@ -7,16 +7,20 @@ import yaml
 import copy
 import sys
 import time
-from inversion_scripts.imi_preview import estimate_averaging_kernel, map_sensitivities_to_sv
+from inversion_scripts.imi_preview import (
+    estimate_averaging_kernel,
+    map_sensitivities_to_sv,
+)
 
 # clustering
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
+
 def cluster_data_kmeans(data, num_clusters, mini_batch=False):
     """
     Description:
-        Given the sensitivities cluster elements into the provided 
-        number of state vector elements 
+        Given the sensitivities cluster elements into the provided
+        number of state vector elements
     arguments:
         data       [][]dataarray : xarrray sensitivity data
         num_clusters         int : number of labels to assign data to
@@ -25,46 +29,47 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False):
     Returns:         [][]ndarray : labeled data
     """
     # Get the latitude and longitude coordinates as separate arrays
-    latitudes = data.coords['lat'].values
-    longitudes = data.coords['lon'].values
-    
+    latitudes = data.coords["lat"].values
+    longitudes = data.coords["lon"].values
+
     # Get the sensitivity values as a 1D array
     Z = data.values.flatten()
     # labels shape for later
     labels = np.zeros(Z.shape)
     valid_indices = ~np.isnan(Z)
-    
+
     # Flatten the latitude and longitude arrays into a 2D grid
     # only keeping valid indices
     X, Y = np.meshgrid(longitudes, latitudes)
     X = X.flatten()[valid_indices]
     Y = Y.flatten()[valid_indices]
     Z = Z[valid_indices]
-    
+
     # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
     features = np.column_stack((X, Y, Z))
-    
+
     # Cluster the features using KMeans
     # Mini-Batch k-means is much faster, but with less accuracy
     if mini_batch:
         kmeans = MiniBatchKMeans(n_clusters=num_clusters, random_state=0)
     else:
         kmeans = KMeans(n_clusters=num_clusters, random_state=0)
-        
+
     cluster_labels = kmeans.fit_predict(features)
-    
+
     # fill labels on corresponding valid indices of label array
     labels[valid_indices] = cluster_labels
-    
-    # reconstruct 2D grid 
+
+    # reconstruct 2D grid
     cluster_labels = labels.reshape(data.shape)
-    
+
     return cluster_labels
+
 
 def get_highest_labels(labels, sensitivities, n):
     """
     Description:
-        Get the n labels that have the highest avg sensitivity 
+        Get the n labels that have the highest avg sensitivity
         per grid cell. Returned in descending order.
     arguments:
         labels            [][]ndarray : state vector labels
@@ -74,17 +79,18 @@ def get_highest_labels(labels, sensitivities, n):
     """
     sensitivity_dict = {}
     max_label = int(np.nanmax(labels))
-    
+
     # calculate avg dofs per gridcell for each cluster
     for i in range(1, max_label + 1):
         indices = np.where(labels == i)
         cluster_sensitivities = sensitivities[indices]
         num_ind = cluster_sensitivities.size
         sensitivity_dict[i] = np.sum(cluster_sensitivities) / num_ind
-    
-    # sort by maximum sensitivity and then return 
+
+    # sort by maximum sensitivity and then return
     # the corresponding n highest labels
     return sorted(sensitivity_dict, key=sensitivity_dict.get, reverse=True)[:n]
+
 
 def zero_buffer_elements(clusters, num_buffer_elems):
     """
@@ -120,6 +126,7 @@ def scale_buffer_elements(scale_number, buffer):
 
     return buffer
 
+
 def find_cluster_pairs(
     sorted_sensitivities,
     max_dofs,
@@ -140,10 +147,10 @@ def find_cluster_pairs(
         cluster_pairs           dict: optimally distributed clustering pairs
     Returns:                    dict: optimal cluster pairings
     """
-    # Handle initial call 
+    # Handle initial call
     if cluster_pairs is None:
         cluster_pairs = {}
-        
+
     # the number of elements that would be needed to create a background of 4x5 degree elements
     background_elements_needed = np.ceil(
         len(sorted_sensitivities) / max_aggregation_level
@@ -322,6 +329,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
         sensitivities[cluster_index - 1] = 1.1
     return sensitivities
 
+
 def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     """
     Description:
@@ -334,7 +342,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
         cluster_pairs     [[tuple]] : list of tuples representing the desired
                                       aggregation scheme eg. [[1,15], [2,23]] would result in
                                       15 native resolution elements and 23 2-cell elements
-    Returns:           [][]datarray : reduced dimension state vector 
+    Returns:           [][]datarray : reduced dimension state vector
     """
     # check clustering method
     if config["ClusteringMethod"] == "kmeans":
@@ -342,14 +350,16 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     elif config["ClusteringMethod"] == "mini-batch-kmeans":
         mini_batch = True
     else:
-        raise("Error: Invalid Clustering Method. Valid values are: 'kmeans', 'mini-batch-kmeans'.")
-    
+        raise (
+            "Error: Invalid Clustering Method. Valid values are: 'kmeans', 'mini-batch-kmeans'."
+        )
+
     desired_num_labels = config["NumberOfElements"] - config["nBufferClusters"]
     last_ROI_element = int(orig_sv["StateVector"].max() - config["nBufferClusters"])
-    
+
     # copy original sv for updating at end
     new_sv = orig_sv.copy()
-    
+
     # set buffer elements to 0, retain buffer labels for rejoining
     _, buffer_labels = zero_buffer_elements(
         orig_sv.copy()["StateVector"], config["nBufferClusters"]
@@ -357,10 +367,10 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     # sv with no buffer elements
     orig_sv_cp = orig_sv.copy()["StateVector"]
     sv = new_sv["StateVector"].where(orig_sv_cp <= last_ROI_element)
-    
+
     # match sensitivities with coordinates
     sensi = map_sensitivities_to_sv(flat_sensi, orig_sv, last_ROI_element)
-    
+
     # initialize labels as 0 everywhere in the ROI
     # labels are NaN outside of ROI
     labels = xr.where(buffer_labels == 0, buffer_labels, np.nan)
@@ -368,30 +378,33 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     # for each agg_level, cluster the data and assign the n_labels
     # with highest total sensitivity to the new label dataset
     for agg_level, n_labels in cluster_pairs:
-
         elements_left = np.count_nonzero(labels.values == 0)
 
         # clustering for agg_level 1 is just the state vector
         if agg_level == 1:
             out_labels = sv.values
         else:
-            out_labels = cluster_data_kmeans(sensi["Sensitivities"].where(labels == 0), int(np.round(elements_left/agg_level)), mini_batch)
+            out_labels = cluster_data_kmeans(
+                sensi["Sensitivities"].where(labels == 0),
+                int(np.round(elements_left / agg_level)),
+                mini_batch,
+            )
         n_max_labels = get_highest_labels(out_labels, sensi["Sensitivities"], n_labels)
 
-        # assign the n_max_labels to the labels dataset 
+        # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
-        label_start = int(labels.max())+1
+        label_start = int(labels.max()) + 1
         for max_label in n_max_labels:
             # get indices for label assignment
             if label_start != desired_num_labels:
                 ind_max = np.where(out_labels == max_label)
             else:
-                # if the desired number of labels is reached, 
+                # if the desired number of labels is reached,
                 # assign all unlabeled elements to the last label
                 ind_max = np.where(labels.values == 0)
             labels.values[ind_max] = label_start
             label_start += 1
-    
+
     # scale buffer elements to correct label range
     cluster_number_diff = int(orig_sv["StateVector"].max()) - int(labels.max())
     buffer_labels = scale_buffer_elements(cluster_number_diff, buffer_labels)
@@ -408,6 +421,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     new_sv.StateVector.encoding["missing_value"] = -9999
 
     return new_sv
+
 
 if __name__ == "__main__":
     inversion_path = sys.argv[1]
