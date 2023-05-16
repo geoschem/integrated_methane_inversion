@@ -19,7 +19,7 @@ from sklearn.cluster import KMeans, MiniBatchKMeans
 def cluster_data_kmeans(data, num_clusters, mini_batch=False):
     """
     Description:
-        Given the sensitivities cluster elements into the provided
+        Given the sensitivities cluster grid cells into the provided
         number of state vector elements
     arguments:
         data       [][]dataarray : xarrray sensitivity data
@@ -136,7 +136,7 @@ def find_cluster_pairs(
 ):
     """
     Description:
-        Recursively generate optimal clustering pairs based on the
+        Recursively generate best-guess at optimal clustering pairs based on the
         maximum dofs allowed per cluster and the desired number of
         state vector elements.
     arguments:
@@ -144,8 +144,8 @@ def find_cluster_pairs(
         max_dofs              float : maximum dofs per state vector element
         desired_elements        int : number of desired elements in state vector
         max_aggregation_level   int : maximum number of elements to aggregate per cluster
-        cluster_pairs           dict: optimally distributed clustering pairs
-    Returns:                    dict: optimal cluster pairings
+        cluster_pairs          dict : optimally distributed clustering pairs
+    Returns:                   dict : optimal cluster pairings
     """
     # Handle initial call
     if cluster_pairs is None:
