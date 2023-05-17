@@ -19,17 +19,15 @@ imi_failed() {
     exit 1
 }
 
-# Description: replace sbatch, time, memory, and cpu resources
-#   in a run script
+# Description: remove sbatch memory and cpu resources
+# remove time too on AWS
 # Usage:
-#   replace_sbatch_resources 3 10000 runscript.run
-replace_sbatch_resources() {
-    requested_cpus=$1
-    requested_mem=$2
-    file=$3
+#   remove_sbatch_headers runscript.run
+remove_sbatch_headers() {
+    file=$1
+    sed -i -e "/#SBATCH -n/d" $file
+    sed -i -e "/#SBATCH --mem/d" $file
     if "$isAWS"; then
         sed -i -e "/#SBATCH -t/d" $file
     fi
-    sed -i -e "s:{SIMULATION_CPUS}:${JacobianCPUs}:g" \
-           -e "s:{SIMULATION_MEMORY}:${JacobianMemory}:g" ${file}
 }

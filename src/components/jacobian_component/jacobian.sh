@@ -101,10 +101,9 @@ setup_jacobian() {
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
-    # replace sbatch resource headers
-    replace_sbatch_resources $JacobianCPUs $JacobianMemory ${name}.run
-    replace_sbatch_resources $JacobianCPUs $JacobianMemory ../run_jacobian_simulations.sh
-
+    remove_sbatch_headers ${name}.run
+    remove_sbatch_headers ../run_jacobian_simulations.sh
+    
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
         if "$ProductionDryRun"; then
