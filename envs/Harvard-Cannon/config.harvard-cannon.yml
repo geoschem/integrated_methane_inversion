@@ -44,6 +44,7 @@ LandThreshold: 0.25
 
 ## Clustering Options
 ReducedDimensionStateVector: false
+ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
