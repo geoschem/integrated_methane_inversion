@@ -39,9 +39,6 @@ config_required = [
     "BufferDeg",
     "LandThreshold",
     "ReducedDimensionStateVector",
-    "ClusteringMethod",
-    "NumberOfElements",
-    "ForcedNativeResolutionElements",
     "StateVectorFile",
     "ShapeFile",
     "PriorError",
@@ -84,11 +81,21 @@ config_required = [
     "BCdryrun",
 ]
 
+clustering_vars = [
+    "ClusteringMethod",
+    "NumberOfElements",
+    "ForcedNativeResolutionElements",
+]
+
 if __name__ == "__main__":
     config_path = sys.argv[1]
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     inputted_config = config.keys()
 
+    # only require clustering vars if reduced dimension state vector is true
+    if config["ReducedDimensionStateVector"]:
+        config_required = config_required + clustering_vars
+        
     # update required vars based on system
     if config["isAWS"]:
         required_vars = config_required + config_required_aws
