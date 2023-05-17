@@ -68,10 +68,6 @@ reduce_dimension() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
-        # set number of cores to run preview with
-        if "$isAWS"; then
-            sed -i -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
-        fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts
         chmod +x $aggregation_file
