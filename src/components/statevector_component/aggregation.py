@@ -271,7 +271,7 @@ def generate_cluster_pairs(config, sensitivities):
             + f"requested {desired_element_num} elements."
             + "Remember to take into account the number of buffer elements."
         )
-    # sort sensitivities in ascending order
+    # sort sensitivities in descending order
     sensitivities = np.sort(sensitivities)[::-1]
 
     # maximum number of native elements per cluster
@@ -322,11 +322,16 @@ def force_native_res_pixels(config, clusters, sensitivities):
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
         binned_lat = np.floor(lat / lat_step) * lat_step
-        cluster_index = int(
-            clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
-        )
-        # assign higher than 1 to ensure first assignment
-        sensitivities[cluster_index - 1] = 1.1
+        
+        try:
+            cluster_index = int(
+                clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
+            )
+            # assign higher than 1 to ensure first assignment
+            sensitivities[cluster_index - 1] = 1.1
+        except:
+            print(f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
+                  + " because it is not in the specified region of interest.")
     return sensitivities
 
 
