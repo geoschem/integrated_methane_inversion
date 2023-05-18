@@ -172,6 +172,8 @@ Note: some python scripts are also deployed using slurm and default to using the
    :widths: 30, 70
    :class: tight-table
 
+   * - ``RequestedTime``
+     - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
    * - ``SimulationCPUs``
      - Number of cores to allocate to each in series simulation.
    * - ``SimulationMemory``
