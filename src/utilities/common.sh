@@ -18,18 +18,3 @@ imi_failed() {
     fi
     exit 1
 }
-
-# Description: remove sbatch memory and cpu resources
-# remove time too on AWS
-# Usage:
-#   remove_sbatch_headers runscript.run
-remove_sbatch_headers() {
-    file=$1
-    sed -i -e "/#SBATCH -n/d" $file
-    sed -i -e "/#SBATCH --mem/d" $file
-    sed -i -e "/#SBATCH -c/d" $file
-
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" $file
-    fi
-}

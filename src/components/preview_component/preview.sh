@@ -62,9 +62,6 @@ run_preview() {
     chmod 755 ${PreviewName}.run
     rm -f ch4_run.template
 
-    # replace sbatch resource headers
-    remove_sbatch_headers ${PreviewName}.run
-
     ### Perform dry run if requested
     if "$PreviewDryRun"; then
         printf "\nExecuting dry-run for preview run...\n"
@@ -82,7 +79,7 @@ run_preview() {
 
     # Submit preview GEOS-Chem job to job scheduler
     if "$UseSlurm"; then
-        sbatch --mem $SimulationMemory -c $SimulationCPUs -W ${RunName}_Preview.run; wait;
+        sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W ${RunName}_Preview.run; wait;
     else
         ./${RunName}_Preview.run
     fi
@@ -98,7 +95,7 @@ run_preview() {
     if "$UseSlurm"; then
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
-        sbatch --mem $SimulationMemory -c $SimulationCPUs -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi

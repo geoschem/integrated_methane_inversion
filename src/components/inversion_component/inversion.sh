@@ -39,9 +39,6 @@ setup_inversion() {
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
            -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
 
-    # remove sbatch headers
-    remove_sbatch_headers inversion/run_inversion.sh
-
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 }
 
@@ -62,7 +59,7 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory -c $SimulationCPUs -W run_inversion.sh; wait;
+    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W run_inversion.sh; wait;
         
     printf "\n=== DONE RUNNING INVERSION ===\n"
     inversion_end=$(date +%s)

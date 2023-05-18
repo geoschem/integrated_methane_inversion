@@ -60,8 +60,6 @@ setup_spinup() {
     chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
 
-    remove_sbatch_headers ${SpinupName}.run
-    
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
         printf "\nExecuting dry-run for spinup run...\n"
@@ -90,7 +88,7 @@ run_spinup() {
     fi
 
     # Submit job to job scheduler
-    sbatch --mem $SimulationMemory -c $SimulationCPUs -W ${RunName}_Spinup.run; wait;
+    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W ${RunName}_Spinup.run; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

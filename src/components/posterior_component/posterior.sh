@@ -68,8 +68,6 @@ setup_posterior() {
     chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
 
-    remove_sbatch_headers ${PosteriorName}.run
-    
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
         printf "\nExecuting dry-run for posterior run...\n"
@@ -98,7 +96,7 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $SimulationMemory -c $SimulationCPUs -W ${RunName}_Posterior.run; wait;
+    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W ${RunName}_Posterior.run; wait;
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${RunDirs}/inversion

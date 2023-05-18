@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 #SBATCH -N 1
-#SBATCH -n 8
-#SBATCH --mem={SIMULATION_MEMORY}
 
 import sys
 import numpy as np
