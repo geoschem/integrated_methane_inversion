@@ -27,6 +27,8 @@ remove_sbatch_headers() {
     file=$1
     sed -i -e "/#SBATCH -n/d" $file
     sed -i -e "/#SBATCH --mem/d" $file
+    sed -i -e "/#SBATCH -c/d" $file
+
     if "$isAWS"; then
         sed -i -e "/#SBATCH -t/d" $file
     fi
