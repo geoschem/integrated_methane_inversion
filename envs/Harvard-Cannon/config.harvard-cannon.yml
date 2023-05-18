@@ -114,6 +114,12 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
+## resources to allocate to slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+
 ##------------------------------------------------------------------
 ## Settings for running on local cluster
 ##------------------------------------------------------------------

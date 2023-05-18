@@ -126,15 +126,15 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
-##--------------------------------------------------------------------
-## Settings for running on a local cluster
-##--------------------------------------------------------------------
-
 ## resources to allocate to slurm jobs
 SimulationCPUs: 32
 SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
+
+##--------------------------------------------------------------------
+## Settings for running on a local cluster
+##--------------------------------------------------------------------
 
 ## Path for IMI runs and output
 OutputPath: "/home/ubuntu/imi_output_dir"
