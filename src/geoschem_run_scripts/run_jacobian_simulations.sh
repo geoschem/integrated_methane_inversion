@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH -J {RunName}
-#SBATCH -c {SIMULATION_CPUS}
+#SBATCH -c 8
 #SBATCH -N 1
-#SBATCH --mem {SIMULATION_MEMORY}
+#SBATCH --mem 6000
 #SBATCH -t 0-6:00
 
 ### Run directory

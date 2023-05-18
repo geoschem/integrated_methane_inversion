@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH -n {SIMULATION_CPUS}
+#SBATCH -n 1
 #SBATCH -N 1
 #SBATCH -t 0-03:00
-#SBATCH --mem {SIMULATION_MEMORY}
+#SBATCH --mem 4000
 #SBATCH -o run_inversion_%j.out
 #SBATCH -e run_inversion_%j.err
 

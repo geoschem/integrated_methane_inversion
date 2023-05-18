@@ -131,10 +131,10 @@ AIRS: false
 ##--------------------------------------------------------------------
 
 ## resources to allocate to slurm jobs
-SimulationCPUs: 24
-SimulationMemory: 16000
+SimulationCPUs: 32
+SimulationMemory: 32000
 JacobianCPUs: 1
-JacobianMemory: 4000
+JacobianMemory: 2000
 
 ## Path for IMI runs and output
 OutputPath: "/home/ubuntu/imi_output_dir"
