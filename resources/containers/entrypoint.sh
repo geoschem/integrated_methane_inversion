@@ -57,6 +57,7 @@ cd /home/al2/integrated_methane_inversion
 # scontrol update nodename=$HOSTNAME state=DOWN reason="undraining"
 # scontrol update nodename=$HOSTNAME state=RESUME
 
+# keep container running for testing purposes
 while :
 do
 	echo "Running Forever. Shut down manually to stop"
