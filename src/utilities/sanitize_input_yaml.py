@@ -15,9 +15,7 @@ config_required_aws = [
 ]
 
 # variables only required by local cluster
-config_required_local_cluster = [
-    "PreviewMemory",
-]
+config_required_local_cluster = []
 
 # variables required on all systems
 config_required = [
@@ -79,6 +77,11 @@ config_required = [
     "ProductionDryRun",
     "PosteriorDryRun",
     "BCdryrun",
+    "SimulationMemory",
+    "SimulationCPUs",
+    "JacobianMemory",
+    "JacobianCPUs",
+    "RequestedTime",
 ]
 
 if __name__ == "__main__":

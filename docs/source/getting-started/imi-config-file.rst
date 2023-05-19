@@ -163,6 +163,26 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    * - ``DoPosterior``
      - Boolean to run the posterior simulation.
 
+SLURM Resource Allocation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
+Note: some python scripts are also deployed using slurm and default to using the ``SimulationCPUs`` and ``SimulationMemory`` settings.
+
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``RequestedTime``
+     - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
+   * - ``SimulationCPUs``
+     - Number of cores to allocate to each in series simulation.
+   * - ``SimulationMemory``
+     - Amount of memory to allocate to each in series simulation (in MB).
+   * - ``JacobianCPUs``
+     - Number of cores to allocate to each jacobian simulation (run in parallel).
+   * - ``JacobianMemory``
+     - Amount of memory to allocate to each jacobian simulation (in MB).
+   
 IMI preview
 ~~~~~~~~~~~
 .. list-table::

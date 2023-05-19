@@ -62,12 +62,6 @@ run_preview() {
     chmod 755 ${PreviewName}.run
     rm -f ch4_run.template
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PreviewName}.run
-    fi
-
     ### Perform dry run if requested
     if "$PreviewDryRun"; then
         printf "\nExecuting dry-run for preview run...\n"
@@ -85,7 +79,7 @@ run_preview() {
 
     # Submit preview GEOS-Chem job to job scheduler
     if "$UseSlurm"; then
-        sbatch -W ${RunName}_Preview.run; wait;
+        sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W ${RunName}_Preview.run; wait;
     else
         ./${RunName}_Preview.run
     fi
@@ -99,17 +93,9 @@ run_preview() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
-        # set number of cores and memory to run preview with
-        if "$isAWS"; then
-            sed -i -e "s:#SBATCH -n 8:#SBATCH -n ${cpu_count}:g" \
-                   -e "s:#SBATCH --mem:##SBATCH --mem:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
-        else
-            sed -i -e "s:##SBATCH:#SBATCH:g" \
-                   -e "s:{PREVIEW_MEMORY}:${PreviewMemory}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
-        fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
-        sbatch -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi

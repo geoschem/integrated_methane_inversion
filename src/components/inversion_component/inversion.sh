@@ -39,12 +39,6 @@ setup_inversion() {
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
            -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -n 1:#SBATCH -n ${cpu_count}:g" inversion/run_inversion.sh
-    fi
-    
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 }
 
@@ -65,7 +59,10 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch -W run_inversion.sh; wait;
+    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W run_inversion.sh; wait;
+
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
         
     printf "\n=== DONE RUNNING INVERSION ===\n"
     inversion_end=$(date +%s)

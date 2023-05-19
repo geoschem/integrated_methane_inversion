@@ -57,7 +57,7 @@ ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 ## Inversion
 PriorError: 0.5
 ObsError: 15
-Gamma: 0.25
+Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
@@ -114,6 +114,13 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
+## resources to allocate to slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "0-6:00"
+
 ##------------------------------------------------------------------
 ## Settings for running on local cluster
 ##------------------------------------------------------------------
@@ -141,9 +148,6 @@ RestartDownload: false
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
 RestartFilePrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 RestartFilePreviewPrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
-
-## amount of memory to allocate with slurm
-PreviewMemory: 16000
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
