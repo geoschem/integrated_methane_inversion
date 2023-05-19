@@ -2,7 +2,8 @@ GEOS-Chem
 GCClassic
 docs/build/
 .DS_STORE
-src/inversion_scripts/__pycache__
-src/notebooks/.ipynb_checkpoints
+__pycache__/
+.ipynb_checkpoints/
 slurm-*.out
 *~
+imi_output.log

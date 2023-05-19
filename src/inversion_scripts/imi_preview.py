@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# SBATCH -N 1
-# SBATCH -n 8
-# SBATCH --mem={PREVIEW_MEMORY}
+#SBATCH -N 1
 
 import sys
 import numpy as np
