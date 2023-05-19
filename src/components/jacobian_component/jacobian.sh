@@ -133,7 +133,7 @@ run_jacobian() {
     fi
 
     # Submit job to job scheduler
-    source submit_jacobian_simulations_array.sh; wait;
+    source submit_jacobian_simulations_array.sh
 
     # check if any jacobians exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

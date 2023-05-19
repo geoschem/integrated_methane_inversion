@@ -57,7 +57,7 @@ ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 ## Inversion
 PriorError: 0.5
 ObsError: 15
-Gamma: 0.25
+Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid

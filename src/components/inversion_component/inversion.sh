@@ -60,6 +60,9 @@ run_inversion() {
 
     # Execute inversion driver script
     sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W run_inversion.sh; wait;
+
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
         
     printf "\n=== DONE RUNNING INVERSION ===\n"
     inversion_end=$(date +%s)

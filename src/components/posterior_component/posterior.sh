@@ -97,6 +97,10 @@ run_posterior() {
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W ${RunName}_Posterior.run; wait;
+    
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${RunDirs}/inversion
