@@ -26,14 +26,14 @@ within your domain of interest using the specified ``ClusteringMethod``. eg:
     NumberOfElements: 39
       
 This automatically generates a state vector with 39 elements (including buffer elements) in the 
-domain of interest. This is done by creating a set of optimal cluster pairings (eg. [[1, 15], [2, 24]]). 
+domain of interest. This is done by creating a set of information content informed clustering pairs (eg. [[1, 15], [2, 24]]). 
 *Note:* As you reduce the dimension of your state vector, you should also correspondingly decrease the 
 value of your regularization factor ``Gamma``. It can be scaled by the ratio of reduced number of 
 elements over the original number of elements (eg. ``len(new_elements)/len(orig_elements``)).
 
 Each clustering pair consists of the the aggregation level and the number of cells you are 
 allocating with the aggregation level. In the above example, the user is requesting 39 total state 
-vector elements and the algortithm determines the optimal aggregation pattern to be 15 native 
+vector elements and the algortithm determines the information content informed pattern to be 15 native 
 resolution state vector elements and 24 state vector elements to be aggregated with another 
 element. Any additional elements that have not been allocated are then aggregated into a 
 single element. Using the above clustering pairs, if the domain of interest has 63

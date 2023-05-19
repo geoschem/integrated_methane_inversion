@@ -136,16 +136,16 @@ def find_cluster_pairs(
 ):
     """
     Description:
-        Recursively generate best-guess at optimal clustering pairs based on the
-        maximum dofs allowed per cluster and the desired number of
-        state vector elements.
+        Recursively generate best-guess at information content distributed
+        clustering pairs based on the maximum dofs allowed per cluster and 
+        the desired number of state vector elements.
     arguments:
         sorted_sensitivities     [] : ndarray of sensitivities sorted in descending order
         max_dofs              float : maximum dofs per state vector element
         desired_elements        int : number of desired elements in state vector
         max_aggregation_level   int : maximum number of elements to aggregate per cluster
-        cluster_pairs          dict : optimally distributed clustering pairs
-    Returns:                   dict : optimal cluster pairings
+        cluster_pairs          dict : clustering pairs
+    Returns:                   dict : information content informed clustering pairs
     """
     # Handle initial call
     if cluster_pairs is None:
@@ -215,7 +215,7 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     Description:
         Returns the maximum aggregation level based on the number of desired
         elements and the resolution. By default, if there are enough elements
-        we default to using a max aggregation level of corresponding to a 4x5
+        we default to using a max aggregation level corresponding to a 4x5
         grid cell.
     arguments:
         config             {dict} : imi config file
@@ -250,11 +250,11 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
 def generate_cluster_pairs(config, sensitivities):
     """
     Description:
-        Generate optimal clustering pairs
+        Generate information content informed clustering pairs
     arguments:
         config           {dict} : imi config file
         sensitivities        [] : averaging kernel sensitivities
-    Returns:          [(tuple)] : optimal cluster pairings
+    Returns:          [(tuple)] : information content informed clustering pairs
     """
     desired_element_num = config["NumberOfElements"] - config["nBufferClusters"]
     # Error handling
@@ -279,7 +279,7 @@ def generate_cluster_pairs(config, sensitivities):
         config, sensitivities, desired_element_num
     )
 
-    # determine dofs threshold for each cluster and create optimal pairings
+    # determine dofs threshold for each cluster and create cluster pairings
     target_dofs_per_cluster = sum(sensitivities) / desired_element_num
     cluster_pairs = find_cluster_pairs(
         sensitivities,
