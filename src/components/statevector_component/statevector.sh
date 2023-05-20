@@ -76,7 +76,7 @@ reduce_dimension() {
         python $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
+    nElements=$(printf "%.0f" $nElements) # convert float to integer
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 }

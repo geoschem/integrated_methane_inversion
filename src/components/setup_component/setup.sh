@@ -152,16 +152,8 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    ncmax() {
-    python -c "import sys; import xarray; \
-    print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].max()))" $1 $2
-    }
-    ncmin() {
-        python -c "import sys; import xarray; \
-        print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].min()))" $1 $2
-    }
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
-    nElements=$(printf "%.0f" $nElements)
+    nElements=$(printf "%.0f" $nElements) # convert float to integer
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds

@@ -3,7 +3,8 @@
 # Common shell function for the IMI
 # Functions available in this file include:
 #   - imi_failed 
-#   - run_inversion 
+#   - ncmax 
+#   - ncmin 
 
 
 # Description: Print error message for if the IMI fails
@@ -17,4 +18,22 @@ imi_failed() {
         cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
     fi
     exit 1
+}
+
+# Description: Print max value of given variable in netCDF file
+#   Returns float type
+# Usage:
+#   ncmax <variable> <netCDF file path>
+ncmax() {
+python -c "import sys; import xarray; \
+print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].max()))" $1 $2
+}
+
+# Description: Print min value of given variable in netCDF file
+#   Returns float type
+# Usage:
+#   ncmax <variable> <netCDF file path>
+ncmin() {
+    python -c "import sys; import xarray; \
+    print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].min()))" $1 $2
 }
