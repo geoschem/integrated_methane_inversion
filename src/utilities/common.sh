@@ -25,8 +25,8 @@ imi_failed() {
 # Usage:
 #   ncmax <variable> <netCDF file path>
 ncmax() {
-python -c "import sys; import xarray; \
-print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].max()))" $1 $2
+    python -c "import sys; import xarray; \
+    print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].max()))" $1 $2
 }
 
 # Description: Print min value of given variable in netCDF file
