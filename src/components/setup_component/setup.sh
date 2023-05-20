@@ -152,18 +152,23 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    ncmax() { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
+    ncmax() {
+    python -c "import sys; import xarray; \
+    print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].max()))" $1 $2
+    }
+    ncmin() {
+        python -c "import sys; import xarray; \
+        print(float(xarray.open_dataset(sys.argv[2])[sys.argv[1]].min()))" $1 $2
+    }
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
+    nElements=$(printf "%.0f" $nElements)
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
-    ncmin() { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
