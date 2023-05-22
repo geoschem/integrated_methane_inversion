@@ -21,7 +21,7 @@ imi_failed() {
 }
 
 # Description: Print max value of given variable in netCDF file
-#   Returns float type
+#   Returns int if only trailing zeros, float otherwise
 # Usage:
 #   ncmax <variable> <netCDF file path>
 ncmax() {
@@ -30,7 +30,7 @@ ncmax() {
 }
 
 # Description: Print min value of given variable in netCDF file
-#   Returns float type
+#   Returns int if only trailing zeros, float otherwise
 # Usage:
 #   ncmax <variable> <netCDF file path>
 ncmin() {
