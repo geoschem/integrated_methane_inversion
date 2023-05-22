@@ -133,7 +133,6 @@ run_posterior() {
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    nElements=$(printf "%.0f" $nElements) # convert float to integer
     FetchTROPOMI="False"
     isPost="True"
 

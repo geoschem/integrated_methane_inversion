@@ -153,7 +153,6 @@ setup_imi() {
 
     # Determine number of elements in state vector file
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
-    nElements=$(printf "%.0f" $nElements) # convert float to integer
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
