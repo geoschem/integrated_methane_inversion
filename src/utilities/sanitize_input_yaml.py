@@ -87,7 +87,6 @@ config_required = [
 clustering_vars = [
     "ClusteringMethod",
     "NumberOfElements",
-    "ForcedNativeResolutionElements",
 ]
 
 if __name__ == "__main__":
