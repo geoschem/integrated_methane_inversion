@@ -47,9 +47,8 @@ OffshoreEmisThreshold: 0
 
 ## Clustering Options
 ReducedDimensionStateVector: false
-ClusteringPairs:
-  - [1, 15]
-  - [2, 24]
+ClusteringMethod: "kmeans"
+NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
   
@@ -126,6 +125,13 @@ PLANEFLIGHT: false
 GOSAT: false
 TCCON: false
 AIRS: false
+
+## resources to allocate to slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "0-6:00"
 
 ##--------------------------------------------------------------------
 ## Settings for running on a local cluster

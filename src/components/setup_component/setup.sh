@@ -152,18 +152,14 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    ncmax() { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
-    ncmin() { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 

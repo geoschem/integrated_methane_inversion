@@ -15,9 +15,7 @@ config_required_aws = [
 ]
 
 # variables only required by local cluster
-config_required_local_cluster = [
-    "PreviewMemory",
-]
+config_required_local_cluster = []
 
 # variables required on all systems
 config_required = [
@@ -35,11 +33,11 @@ config_required = [
     "NestedGrid",
     "NestedRegion",
     "CreateAutomaticRectilinearStateVectorFile",
-    "ReducedDimensionStateVector",
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
     "OffshoreEmisThreshold",
+    "ReducedDimensionStateVector",
     "StateVectorFile",
     "ShapeFile",
     "PriorError",
@@ -80,6 +78,17 @@ config_required = [
     "ProductionDryRun",
     "PosteriorDryRun",
     "BCdryrun",
+    "SimulationMemory",
+    "SimulationCPUs",
+    "JacobianMemory",
+    "JacobianCPUs",
+    "RequestedTime",
+]
+
+clustering_vars = [
+    "ClusteringMethod",
+    "NumberOfElements",
+    "ForcedNativeResolutionElements",
 ]
 
 if __name__ == "__main__":
@@ -87,6 +96,10 @@ if __name__ == "__main__":
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     inputted_config = config.keys()
 
+    # only require clustering vars if reduced dimension state vector is true
+    if config["ReducedDimensionStateVector"]:
+        config_required = config_required + clustering_vars
+        
     # update required vars based on system
     if config["isAWS"]:
         required_vars = config_required + config_required_aws

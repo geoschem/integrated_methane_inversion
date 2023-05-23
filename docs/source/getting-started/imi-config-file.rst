@@ -79,8 +79,10 @@ For more information on using the clustering options take a look at the `cluster
 
    * - ``ReducedDimensionStateVector``
      - Boolean for whether to reduce the dimension of the statevector from the native resolution version by clustering elements. If ``false`` the native state vector is used with no dimension reduction.
-   * - ``ClusteringPairs``
-     - Pairing information used for statevector dimension. For example, if the pairings [1, 15] and [2, 24] are given, then the resultant state vector will have 15 native resolution gridcell elements and 24 2-gridcell elements. Any remaining native resolution grid cells are aggregated into a single element.
+   * - ``ClusteringMethod``
+     - Clustering method to use for state vector reduction. (eg. "kmeans" or "mini-batch-kmeans")
+   * - ``NumberOfElements``
+     - Number of elements in the reduced dimension state vector. This is only used if ``ReducedDimensionStateVector`` is ``true``.
    * - ``ForcedNativeResolutionElements``
      - yaml list of of coordinates that you would like to force as native resolution state vector elements [lat, lon]. This is useful for ensuring hotspot locations are at the highest available resolution. 
 
@@ -165,6 +167,26 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    * - ``DoPosterior``
      - Boolean to run the posterior simulation.
 
+SLURM Resource Allocation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
+Note: some python scripts are also deployed using slurm and default to using the ``SimulationCPUs`` and ``SimulationMemory`` settings.
+
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``RequestedTime``
+     - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
+   * - ``SimulationCPUs``
+     - Number of cores to allocate to each in series simulation.
+   * - ``SimulationMemory``
+     - Amount of memory to allocate to each in series simulation (in MB).
+   * - ``JacobianCPUs``
+     - Number of cores to allocate to each jacobian simulation (run in parallel).
+   * - ``JacobianMemory``
+     - Amount of memory to allocate to each jacobian simulation (in MB).
+   
 IMI preview
 ~~~~~~~~~~~
 .. list-table::

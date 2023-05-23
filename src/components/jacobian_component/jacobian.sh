@@ -25,9 +25,6 @@ setup_jacobian() {
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" jacobian_runs/run_jacobian_simulations.sh
-    fi
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
@@ -101,15 +98,6 @@ setup_jacobian() {
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ${name}.run
-
-        sed -i -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c 1:g" ../run_jacobian_simulations.sh
-    fi
-
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
         if "$ProductionDryRun"; then
@@ -145,10 +133,10 @@ run_jacobian() {
     fi
 
     # Submit job to job scheduler
-    ./submit_jacobian_simulations_array.sh; wait;
+    source submit_jacobian_simulations_array.sh
 
     # check if any jacobians exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
     jacobian_end=$(date +%s)

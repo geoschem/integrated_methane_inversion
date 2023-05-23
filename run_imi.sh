@@ -9,16 +9,10 @@
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
-# Error message for if the IMI fails
-imi_failed() {
-    printf "\nFATAL ERROR: IMI exiting."
-    cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
-    exit 1
-}
-
 ##=======================================================================
 ## Import Shell functions
 ##=======================================================================
+source src/utilities/common.sh
 source src/components/setup_component/setup.sh
 source src/components/template_component/template.sh
 source src/components/statevector_component/statevector.sh
@@ -27,6 +21,9 @@ source src/components/spinup_component/spinup.sh
 source src/components/jacobian_component/jacobian.sh
 source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
+
+# trap and exit on errors
+trap 'imi_failed $LINENO' ERR
 
 start_time=$(date)
 setup_start=$(date +%s)
