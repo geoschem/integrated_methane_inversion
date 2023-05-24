@@ -20,7 +20,7 @@ def check_for_duplicate_orbit_numbers(Sat_datadir):
     number_of_unique_orbit_numbers = len(set(all_orbit_numbers)) # forming a set drops the duplicates
     number_of_files_in_Sat_datadir = len(files)
 
-    assert number_of_unique_orbit_numbers == number_of_files_in_Sat_datadir, "There are duplicate TROPOMI datafiles (as defined by their orbit number)."
+    assert number_of_unique_orbit_numbers == number_of_files_in_Sat_datadir, "Duplicate orbit numbers found in TROPOMI datafiles. Remove duplicate files from system before continuing."
 
 if __name__ == "__main__":
     Sat_datadir = sys.argv[1]
