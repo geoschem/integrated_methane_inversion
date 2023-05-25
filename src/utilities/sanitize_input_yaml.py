@@ -72,6 +72,7 @@ config_required = [
     "RestartFilePrefix",
     "RestartFilePreviewPrefix",
     "BCpath",
+    "BCversion",
     "PreviewDryRun",
     "SpinupDryrun",
     "ProductionDryRun",

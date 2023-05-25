@@ -60,9 +60,10 @@ setup_imi() {
     ##=======================================================================
     ## Download Boundary Conditions files if requested
     ##=======================================================================
+    fullBCpath="${BCpath}/${BCversion}"
     if "$BCdryrun"; then
 
-        mkdir -p ${BCpath}
+        mkdir -p ${fullBCpath}
 
         if "$DoSpinup"; then
             START=${SpinupStart}
@@ -70,7 +71,7 @@ setup_imi() {
             START=${StartDate}
         fi
         printf "\nDownloading boundary condition data for $START to $EndDate\n"
-        python src/utilities/download_bc.py ${START} ${EndDate} ${BCpath}
+        python src/utilities/download_bc.py ${START} ${EndDate} ${fullBCpath} ${BCversion}
 
     fi
 

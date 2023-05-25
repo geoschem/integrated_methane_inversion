@@ -119,7 +119,7 @@ setup_template() {
     fi
 
     # Modify path to BC files
-    sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
+    sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
     if [ "$NestedGrid" == "false" ]; then
         OLD="--> GC_BCs                 :       true "
         NEW="--> GC_BCs                 :       false"
