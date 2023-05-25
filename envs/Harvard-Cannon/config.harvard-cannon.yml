@@ -131,7 +131,7 @@ OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi/"
 
 ## Environment files
 ## See envs/README to create the Conda environment specified below
