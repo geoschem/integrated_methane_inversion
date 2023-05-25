@@ -32,9 +32,9 @@ NestedRegion: "NA"
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
 LonMin: -105
-LonMax: -104
+LonMax: -103
 LatMin: 31
-LatMax: 32
+LatMax: 33
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
