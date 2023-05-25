@@ -72,8 +72,8 @@ if "$SafeMode"; then
        ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
         
         printf "\nERROR: Run directories in ${RunDirs}/"
-	printf "\n   already exist. Please change RunName or change the"
-	printf "\n   Setup* options to false in the IMI config file.\n"
+        printf "\n   already exist. Please change RunName or change the"
+        printf "\n   Setup* options to false in the IMI config file.\n"
         printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi
@@ -84,10 +84,10 @@ if "$SafeMode"; then
        ([ -d "${RunDirs}/inversion" ] && "$DoInversion") || \
        ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
         printf "\nWARNING: Output files in ${RunDirs}/" 
-	printf "\n  may be overwritten. Please change RunName in the IMI"
-	printf "\n  config file to avoid overwriting files.\n"
+        printf "\n  may be overwritten. Please change RunName in the IMI"
+        printf "\n  config file to avoid overwriting files.\n"
         printf "\n  To proceed, and overwrite existing output files, set"
-	printf "\n  SafeMode in the config file to false.\n" 
+        printf "\n  SafeMode in the config file to false.\n" 
         printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi

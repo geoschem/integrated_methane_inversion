@@ -413,12 +413,12 @@ def estimate_averaging_kernel(
     xch4 = []
     albedo = []
 
-    # read in and filter tropomi observations (uses parallel processing)
+    # Read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
         for file_path in tropomi_paths
     )
-    # remove any problematic observation dicts (eg. corrupted data file)
+    # Remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
 
     for dict in observation_dicts:
@@ -467,6 +467,11 @@ def estimate_averaging_kernel(
 
     # unpack list of tuples into individual lists
     emissions, L, num_obs = [list(item) for item in zip(*result)]
+    
+    if np.sum(num_obs) < 1:
+        sys.exit("Error: No observations found in region of interest")
+    outstring2 = f"Found {np.sum(num_obs)} observations in the region of interest"
+
 
     # ----------------------------------
     # Estimate information content
@@ -476,6 +481,17 @@ def estimate_averaging_kernel(
     emissions = np.array(emissions)
     m = np.array(num_obs)  # Number of observations per state vector element
     L = np.array(L)
+    
+    # If Kalman filter mode, count observations per inversion period
+    if config["KalmanMode"]:
+        startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
+        endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
+        n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
+        n_obs_per_period = np.round(num_obs / n_periods)
+        outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
+        m = n_obs_per_period  # Number of obs per inversion period, per element
+
+    print("\n" + outstring2)
 
     # Other parameters
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
@@ -505,6 +521,10 @@ def estimate_averaging_kernel(
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
     outstring5 = f"expectedDOFS: {np.round(sum(a),5)}"
+    
+    if config["KalmanMode"]:
+        outstring5 += " per inversion period"
+        
     print(outstring3)
     print(outstring4)
     print(outstring5)
