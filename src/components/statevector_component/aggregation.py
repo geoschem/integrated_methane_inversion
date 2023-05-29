@@ -58,7 +58,8 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False):
     cluster_labels = kmeans.fit_predict(features)
 
     # fill labels on corresponding valid indices of label array
-    labels[valid_indices] = cluster_labels
+    # add 1 to labels so they start with 1
+    labels[valid_indices] = cluster_labels + 1
 
     # reconstruct 2D grid
     cluster_labels = labels.reshape(data.shape)
@@ -411,7 +412,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
             label_start += 1
 
     # scale buffer elements to correct label range
-    cluster_number_diff = int(orig_sv["StateVector"].max()) - int(labels.max())
+    cluster_number_diff = last_ROI_element - int(labels.max())
     buffer_labels = scale_buffer_elements(cluster_number_diff, buffer_labels)
 
     # add buffer labels to new state vector

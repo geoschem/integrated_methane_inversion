@@ -73,6 +73,7 @@ config_required = [
     "RestartFilePrefix",
     "RestartFilePreviewPrefix",
     "BCpath",
+    "BCversion",
     "PreviewDryRun",
     "SpinupDryrun",
     "ProductionDryRun",
@@ -88,7 +89,6 @@ config_required = [
 clustering_vars = [
     "ClusteringMethod",
     "NumberOfElements",
-    "ForcedNativeResolutionElements",
 ]
 
 if __name__ == "__main__":
