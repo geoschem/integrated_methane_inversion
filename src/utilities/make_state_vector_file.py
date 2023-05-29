@@ -186,28 +186,13 @@ def make_state_vector_file(
 if __name__ == "__main__":
     import sys
 
-    land_cover_pth = sys.argv[1]
-    hemco_diag_pth = sys.argv[2]
-    save_pth = sys.argv[3]
-    lat_min = float(sys.argv[4])
-    lat_max = float(sys.argv[5])
-    lon_min = float(sys.argv[6])
-    lon_max = float(sys.argv[7])
-    buffer_deg = float(sys.argv[8])
-    land_threshold = float(sys.argv[9])
-    emis_threshold = float(sys.argv[10])
-    k_buffer_clust = int(sys.argv[11])
-
+    config_path = sys.argv[1]
+    land_cover_pth = sys.argv[2]
+    hemco_diag_pth = sys.argv[3]
+    save_pth = sys.argv[4]
     make_state_vector_file(
-        land_cover_pth,
-        hemco_diag_pth,
+        config_path, 
+        land_cover_pth, 
+        hemco_diag_pth, 
         save_pth,
-        lat_min,
-        lat_max,
-        lon_min,
-        lon_max,
-        buffer_deg,
-        land_threshold,
-        emis_threshold,
-        k_buffer_clust,
     )
