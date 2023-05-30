@@ -9,12 +9,21 @@
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
 
-# Error message for if the IMI fails
-imi_failed() {
-    printf "\nFATAL ERROR: IMI exiting."
-    cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
-    exit 1
-}
+##=======================================================================
+## Import Shell functions
+##=======================================================================
+source src/utilities/common.sh
+source src/components/setup_component/setup.sh
+source src/components/template_component/template.sh
+source src/components/statevector_component/statevector.sh
+source src/components/preview_component/preview.sh
+source src/components/spinup_component/spinup.sh
+source src/components/jacobian_component/jacobian.sh
+source src/components/inversion_component/inversion.sh
+source src/components/posterior_component/posterior.sh
+
+# trap and exit on errors
+trap 'imi_failed $LINENO' ERR
 
 start_time=$(date)
 setup_start=$(date +%s)
@@ -23,7 +32,7 @@ setup_start=$(date +%s)
 ## Parse config.yml file
 ##=======================================================================
 
-printf "\nParsing config file (run_kf.sh)\n"
+printf "\n=== PARSING CONFIG FILE (run_imi.sh) ===\n"
 
 # Check if user has specified a configuration file
 if [[ $# == 1 ]] ; then
@@ -103,9 +112,9 @@ if "$isAWS"; then
         exit 1
     }
     mkdir -p -v $tropomiCache
-    printf "\nDownloading TROPOMI data from S3\n"
+    printf "Downloading TROPOMI data from S3\n"
     python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    printf "Finished TROPOMI download\n"
+    printf "\nFinished TROPOMI download\n"
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then
@@ -113,66 +122,23 @@ else
     fi
 fi
 
+# Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
+python src/utilities/test_TROPOMI_dir.py $tropomiCache
+
 ##=======================================================================
 ##  Run the setup script
 ##=======================================================================
-
 if "$RunSetup"; then
-
-    printf "\n=== RUNNING SETUP SCRIPT ===\n"
-
-    cd ${InversionPath}
-
-    if ! "$isAWS"; then
-		if [ ! -f "${GEOSChemEnv}" ]; then
-			printf "\nGEOS-Chem environment file does not exist!"
-			printf "\nIMI $RunName Aborted\n"
-			exit 1
-		else
-	        # Load environment with modules for compiling GEOS-Chem Classic
-    	    source ${GEOSChemEnv}
-    	fi
-    fi
-
-    # Run the setup script
-    ./setup_imi.sh ${ConfigFile}; wait;
-
-    if "$SetupInversion"; then
-        # Rename inversion directory as template directory
-        mv ${RunDirs}/inversion ${RunDirs}/inversion_template
-    fi
-
-    printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
-
+    setup_imi
 fi
 setup_end=$(date +%s)
 
 ##=======================================================================
 ##  Submit spinup simulation
 ##=======================================================================
-
-spinup_start=$(date +%s)
 if  "$DoSpinup"; then
-
-    printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
-
-    cd ${RunDirs}/spinup_run
-
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
-    # Submit job to job scheduler
-    sbatch -W ${RunName}_Spinup.run; wait;
-
-    # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed
-
-    printf "\n=== DONE SPINUP SIMULATION ===\n"
-    
+    run_spinup
 fi
-spinup_end=$(date +%s)
 
 ##=======================================================================
 ##  Initiate Kalman filter
