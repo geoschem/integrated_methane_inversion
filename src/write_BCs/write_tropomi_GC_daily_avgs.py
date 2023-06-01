@@ -56,9 +56,9 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
 
 if __name__ == "__main__":
 
-    # From config file, get the start and end times that we will be writing boundary conditions for (+15 days on the end because of our temporal smoothing)
+    # From config file, get the start and end times that we will be writing boundary conditions for
     start_time_of_interest = np.datetime64(datetime.datetime.strptime(config["startdate"], "%Y%m%dT%H%M%S"))
-    end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["enddate"], "%Y%m%dT%H%M%S")) + np.timedelta(15, 'D')
+    end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["enddate"], "%Y%m%dT%H%M%S"))
 
     # List of all TROPOMI files that interesct our time period of interest
     TROPOMI_files = sorted([file for file in glob.glob(os.path.join(config["tropomi_cache"], "*.nc"))
