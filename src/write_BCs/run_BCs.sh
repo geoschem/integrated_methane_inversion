@@ -45,9 +45,9 @@ if "$RunGEOSChem"; then
     cp HISTORY.rc ${workdir}/runGCC1402/
 
     # Modify geoschem_config.yml to match our start and end date specified in the config file
-    # e.g., if you want BCs for 20180401-20230331, run GC for 20180401T000000-20230416T000000 (accounts for +/- 15 day temporal averaging in calculate_bias.py)
+    # e.g., if you want BCs for 20180401-20230331, run GC for 20180401T000000-20230420T000000 (accounts for +/- 15 day temporal averaging in calculate_bias.py)
     cd ${workdir}/runGCC1402
-    gc_enddate=$(date -d "$enddate +16 days" +%Y%m%d)
+    gc_enddate=$(date -d "$enddate +20 days" +%Y%m%d)
     sed -i -e "s|start_date: \[[ ]*.*[ ]*\]|start_date: \[${startdate}, 000000\]|g"\
            -e "s|end_date: \[[ ]*.*[ ]*\]|end_date: \[${gc_enddate}, 000000\]|g" geoschem_config.yml
 
@@ -71,9 +71,9 @@ if "$WriteBCs"; then
     
     # Run python scripts
     cd ${imidir}/src/write_BCs
-    sbatch -W -p seas_compute -t 2-00:00 --mem 64000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
-    sbatch -W -p seas_compute -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
-    sbatch -W -p seas_compute -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
+    sbatch -W -p huce_cascade,huce_bigmem,bigmem -t 2-00:00 --mem 190000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
+    sbatch -W -p seas_compute,huce_cascade,huce_intel -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
+    sbatch -W -p seas_compute,huce_cascade,huce_intel -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
 
     # Replace the days we don't have TROPOMI data with initial GC outputs
     cp ${workdir}/runGCC1402/OutputDir/GEOSChem.BoundaryConditions.201804{01..29}_0000z.nc4 ${workdir}/smoothed-boundary-conditions
