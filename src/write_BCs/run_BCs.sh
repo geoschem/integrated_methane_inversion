@@ -4,29 +4,16 @@
 source ../utilities/parse_yaml.sh
 eval $(parse_yaml config_write_BCs.yml)
 
-# Make directories if they don't exists (and throw an error if they are not empty so we don't accidentally overwrite anything)
-function create_and_check_dirs() {
-    local dirs=("$@")
-    for dir in "${dirs[@]}"; do
-        mkdir -p "$dir"
-        if [[ $(find "$dir" -mindepth 1 -print -quit) ]]; then
-            echo "Error: Directory $dir contains files."
-            exit 1
-        fi
-    done
-}
+# Make directories if they don't exists
+mkdir -p ${workdir}/step1 ${workdir}/step2 ${workdir}/step3 ${workdir}/smoothed-boundary-conditions
 
 if "$RunGEOSChem"; then
     # Load modules
     source ${imidir}/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env
 
-    # Make sure runGCC1402 is empty so we don't accidentally overwrite it
-    dirs=("${workdir}/runGCC1402")
-    create_and_check_dirs "${dirs[@]}"
-
-    # Remove GCClassic if it exists
-    rm -rf ${workdir}/runGCC1402
+    # Remove directories if they exist
     rm -rf ${imidir}/src/write_BCs/GCClassic
+    rm -rf ${workdir}/runGCC1402
 
     # Download GEOS-Chem 14.0.2
     git clone https://github.com/geoschem/GCClassic.git
@@ -45,11 +32,9 @@ if "$RunGEOSChem"; then
     cp HISTORY.rc ${workdir}/runGCC1402/
 
     # Modify geoschem_config.yml to match our start and end date specified in the config file
-    # e.g., if you want BCs for 20180401-20230331, run GC for 20180401T000000-20230416T000000 (accounts for +/- 15 day temporal averaging in calculate_bias.py)
     cd ${workdir}/runGCC1402
-    gc_enddate=$(date -d "$enddate +16 days" +%Y%m%d)
-    sed -i -e "s|start_date: \[[ ]*.*[ ]*\]|start_date: \[${startdate}, 000000\]|g"\
-           -e "s|end_date: \[[ ]*.*[ ]*\]|end_date: \[${gc_enddate}, 000000\]|g" geoschem_config.yml
+    sed -i -e "s|start_date: \[[ ]*.*[ ]*\]|start_date: \[${startdate:0:8}, ${startdate:9:15}\]|g"\
+           -e "s|end_date: \[[ ]*.*[ ]*\]|end_date: \[${enddate:0:8}, ${enddate:9:15}\]|g" geoschem_config.yml
 
     # Compile GEOS-Chem
     cd ${workdir}/runGCC1402/build
@@ -59,15 +44,11 @@ if "$RunGEOSChem"; then
 
     # Run GEOS-Chem
     cd ${workdir}/runGCC1402/
-    cp /n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-04/restarts/GEOSChem.Restart.${startdate:0:8}_0000z.nc4 ./Restarts/
+    cp /n/holylfs05/LABS/jacob_lab/imi/ch4/boundary-conditions/restarts/GEOSChem.Restart.${startdate:0:8}_0000z.nc4 ./Restarts/
     sbatch -W ${imidir}/src/write_BCs/GC_config_files/geoschem.run; wait;
 fi
 
 if "$WriteBCs"; then
-
-    # Make sure dirs are empty so we don't accidentally overwrite them
-    dirs=("${workdir}/step1" "${workdir}/step2" "${workdir}/step3" "${workdir}/smoothed-boundary-conditions")
-    create_and_check_dirs "${dirs[@]}"
     
     # Run python scripts
     cd ${imidir}/src/write_BCs
