@@ -39,6 +39,11 @@ setup_inversion() {
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
            -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
 
+    if "$KalmanMode"; then
+        # Rename inversion directory as template directory
+        mv ${RunDirs}/inversion ${RunDirs}/inversion_template
+    fi
+
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 }
 
