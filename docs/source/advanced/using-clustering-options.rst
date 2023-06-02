@@ -51,22 +51,36 @@ The ``ClusteringMethod`` specifies which clustering method to use for state vect
 ``kmeans`` or ``mini-batch-kmeans`` are valid options. ``mini-batch-kmeans`` is very similar to ``kmeans``, 
 but can be less accurate. It is best used for very large state vectors to speed up state vector reduction.
 
-Additionally, the ``ForcedNativeResolutionElements`` is a configuration option that allows you to
-specify areas that you would like to maintain high resolution for. Eg:
+Note: The IMI preserves the original state vector file as NativeStateVector.nc in your run directory.
 
-::
-    
-    ForcedNativeResolutionElements:
-      - [31.5, -104]
+Incorporating point source information
+--------------------------------------
 
+If you have prior information of specific locations that you would like to maintain high resolution 
+(eg. point source detections) you can ensure the clustering algorithm preserves these locations by 
+using the ``ForcedNativeResolutionElements`` config variable. This variable takes a list of lat/lon 
+locations using either yaml list or a path to a csv file.
 
 For instance, if the user suspects a location to be an emission hotspot they can specify the 
-lat/lon coordinates as in the example above and the clustering algorithm will ensure that the
+lat/lon coordinates as in the examples below and the clustering algorithm will ensure that the
 native resolution element is preserved during the aggregation. In order for the IMI to 
 preserve the element, you must have enough ``NumberOfElements`` specified to accomodate the 
 number of gridcells you would like to force to be native resolution.
 
-Note: The IMI preserves the original state vector file as NativeStateVector.nc in your run directory.
+yaml list example:
+::
+    
+    ForcedNativeResolutionElements:
+      - [31.5, -104]
+      - [32.5, -103.5]
+
+csv file example:
+::
+    
+    ForcedNativeResolutionElements: "/path/to/point_source_locations.csv"
+
+The csv file should have a header row with the column names ``lat`` and ``lon`` using lowercase letters. 
+The csv file can have additional columns, but they will be ignored.
 
 IMI clustering scheme
 ---------------------
