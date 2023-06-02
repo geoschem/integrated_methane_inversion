@@ -128,22 +128,55 @@ setup_jacobian() {
 # Usage:
 #   run_jacobian
 run_jacobian() {
-    jacobian_start=$(date +%s)
-    printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
+    if ! "$PrecomputedJacobian"; then
+        jacobian_start=$(date +%s)
+        printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
 
-    cd ${RunDirs}/jacobian_runs
+        cd ${RunDirs}/jacobian_runs
 
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv} 
+        if ! "$isAWS"; then
+            # Load environment with modules for compiling GEOS-Chem Classic
+            source ${GEOSChemEnv} 
+        fi
+
+        # Submit job to job scheduler
+        source submit_jacobian_simulations_array.sh
+
+        # check if any jacobians exited with non-zero exit code
+        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+
+        printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
+        jacobian_end=$(date +%s)
+    else
+        # Replace the (empty) data_sensitivities folder with a symlink to the
+        # sensitivities from the reference inversion w/ precomputed Jacobian.
+        cd ${RunDirs}/kf_inversions/period${i}
+
+        if "$KalmanMode"; then
+            precomputedSensiCache=${ReferenceRunDir}/kf_inversions/period${i}/data_sensitivities
+        else
+            # Need this alternative when run_imi.sh and run_kf.sh get combined... TODO
+            precomputedSensiCache=${ReferenceRunDir}/inversion/data_sensitivities
+        fi
+        # mv rather than rm, to prevent accidental deletion of original data_sensitivities/ ?
+        mv data_sensitivities temp_dir
+        ln -s $precomputedSensiCache data_sensitivities
+
+        # Run the prior simulation
+        cd ${JacobianRunsDir}
+            
+        if ! "$isAWS"; then
+            # Load environment with modules for compiling GEOS-Chem Classic
+            source ${GEOSChemEnv}
+        fi
+
+        # Submit prior simulation to job scheduler
+        printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
+        sbatch -W run_prior_simulation.sh; wait;
+        printf "=== DONE PRIOR SIMULATION ===\n"
+
+        # Get Jacobian scale factors
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $i $RunDirs $ReferenceRunDir; wait
+        printf "Got Jacobian scale factors\n"
     fi
-
-    # Submit job to job scheduler
-    source submit_jacobian_simulations_array.sh
-
-    # check if any jacobians exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
-
-    printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
-    jacobian_end=$(date +%s)
 }

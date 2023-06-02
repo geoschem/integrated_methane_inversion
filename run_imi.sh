@@ -21,6 +21,7 @@ source src/components/spinup_component/spinup.sh
 source src/components/jacobian_component/jacobian.sh
 source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
+source src/components/kalman_component/kalman.sh
 
 # trap and exit on errors
 trap 'imi_failed $LINENO' ERR
@@ -141,23 +142,31 @@ if  "$DoSpinup"; then
 fi
 
 ##=======================================================================
+##  Run Kalman Filter Mode
+##=======================================================================
+if "$KalmanMode"; then
+    setup_kalman
+    run_kf
+fi
+
+##=======================================================================
 ##  Submit Jacobian simulation
 ##=======================================================================
-if "$DoJacobian"; then
+if ("$DoJacobian" && ! "$KalmanMode"); then
     run_jacobian
 fi
 
 ##=======================================================================
 ##  Process data and run inversion
 ##=======================================================================
-if "$DoInversion"; then
+if ("$DoInversion" && ! "$KalmanMode"); then
     run_inversion
 fi
 
 ##=======================================================================
 ##  Submit posterior simulation and process the output
 ##=======================================================================
-if "$DoPosterior"; then
+if ("$DoPosterior" && ! "$KalmanMode"); then
     run_posterior
 fi
 
