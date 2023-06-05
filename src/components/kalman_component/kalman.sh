@@ -122,7 +122,7 @@ run_kf() {
 
         done
     else
-        printf("Exiting: DoJacobian, DoInversion, and DoPosterior must all be set to true to continue with KalmanMode\n")
+        printf "Exiting: DoJacobian, DoInversion, and DoPosterior must all be set to true to continue with KalmanMode\n"
     fi
 
 }
