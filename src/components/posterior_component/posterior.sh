@@ -105,7 +105,6 @@ run_posterior() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
     
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
-
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${i}
         if (( i == 1 )); then
@@ -114,6 +113,8 @@ run_posterior() {
             PrevDir="${RunDirs}/posterior_run"
         fi
     else
+        StartDate_i=$StartDate
+        EndDate_i=$EndDate
         cd ${RunDirs}/inversion
         PrevDir="${RunDirs}/spinup_run"
     fi  
@@ -121,7 +122,7 @@ run_posterior() {
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i; wait
     printf "\n=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
@@ -131,7 +132,7 @@ run_posterior() {
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_geoschem_posterior"
     printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+    python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate_i $EndDate_i $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
@@ -144,7 +145,7 @@ run_posterior() {
     isPost="True"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 }

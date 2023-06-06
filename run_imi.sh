@@ -145,7 +145,7 @@ fi
 ##  Run Kalman Filter Mode
 ##=======================================================================
 if "$KalmanMode"; then
-    setup_kalman
+    setup_kf
     run_kf
 fi
 
