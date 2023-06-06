@@ -2,10 +2,24 @@
 
 # Common shell function for the IMI
 # Functions available in this file include:
+#   - print_stats
 #   - imi_failed 
 #   - ncmax 
 #   - ncmin 
 
+
+# Description: 
+#   Print runtime stats based on existing variables
+# Usage:
+#   print_stats
+print_stats() {
+    printf "\nRuntime statistics (s):"
+    printf "\n Setup     : $( [[ ! -z $setup_end ]] && echo $(( $setup_end - $setup_start )) || echo 0 )"
+    printf "\n Spinup     : $( [[ ! -z $spinup_end ]] && echo $(( $spinup_end - $spinup_start )) || echo 0 )"
+    printf "\n Jacobian     : $( [[ ! -z $jacobian_end ]] && echo $(( $jacobian_end - $jacobian_start )) || echo 0 )"
+    printf "\n Inversion     : $( [[ ! -z $inversion_end ]] && echo $(( $inversion_end - $inversion_start )) || echo 0 )"
+    printf "\n Posterior     : $( [[ ! -z $posterior_end ]] && echo $(( $posterior_end - $posterior_start )) || echo 0 )\n\n"
+}
 
 # Description: Print error message for if the IMI fails
 #   Copy output file to output directory if it exists
