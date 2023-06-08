@@ -1,7 +1,7 @@
 import xarray as xr
 import datetime
 from joblib import Parallel, delayed
-from utils import zero_pad_num_hour
+from src.inversion_scripts.utils import zero_pad_num_hour
 
 
 def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):

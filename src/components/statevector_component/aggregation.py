@@ -7,7 +7,7 @@ import yaml
 import copy
 import sys
 import time
-from inversion_scripts.imi_preview import (
+from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
 )

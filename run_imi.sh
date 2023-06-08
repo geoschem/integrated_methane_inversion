@@ -96,6 +96,8 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
+# add inversion path to python path
+export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
 ##=======================================================================
 ##  Download the TROPOMI data

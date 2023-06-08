@@ -47,7 +47,7 @@ tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
 
 # For Kalman filter: assume first inversion period (( i = 1 )) by default
 # Switch is flipped to false automatically if (( i > 1 ))
-FirstSimSwitch=true
+FirstSimSwitch=$1
 
 printf "\n=== EXECUTING RUN_INVERSION.SH ===\n"
     

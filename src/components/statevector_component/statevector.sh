@@ -67,8 +67,6 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
-    export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/
-    export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts
     if "$UseSlurm"; then
         chmod +x $aggregation_file
         sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;

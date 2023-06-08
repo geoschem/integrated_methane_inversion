@@ -3,7 +3,7 @@
 import glob
 import numpy as np
 from netCDF4 import Dataset
-from utils import load_obj
+from src.inversion_scripts.utils import load_obj
 
 
 def do_inversion(

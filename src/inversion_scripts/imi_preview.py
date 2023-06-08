@@ -15,18 +15,18 @@ import yaml
 import os
 import datetime
 import time
+import warnings
 import cartopy.crs as ccrs
 import colorcet as cc
-from utils import (
+from joblib import Parallel, delayed
+from src.inversion_scripts.utils import (
     sum_total_emissions,
     count_obs_in_mask,
     plot_field,
     filter_tropomi,
     calculate_area_in_km,
 )
-from joblib import Parallel, delayed
-from operators.TROPOMI_operator import read_tropomi
-import warnings
+from src.inversion_scripts.operators.TROPOMI_operator import read_tropomi
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 

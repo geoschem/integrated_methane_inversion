@@ -88,6 +88,7 @@ run_period() {
 
     # Prepare initial (prior) emission scale factors for the current period
     ConfigPath=${InversionPath}/${ConfigFile}
+    echo "python path = $PYTHONPATH"
     python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $i ${RunDirs} $NudgeFactor; wait
 
     ##=======================================================================

@@ -53,13 +53,13 @@ setup_inversion() {
 run_inversion() {
     inversion_start=$(date +%s)
     printf "\n=== RUNNING INVERSION ===\n"
-
+    FirstSimSwitch=true
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${i}
         # Modify inversion driver script to reflect current inversion period
         sed -i "s|data_TROPOMI\"|data_TROPOMI\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
         if (( i > 1 )); then
-            sed -i "s,FirstSimSwitch=true,FirstSimSwitch=false,g" run_inversion.sh
+            FirstSimSwitch=false
         fi
     else
         cd ${RunDirs}/inversion
@@ -73,7 +73,7 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W run_inversion.sh; wait;
+    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W run_inversion.sh $FirstSimSwitch; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

@@ -1,11 +1,6 @@
 import numpy as np
-import xarray as xr
-from functools import partial
 from shapely.geometry.polygon import Polygon
 from pyproj import Geod
-from functools import partial
-from itertools import product
-import shapely.ops as ops
 import cartopy
 import cartopy.crs as ccrs
 import pickle

@@ -167,12 +167,12 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
     ln -sf $StateVectorFile $RunDirs/kf_inversions/StateVector.nc
 
     # Define Kalman filter update periods
-    python ${InversionPath}/src/kf_scripts/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
+    python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
     PeriodsFile="${RunDirs}/periods.csv"
     nPeriods=$(($(wc -l < ${PeriodsFile}) - 1))
 
     # Create unit scale factor file
-    python ${InversionPath}/src/kf_scripts/make_unit_sf.py $StateVectorFile $RunDirs; wait
+    python ${InversionPath}/src/components/kalman_component/make_unit_sf.py $StateVectorFile $RunDirs; wait
 
     # Create directory to archive prior scale factors for each inversion period
     mkdir -p ${RunDirs}/archive_sf
@@ -207,13 +207,13 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
         echo "Start, End: $StartDate_i, $EndDate_i"
 
         # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs
-        python ${InversionPath}/src/kf_scripts/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir; wait
-        python ${InversionPath}/src/kf_scripts/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir; wait
+        python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir; wait
+        python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir; wait
         echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
 
         # Prepare initial (prior) emission scale factors for the current period
         ConfigPath=${InversionPath}/${ConfigFile}
-        python ${InversionPath}/src/kf_scripts/prepare_sf.py $ConfigPath $i ${RunDirs} $NudgeFactor; wait
+        python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $i ${RunDirs} $NudgeFactor; wait
 
         ##=======================================================================
         ##  Submit all Jacobian simulations OR submit only the Prior simulation
@@ -313,11 +313,11 @@ if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
 
         # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
         # NOTE: This also creates the posterior_sf_period{i}.nc file in archive_sf/
-        python ${InversionPath}/src/kf_scripts/multiply_posteriors.py $i ${RunDirs}; wait
+        python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $i ${RunDirs}; wait
         echo "Multiplied posterior scale factors over record"
 
         # Print total posterior emissions
-        python ${InversionPath}/src/kf_scripts/print_posterior_emissions.py $ConfigPath $i ${RunDirs}; wait
+        python ${InversionPath}/src/components/kalman_component/print_posterior_emissions.py $ConfigPath $i ${RunDirs}; wait
 
         ##=======================================================================
         ##  Submit posterior simulation and process the output

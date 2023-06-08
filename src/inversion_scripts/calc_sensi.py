@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import datetime
 from joblib import Parallel, delayed
-from utils import zero_pad_num_hour
+from src.inversion_scripts.utils import zero_pad_num_hour
 
 
 def zero_pad_num(n):
