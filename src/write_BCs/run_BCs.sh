@@ -18,7 +18,7 @@ function create_and_check_dirs() {
 
 if "$RunGEOSChem"; then
     # Load modules
-    source ${imidir}/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env
+    source ${imidir}/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env
 
     # Make sure runGCC1402 is empty so we don't accidentally overwrite it
     dirs=("${workdir}/runGCC1402")
