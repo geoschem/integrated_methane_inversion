@@ -50,6 +50,9 @@ if ! "$isAWS"; then
     printf "\nActivating conda environment: ${CondaEnv}\n"
     eval "$(conda shell.bash hook)"
     conda activate $CondaEnv
+
+    # Set GEOS-Chem environment
+    GEOSChemEnv="$(pwd -P)/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 fi
 
 # Check all necessary config variables are present

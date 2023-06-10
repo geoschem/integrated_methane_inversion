@@ -41,6 +41,7 @@ CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
+OffshoreEmisThreshold: 0
 
 ## Clustering Options
 ReducedDimensionStateVector: false
@@ -135,8 +136,6 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
 ## Environment files
 ## See envs/README to create the Conda environment specified below
-NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
-GEOSChemEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
 CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
