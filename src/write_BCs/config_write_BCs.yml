@@ -12,8 +12,13 @@ workdir: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs"
 ## Location of the TROPOMI data
 tropomi_cache: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
-## Conda environment to use
+## Conda environment to use, GEOS-Chem environment to use, and partitions to run on
 CondaEnv: imi_env
+GEOSChemEnv: /n/home06/nbalasus/envs/gcclassic.rocky+gnu12.minimal.env
+Partition: huce_cascade
+
+## A directory with a restart file for GEOS-Chem for your given start date
+RestartDir: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-04/restarts"
 
 ## Which of the modules to run
 RunGEOSChem: true

@@ -137,6 +137,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 ## Environment files
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
+GEOSChemEnv: "/n/home06/nbalasus/envs/gcclassic.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled

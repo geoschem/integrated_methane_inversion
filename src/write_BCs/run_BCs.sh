@@ -18,7 +18,7 @@ function create_and_check_dirs() {
 
 if "$RunGEOSChem"; then
     # Load modules
-    source ${imidir}/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env
+    source ${GEOSChemEnv}
 
     # Make sure runGCC1402 is empty so we don't accidentally overwrite it
     dirs=("${workdir}/runGCC1402")
@@ -59,7 +59,7 @@ if "$RunGEOSChem"; then
 
     # Run GEOS-Chem
     cd ${workdir}/runGCC1402/
-    cp /n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-04/restarts/GEOSChem.Restart.${startdate:0:8}_0000z.nc4 ./Restarts/
+    cp ${RestartDir}/GEOSChem.Restart.${startdate:0:8}_0000z.nc4 ./Restarts/
     sbatch -W ${imidir}/src/write_BCs/GC_config_files/geoschem.run; wait;
 fi
 
@@ -71,9 +71,9 @@ if "$WriteBCs"; then
     
     # Run python scripts
     cd ${imidir}/src/write_BCs
-    sbatch -W -p huce_cascade,huce_bigmem,bigmem -t 2-00:00 --mem 190000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
-    sbatch -W -p seas_compute,huce_cascade,huce_intel -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
-    sbatch -W -p seas_compute,huce_cascade,huce_intel -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
+    sbatch -W -p ${Partition} -t 2-00:00 --mem 190000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
+    sbatch -W -p ${Partition} -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
+    sbatch -W -p ${Partition} -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
 
     # Replace the days we don't have TROPOMI data with initial GC outputs
     cp ${workdir}/runGCC1402/OutputDir/GEOSChem.BoundaryConditions.201804{01..29}_0000z.nc4 ${workdir}/smoothed-boundary-conditions
