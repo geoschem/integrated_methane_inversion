@@ -62,6 +62,34 @@ setup_posterior() {
                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
     fi
 
+    ### Turn on observation operators if requested, for posterior run
+    if "$GOSAT"; then
+        OLD="GOSAT: false"
+        NEW="GOSAT: true"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+    if "$TCCON"; then
+        OLD="TCCON: false"
+        NEW="TCCON: true"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+    if "$AIRS"; then
+        OLD="AIR: false"
+        NEW="AIR: true"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+    if "$PLANEFLIGHT"; then
+	mkdir -p Plane_Logs
+	sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
+	
+	OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
+	NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+	OLD="output_file: plane.log.YYYYMMDD"
+	NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
+	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
