@@ -147,11 +147,6 @@ setup_imi() {
         cp $StateVectorFile ${RunDirs}/StateVector.nc
     fi
 
-    if ! "$isAWS"; then
-        # Load environment with NCO
-        source ${NCOEnv}
-    fi
-
     # Determine number of elements in state vector file
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"

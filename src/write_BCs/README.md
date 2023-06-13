@@ -1,7 +1,7 @@
 ## Directions to generate the boundary conditions.
 
 1. Change settings in `config_write_BCs.yml`.
-2. Run run_BCs.sh (`sbatch -p seas_compute -t 4-00:00 --mem 4000 --wrap "bash run_BCs.sh"`).
+2. Run run_BCs.sh (`sbatch -p seas_compute,huce_cascade,huce_intel -t 4-00:00 --mem 4000 --wrap "bash run_BCs.sh"`).
    - The `RunGEOSChem` portion of the code will generate boundary conditions (uncorrected) for the time period of interest specified in the config file (~9 hours).
    - The `WriteBCs` portion of the code with correct those boundary conditions using TROPOMI through three scritps:
       - `write_tropomi_GC_daily_avgs.py` writes a netCDF file that has daily averages of TROPOMI and what TROPOMI would have seen over a GEOS-Chem atmosphere (~8 hours).

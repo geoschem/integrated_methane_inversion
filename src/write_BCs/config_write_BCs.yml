@@ -1,10 +1,25 @@
-startdate: "20180401T000000"
-enddate: "20230330T235959"
-imidir: "/n/home06/nbalasus/IMI_BCs/integrated_methane_inversion"
-workdir: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs"
-gccache: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs/runGCC1402/OutputDir"
-tropomi_cache: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
-CondaEnv: imi_env
+## Day range (inclusive) that you want to generate BCs for
+## You should have TROPOMI data and met fields for 16 days past the specified enddate
+startdate: "20180401"
+enddate: "20230331"
 
+## Where the IMI code to write this is (parent dir of this file)
+imidir: "/n/home06/nbalasus/IMI_BCs/integrated_methane_inversion"
+
+## A directory with a lot of space where you can write the BCs (and intermediate files)
+workdir: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs"
+
+## Location of the TROPOMI data
+tropomi_cache: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
+
+## Conda environment to use, GEOS-Chem environment to use, and partitions to run on
+CondaEnv: imi_env
+GEOSChemEnv: /n/home06/nbalasus/envs/gcclassic.rocky+gnu12.minimal.env
+Partition: huce_cascade
+
+## A directory with a restart file for GEOS-Chem for your given start date
+RestartDir: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-04/restarts"
+
+## Which of the modules to run
 RunGEOSChem: true
 WriteBCs: true

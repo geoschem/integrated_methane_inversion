@@ -48,7 +48,7 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
         gc_enddate = end_time_of_interest,
         xlim = [-180, 180],
         ylim = [-90, 90],
-        gc_cache = config["gccache"],
+        gc_cache = os.path.join(config["workdir"], "runGCC1402", "OutputDir"),
         build_jacobian = False, # Not relevant
         sensi_cache = False) # Not relevant
     
@@ -56,20 +56,26 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
 
 if __name__ == "__main__":
 
-    # From config file, get the start and end times that we will be writing boundary conditions for
-    start_time_of_interest = np.datetime64(datetime.datetime.strptime(config["startdate"], "%Y%m%dT%H%M%S"))
-    end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["enddate"], "%Y%m%dT%H%M%S"))
+    # From config file, get the start and end times that we will be writing boundary conditions for (+20 days on the end because of our temporal smoothing)
+    start_time_of_interest = np.datetime64(datetime.datetime.strptime(config["startdate"], "%Y%m%d"))
+    end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["enddate"], "%Y%m%d")) + np.timedelta64(20, 'D')
 
     # List of all TROPOMI files that interesct our time period of interest
     TROPOMI_files = sorted([file for file in glob.glob(os.path.join(config["tropomi_cache"], "*.nc"))
                             if (start_time_of_interest <= get_TROPOMI_times(file)[0] <= end_time_of_interest)
                             and (start_time_of_interest <= get_TROPOMI_times(file)[1] <= end_time_of_interest)])
 
+    # Make sure some of the TROPOMI files are after the last day you want BCs for
+    assert len([file for file in TROPOMI_files
+                if (start_time_of_interest <= get_TROPOMI_times(file)[1] <= end_time_of_interest - np.timedelta64(20, 'D'))]) > 20, \
+        "There doesn't seem to be many files past the last day you want BCs. This is a problem because of the +/- 15 day temporal smoothing."
+
+
     # Run the function across as many cores as you have
     Parallel(n_jobs=-1)(delayed(apply_tropomi_operator_to_one_tropomi_file)(filename) for filename in TROPOMI_files)
 
     # Read any of the GEOS-Chem files to get the lat/lon grid
-    with xr.open_dataset(glob.glob(os.path.join(config["gccache"], "GEOSChem.SpeciesConc*.nc4"))[0]) as data:
+    with xr.open_dataset(glob.glob(os.path.join(config["workdir"], "runGCC1402", "OutputDir", "GEOSChem.SpeciesConc*.nc4"))[0]) as data:
         LON = data["lon"].values
         LAT = data["lat"].values
         

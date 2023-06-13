@@ -122,11 +122,6 @@ run_posterior() {
     python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
-	if ! "$isAWS"; then
-    	# Load environment with NCO
-    	source ${NCOEnv}
-	fi
-
     # Sample GEOS-Chem atmosphere with TROPOMI
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
