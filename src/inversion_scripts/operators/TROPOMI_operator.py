@@ -533,8 +533,8 @@ def read_tropomi(filename):
 
     # Return an error if any of the variables were not read correctly
     except Exception as e:
-    print(f"Error opening {filename}: {e}")
-    return None
+        print(f"Error opening {filename}: {e}")
+        return None
 
     return dat
 
