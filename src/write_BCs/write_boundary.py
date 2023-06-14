@@ -17,8 +17,11 @@ if __name__ == "__main__":
         all_Bias = file1["Bias"].values * 1e-9
         strdate = file1["time"].values
 
-    os.chdir(config["gccache"])
+    # Only write BCs for our date range (otherwise, files would be written for the last few days, which are invalid due to a lack of TROPOMI data on the +15 day end)
+    os.chdir(os.path.join(config["workdir"],"runGCC1402","OutputDir"))
     files = sorted(glob.glob("GEOSChem.BoundaryConditions*.nc4"))
+    files = [f for f in files if ((np.datetime64(f[28:36]) >= np.datetime64(config["startdate"])) &
+                                  (np.datetime64(f[28:36]) <= np.datetime64(config["enddate"])))]
 
     # For each file, remove the bias calculated in calculate_bias.py from each level of the GEOS-Chem boundary conditions
     for filename in files:

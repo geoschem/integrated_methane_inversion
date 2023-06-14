@@ -2,7 +2,7 @@
 
 #SBATCH -c 24
 #SBATCH -N 1
-#SBATCH -t 0-24:00
+#SBATCH -t 2-00:00
 #SBATCH --partition=seas_compute,huce_cascade,huce_intel
 #SBATCH --mem=15000
 #SBATCH --mail-type=END
