@@ -186,6 +186,8 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Number of cores to allocate to each jacobian simulation (run in parallel).
    * - ``JacobianMemory``
      - Amount of memory to allocate to each jacobian simulation (in MB).
+   * - ``SchedulerPartition``
+     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
    
 IMI preview
 ~~~~~~~~~~~
