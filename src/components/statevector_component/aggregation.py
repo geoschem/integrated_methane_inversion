@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
+import yaml
 import xarray as xr
 import numpy as np
+import pandas as pd
 import yaml
-import copy
 import sys
-import time
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
@@ -138,7 +139,7 @@ def find_cluster_pairs(
     """
     Description:
         Recursively generate best-guess at information content distributed
-        clustering pairs based on the maximum dofs allowed per cluster and 
+        clustering pairs based on the maximum dofs allowed per cluster and
         the desired number of state vector elements.
     arguments:
         sorted_sensitivities     [] : ndarray of sensitivities sorted in descending order
@@ -295,6 +296,41 @@ def generate_cluster_pairs(config, sensitivities):
     return sorted(cluster_pairs, key=lambda x: x[0])
 
 
+def read_coordinates(coord_var):
+    """
+    Description:
+        Read coordinates either from a list of lists or a csv file
+    arguments:
+        coord_var   [] or String : either a list of coordinates or a csv file
+    Returns:                [[]] : list of [lat, lon] coordinates of floats
+    """
+
+    # handle path to csv file containg coordinates
+    if isinstance(coord_var, str):
+        if not coord_var.endswith(".csv"):
+            raise Exception(
+                "ForcedNativeResolutionElements expects either a .csv file or a list of lists."
+            )
+        coords_df = pd.read_csv(coord_var)
+
+        # check if lat and lon columns are present
+        if not ("lat" in coords_df.columns and "lon" in coords_df.columns):
+            raise Exception(
+                "lat or lon columns are not present in the csv file."
+                + " csv file must have lat and lon in header using lowercase."
+            )
+        # select lat and lon columns and convert to list of lists
+        return coords_df[["lat", "lon"]].values.tolist()
+
+    # handle list of lists
+    elif isinstance(coord_var, list):
+        return coord_var
+    else:
+        # Variable is neither a string nor a list
+        print("Warning: No ForcedNativeResolutionElements specified or invalid format.")
+        return None
+
+
 def force_native_res_pixels(config, clusters, sensitivities):
     """
     Description:
@@ -307,7 +343,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    coords = config["ForcedNativeResolutionElements"]
+    coords = read_coordinates(config["ForcedNativeResolutionElements"])
 
     if coords is None:
         # No forced pixels inputted
@@ -323,7 +359,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
         binned_lat = np.floor(lat / lat_step) * lat_step
-        
+
         try:
             cluster_index = int(
                 clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
@@ -331,8 +367,10 @@ def force_native_res_pixels(config, clusters, sensitivities):
             # assign higher than 1 to ensure first assignment
             sensitivities[cluster_index - 1] = 1.1
         except:
-            print(f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
-                  + " because it is not in the specified region of interest.")
+            print(
+                f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
+                + " because it is not in the specified region of interest."
+            )
     return sensitivities
 
 

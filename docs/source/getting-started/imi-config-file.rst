@@ -66,6 +66,8 @@ State vector
      - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``5`` (~500 km).
    * - ``LandThreshold``
      - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file. Default value is ``0.25``.
+   * - ``OffshoreEmisThreshold``
+     - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^

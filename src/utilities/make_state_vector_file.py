@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 from sklearn.cluster import KMeans
+import yaml
 
 
 def get_nested_grid_bounds(land_cover_pth):
@@ -45,42 +46,47 @@ def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cov
 
 
 def make_state_vector_file(
-    land_cover_pth,
-    save_pth,
-    lat_min,
-    lat_max,
-    lon_min,
-    lon_max,
-    buffer_deg=5,
-    land_threshold=0.25,
-    k_buffer_clust=8,
+    config_path, land_cover_pth, hemco_diag_pth, save_pth,
 ):
     """
     Generates the state vector file for an analytical inversion.
 
     Arguments
+        config_path    [str]   : Path to configuration file
         land_cover_pth [str]   : Path to land cover file
+        hemco_diag_pth [str]   : Path to initial HEMCO diagnostics file
         save_pth       [str]   : Where to save the state vector file
-        lat_min        [float] : Minimum latitude
-        lat_max        [float] : Maximum latitude
-        lon_min        [float] : Minimum longitude
-        lon_max        [float] : Maximum longitude
-        buffer_deg     [float] : Width of k-means buffer area in degrees
-        land_threshold [float] : Minimum land fraction to include pixel as a state vector element
-        k_buffer_clust [int]   : Number of buffer clusters for k-means
 
     Returns
         ds_statevector []     : xarray dataset containing state vector field formatted for HEMCO
 
     Notes
-        - Land cover file looks like 'GEOSFP.20200101.CN.025x03125.NA.nc'
+        - Land cover file looks like 'GEOSFP.20200101.CN.025x03125.NA.nc' (or 0.5-deg equivalent)
+        - HEMCO diags file needs to be global, is used to include offshore emissions in state vector
+        - Land cover file and HEMCO diags file need to have the same grid resolution
     """
 
-    # Load land cover data
-    lc = xr.load_dataset(land_cover_pth)
+    # Get config
+    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    lat_min = config["LatMin"]
+    lat_max = config["LatMax"]
+    lon_min = config["LonMin"]
+    lon_max = config["LonMax"]
+    buffer_deg = config["BufferDeg"]
+    land_threshold = config["LandThreshold"]
+    emis_threshold = config["OffshoreEmisThreshold"]
+    k_buffer_clust = config["nBufferClusters"]
 
-    # Group fields together
+    # Load land cover data and HEMCO diagnostics
+    lc = xr.load_dataset(land_cover_pth)
+    hd = xr.load_dataset(hemco_diag_pth)
+
+    # Require hemco diags on same global grid as land cover map
+    hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
+
+    # Select / group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
+    hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
     # Check compatibility of region of interest with nesting window
     compatible = check_nested_grid_compatibility(
@@ -88,7 +94,7 @@ def make_state_vector_file(
     )
     if not compatible:
         raise ValueError(
-            "Region of interest not contained within selected NestedRegion; see config.yml)."
+            "Region of interest not contained within selected NestedRegion; see config.yml."
         )
 
     # Define bounds of inversion domain
@@ -103,34 +109,29 @@ def make_state_vector_file(
     lat_min_inv_domain = np.max([lat_min - buffer_deg, minLat_allowed])
     lat_max_inv_domain = np.min([lat_max + buffer_deg, maxLat_allowed])
 
-    # Subset inversion domain using land cover file
+    # Subset inversion domain for land cover and hemco diagnostics fields
     lc = lc.isel(lon=lc.lon >= lon_min_inv_domain, lat=lc.lat >= lat_min_inv_domain)
     lc = lc.isel(lon=lc.lon <= lon_max_inv_domain, lat=lc.lat <= lat_max_inv_domain)
+    hd = hd.isel(lon=hd.lon >= lon_min_inv_domain, lat=hd.lat >= lat_min_inv_domain)
+    hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
 
-    # Replace all values with NaN (to be filled later)
+    # Initialize state vector from land cover, replacing all values with NaN (to be filled later)
     statevector = lc.where(lc == -9999.0)
 
     # Set pixels in buffer areas to 0
     statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
     statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
-    # Also set pixels over water to 0
+    # Also set pixels over water to 0, unless there are offshore emissions
     if land_threshold:
-        # Where there is no land, replace with 0
-        land = lc.where(lc > land_threshold)
-        statevector.values[land.isnull().values] = 0
+        # Where there is neither land nor emissions, replace with 0
+        land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+        statevector.values[land.isnull().values] = -9999
 
     # Fill in the remaining NaNs with state vector element values
     statevector.values[statevector.isnull().values] = np.arange(
         1, statevector.isnull().sum() + 1
     )[::-1]
-
-    # Now set pixels over water to missing_value = -9999
-    if land_threshold:
-        # First, where there is no land, replace with NaN
-        statevector = statevector.where(lc > land_threshold)
-        # Fill with missing_value = -9999
-        statevector.values[statevector.isnull().values] = -9999
 
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
@@ -175,7 +176,7 @@ def make_state_vector_file(
     ds_statevector.StateVector.attrs["_FillValue"] = -9999
 
     # Save
-    if save_pth:
+    if save_pth is not None:
         print("Saving file {}".format(save_pth))
         ds_statevector.to_netcdf(save_pth)
 
@@ -185,24 +186,13 @@ def make_state_vector_file(
 if __name__ == "__main__":
     import sys
 
-    land_cover_pth = sys.argv[1]
-    save_pth = sys.argv[2]
-    lat_min = float(sys.argv[3])
-    lat_max = float(sys.argv[4])
-    lon_min = float(sys.argv[5])
-    lon_max = float(sys.argv[6])
-    buffer_deg = float(sys.argv[7])
-    land_threshold = float(sys.argv[8])
-    k_buffer_clust = int(sys.argv[9])
-
+    config_path = sys.argv[1]
+    land_cover_pth = sys.argv[2]
+    hemco_diag_pth = sys.argv[3]
+    save_pth = sys.argv[4]
     make_state_vector_file(
-        land_cover_pth,
+        config_path, 
+        land_cover_pth, 
+        hemco_diag_pth, 
         save_pth,
-        lat_min,
-        lat_max,
-        lon_min,
-        lon_max,
-        buffer_deg,
-        land_threshold,
-        k_buffer_clust,
     )
