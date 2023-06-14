@@ -75,6 +75,9 @@ if "$SafeMode"; then
         printf "\nERROR: Run directories in ${RunDirs}/"
         printf "\n   already exist. Please change RunName or change the"
         printf "\n   Setup* options to false in the IMI config file.\n"
+        printf "\n  To proceed, and overwrite existing run directories, set"
+        printf "\n  SafeMode in the config file to false.\n" 
+        printf "\nIMI $RunName Aborted\n"
         printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi
