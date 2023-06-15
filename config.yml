@@ -7,12 +7,6 @@ isAWS: true
 UseSlurm: true
 SafeMode: true
 
-## Kalman filter options
-KalmanMode: true
-UpdateFreqDays: 7
-NudgeFactor: 0.1
-FirstPeriod: 1
-
 ## Period of interest
 StartDate: 20180501
 EndDate: 20180601
@@ -44,6 +38,11 @@ NestedGrid: true
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
 NestedRegion: "NA"
 
+## Kalman filter options
+KalmanMode: true
+UpdateFreqDays: 7
+NudgeFactor: 0.1
+
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
@@ -69,7 +68,6 @@ Gamma: 1.0
 
 ## Precomputed Jacobian
 PrecomputedJacobian: false
-ReferenceRunDir: "path/to/reference/imi/output/dir"
 
 ## Grid
 ##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"

@@ -50,6 +50,10 @@ run_kf() {
         PeriodsFile="${RunDirs}/periods.csv"
         nPeriods=$(($(wc -l < ${PeriodsFile}) - 1))
 
+        # by default, start with period 1
+        if [[ "x${FirstPeriod}" == "x" ]]; then
+            FirstPeriod=1
+        fi
         # run inversion for each period
         for ((i=FirstPeriod;i<=nPeriods;i++)); do
             run_period
