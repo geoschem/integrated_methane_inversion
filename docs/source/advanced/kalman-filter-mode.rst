@@ -64,12 +64,12 @@ FirstPeriod
 -----------
 The ``FirstPeriod`` config variable allows a user to select which chunked interval they would like 
 the Kalman Filter to start on. This is most useful if you have a number of periods succeed eg. 5 out 
-of 8 inversion periods succeed, and you would like to start the Kalman Filter on the 6th period. The 
+of 8 inversion intervals succeed, and you would like to start the Kalman Filter on the 6th period. The 
 ``FirstPeriod`` variable is set to 1 by default, which means the Kalman Filter will start on the 
-first inversion period. If you would like to start the Kalman Filter on the 6th period, you would set 
+first inversion time interval. If you would like to start the Kalman Filter on the 6th period, you would set 
 ``FirstPeriod`` to 6. The ``FirstPeriod`` variable is a convenience variable, and is not required to 
 run the Kalman Filter mode. If you do not specify a ``FirstPeriod``, the Kalman Filter will start on 
-the first inversion period by default.
+the first inversion time interval by default.
 
 Running the Kalman Filter mode
 ------------------------------
@@ -82,9 +82,14 @@ message if these variables are not toggled in tandem.
 
 Visualizing the results of the Kalman Filter
 --------------------------------------------
-The results of each chunked inversion interval can be visualized using the standard visualization
+The results of each chunked inversion time interval can be visualized using the standard visualization
 notebook located in ``<imi-run-dir>/kf_inversions/period<period_number>/visualization_notebook.ipynb``. 
 
 Additionally, we include another visualization notebook that can be used to visualize the results of
 the time series of varying emissions for the entire inversion period. This notebook is located in
 ``<imi-run-dir>/kf_inversions/kf_notebook.ipynb``.
+
+.. image:: img/variability_visualization.png
+    :width: 500px
+    :align: center
+    :alt: Kalman Filter Variability Visualization
