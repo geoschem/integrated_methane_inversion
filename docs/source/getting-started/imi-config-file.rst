@@ -117,6 +117,8 @@ Inversion
      - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``ReferenceRunDir``
+     - Path to IMI run directory with previously run jacobian simulations
 
 Grid
 ~~~~
