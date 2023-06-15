@@ -132,6 +132,7 @@ SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-6:00"
+SchedulerPartition: "debug"
 
 ##--------------------------------------------------------------------
 ## Settings for running on a local cluster
