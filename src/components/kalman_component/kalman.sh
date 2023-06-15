@@ -13,7 +13,10 @@ setup_kf() {
     # Create a parent directory for the Kalman filter inversions
     # Include a link to the state vector file for use with run_inversion.sh
     mkdir -p ${RunDirs}/kf_inversions
-    ln -sf $StateVectorFile $RunDirs/kf_inversions/StateVector.nc
+    ln -sf $StateVectorFile ${RunDirs}/kf_inversions/StateVector.nc
+
+    # copy kf notebook to kf_inversions directory
+    cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
 
     # Define Kalman filter update periods
     python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
