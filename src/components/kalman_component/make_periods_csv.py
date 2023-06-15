@@ -21,13 +21,29 @@ def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
     starts = []
     ends = []
 
-    # Use while loop to populate starts and ends
     dt = datetime.datetime.strptime(first_day, "%Y%m%d")
     dt_max = datetime.datetime.strptime(last_day, "%Y%m%d")
+    delta = datetime.timedelta(days=stepsize_days)
+    remainder = (dt - dt_max).days % stepsize_days
+
+    # Validate entire period is divisible by step size
+    if dt + delta > dt_max:
+        raise Exception(
+            "Stepsize exceeds the end date for first period. Please reduce UpdateFreqDays."
+        )
+    elif remainder != 0:
+        raise Exception(
+            "Number of days between start date and end"
+            + f" date is not divisible by UpdateFreqDays: {stepsize_days}."
+            + f" \nUpdate end date to have +{remainder} days"
+            + f" or reduce by -{stepsize_days - remainder} days."
+        )
+
+    # Use while loop to populate starts and ends
     while dt < dt_max:
         dt_start_str = str(dt)[0:10].replace("-", "")
         dt_start_int = int(dt_start_str)
-        delta = datetime.timedelta(days=int(stepsize_days))
+        delta = datetime.timedelta(days=stepsize_days)
         dt += delta
         dt_end_str = str(dt)[0:10].replace("-", "")
         dt_end_int = int(dt_end_str)
@@ -41,7 +57,6 @@ def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
 
 
 if __name__ == "__main__":
-
     # Inputs
     first_day = sys.argv[1]
     last_day = sys.argv[2]
@@ -49,4 +64,4 @@ if __name__ == "__main__":
     save_dir = sys.argv[4]
 
     # Run the script
-    make_periods_csv(first_day, last_day, stepsize_days, save_dir)
+    make_periods_csv(first_day, last_day, int(stepsize_days), save_dir)
