@@ -84,22 +84,32 @@ config_required = [
     "JacobianMemory",
     "JacobianCPUs",
     "RequestedTime",
+    "KalmanMode",
 ]
 
-clustering_vars = [
+# dict of variables that are required if another variable is set to true 
+# For example UpdateFreqDays is only required if KalmanMode is set to true
+conditional_dict = {}
+conditional_dict["KalmanMode"] = [
+    "UpdateFreqDays",
+    "NudgeFactor",
+]
+conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
 ]
+conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 
 if __name__ == "__main__":
     config_path = sys.argv[1]
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     inputted_config = config.keys()
 
-    # only require clustering vars if reduced dimension state vector is true
-    if config["ReducedDimensionStateVector"]:
-        config_required = config_required + clustering_vars
-        
+    # require additional variables if conditional dict key is set to true
+    for key in conditional_dict.keys():
+        if config[key]:
+            config_required = config_required + conditional_dict[key]
+
     # update required vars based on system
     if config["isAWS"]:
         required_vars = config_required + config_required_aws
