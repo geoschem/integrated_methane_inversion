@@ -46,8 +46,12 @@ Example Kalman filter config variables:
       
 UpdateFreqDays
 --------------
-The update frequency (``UpdateFreqDays``) is the number of days to for each chunked inversion interval 
-when running the kalman filter.
+The update frequency (``UpdateFreqDays``) is the number of days to for each chunked inversion time 
+interval when running the kalman filter. Selecting a shorter update frequency will result in more 
+inversion chunks and a longer inversion run time. However, if the observation density per update 
+frequency interval you choose is too sparse, the inversion will not constrain emissions effectively. 
+Thus, the optimal update frequency will depend on the region of interest and the observation density.
+Typically, areas with dense TROPOMI coverage can be updated on a weekly basis.
 
 The NudgeFactor
 ---------------
