@@ -75,7 +75,11 @@ reduce_dimension() {
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
         chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi

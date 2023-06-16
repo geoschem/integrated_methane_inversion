@@ -73,7 +73,11 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W run_inversion.sh $FirstSimSwitch; wait;
+    sbatch --mem $SimulationMemory \
+           -c $SimulationCPUs \
+           -t $RequestedTime \
+           -p $SchedulerPartition \
+           -W run_inversion.sh $FirstSimSwitch; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
