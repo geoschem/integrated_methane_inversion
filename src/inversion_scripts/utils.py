@@ -1,5 +1,7 @@
 import numpy as np
 from shapely.geometry.polygon import Polygon
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 from pyproj import Geod
 import cartopy
 import cartopy.crs as ccrs
@@ -184,6 +186,51 @@ def plot_field(
         ax.set_title(title)
 
 
+def plot_time_series(
+    x_data,
+    y_data,
+    line_labels,
+    title,
+    y_label,
+    x_label="Date",
+    fig_size=(15, 6),
+    x_rotation=45,
+    y_sci_notation=True,
+):
+    """
+    Function to plot inversion time series results.
+
+    Arguments
+        x_data         : x data datetimes to plot
+        y_data         : list of y data to plot
+        line_labels    : line label string for each y data
+        title          : plot title
+        y_label        : label for y axis
+        x_label        : label for x axis
+        fig_size       : tuple for figure size
+        x_rotation     : rotation of x axis labels
+        y_sci_notation : whether to use scientific notation for y axis
+    """
+    assert len(y_data) == len(line_labels)
+    plt.clf()
+    plt.figure(figsize=fig_size)
+    for i in range(len(y_data)):
+        plt.plot(x_data, y_data[i], label=line_labels[i])
+    # use a date string for the x axis locations
+    plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator())
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+    # tilt the x axis labels
+    plt.xticks(rotation=x_rotation)
+    # scientific notation for y axis
+    if y_sci_notation:
+        plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.legend()
+    plt.show()
+
+
 def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
     """
     Description:
@@ -222,4 +269,3 @@ def calculate_area_in_km(coordinate_list):
     poly_area, _ = geod.geometry_area_perimeter(polygon)
 
     return abs(poly_area) * 1e-6
-    
