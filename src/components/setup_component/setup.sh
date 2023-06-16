@@ -60,9 +60,10 @@ setup_imi() {
     ##=======================================================================
     ## Download Boundary Conditions files if requested
     ##=======================================================================
+    fullBCpath="${BCpath}/${BCversion}"
     if "$BCdryrun"; then
 
-        mkdir -p ${BCpath}
+        mkdir -p ${fullBCpath}
 
         if "$DoSpinup"; then
             START=${SpinupStart}
@@ -70,7 +71,7 @@ setup_imi() {
             START=${StartDate}
         fi
         printf "\nDownloading boundary condition data for $START to $EndDate\n"
-        python src/utilities/download_bc.py ${START} ${EndDate} ${BCpath}
+        python src/utilities/download_bc.py ${START} ${EndDate} ${fullBCpath} ${BCversion}
 
     fi
 
@@ -146,24 +147,15 @@ setup_imi() {
         cp $StateVectorFile ${RunDirs}/StateVector.nc
     fi
 
-    if ! "$isAWS"; then
-        # Load environment with NCO
-        source ${NCOEnv}
-    fi
-
     # Determine number of elements in state vector file
-    ncmax() { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
-    ncmin() { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 

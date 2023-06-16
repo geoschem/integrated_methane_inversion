@@ -6,7 +6,7 @@ local cluster available to you, you may choose to run the IMI
 there. This option requires some manual changes and is therefore only
 recommended for advanced users.
 
-You must first ensure you have the proper `hardware <https://geos-chem.readthedocs.io/en/latest/starting/hardware-requirements.html>`__ and `software <https://geos-chem.readthedocs.io/en/latest/starting/software-requirements.html>`__ requirements for running GEOS-Chem.
+You must first ensure you have the proper `hardware <https://geos-chem.readthedocs.io/en/latest/getting-started/system-req-hard.html>`__ and `software <https://geos-chem.readthedocs.io/en/latest/getting-started/system-req-soft.html>`__ requirements for running GEOS-Chem.
 
 When logged onto your local cluster, navigate to the path where you want to download the IMI repository and type the following command:
 

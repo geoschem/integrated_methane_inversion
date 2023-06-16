@@ -96,7 +96,11 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W ${RunName}_Posterior.run; wait;
+    sbatch --mem $SimulationMemory \
+           -c $SimulationCPUs \
+           -t $RequestedTime \
+           -p $SchedulerPartition \
+           -W ${RunName}_Posterior.run; wait;
     
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
@@ -122,20 +126,12 @@ run_posterior() {
     python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
-	if ! "$isAWS"; then
-    	# Load environment with NCO
-    	source ${NCOEnv}
-	fi
-
     # Sample GEOS-Chem atmosphere with TROPOMI
-    function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     FetchTROPOMI="False"
     isPost="True"
 

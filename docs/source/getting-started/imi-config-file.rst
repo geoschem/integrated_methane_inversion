@@ -66,6 +66,8 @@ State vector
      - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``5`` (~500 km).
    * - ``LandThreshold``
      - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file. Default value is ``0.25``.
+   * - ``OffshoreEmisThreshold``
+     - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
@@ -77,8 +79,10 @@ For more information on using the clustering options take a look at the `cluster
 
    * - ``ReducedDimensionStateVector``
      - Boolean for whether to reduce the dimension of the statevector from the native resolution version by clustering elements. If ``false`` the native state vector is used with no dimension reduction.
-   * - ``ClusteringPairs``
-     - Pairing information used for statevector dimension. For example, if the pairings [1, 15] and [2, 24] are given, then the resultant state vector will have 15 native resolution gridcell elements and 24 2-gridcell elements. Any remaining native resolution grid cells are aggregated into a single element.
+   * - ``ClusteringMethod``
+     - Clustering method to use for state vector reduction. (eg. "kmeans" or "mini-batch-kmeans")
+   * - ``NumberOfElements``
+     - Number of elements in the reduced dimension state vector. This is only used if ``ReducedDimensionStateVector`` is ``true``.
    * - ``ForcedNativeResolutionElements``
      - yaml list of of coordinates that you would like to force as native resolution state vector elements [lat, lon]. This is useful for ensuring hotspot locations are at the highest available resolution. 
 
@@ -182,6 +186,8 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Number of cores to allocate to each jacobian simulation (run in parallel).
    * - ``JacobianMemory``
      - Amount of memory to allocate to each jacobian simulation (in MB).
+   * - ``SchedulerPartition``
+     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
    
 IMI preview
 ~~~~~~~~~~~
@@ -247,6 +253,8 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Path to initial GEOS-Chem restart file plus file prefix (e.g. ``GEOSChem.BoundaryConditions.`` or ``GEOSChem.Restart.``). The date string and file extension (``YYYYMMDD_0000z.nc4``) will be appended. This file will be used to initialize the preview simulation.
    * - ``BCpath``
      - Path to GEOS-Chem boundary condition files (for nested grid simulations).
+   * - ``BCversion``
+     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2023-04``). Note: this will be appended onto BCpath as a subdirectory.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``SpinupDryRun``

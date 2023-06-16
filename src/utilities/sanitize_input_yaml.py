@@ -33,10 +33,11 @@ config_required = [
     "NestedGrid",
     "NestedRegion",
     "CreateAutomaticRectilinearStateVectorFile",
-    "ReducedDimensionStateVector",
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
+    "OffshoreEmisThreshold",
+    "ReducedDimensionStateVector",
     "StateVectorFile",
     "ShapeFile",
     "PriorError",
@@ -72,6 +73,7 @@ config_required = [
     "RestartFilePrefix",
     "RestartFilePreviewPrefix",
     "BCpath",
+    "BCversion",
     "PreviewDryRun",
     "SpinupDryrun",
     "ProductionDryRun",
@@ -82,6 +84,12 @@ config_required = [
     "JacobianMemory",
     "JacobianCPUs",
     "RequestedTime",
+    "SchedulerPartition",
+]
+
+clustering_vars = [
+    "ClusteringMethod",
+    "NumberOfElements",
 ]
 
 if __name__ == "__main__":
@@ -89,6 +97,10 @@ if __name__ == "__main__":
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     inputted_config = config.keys()
 
+    # only require clustering vars if reduced dimension state vector is true
+    if config["ReducedDimensionStateVector"]:
+        config_required = config_required + clustering_vars
+        
     # update required vars based on system
     if config["isAWS"]:
         required_vars = config_required + config_required_aws

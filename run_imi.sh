@@ -122,6 +122,9 @@ else
     fi
 fi
 
+# Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
+python src/utilities/test_TROPOMI_dir.py $tropomiCache
+
 ##=======================================================================
 ##  Run the setup script
 ##=======================================================================

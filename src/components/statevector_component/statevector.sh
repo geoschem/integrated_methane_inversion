@@ -12,11 +12,14 @@ create_statevector() {
     
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridRes}.20190101.nc"
 
     if "$isAWS"; then
-	# Download land cover file
+	# Download land cover and Hemco diagnostics files
 	s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${metUC}.${constYr}0101.CN.${gridRes}.${NestedRegion}.${LandCoverFileExtension}"
 	aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
+    s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridRes}.20190101.nc"
+    aws s3 cp --request-payer=requester ${s3_hd_path} ${HemcoDiagFile}
     fi
 
     # Output path and filename for state vector file
@@ -29,8 +32,11 @@ create_statevector() {
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
+    # Get config path
+    config_path=${InversionPath}/${ConfigFile}
+
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file.py $LandCoverFile $StateVectorFName $LatMin $LatMax $LonMin $LonMax $BufferDeg $LandThreshold $nBufferClusters
+    python make_state_vector_file.py $config_path $LandCoverFile $HemcoDiagFile $StateVectorFName
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 }
@@ -67,16 +73,19 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
+    export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/
+    export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts
     if "$UseSlurm"; then
-        export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/
-        export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts
         chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory -c $SimulationCPUs -t $RequestedTime -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 }
