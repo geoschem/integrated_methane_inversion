@@ -84,6 +84,7 @@ config_required = [
     "JacobianMemory",
     "JacobianCPUs",
     "RequestedTime",
+    "SchedulerPartition",
 ]
 
 clustering_vars = [
