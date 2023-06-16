@@ -193,6 +193,7 @@ def plot_time_series(
     title,
     y_label,
     x_label="Date",
+    DOFS=None,
     fig_size=(15, 6),
     x_rotation=45,
     y_sci_notation=True,
@@ -207,15 +208,39 @@ def plot_time_series(
         title          : plot title
         y_label        : label for y axis
         x_label        : label for x axis
+        DOFS           : DOFs for each interval
         fig_size       : tuple for figure size
         x_rotation     : rotation of x axis labels
         y_sci_notation : whether to use scientific notation for y axis
     """
     assert len(y_data) == len(line_labels)
     plt.clf()
-    plt.figure(figsize=fig_size)
+    # Set the figure size
+    _, ax1 = plt.subplots(figsize=fig_size)
+
+    # Plot emissions time series
     for i in range(len(y_data)):
-        plt.plot(x_data, y_data[i], label=line_labels[i])
+        # only use line for moving averages
+        if "moving" in line_labels[i].lower():
+            ax1.plot(x_data, y_data[i], label=line_labels[i])
+        else:
+            ax1.plot(
+                x_data, y_data[i], linestyle="None", marker="o", label=line_labels[i]
+            )
+
+    lines = ax1.get_lines()
+
+    # Plot DOFS time series using red
+    if DOFS is not None:
+        # Create a twin y-axis
+        ax2 = ax1.twinx()
+        ax2.plot(x_data, DOFS, linestyle="None", marker="o", color="red", label="DOFS")
+        ax2.set_ylabel("DOFS", color="red")
+        ax2.tick_params(axis="y", labelcolor="red")
+        ax2.set_ylim(0, 1)
+        # add DOFS line to legend
+        lines = ax1.get_lines() + ax2.get_lines()
+
     # use a date string for the x axis locations
     plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator())
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
@@ -224,10 +249,10 @@ def plot_time_series(
     # scientific notation for y axis
     if y_sci_notation:
         plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
+    ax1.set_xlabel(x_label)
+    ax1.set_ylabel(y_label)
     plt.title(title)
-    plt.legend()
+    plt.legend(lines, [line.get_label() for line in lines])
     plt.show()
 
 
