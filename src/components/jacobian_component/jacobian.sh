@@ -155,7 +155,6 @@ run_jacobian() {
         if "$KalmanMode"; then
             precomputedSensiCache=${ReferenceRunDir}/kf_inversions/period${i}/data_sensitivities
         else
-            # Need this alternative when run_imi.sh and run_kf.sh get combined... TODO
             precomputedSensiCache=${ReferenceRunDir}/inversion/data_sensitivities
         fi
         # mv rather than rm, to prevent accidental deletion of original data_sensitivities/ ?

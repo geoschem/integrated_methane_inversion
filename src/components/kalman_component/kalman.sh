@@ -143,7 +143,7 @@ run_period() {
     cd ${InversionPath}
 
     # Delete unneeded daily restart files from Jacobian and posterior directories
-    # python ${InversionPath}/src/components/kalman_component/cull_restarts.py $JacobianRunsDir $PosteriorRunDir $StartDate_i $EndDate_i
+    python ${InversionPath}/src/components/kalman_component/cull_restarts.py $JacobianRunsDir $PosteriorRunDir $StartDate_i $EndDate_i
 
     # Move to next time step
     print_stats

@@ -78,7 +78,6 @@ if "$SafeMode"; then
         printf "\n  To proceed, and overwrite existing run directories, set"
         printf "\n  SafeMode in the config file to false.\n" 
         printf "\nIMI $RunName Aborted\n"
-        printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi
 
