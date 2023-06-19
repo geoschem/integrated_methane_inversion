@@ -35,6 +35,9 @@ run_preview() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
+    # remove old error status file if present
+    rm -f .error_status_file.txt
+    
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ${RunTemplate}/gcclassic .
@@ -109,13 +112,8 @@ run_preview() {
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
-    # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
-    eval $(parse_yaml ${preview_dir}/preview_diagnostics.txt) 
-    if [ 1 -eq "$(echo "${expectedDOFS} < ${DOFSThreshold}" | bc)" ]; then  
-        printf "\nExpected DOFS = ${expectedDOFS} are less than DOFSThreshold = ${DOFSThreshold}. Exiting.\n"
-        printf "Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n"
-        exit 0
-    fi
+    # check if sbatch commands exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     # Navigate back to top-level directory
     cd ..
