@@ -80,8 +80,8 @@ def apply_average_tropomi_operator(
     # Read GEOS_Chem data for the dates of interest
     all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
 
-    # Initialize array with n_gridcells rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
-    obs_GC = np.zeros([n_gridcells, 6], dtype=np.float32)
+    # Initialize array with n_gridcells rows and 5 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
+    obs_GC = np.zeros([n_gridcells, 5], dtype=np.float32)
     obs_GC.fill(np.nan)
 
     # For each gridcell dict with tropomi obs:
