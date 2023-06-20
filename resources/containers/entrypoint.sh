@@ -50,24 +50,22 @@ export OMP_STACKSIZE=500m
 
 cd /home/al2/integrated_methane_inversion
 
-# remove default config file and replace with docker config file
-rm config.yml
-mv resources/containers/container_config.yml config.yml
-
-# override config file with contents of env variable IMI_CONFIG_CONTENTS
-IMI_CONFIG_CONTENTS="$(cat /path/to/config)"
-if [[ "x${IMI_CONFIG_CONTENTS}" != "x" ]]; then
-	echo "INFO: Replacing IMI config file with the contents of IMI_CONFIG_CONTENTS env variable."
-	echo "$IMI_CONFIG_CONTENTS" > config.yml
+if [[ "x${IMI_CONFIG_PATH}" != "x" ]]; then
+	config_file=$IMI_CONFIG_PATH
+else
+	config_file="config.yml"
+	# remove default config file and replace with docker config file
+	rm config.yml
+	mv resources/containers/container_config.yml config.yml
 fi
 
 # override specific config file vars with env variables of 
 # the syntax IMI_<config-variable>
 chmod +x src/utilities/override_config_variables.py
-python src/utilities/override_config_variables.py config.yml config.yml
+python src/utilities/override_config_variables.py $config_file $config_file
 
 # sbatch -W --mem 2000 -c 1 run_imi.sh resources/containers/container_config.yml; wait;
-./run_imi.sh | tee imi_output.log
+./run_imi.sh $config_file | tee imi_output.log
 
 # Fix issue when switching instance types where node claims to be drained
 # scontrol update nodename=$HOSTNAME state=idle

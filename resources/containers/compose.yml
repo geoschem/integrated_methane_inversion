@@ -6,11 +6,14 @@ services:
   imi:
     image: imi-docker-image:latest
     volumes:
-      - /home/ec2-user/imi_output:/home/al2/imi_output_dir # mount output directory
-      - /home/ec2-user/integrated_methane_inversion/resources/containers/container_config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
-    # uncomment if using environment variables
-    # environment:
-      ## necessary aws env variables
-      # - AWS_ACCESS_KEY_ID=your_access_key_id
-      # - AWS_SECRET_ACCESS_KEY=your_secret_access_key
-      # - AWS_DEFAULT_REGION=us-east-1
+    # comment out any volume mounts you do not need for your system
+      - /local/container/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
+      - /local/input/data:/home/al2/ExtData # mount input data directory
+      - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
+    environment:
+    # comment out any environment vars you do not need for your system
+      - IMI_CONFIG_PATH=/home/al2/integrated_methane_inversion/config.yml # should point to corresponding volume path above
+      ## ***** DO NOT push aws credentials to any public repositories *****
+      - AWS_ACCESS_KEY_ID=your_access_key_id
+      - AWS_SECRET_ACCESS_KEY=your_secret_access_key
+      - AWS_DEFAULT_REGION=us-east-1

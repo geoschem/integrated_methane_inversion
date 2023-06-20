@@ -22,6 +22,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
         
     print(f"Overriding config variables in {config_path} with environment variables.")
+    override_count = 0
     for key in config.keys():
         env_var = f"IMI_{key}"
         # check if environment variable existss
@@ -30,8 +31,13 @@ if __name__ == "__main__":
             updated_value = os.environ[env_var].strip("\'")
             updated_value = os.environ[env_var].strip('\"')
             config[key] = updated_value
+            override_count += 1
             
     # write overwritten output config file to desired path
-    print(f"Writing output config file to {config_ouput_path}")
-    with open(config_ouput_path, "w") as f:
-        yaml.safe_dump(config, f)
+    if override_count > 0:
+        print(f"Writing output config file to {config_ouput_path}")
+        with open(config_ouput_path, "w") as f:
+            yaml.safe_dump(config, f)
+    else:
+        print(f"No config variables overridden.")
+        
