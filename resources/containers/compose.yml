@@ -12,7 +12,7 @@ services:
       - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
     environment:
     # comment out any environment vars you do not need for your system
-      - IMI_CONFIG_PATH=/home/al2/integrated_methane_inversion/config.yml # should point to corresponding volume path above
+      - IMI_CONFIG_PATH=config.yml # path starts from /home/al2/integrated_methane_inversions
       ## ***** DO NOT push aws credentials to any public repositories *****
       - AWS_ACCESS_KEY_ID=your_access_key_id
       - AWS_SECRET_ACCESS_KEY=your_secret_access_key
