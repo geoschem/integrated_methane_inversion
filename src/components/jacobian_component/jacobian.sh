@@ -116,15 +116,15 @@ setup_jacobian() {
 		sed -i "s/$OLD/$NEW/g" geoschem_config.yml
 	fi
 	if "$PLANEFLIGHT"; then
-	mkdir -p Plane_Logs
-	sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
+		mkdir -p Plane_Logs
+		sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
 	
-	OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
-	NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-	OLD="output_file: plane.log.YYYYMMDD"
-	NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+		OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
+		NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
+		sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+		OLD="output_file: plane.log.YYYYMMDD"
+		NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
+		sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     	fi
     fi
 
