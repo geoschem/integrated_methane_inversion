@@ -15,7 +15,7 @@ Note: this image is not currently publicly available
 `$ docker pull 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest`
 
 ## Setting up the compose.yml file
-The IMI needs access to both input data and personalized configuration variables for running the inversion for your desired region and period of interest. In order to supply these settings we use a docker [compose.yml](https://docs.docker.com/compose/compose-file/03-compose-file/) file. The compose file allows you to input environment variables and mount files/directories from your local system into the container. Once you
+The IMI needs access to both input data and personalized configuration variables for running the inversion for your desired region and period of interest. In order to supply these settings we use a docker [compose.yml](https://docs.docker.com/compose/compose-file/03-compose-file/) file. The compose file allows you to input environment variables and mount files/directories from your local system into the container.
 
 
 ### IMI input data
@@ -43,21 +43,7 @@ In order to access the files from the inversion it is best to mount a volume fro
 ```
 volumes:
   - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
-  - /local/container/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
 ```
-
-Additionally, in order to access the input data needed to run the IMI, you will need to give it access
-
-To do so create a volume with:
-`docker volume create imi_output_dir`
-Then run with the mounted volume:
-```
-$ docker run --platform=linux/amd64 --mount source=imi_output_dir,target=/home/al2/imi_output_dir imi-docker-image:latest
-```
-
-To view the run directory you can find the path to your volume on the host system by running:
-`docker volume inspect imi_output_dir` and looking in the corresponding `MountPoint` directory.
-
 ### Updating the config.yml file
 
 There are two mechanisms to update the config.yml;

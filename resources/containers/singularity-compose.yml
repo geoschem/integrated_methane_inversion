@@ -1,8 +1,11 @@
-# IMI Docker Compose File
+# IMI Singularity Compose File
 # This file is used to run the IMI Docker image
 # and define important parameters for the container
 # see README.md for more information
-services:
+# This files is defined using the syntax for singularity-compose
+# which is an HPC-friendly version of docker-compose
+version: "3.8"
+instances:
   imi:
     image: 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:<imi-version>
     volumes:
