@@ -57,7 +57,7 @@ def apply_average_tropomi_operator(
     """
 
     # Read TROPOMI data
-    assert isinstance(BlendedTROPOMIblended, bool), "BlendedTROPOMI is not a bool"
+    assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
     if BlendedTROPOMI:
         TROPOMI = read_blended(filename)
     else:
