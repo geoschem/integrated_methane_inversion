@@ -98,6 +98,11 @@ setup_jacobian() {
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
+    ### Turn on observation operators if requested, only for base run
+    if [ $x -eq 0 ]; then
+    	activate_observations
+    fi
+
     ### Perform dry run if requested, only for base run
     if [ $x -eq 0 ]; then
         if "$ProductionDryRun"; then

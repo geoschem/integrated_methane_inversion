@@ -62,6 +62,9 @@ setup_posterior() {
                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
     fi
 
+    ### Turn on observation operators if requested, for posterior run
+    activate_observations
+
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
