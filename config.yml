@@ -12,6 +12,9 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
+## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
+BlendedTROPOMI: false
+
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile

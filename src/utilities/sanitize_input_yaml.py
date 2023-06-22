@@ -26,6 +26,7 @@ config_required = [
     "StartDate",
     "EndDate",
     "SpinupMonths",
+    "BlendedTROPOMI",
     "LonMin",
     "LonMax",
     "LatMin",
