@@ -34,7 +34,7 @@ def apply_operator(operator, params):
     if operator == "TROPOMI_average":
         return apply_average_tropomi_operator(
             params["filename"],
-            params["blended"],
+            params["BlendedTROPOMI"],
             params["n_elements"],
             params["gc_startdate"],
             params["gc_enddate"],
@@ -47,7 +47,7 @@ def apply_operator(operator, params):
     elif operator == "TROPOMI":
         return apply_tropomi_operator(
             params["filename"],
-            params["blended"],
+            params["BlendedTROPOMI"],
             params["n_elements"],
             params["gc_startdate"],
             params["gc_enddate"],
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     latmax = float(sys.argv[6])
     n_elements = int(sys.argv[7])
     tropomi_cache = sys.argv[8]
-    blended = sys.argv[9] == "true"
+    BlendedTROPOMI = sys.argv[9] == "true"
     isPost = sys.argv[10]
 
     # Reformat start and end days for datetime in configuration
@@ -133,7 +133,7 @@ if __name__ == "__main__":
                 "TROPOMI_average",
                 {
                     "filename": filename,
-                    "blended": blended,
+                    "BlendedTROPOMI": BlendedTROPOMI,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,
@@ -150,7 +150,7 @@ if __name__ == "__main__":
                 "TROPOMI",
                 {
                     "filename": filename,
-                    "blended": blended,
+                    "BlendedTROPOMI": BlendedTROPOMI,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,

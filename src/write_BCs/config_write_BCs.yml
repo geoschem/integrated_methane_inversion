@@ -10,7 +10,7 @@ imidir: "/n/home06/nbalasus/IMI_BCs/integrated_methane_inversion"
 workdir: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs"
 
 ## Whether to use Blended data and location of the TROPOMI data
-Blended: false
+BlendedTROPOMI: false
 tropomi_cache: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
 ## Conda environment to use, GEOS-Chem environment to use, and partitions to run on

@@ -35,7 +35,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-def get_TROPOMI_data(file_path, blended, xlim, ylim, startdate_np64, enddate_np64):
+def get_TROPOMI_data(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64):
     """
     Returns a dict with the lat, lon, xch4, and albedo_swir observations
     extracted from the given tropomi file. Filters are applied to remove
@@ -43,7 +43,7 @@ def get_TROPOMI_data(file_path, blended, xlim, ylim, startdate_np64, enddate_np6
     Args:
         file_path : string
             path to the tropomi file
-        blended : bool
+        BlendedTROPOMI : bool
             if True, use blended TROPOMI+GOSAT data
         xlim: list
             longitudinal bounds for region of interest
@@ -61,8 +61,8 @@ def get_TROPOMI_data(file_path, blended, xlim, ylim, startdate_np64, enddate_np6
     tropomi_data = {"lat": [], "lon": [], "xch4": [], "swir_albedo": []}
 
     # Load the TROPOMI data
-    assert isinstance(blended, bool), "blended is not a bool"
-    if blended:
+    assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
+    if Blended:
         TROPOMI = read_blended(file_path)
     else:
         TROPOMI = read_tropomi(file_path)
@@ -70,7 +70,7 @@ def get_TROPOMI_data(file_path, blended, xlim, ylim, startdate_np64, enddate_np6
         print(f"Skipping {file_path} due to error")
         return TROPOMI
 
-    if blended:
+    if BlendedTROPOMI:
         # Only going to consider data within lat/lon/time bounds and without problematic coastal pixels
         sat_ind = filter_blended(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
     else:
@@ -420,7 +420,7 @@ def estimate_averaging_kernel(
     tropomi_paths.sort()
 
     # Use blended TROPOMI+GOSAT data or operational TROPOMI data?
-    blended = config["Blended"]
+    BlendedTROPOMI = config["BlendedTROPOMI"]
 
     # Open tropomi files and filter data
     lat = []
@@ -430,7 +430,7 @@ def estimate_averaging_kernel(
 
     # read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
-        delayed(get_TROPOMI_data)(file_path, blended, xlim, ylim, startdate_np64, enddate_np64)
+        delayed(get_TROPOMI_data)(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64)
         for file_path in tropomi_paths
     )
     # remove any problematic observation dicts (eg. corrupted data file)
