@@ -62,7 +62,7 @@ def get_TROPOMI_data(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, endd
 
     # Load the TROPOMI data
     assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
-    if Blended:
+    if BlendedTROPOMI:
         TROPOMI = read_blended(file_path)
     else:
         TROPOMI = read_tropomi(file_path)
