@@ -127,7 +127,7 @@ if ! "$PrecomputedJacobian"; then
 
     printf "Calling jacobian.py\n"
     isPost="False"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $Blended $isPost; wait
     printf " DONE -- jacobian.py\n\n"
 
 fi

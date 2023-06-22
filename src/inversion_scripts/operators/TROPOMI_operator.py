@@ -3,7 +3,10 @@ import xarray as xr
 import pandas as pd
 import datetime
 from shapely.geometry import Polygon
-from utils import filter_tropomi
+from utils import (
+    filter_tropomi,
+    filter_blended,
+)
 from operators.operator_utilities import (
     get_gc_lat_lon,
     read_all_geoschem,
@@ -17,6 +20,7 @@ from operators.operator_utilities import (
 
 def apply_average_tropomi_operator(
     filename,
+    blended,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -31,6 +35,7 @@ def apply_average_tropomi_operator(
 
     Arguments
         filename       [str]        : TROPOMI netcdf data file to read
+        blended        [bool]       : if True, use blended TROPOMI+GOSAT data
         n_elements     [int]        : Number of state vector elements
         gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and TROPOMI
         gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and TROPOMI
@@ -52,13 +57,21 @@ def apply_average_tropomi_operator(
     """
 
     # Read TROPOMI data
-    TROPOMI = read_tropomi(filename)
+    assert isinstance(blended, bool), "blended is not a bool"
+    if blended:
+        TROPOMI = read_blended(filename)
+    else:
+        TROPOMI = read_tropomi(filename)
     if TROPOMI == None:
         print(f"Skipping {filename} due to file processing issue.")
         return TROPOMI
 
-    # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-    sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+    if blended:
+        # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+    else:
+        # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
 
     # get the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
@@ -170,6 +183,7 @@ def apply_average_tropomi_operator(
 
 def apply_tropomi_operator(
     filename,
+    blended,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -184,6 +198,7 @@ def apply_tropomi_operator(
 
     Arguments
         filename       [str]        : TROPOMI netcdf data file to read
+        blended        [bool]       : if True, use blended TROPOMI+GOSAT data
         n_elements     [int]        : Number of state vector elements
         gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and TROPOMI
         gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and TROPOMI
@@ -205,13 +220,21 @@ def apply_tropomi_operator(
     """
 
     # Read TROPOMI data
-    TROPOMI = read_tropomi(filename)
+    assert isinstance(blended, bool), "blended is not a bool"
+    if blended:
+        TROPOMI = read_blended(filename)
+    else:
+        TROPOMI = read_tropomi(filename)
     if TROPOMI == None:
         print(f"Skipping {filename} due to file processing issue.")
         return TROPOMI
 
-    # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-    sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+    if blended:
+        # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+    else:
+        # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
@@ -498,6 +521,76 @@ def read_tropomi(filename):
         dat["pressures"] = pressures
 
     # Return an error if any of the variables were not read correctly
+    except Exception as e:
+        print(f"Error opening {filename}: {e}")
+        return None
+
+    return dat
+
+def read_blended(filename):
+    """
+    Read Blended TROPOMI+GOSAT data and save important variables to dictionary.
+    Arguments
+        filename [str]  : Blended TROPOMI+GOSAT netcdf data file to read
+    Returns
+        dat      [dict] : Dictionary of important variables from Blended TROPOMI+GOSAT:
+                            - CH4
+                            - Latitude
+                            - Longitude
+                            - Time (utc time reshaped for orbit)
+                            - Averaging kernel
+                            - SWIR albedo
+                            - NIR albedo
+                            - Blended albedo
+                            - CH4 prior profile
+                            - Dry air subcolumns
+                            - Latitude bounds
+                            - Longitude bounds
+                            - Surface classification
+                            - Chi-Square for SWIR
+                            - Vertical pressure profile
+    """
+    assert "BLND" in filename, f"BLND not in filename {filename}, but a blended function is being used"
+
+    try:
+        # Initialize dictionary for Blended TROPOMI+GOSAT data
+        dat = {}
+
+        # Extract data from netCDF file to our dictionary
+        with xr.open_dataset(filename) as blended_data:
+
+            dat["methane"] = blended_data["methane_mixing_ratio_blended"].values[:]
+            dat["longitude"] = blended_data["longitude"].values[:]
+            dat["latitude"] = blended_data["latitude"].values[:]
+            dat["column_AK"] = blended_data["column_averaging_kernel"].values[:, ::-1]
+            dat["swir_albedo"] = blended_data["surface_albedo_SWIR"][:]
+            dat["nir_albedo"] = blended_data["surface_albedo_NIR"].values[:]
+            dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
+            dat["methane_profile_apriori"] = blended_data["methane_profile_apriori"].values[:, ::-1]
+            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[:, ::-1]
+            dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
+            dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
+            dat["surface_classification"] = (blended_data["surface_classification"].values[:].astype("uint8") & 0x03).astype(int)
+            dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
+
+            # Remove "Z" from time so that numpy doesn't throw a warning
+            utc_str = blended_data["time_utc"].values[:]
+            dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
+
+            # Need to calculate the pressure for the 13 TROPOMI levels (12 layer edges)
+            pressure_interval = (blended_data["pressure_interval"].values[:] / 100)  # Pa -> hPa
+            surface_pressure = (blended_data["surface_pressure"].values[:] / 100)    # Pa -> hPa
+            n = len(dat["methane"])
+            pressures = np.full([n, 12 + 1], np.nan, dtype=np.float32)
+            for i in range(12 + 1):
+                pressures[:, i] = surface_pressure - i * pressure_interval
+            dat["pressures"] = pressures
+
+        # Add an axis here to mimic the (scanline, groundpixel) format of operational TROPOMI data
+        # This is so the blended data will be compatible with the TROPOMI operators
+        for key in dat.keys():
+            dat[key] = np.expand_dims(dat[key], axis=0)
+
     except Exception as e:
         print(f"Error opening {filename}: {e}")
         return None
