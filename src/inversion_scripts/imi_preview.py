@@ -67,7 +67,7 @@ def get_TROPOMI_data(file_path, blended, xlim, ylim, startdate_np64, enddate_np6
     else:
         TROPOMI = read_tropomi(file_path)
     if TROPOMI == None:
-        print(f"Skipping {file_path} due to file processing issue.")
+        print(f"Skipping {file_path} due to error")
         return TROPOMI
 
     if blended:
@@ -106,9 +106,9 @@ def imi_preview(
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     # redirect output to log file
-    # output_file = open(f"{inversion_path}/imi_output.log", "a")
-    # sys.stdout = output_file
-    # sys.stderr = output_file
+    output_file = open(f"{inversion_path}/imi_output.log", "a")
+    sys.stdout = output_file
+    sys.stderr = output_file
 
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
