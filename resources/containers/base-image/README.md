@@ -9,16 +9,16 @@ Dockerfiles contain a list of instructions to build an image with the necessary 
 
 ## Building the Docker image 
 To build the docker image, cd into the benchmarks/environments/ directory and run
-`$ docker build -t imi-base-repository . --platform=linux/amd64`
-The `--platform=linux/amd64` flag specifies the architecture to mimic while building and ensures consistent builds regardless of whethe the build is done on an arm system (apple silicon) or amd system (intel).
+`$ docker build -t imi-base-image . --platform=linux/amd64`
+The `--platform=linux/amd64` flag specifies the architecture to mimic while building and ensures consistent builds regardless of whether the build is done on an arm system (apple silicon) or amd system (intel).
 
 Building all of the spack dependencies can take hours. Grab a cup of coffee and let it run in the background.
 When finished you can tag it and push it to the relevant remote repository (example is to aws):
 ```
 # login to ecr repository
-$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 753979222379.dkr.ecr.us-east-1.amazonaws.com
-$ docker tag imi-base-repository:latest 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-base-repository:latest
-$ docker push 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-base-repository:latest
+$ aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/w1q7j9l2
+$ docker tag imi-base-image:latest public.ecr.aws/w1q7j9l2/imi-base-image:latest
+$ docker push public.ecr.aws/w1q7j9l2/imi-base-image:latest
 ```
 ## Running the image
 This runs the built image using the default `entrypoint.sh` command:
@@ -28,7 +28,7 @@ This runs the built image using the default `entrypoint.sh` command:
 ## Pulling an existing image
 A fully built base image is stored on aws and can be accessed by running:
 ```
-$ docker pull 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-base-repository:latest
+$ docker pull public.ecr.aws/w1q7j9l2/imi-base-image:latest
 ```
 # Conda environments
 The python dependencies are built using the default imi conda environment.yml file.

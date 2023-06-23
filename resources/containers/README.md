@@ -11,8 +11,7 @@ You must give the docker container enough resources to run GEOS-Chem simulations
 
 ## pulling the image
 To run the image you will first need to pull the image from our cloud repository
-Note: this image is not currently publicly available
-`$ docker pull 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest`
+`$ docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest`
 
 ## Setting up the compose.yml file
 The IMI needs access to both input data and personalized configuration variables for running the inversion for your desired region and period of interest. In order to supply these settings we use a docker [compose.yml](https://docs.docker.com/compose/compose-file/03-compose-file/) file. The compose file allows you to input environment variables and mount files/directories from your local system into the container.
@@ -91,7 +90,7 @@ $ docker build -f resources/containers/Dockerfile -t imi-docker-image . --platfo
 ### Pushing the image to remote repository
 Update these as you see fit for your desired aws or docker repository
 ```
-$ aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 753979222379.dkr.ecr.us-east-1.amazonaws.com
-$ docker tag imi-docker-image:latest 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest
-$ docker push 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest
+$ aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/w1q7j9l2
+$ docker tag imi-docker-image:latest public.ecr.aws/w1q7j9l2/imi-docker-image:latest
+$ docker push public.ecr.aws/w1q7j9l2/imi-docker-image:latest
 ```

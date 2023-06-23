@@ -9,7 +9,7 @@ A Docker container is a lightweight, standalone, and executable software package
 
 Why use the IMI Docker container?
 =================================
-Aside from providing a consistent environment. Using the IMI container can significantly ease installation of the IMI on a new system. This is because the container has all the necessary dependencies and source code for running the IMI preinstalled and preloaded. This equals easier setup for you.
+Aside from providing a consistent environment, using the IMI container can significantly ease installation of the IMI on a new system. This is because the container has all the necessary dependencies and source code for running the IMI preinstalled and preloaded. This equals easier setup for you.
 
 Additionally, Docker containers lend themselves very well to automated workflows, so using a docker container version of the IMI can make it easier to set up scheduled inversions of the IMI.
 
@@ -30,11 +30,10 @@ Note: if your cluster does not support Docker, you can also use Singularity as a
 Pulling the image
 -----------------
 To run the container you will first need to pull the image from our cloud repository
-Note: this image is not currently publicly available.
 
 ::
 
-    $ docker pull 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest
+    $ docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest
 
 -------------------------------
 Setting up the compose.yml file
@@ -110,7 +109,7 @@ This is an example of what a fully filled out compose.yml file looks like:
     # and define important parameters for the container
     services:
       imi:
-        image: imi-docker-image:latest
+        image: public.ecr.aws/w1q7j9l2/imi-docker-image:latest
         volumes:
         # comment out any volume mounts you do not need for your system
           - /local/container/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
@@ -137,10 +136,11 @@ Alternatively, if you chose not to install ``docker compose`` you should be able
 Using Singularity instead of Docker
 ===================================
 We use Docker `Docker <https://docs.docker.com/get-started/overview/>`__ to containerize the IMI, but the IMI docker container can also be run using `Singularity <https://docs.sylabs.io/guides/3.5/user-guide/introduction.html>`__. Singularity is a container engine that is designed to run containers on HPC systems and local clusters, as some clusters do not allow Docker to be installed.
+Note: using Singularity to run the IMI is untested and may not work as expected.
 
 First pull the image:
 ::
-    $ singularity pull 753979222379.dkr.ecr.us-east-1.amazonaws.com/imi-docker-repository:latest
+    $ singularity pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest
 
 Then run the image:
 
