@@ -71,3 +71,13 @@ run_inversion() {
     printf "\n=== DONE RUNNING INVERSION ===\n"
     inversion_end=$(date +%s)
 }
+
+# Description: Run visualization notebooks and export to html
+# Usage:
+#   run_notebooks
+run_notebooks() {
+    printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
+    cd ${RunDirs}/inversion
+    jupyter nbconvert --execute --to html visualization_notebook.ipynb
+    printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
+}
