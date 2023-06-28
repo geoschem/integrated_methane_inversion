@@ -194,7 +194,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
     Description:
         Filter out any data that does not meet the following
         criteria: We only consider data within lat/lon/time bounds,
-        with QA > 0.5, and with safe surface albedo values
+        with QA > 0.5 and that don't cross the antimeridian
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
@@ -206,8 +206,30 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
         & (tropomi_data["time"] >= startdate)
         & (tropomi_data["time"] <= enddate)
         & (tropomi_data["qa_value"] >= 0.5)
-        & (tropomi_data["swir_albedo"] > 0.05)
-        & (tropomi_data["blended_albedo"] < 0.85)
+        & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
+    )
+
+def filter_blended(blended_data, xlim, ylim, startdate, enddate):
+    """
+    Description:
+        Filter out any data that does not meet the following
+        criteria: We only consider data within lat/lon/time bounds,
+        that don't cross the antimeridian, and we filter out all
+        coastal pixels (surface classification 3) and inland water
+        pixels with a poor fit (surface classifcation 2, 
+        SWIR chi-2 > 20000) (recommendation from Balasus et al. 2023)
+    Returns:
+        numpy array with satellite indices for filtered tropomi data.
+    """
+    return np.where(
+        (blended_data["longitude"] > xlim[0])
+        & (blended_data["longitude"] < xlim[1])
+        & (blended_data["latitude"] > ylim[0])
+        & (blended_data["latitude"] < ylim[1])
+        & (blended_data["time"] >= startdate)
+        & (blended_data["time"] <= enddate)
+        & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
+        & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
     )
 
 
@@ -228,3 +250,4 @@ def calculate_area_in_km(coordinate_list):
     poly_area, _ = geod.geometry_area_perimeter(polygon)
 
     return abs(poly_area) * 1e-6
+    

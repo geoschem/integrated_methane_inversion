@@ -2,6 +2,7 @@
 
 # Functions available in this file include:
 #   - setup_imi
+#   - activate_observations
 
 # Description:
 #   This script will set up an Integrated Methane Inversion (IMI) with GEOS-Chem.
@@ -60,9 +61,10 @@ setup_imi() {
     ##=======================================================================
     ## Download Boundary Conditions files if requested
     ##=======================================================================
+    fullBCpath="${BCpath}/${BCversion}"
     if "$BCdryrun"; then
 
-        mkdir -p ${BCpath}
+        mkdir -p ${fullBCpath}
 
         if "$DoSpinup"; then
             START=${SpinupStart}
@@ -70,7 +72,7 @@ setup_imi() {
             START=${StartDate}
         fi
         printf "\nDownloading boundary condition data for $START to $EndDate\n"
-        python src/utilities/download_bc.py ${START} ${EndDate} ${BCpath}
+        python src/utilities/download_bc.py ${START} ${EndDate} ${fullBCpath} ${BCversion}
 
     fi
 
@@ -146,24 +148,15 @@ setup_imi() {
         cp $StateVectorFile ${RunDirs}/StateVector.nc
     fi
 
-    if ! "$isAWS"; then
-        # Load environment with NCO
-        source ${NCOEnv}
-    fi
-
     # Determine number of elements in state vector file
-    ncmax() { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
-    ncmin() { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
@@ -230,4 +223,38 @@ setup_imi() {
     echo "Preview runtime (s): $(( $preview_end - $preview_start ))"
     echo "Note: this is part of the Setup runtime reported by run_imi.sh"
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
+}
+
+# Description: Turn on switches for extra observation operators
+#   Works on geoschem_config.yml file in the current directory  
+# Usage:
+#   activate_observations
+activate_observations() {
+    if "$GOSAT"; then
+            OLD="GOSAT: false"
+            NEW="GOSAT: true"
+            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+    if "$TCCON"; then
+            OLD="TCCON: false"
+            NEW="TCCON: true"
+            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+    if "$AIRS"; then
+            OLD="AIR: false"
+            NEW="AIR: true"
+            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+    if "$PLANEFLIGHT"; then
+            mkdir -p Plane_Logs
+            sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
+
+            OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
+            NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
+            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+            OLD="output_file: plane.log.YYYYMMDD"
+            NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
+            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+    fi
+
 }

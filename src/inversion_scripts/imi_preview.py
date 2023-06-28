@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #SBATCH -N 1
-#SBATCH -n 1
+
 import sys
 import numpy as np
 import xarray as xr
@@ -22,16 +22,20 @@ from utils import (
     count_obs_in_mask,
     plot_field,
     filter_tropomi,
+    filter_blended,
     calculate_area_in_km,
 )
 from joblib import Parallel, delayed
-from operators.TROPOMI_operator import read_tropomi
+from operators.TROPOMI_operator import (
+    read_tropomi,
+    read_blended,
+)
 import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
+def get_TROPOMI_data(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64):
     """
     Returns a dict with the lat, lon, xch4, and albedo_swir observations
     extracted from the given tropomi file. Filters are applied to remove
@@ -39,6 +43,8 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     Args:
         file_path : string
             path to the tropomi file
+        BlendedTROPOMI : bool
+            if True, use blended TROPOMI+GOSAT data
         xlim: list
             longitudinal bounds for region of interest
         ylim: list
@@ -55,15 +61,21 @@ def get_TROPOMI_data(file_path, xlim, ylim, startdate_np64, enddate_np64):
     tropomi_data = {"lat": [], "lon": [], "xch4": [], "swir_albedo": []}
 
     # Load the TROPOMI data
-    TROPOMI = read_tropomi(file_path)
-
-    # Handle unreadable files
+    assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
+    if BlendedTROPOMI:
+        TROPOMI = read_blended(file_path)
+    else:
+        TROPOMI = read_tropomi(file_path)
     if TROPOMI == None:
         print(f"Skipping {file_path} due to error")
         return TROPOMI
 
-    # We're only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-    sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+    if BlendedTROPOMI:
+        # Only going to consider data within lat/lon/time bounds and without problematic coastal pixels
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+    else:
+        # Only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
@@ -407,6 +419,9 @@ def estimate_averaging_kernel(
     ]
     tropomi_paths.sort()
 
+    # Use blended TROPOMI+GOSAT data or operational TROPOMI data?
+    BlendedTROPOMI = config["BlendedTROPOMI"]
+
     # Open tropomi files and filter data
     lat = []
     lon = []
@@ -415,7 +430,7 @@ def estimate_averaging_kernel(
 
     # read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
-        delayed(get_TROPOMI_data)(file_path, xlim, ylim, startdate_np64, enddate_np64)
+        delayed(get_TROPOMI_data)(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64)
         for file_path in tropomi_paths
     )
     # remove any problematic observation dicts (eg. corrupted data file)
@@ -435,11 +450,6 @@ def estimate_averaging_kernel(
     df["swir_albedo"] = albedo
     df["xch4"] = xch4
 
-    # extract num_obs and emissions for each cluster in ROI
-    num_obs = []
-    emissions = []
-    L = []  # Rough length scale of state vector element [m]
-
     # set resolution specific variables
     if config["Res"] == "0.25x0.3125":
         L_native = 25 * 1000  # Rough length scale of native state vector element [m]
@@ -456,16 +466,22 @@ def estimate_averaging_kernel(
     # parallel processing function
     def process(i):
         mask = state_vector_labels == i
-        # append the prior emissions for each element (in Tg/y)
-        emissions.append(sum_total_emissions(prior, areas, mask))
+        # prior emissions for each element (in Tg/y)
+        emissions_temp = sum_total_emissions(prior, areas, mask)
         # append the calculated length scale of element
-        L.append(L_native * state_vector_labels.where(mask).count().item())
+        L_temp = L_native * state_vector_labels.where(mask).count().item()
         # append the number of obs in each element
-        num_obs.append(np.nansum(observation_counts["count"].where(mask).values))
+        num_obs_temp = np.nansum(observation_counts["count"].where(mask).values)
+        return emissions_temp, L_temp, num_obs_temp
 
-    # in parallel, create lists of emissions and number of observations for each
-    # cluster element
-    Parallel(n_jobs=-1)(delayed(process)(i) for i in range(1, last_ROI_element + 1))
+    # in parallel, create lists of emissions, number of observations,
+    # and rough length scale for each cluster element in ROI
+    result = Parallel(n_jobs=-1)(
+        delayed(process)(i) for i in range(1, last_ROI_element + 1)
+    )
+
+    # unpack list of tuples into individual lists
+    emissions, L, num_obs = [list(item) for item in zip(*result)]
 
     # ----------------------------------
     # Estimate information content
@@ -516,6 +532,7 @@ def estimate_averaging_kernel(
     else:
         return a
 
+
 def add_observation_counts(df, state_vector, lat_step, lon_step):
     """
     Given arbitrary observation coordinates in a pandas df, group
@@ -536,7 +553,6 @@ def add_observation_counts(df, state_vector, lat_step, lon_step):
 
 
 if __name__ == "__main__":
-
     inversion_path = sys.argv[1]
     config_path = sys.argv[2]
     state_vector_path = sys.argv[3]

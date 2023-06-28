@@ -51,7 +51,7 @@ setup_template() {
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
-           -e "s:geosfp:${Met}:g" geoschem_config.yml
+           -e "s:GEOSFP:${metUC}:g" \ geoschem_config.yml
     if "$isRegional"; then
         sed -i -e "s:0.25x0.3125:${gridResLong}:g" \
                -e "s:-130.0,  -60.0:${Lons}:g" \
@@ -59,7 +59,7 @@ setup_template() {
     else
 	sed -i -e "s:4.0x5.0:${gridResLong}:g" geoschem_config.yml
     fi
-    
+
     # For CH4 inversions always turn analytical inversion on
     sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
 
@@ -74,21 +74,6 @@ setup_template() {
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
     # Turn other options on/off according to settings above
-    if "$GOSAT"; then
-	OLD="GOSAT: false"
-	NEW="GOSAT: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-    if "$TCCON"; then
-	OLD="TCCON: false"
-	NEW="TCCON: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-    if "$AIRS"; then
-	OLD="AIR: false"
-	NEW="AIR: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
     if "$UseEmisSF"; then
 	OLD="use_emission_scale_factor: false"
 	NEW="use_emission_scale_factor: true"
@@ -99,23 +84,12 @@ setup_template() {
 	NEW="use_OH_scale_factors: true"
 	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
-    if "$PLANEFLIGHT"; then
-	mkdir -p Plane_Logs
-	sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
-	
-	OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
-	NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-	OLD="output_file: plane.log.YYYYMMDD"
-	NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
 
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
     if [ ! "$isRegional" ]; then
-	sed -i -e "s:GEOS_${native}:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc
-	sed -i -e "s:GEOS_${native}:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
@@ -128,7 +102,7 @@ setup_template() {
     fi
 
     # Modify path to BC files
-    sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${BCpath}:g" HEMCO_Config.rc
+    sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
 
     # Modify HISTORY.rc
     sed -i -e "s:'CH4':#'CH4':g" \

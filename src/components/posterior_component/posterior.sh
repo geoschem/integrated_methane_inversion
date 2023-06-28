@@ -62,17 +62,14 @@ setup_posterior() {
                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
     fi
 
+    ### Turn on observation operators if requested, for posterior run
+    activate_observations
+
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
-
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PosteriorName}.run
-    fi
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
@@ -102,7 +99,15 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch -W ${RunName}_Posterior.run; wait;
+    sbatch --mem $SimulationMemory \
+           -c $SimulationCPUs \
+           -t $RequestedTime \
+           -p $SchedulerPartition \
+           -W ${RunName}_Posterior.run; wait;
+    
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
 
     cd ${RunDirs}/inversion
@@ -124,25 +129,17 @@ run_posterior() {
     python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
-	if ! "$isAWS"; then
-    	# Load environment with NCO
-    	source ${NCOEnv}
-	fi
-
     # Sample GEOS-Chem atmosphere with TROPOMI
-    function ncmin { ncap2 -O -C -v -s "foo=${1}.min();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
-    function ncmax { ncap2 -O -C -v -s "foo=${1}.max();print(foo)" ${2} ~/foo.nc | cut -f 3- -d ' ' ; }
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    rm ~/foo.nc
     FetchTROPOMI="False"
     isPost="True"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 }

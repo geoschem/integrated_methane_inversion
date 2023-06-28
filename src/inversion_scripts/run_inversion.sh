@@ -1,9 +1,6 @@
 #!/bin/bash
 
-#SBATCH -n 1
 #SBATCH -N 1
-#SBATCH -t 0-03:00
-#SBATCH --mem 4000
 #SBATCH -o run_inversion_%j.out
 #SBATCH -e run_inversion_%j.err
 
@@ -130,7 +127,7 @@ if ! "$PrecomputedJacobian"; then
 
     printf "Calling jacobian.py\n"
     isPost="False"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
     printf " DONE -- jacobian.py\n\n"
 
 fi

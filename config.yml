@@ -12,7 +12,10 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
-## Is this a regional inversion?
+## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
+BlendedTROPOMI: false
+
+## Is this a regional inversion? Set to false for global inversion
 isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
@@ -35,19 +38,19 @@ RegionID: "NA"
 LonMin: -105
 LonMax: -103
 LatMin: 31
-LatMax: 34
+LatMax: 33
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
+OffshoreEmisThreshold: 0
 
 ## Clustering Options
 ReducedDimensionStateVector: false
-ClusteringPairs:
-  - [1, 15]
-  - [2, 24]
+ClusteringMethod: "kmeans"
+NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
   
@@ -128,6 +131,14 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
+## resources to allocate to slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "0-6:00"
+SchedulerPartition: "debug"
+
 ##--------------------------------------------------------------------
 ## Settings for running on a local cluster
 ##--------------------------------------------------------------------
@@ -152,6 +163,7 @@ RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.Boun
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
+BCversion: "v2023-04"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: You will be charged if your ec2 instance is not in the
