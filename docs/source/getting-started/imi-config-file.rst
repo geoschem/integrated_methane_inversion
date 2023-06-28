@@ -32,6 +32,15 @@ Period of interest
    * - ``SpinupMonths``
      - Number of months for the spinup simulation. 
 
+TROPOMI data type
+~~~~~~~~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``BlendedTROPOMI``
+     - Boolean for if the Blended TROPOMI+GOSAT data should be used (``true``) or if the operational data should be used (``false``).
+
 Region of interest
 ~~~~~~~~~~~~~~~~~~
 .. list-table::

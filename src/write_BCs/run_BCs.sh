@@ -71,7 +71,7 @@ if "$WriteBCs"; then
     
     # Run python scripts
     cd ${imidir}/src/write_BCs
-    sbatch -W -p ${Partition} -t 2-00:00 --mem 190000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
+    sbatch -W -p ${Partition} -t 2-00:00 --mem 184000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_tropomi_GC_daily_avgs.py"; wait;
     sbatch -W -p ${Partition} -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python calculate_bias.py"; wait;
     sbatch -W -p ${Partition} -t 2-00:00 --mem 64000 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary.py"; wait;
 

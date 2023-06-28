@@ -43,6 +43,7 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
     
     result = apply_tropomi_operator(
         filename = filename,
+        BlendedTROPOMI = config["BlendedTROPOMI"],
         n_elements = False, # Not relevant
         gc_startdate = start_time_of_interest,
         gc_enddate = end_time_of_interest,

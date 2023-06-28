@@ -127,10 +127,14 @@ printf "DONE -- setup_gc_cache.py\n\n"
 # Generate Jacobian matrix files 
 #=======================================================================
 
-printf "Calling jacobian.py\n"
-isPost="False"
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
-printf " DONE -- jacobian.py\n\n"
+if ! "$PrecomputedJacobian"; then
+
+    printf "Calling jacobian.py\n"
+    isPost="False"
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
+    printf " DONE -- jacobian.py\n\n"
+
+fi
 
 #=======================================================================
 # Do inversion

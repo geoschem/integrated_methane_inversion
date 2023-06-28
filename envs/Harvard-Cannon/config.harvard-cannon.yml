@@ -12,6 +12,9 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
+## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
+BlendedTROPOMI: false
+
 ## Use nested grid simulation?
 NestedGrid: true
 
@@ -146,14 +149,14 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-04/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-04/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
-BCversion: "v2023-04"
+BCversion: "v2023-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##  NOTE: Must have AWS CLI enabled

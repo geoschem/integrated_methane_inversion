@@ -65,6 +65,9 @@ setup_posterior() {
                -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi
 
+    ### Turn on observation operators if requested, for posterior run
+    activate_observations
+
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
@@ -149,7 +152,7 @@ run_posterior() {
     isPost="True"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $isPost; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 }

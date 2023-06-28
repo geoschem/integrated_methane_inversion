@@ -1,7 +1,7 @@
 ## Day range (inclusive) that you want to generate BCs for
 ## You should have TROPOMI data and met fields for 16 days past the specified enddate
 startdate: "20180401"
-enddate: "20230331"
+enddate: "20230430"
 
 ## Where the IMI code to write this is (parent dir of this file)
 imidir: "/n/home06/nbalasus/IMI_BCs/integrated_methane_inversion"
@@ -9,7 +9,8 @@ imidir: "/n/home06/nbalasus/IMI_BCs/integrated_methane_inversion"
 ## A directory with a lot of space where you can write the BCs (and intermediate files)
 workdir: "/n/holylfs05/LABS/jacob_lab/nbalasus/IMI_BCs"
 
-## Location of the TROPOMI data
+## Whether to use Blended data and location of the TROPOMI data
+BlendedTROPOMI: false
 tropomi_cache: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
 ## Conda environment to use, GEOS-Chem environment to use, and partitions to run on
