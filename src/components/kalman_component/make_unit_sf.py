@@ -21,11 +21,13 @@ def make_unit_sf(state_vector_path, save_directory):
 
     # Save to netcdf
     save_path = os.path.join(save_directory, "unit_sf.nc")
-    scale_factor.to_netcdf(save_path)
+    scale_factor.to_netcdf(
+        save_path,
+        encoding={v: {"zlib": True, "complevel": 9} for v in scale_factor.data_vars},
+    )
 
 
 if __name__ == "__main__":
-
     # Inputs
     state_vector_path = sys.argv[1]
     save_directory = sys.argv[2]
