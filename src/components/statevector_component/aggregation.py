@@ -7,6 +7,12 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 import yaml
+import requests
+from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
+from shapely.geometry import Polygon, Point, MultiPolygon
+import shapefile 
+
 import sys
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
@@ -295,6 +301,93 @@ def generate_cluster_pairs(config, sensitivities):
     print(f"Generated cluster pairings: {cluster_pairs}")
     return sorted(cluster_pairs, key=lambda x: x[0])
 
+def get_plumes(month, year, name):
+    sron_url = "https://earth.sron.nl/wp-content/uploads/"     #URL of the SRON database for weekly methane plumes
+    url = sron_url + year + "/" + month.zfill(2)
+    r = requests.get(url)
+    soup = BeautifulSoup(r.content, 'html.parser')
+    plume = pd.DataFrame()
+    for link in soup.find_all('a'):
+        if ('.csv' in link.get('href') and 'SRON_Weekly_Methane_Plumes' in link.get('href')):
+            csvUrl = url + "/" + link.get('href')
+            dates = csvUrl.split("_v")[1]
+            rcsv = requests.get(csvUrl, allow_redirects=True)
+            file = "/n/home12/aoortalonso/holyscratch/integrated_methane_inversion" + "/SRON_" + dates
+            open(file, 'wb').write(rcsv.content)
+            df = pd.read_csv(file)
+            plume = plume.append(df, ignore_index=True)
+    return plume
+
+def shapefile_filter(plumes, shapefile_path):
+    polygon = shapefile.Reader(shapefile_path) 
+    polygon = polygon.shapes() 
+    print(polygon)
+    shpfilePoints = [ shape.points for shape in polygon ]
+    polygons = shpfilePoints
+    for lon, lat in zip(plumes['lon'], plumes['lat']):   
+        inShape = False
+        point = Point(lon, lat)
+        for polygon in polygons:
+            poly = Polygon(polygon)
+            if poly.contains(point):
+                inShape = True
+        if not inShape:
+            plumes  = plumes[(plumes['lon'] != float(lon)) | (plumes['lat'] != float(lat))]
+    
+    return plumes
+
+def rectangular_filter(plumes, LatMax, LatMin, LonMax, LonMin):
+    inLat = (plumes['lat'] > LatMin) & (plumes['lat'] < LatMax)
+    inLon = (plumes['lon'] > LonMin) & (plumes['lon'] < LonMax)
+    filtered_plumes = plumes[inLat & inLon]
+    return filtered_plumes
+
+
+def SRON_plumes(config):
+    plumes = pd.DataFrame()
+    shapefile_path = config["ShapeFile"]
+    startDate = config["StartDate"]
+    endDate = config["EndDate"]
+    startYear = round(startDate/10000)
+    endYear = round(endDate/10000)
+    custom_vectorfile = not config["CreateAutomaticRectilinearStateVectorFile"]
+    LatMax = config["LatMax"]
+    LatMin = config["LatMin"]
+    LonMax = config["LonMax"]
+    LonMin = config["LonMin"]
+    
+    name = "Test_Permian_1week"
+    for i in range(startYear, endYear+1):
+        if (i == startYear):
+            startMonth = int(str(startDate)[4:6])
+            if (i == endYear):
+                endMonth = int(str(endDate)[4:6])
+                for k in range(startMonth, endMonth + 1):
+                    p = get_plumes(str(k), str(i), name)
+                    plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True)
+            else:
+                for k in range(startMonth, 13):
+                    p = get_plumes(str(k), str(i), name)
+                    plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True)
+        elif (i == endYear):
+            endMonth = int(str(endDate)[4:6])
+            for k in range(1, endMonth + 1):
+                p = get_plumes(str(k), str(i), name)
+                plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True)
+        else:
+            for k in range(1,13):
+                p = get_plumes(str(k), str(i), name)
+                plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True) 
+    if custom_vectorfile:
+        print("Before=", plumes.shape)
+        plumes = shapefile_filter(plumes, shapefile_path) #calls function to filter through coordinates found in shapefile
+        print("After=", plumes.shape)
+    else:
+        plumes = rectangular_filter(plumes, LatMax, LatMin, LonMax, LonMin)
+
+    plumes_list = plumes[['lon', 'lat']].values.tolist()
+    return plumes_list
+
 
 def read_coordinates(coord_var):
     """
@@ -343,7 +436,11 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
+    plumes = SRON_plumes(config)
     coords = read_coordinates(config["ForcedNativeResolutionElements"])
+    if (len(coords) + len(plumes)) > config["NumberOfElements"]:
+        plumes = plumes[0:(config["NumberOfElements"] - len(coords))]
+    coords.extend(plumes)
 
     if coords is None:
         # No forced pixels inputted
