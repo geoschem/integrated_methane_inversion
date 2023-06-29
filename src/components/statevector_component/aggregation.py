@@ -138,7 +138,7 @@ def find_cluster_pairs(
     """
     Description:
         Recursively generate best-guess at information content distributed
-        clustering pairs based on the maximum dofs allowed per cluster and 
+        clustering pairs based on the maximum dofs allowed per cluster and
         the desired number of state vector elements.
     arguments:
         sorted_sensitivities     [] : ndarray of sensitivities sorted in descending order
@@ -323,7 +323,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
         binned_lat = np.floor(lat / lat_step) * lat_step
-        
+
         try:
             cluster_index = int(
                 clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
@@ -331,8 +331,10 @@ def force_native_res_pixels(config, clusters, sensitivities):
             # assign higher than 1 to ensure first assignment
             sensitivities[cluster_index - 1] = 1.1
         except:
-            print(f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
-                  + " because it is not in the specified region of interest.")
+            print(
+                f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
+                + " because it is not in the specified region of interest."
+            )
     return sensitivities
 
 
@@ -463,4 +465,7 @@ if __name__ == "__main__":
 
     # replace original statevector file
     print(f"Saving file {state_vector_path}")
-    new_sv.to_netcdf(state_vector_path)
+    new_sv.to_netcdf(
+        state_vector_path,
+        encoding={v: {"zlib": True, "complevel": 1} for v in new_sv.data_vars},
+    )
