@@ -131,5 +131,5 @@ if __name__ == "__main__":
     ds = ds.assign_coords({"time": date.values})
     ds.to_netcdf(
         os.path.join(config["workdir"], "step3", "Bias_4x5_dk_2_updated.nc"),
-        encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars},
+        encoding={v: {"zlib": True, "complevel": 9} for v in ds.data_vars},
     )

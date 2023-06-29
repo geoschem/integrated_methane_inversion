@@ -123,7 +123,7 @@ def calc_sensi(
             sensi = sensi.to_dataset()
             sensi.to_netcdf(
                 f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc",
-                encoding={v: {"zlib": True, "complevel": 1} for v in sensi.data_vars},
+                encoding={v: {"zlib": True, "complevel": 9} for v in sensi.data_vars},
             )
 
         results = Parallel(n_jobs=-1)(delayed(process)(hour) for hour in hours)

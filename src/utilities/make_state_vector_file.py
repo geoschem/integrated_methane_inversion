@@ -184,7 +184,7 @@ def make_state_vector_file(
         ds_statevector.to_netcdf(
             save_pth,
             encoding={
-                v: {"zlib": True, "complevel": 1} for v in ds_statevector.data_vars
+                v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
             },
         )
 

@@ -50,5 +50,5 @@ if __name__ == "__main__":
             file2["SpeciesBC_CH4"].values = orig_data
             file2.to_netcdf(
                 f"{outputDir}/{filename}",
-                encoding={v: {"zlib": True, "complevel": 1} for v in file2.data_vars},
+                encoding={v: {"zlib": True, "complevel": 9} for v in file2.data_vars},
             )
