@@ -38,4 +38,4 @@ jobs:
         IMAGE_TAG: latest
       run: |
         docker build -f resources/containers/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
