@@ -248,7 +248,7 @@ def imi_preview(
         cmap="Spectral_r",
         plot_type="pcolormesh",
         vmin=1800,
-        vmax=2000,
+        vmax=1850,
         lon_bounds=None,
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
