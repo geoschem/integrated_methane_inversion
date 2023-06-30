@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#SBATCH -p huce_cascade,huce_intel,seas_compute,serial_requeue
 #SBATCH -J {RunName}
 #SBATCH -N 1
 

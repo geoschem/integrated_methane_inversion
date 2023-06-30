@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#SBATCH -p huce_cascade,huce_intel,seas_compute,serial_requeue
 ##SBATCH -N 1
 ##SBATCH --mail-type=END
 
