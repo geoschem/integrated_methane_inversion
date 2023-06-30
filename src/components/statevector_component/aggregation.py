@@ -385,7 +385,7 @@ def SRON_plumes(config):
     else:
         plumes = rectangular_filter(plumes, LatMax, LatMin, LonMax, LonMin)
 
-    plumes_list = plumes[['lon', 'lat']].values.tolist()
+    plumes_list = plumes[['lat', 'lon']].values.tolist()
     return plumes_list
 
 
