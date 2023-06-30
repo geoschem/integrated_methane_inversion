@@ -35,11 +35,17 @@ def multiply_posteriors(period_number, base_directory):
 
     # Save final posterior
     save_path = os.path.join(base_directory, "ScaleFactors.nc")
-    sf.to_netcdf(save_path)
+    sf.to_netcdf(
+        save_path,
+        encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
+    )
 
     # Archive scale factors
     archive_path = os.path.join(base_directory, "archive_sf")
-    sf.to_netcdf(os.path.join(archive_path, f"posterior_sf_period{period_number}.nc"))
+    sf.to_netcdf(
+        os.path.join(archive_path, f"posterior_sf_period{period_number}.nc"),
+        encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
+    )
 
 
 if __name__ == "__main__":

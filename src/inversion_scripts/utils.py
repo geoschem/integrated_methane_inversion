@@ -17,6 +17,14 @@ def save_obj(obj, name):
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
+def save_netcdf(ds, save_path, comp_level=1):
+    """Save an xarray dataset to netcdf."""
+    ds.to_netcdf(
+        save_path,
+        encoding={v: {"zlib": True, "complevel": comp_level} for v in ds.data_vars},
+    )
+
+
 def load_obj(name):
     """Load something with Pickle."""
 
