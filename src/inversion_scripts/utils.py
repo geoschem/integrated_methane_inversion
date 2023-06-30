@@ -6,6 +6,8 @@ from pyproj import Geod
 import cartopy
 import cartopy.crs as ccrs
 import pickle
+import csv
+from matplotlib.lines import Line2D
 
 
 def save_obj(obj, name):
@@ -105,6 +107,7 @@ def plot_field(
     vmin=None,
     vmax=None,
     title=None,
+    point_sources=None,
     cbar_label=None,
     mask=None,
     only_ROI=False,
@@ -125,6 +128,7 @@ def plot_field(
         vmin       : colorbar lower bound
         vmax       : colorbar upper bound
         title      : plot title
+        point_sources: plot given point sources on map
         cbar_label : colorbar label
         mask       : mask for region of interest, boolean dataarray
         only_ROI   : zero out data outside the region of interest, true or false
@@ -184,6 +188,15 @@ def plot_field(
     # Title
     if title:
         ax.set_title(title)
+    
+    if point_sources:
+        with open(point_sources, 'r') as file:
+            csvFile = csv.reader(file, delimiter=';')
+            next(csvFile)
+            for line in csvFile:
+                ax.plot(float(line[2].replace(',', '.')), float(line[1].replace(',','.')), marker="x", markeredgecolor="black")
+        point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
+        ax.legend(handles=[point])
 
 
 def plot_time_series(
