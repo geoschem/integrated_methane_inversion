@@ -197,6 +197,7 @@ def plot_field(
     if title:
         ax.set_title(title)
     
+    # Marks any specified high-resolution coordinates on the preview observation density map
     if point_sources:
         with open(point_sources, 'r') as file:
             csvFile = csv.reader(file, delimiter=';')

@@ -228,7 +228,6 @@ def imi_preview(
         lat_bounds=None,
         levels=21,
         title="Prior emissions",
-        point_sources=config["ForcedNativeResolutionElements"],
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
         mask=mask,
         only_ROI=False,
@@ -252,12 +251,11 @@ def imi_preview(
         lon_bounds=None,
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
-        point_sources=config["ForcedNativeResolutionElements"],
         cbar_label="Column mixing ratio (ppb)",
         mask=mask,
         only_ROI=False,
     )
-    ds.to_netcdf("obs.nc")
+
     plt.savefig(
         os.path.join(preview_dir, "preview_observations.png"),
         bbox_inches="tight",
@@ -277,7 +275,6 @@ def imi_preview(
         lon_bounds=None,
         lat_bounds=None,
         title="SWIR Albedo",
-        point_sources=config["ForcedNativeResolutionElements"],
         cbar_label="Albedo",
         mask=mask,
         only_ROI=False,
@@ -321,7 +318,6 @@ def imi_preview(
         lon_bounds=None,
         lat_bounds=None,
         title="Estimated Averaging kernel sensitivities",
-        point_sources=config["ForcedNativeResolutionElements"],
         cbar_label="Sensitivity",
         only_ROI=True,
         state_vector_labels=state_vector_labels,

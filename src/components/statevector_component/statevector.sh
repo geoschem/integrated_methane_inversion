@@ -34,7 +34,7 @@ create_statevector() {
 
     # Get config path
     config_path=${InversionPath}/${ConfigFile}
-    set -x
+
     printf "\nCalling make_state_vector_file.py\n"
     python make_state_vector_file.py $config_path $LandCoverFile $HemcoDiagFile $StateVectorFName
 
