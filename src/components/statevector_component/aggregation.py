@@ -10,11 +10,11 @@ import yaml
 import requests
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
-from shapely.geometry import Polygon, Point, MultiPolygon
-import shapefile 
+from shapely.geometry import Point
+
 import datetime
 from dateutil.relativedelta import relativedelta
-
+import geopandas as gpd
 import sys
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
@@ -342,10 +342,7 @@ def shapefile_filter(plumes, shapefile_path):
         shapefile_path      String : a string with the path to the shapefile of the ROI
     Returns:                pd.Dataframe() : pandas dataframe only containing coordinates within the shapefile
     """
-    polygon = shapefile.Reader(shapefile_path) 
-    polygon = polygon.shapes() 
-    shpfilePoints = [ shape.points for shape in polygon ]
-    polygons = shpfilePoints
+    shapefile = gpd.read_file(shapefile_path)
     for lon, lat in zip(plumes['lon'], plumes['lat']):   
         point = Point(lon, lat)
         is_within = shapefile.contains(point)
@@ -353,6 +350,7 @@ def shapefile_filter(plumes, shapefile_path):
         is_within_any = is_within.any()
         if not is_within_any:
             plumes  = plumes[(plumes['lon'] != float(lon)) | (plumes['lat'] != float(lat))]
+    
     return plumes
 
 
@@ -386,6 +384,9 @@ def SRON_plumes(config):
     plumes = pd.DataFrame()
     shapefile_path = config["ShapeFile"] 
     startDate = datetime.datetime.strptime(str(config["StartDate"]), "%Y%m%d")
+    if startDate.year < 2023: # SRON plumes are only available beginning in 2023
+        return None
+        
     endDate = datetime.datetime.strptime(str(config["EndDate"]), "%Y%m%d")
     custom_vectorfile = not config["CreateAutomaticRectilinearStateVectorFile"]
     LatMax = config["LatMax"]
@@ -394,6 +395,8 @@ def SRON_plumes(config):
     LonMin = config["LonMin"]
     currentDate = startDate
 
+    
+    
     #calls the get_plumes function for every month in the selected time frame
     while currentDate <= endDate:
         p = get_plumes(str(currentDate.month), str(currentDate.year))
@@ -459,9 +462,13 @@ def force_native_res_pixels(config, clusters, sensitivities):
     """
     plumes = SRON_plumes(config)
     coords = read_coordinates(config["ForcedNativeResolutionElements"])
-    if (len(coords) + len(plumes)) > config["NumberOfElements"]:
-        plumes = plumes[0:(config["NumberOfElements"] - len(coords))]
-    coords.extend(plumes)
+    if plumes is not None:
+        if coords is None:
+            coords = plumes
+        else:
+            coords.extend(plumes)
+        if (len(coords)) > config["NumberOfElements"]:
+                coords = coords[0:config["NumberOfElements"] - 1]
 
     if coords is None:
         # No forced pixels inputted
