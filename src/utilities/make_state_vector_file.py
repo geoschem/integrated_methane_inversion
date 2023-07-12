@@ -1,7 +1,6 @@
 import numpy as np
 import xarray as xr
 from sklearn.cluster import KMeans
-import yaml
 from bs4 import BeautifulSoup
 import requests
 import os
@@ -14,6 +13,8 @@ import geopandas as gpd
 import pandas as pd
 import cartopy.crs as ccrs
 from requests.exceptions import Timeout
+import yaml
+import ruamel.yaml
 
 
 def get_nested_grid_bounds(land_cover_pth):
@@ -190,7 +191,12 @@ def make_rectilinear_state_vector_file(
     # Save
     if save_pth is not None:
         print("Saving file {}".format(save_pth))
-        ds_statevector.to_netcdf(save_pth)
+        ds_statevector.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
+            },
+        )
 
     return ds_statevector
 
@@ -223,7 +229,7 @@ def get_country_code(ROI):
                 countryInfo = str(country)
                 # Extract the country code from the HTML string
                 countryCode = countryInfo.split("=\"")[1].split("_")[0]
-                print(countryCode)  # Print the country code
+                print(f"{ROI} was found in the database with a country code: {countryCode}")  # Print the country code
                 found = True
 
         if not found:
@@ -253,8 +259,8 @@ def get_shapefile(countryCode):
     shp_url = f"https://geodata.ucdavis.edu/gadm/gadm4.1/shp/gadm41_{countryCode}_shp.zip"  # URL for country shapefile
 
     try:
-        # Send a GET request to the shapefile URL with a timeout of 5 seconds
-        rshp = requests.get(shp_url, allow_redirects=True, timeout=5)
+        # Send a GET request to the shapefile URL with a timeout of 30 seconds
+        rshp = requests.get(shp_url, allow_redirects=True, timeout=30)
 
         file = f"{countryCode}_SHP.zip"
         # Save the shapefile zip content to a file
@@ -465,8 +471,17 @@ def make_country_state_vector_file(config_path, land_cover_pth, hemco_diag_pth, 
     # Gets the shapefile for the corrresponding country and saves it in the current directory
     shapefile_path = get_shapefile(code)
     
-    # Update the configuration with the shapefile path
+    # Update the configuration dict with the shapefile path
     config["ShapeFile"] = shapefile_path
+
+    #update the original configuration file using the ruamel.yaml library
+    ruamelyaml = ruamel.yaml.YAML()
+    ruamelyaml.preserve_quotes = True
+    with open(config_path) as fp:
+        changed_config = ruamelyaml.load(fp)
+    changed_config['ShapeFile'] = config["ShapeFile"]
+    with open(config_path, 'w') as fp:
+        ruamelyaml.dump(changed_config, fp)
     
     # Print the path where the shapefile is saved
     print(f"Shapefile saved at {shapefile_path}")
@@ -485,21 +500,23 @@ if __name__ == "__main__":
     save_pth = sys.argv[4]
     # If the Region of Interest is specified, then the make_country_state_vector_file function is called. Else, the make_rectilinear_state_vector_file function is called
     try:
-        if config["RegionOfInterest"] is not None:
+        if (config["RegionOfInterest"] is not None) and config["CreateAutomaticRectilinearStateVectorFile"] == False:
             make_country_state_vector_file(
             config_path, 
             land_cover_pth, 
             hemco_diag_pth, 
             save_pth
             )
-        else:
-            print("No specified ROI")
+        elif (config["RegionOfInterest"] is None) and config["CreateAutomaticRectilinearStateVectorFile"] == True:
+            print("Creating Rectilinear StateVector File")
             make_rectilinear_state_vector_file(
             config_path, 
             land_cover_pth, 
             hemco_diag_pth, 
             save_pth,
             )
+        else:
+            print("ERROR: The method of creating a statevector was not specified correctly.")
     except KeyError:
         print("No specified ROI")
         make_rectilinear_state_vector_file(
