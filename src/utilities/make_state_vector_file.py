@@ -499,7 +499,7 @@ if __name__ == "__main__":
     hemco_diag_pth = sys.argv[3]
     save_pth = sys.argv[4]
     # If the Region of Interest is specified, then the make_country_state_vector_file function is called. Else, the make_rectilinear_state_vector_file function is called
-    try:
+    if "RegionOfInterest" in config.keys():
         if (config["RegionOfInterest"] is not None) and config["CreateAutomaticRectilinearStateVectorFile"] == False:
             make_country_state_vector_file(
             config_path, 
@@ -516,8 +516,8 @@ if __name__ == "__main__":
             save_pth,
             )
         else:
-            print("ERROR: The method of creating a statevector was not specified correctly.")
-    except KeyError:
+            raise ValueError("The method of creating a statevector was not specified correctly.")
+    else:
         print("No specified ROI")
         make_rectilinear_state_vector_file(
         config_path, 
