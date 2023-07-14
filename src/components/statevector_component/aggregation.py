@@ -408,8 +408,6 @@ def SRON_plumes(config):
         plumes = shapefile_filter(plumes, shapefile_path) #calls function to filter through coordinates found in shapefile
     else:
         plumes = rectangular_filter(plumes, LatMax, LatMin, LonMax, LonMin)
-    print("Detected plumes: ")
-    print(plumes)
 
     plumes_list = plumes[['lat', 'lon']].values.tolist()
     return plumes_list
@@ -480,7 +478,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
 
     if coords is None:
         # No forced pixels inputted
-        print("No forced native pixels")
+        print(f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset.")
         return sensitivities
 
     if config["Res"] == "0.25x0.3125":
@@ -495,14 +493,12 @@ def force_native_res_pixels(config, clusters, sensitivities):
         lat = np.floor(lat / lat_step) * lat_step
 
  
-    print(f"Length of the list before: {len(coords)}")
     coords = sorted(set(map(tuple, coords)), reverse=True) # Remove any duplicate coordinates within the same gridcell. 
     coords = [list(coordinate) for coordinate in coords]
-    print(coords)
-    print(f"Length of the list after: {len(coords)}")
+    
 
-    if (len(coords)) > config["NumberOfElements"]:
-                coords = coords[0:config["NumberOfElements"] - 1]
+    if len(coords) > config["NumberOfElements"]:
+        coords = coords[0:config["NumberOfElements"] - 1]
 
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
