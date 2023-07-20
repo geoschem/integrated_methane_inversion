@@ -3,19 +3,17 @@
 
 import sys
 import yaml
+import datetime
+import requests
 import xarray as xr
 import numpy as np
 import pandas as pd
-import yaml
-import requests
+import geopandas as gpd
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 from shapely.geometry import Point
-
-import datetime
 from dateutil.relativedelta import relativedelta
-import geopandas as gpd
-import sys
+
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
