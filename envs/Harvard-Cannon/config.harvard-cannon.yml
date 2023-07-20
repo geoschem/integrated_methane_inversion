@@ -13,25 +13,6 @@ StartDate: 20180501
 EndDate: 20180508
 SpinupMonths: 1
 
-## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: false
-
-## Use nested grid simulation?
-NestedGrid: true
-
-## Select nested grid region for using pre-cropped met fields
-##   Current options are listed below with ([lat],[lon]) bounds:
-##    "AF" : Africa ([-37,40], [-20,53])
-##    "AS" : Asia ([-11,55],[60,150]) 
-##    "EU" : Europe ([33,61],[-30,70])
-##    "ME" : Middle East ([12,44], [-20,70])
-##    "NA" : North America ([10,70],[-140,-40])
-##    "OC" : Oceania ([-50,5], [110,180])
-##    "RU" : Russia ([41,83], [19,180])
-##    "SA" : South America ([-59,16], [-88,-31])
-##    ""   : Use for global met fields (global simulation/custom nested grids)
-NestedRegion: "NA"
-
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
@@ -39,6 +20,24 @@ LonMin: -105
 LonMax: -103
 LatMin: 31
 LatMax: 33
+
+## Use nested grid simulation?
+##   Must be "true" for IMI regional inversions
+NestedGrid: true
+
+## Select nested grid region (for using pre-cropped meteorological fields)
+##   Current options are listed below with ([lat],[lon]) bounds:
+##     "AF" : Africa ([-37,40], [-20,53])
+##     "AS" : Asia ([-11,55],[60,150]) 
+##     "EU" : Europe ([33,61],[-30,70])
+##     "ME" : Middle East ([12,50], [-20,70])
+##     "NA" : North America ([10,70],[-140,-40])
+##     "OC" : Oceania ([-50,5], [110,180])
+##     "RU" : Russia ([41,83], [19,180])
+##     "SA" : South America ([-59,16], [-88,-31])
+##     ""   : Use for global met fields (global simulation/custom nested grids)
+##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
+NestedRegion: "NA"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -69,8 +68,6 @@ PrecomputedJacobian: false
 Res: "0.25x0.3125"
 Met: "geosfp"
 
-##   Other grid settings
-
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
@@ -88,12 +85,21 @@ DoInversion: false
 DoPosterior: false
 
 ## IMI preview
-DoPreview: false
+DoPreview: true
 DOFSThreshold: 0
 
-##------------------------------------------------------------------
-## Settings for GEOS-Chem simulations
-##------------------------------------------------------------------
+## resource allocation settings for slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "0-24:00"
+SchedulerPartition: "seas_compute,huce_cascade,huce_intel"
+
+##--------------------------------------------------------------------
+## Additional settings for GEOS-Chem simulations
+##--------------------------------------------------------------------
+
 ## Jacobian settings
 PerturbValue: 1.5
 
@@ -117,14 +123,6 @@ PLANEFLIGHT: false
 GOSAT: false
 TCCON: false
 AIRS: false
-
-## resources to allocate to slurm jobs
-SimulationCPUs: 32
-SimulationMemory: 32000
-JacobianCPUs: 1
-JacobianMemory: 2000
-RequestedTime: "0-6:00"
-SchedulerPartition: "seas_compute,huce_cascade,huce_intel"
 
 ##------------------------------------------------------------------
 ## Settings for running on local cluster
