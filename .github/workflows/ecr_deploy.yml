@@ -1,8 +1,8 @@
 name: Deploy to ECR
-
+# TODO: push branch when pushes to main
 on:
   push:
-    branches: [ feature/imi_dockerfile ]
+    branches: [ dev ]
 
 jobs:
   
