@@ -10,7 +10,7 @@ S3Upload: false
 
 ## Period of interest
 StartDate: 20180501
-EndDate: 20180601
+EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
@@ -43,7 +43,7 @@ NestedGrid: true
 NestedRegion: "NA"
 
 ## Kalman filter options
-KalmanMode: true
+KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
 
@@ -69,8 +69,6 @@ ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/Permi
 PriorError: 0.5
 ObsError: 15
 Gamma: 1.0
-
-## Precomputed Jacobian
 PrecomputedJacobian: false
 
 ## Grid

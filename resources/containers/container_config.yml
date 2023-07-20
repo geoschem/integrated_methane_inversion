@@ -13,6 +13,9 @@ StartDate: 20180501
 EndDate: 20180504
 SpinupMonths: 1
 
+## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
+BlendedTROPOMI: false
+
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
@@ -38,6 +41,11 @@ NestedGrid: true
 ##     ""   : Use for global met fields (global simulation/custom nested grids)
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
 NestedRegion: "NA"
+
+## Kalman filter options
+KalmanMode: false
+UpdateFreqDays: 7
+NudgeFactor: 0.1
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -95,6 +103,7 @@ JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
+
 ##====================================================================
 ##
 ## Advanced Settings (optional)
