@@ -2,20 +2,21 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_Permian_1week"
-isAWS: true
+RunName: "India_Kalman_3month_INVERSION"
+isAWS: false
 UseSlurm: true
-SafeMode: true
+SafeMode: false
 
 ## Period of interest
-StartDate: 20180501
-EndDate: 20180601
+StartDate: 20220928
+EndDate: 20230503
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: false
+BlendedTROPOMI: true
 
-## Region of interest
+## Region of interest - must be set to false if not used.
+RegionOfInterest: false
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
 LonMin: -105
@@ -39,30 +40,29 @@ NestedGrid: true
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global met fields (global simulation/custom nested grids)
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-NestedRegion: "NA"
+NestedRegion: "AS"
 
 ## Kalman filter options
 KalmanMode: true
-UpdateFreqDays: 7
+UpdateFreqDays: 31
 NudgeFactor: 0.1
+FirstPeriod: 7
 
 ## State vector
-CreateAutomaticRectilinearStateVectorFile: true
+CreateAutomaticRectilinearStateVectorFile: false
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 
 ## Clustering Options
-ReducedDimensionStateVector: false
+ReducedDimensionStateVector: true
 ClusteringMethod: "kmeans"
-NumberOfElements: 45
-ForcedNativeResolutionElements: 
-  - [31.5, -104]
-  
+NumberOfElements: 200
+
 ## Custom state vector
-StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
-ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
+StateVectorFile: "/n/home12/aoortalonso/holyscratch/integrated_methane_inversion/resources/statevectors/IndiaBangladeshStateVector.nc"
+ShapeFile: "/n/home12/aoortalonso/holyscratch/integrated_methane_inversion/resources/shapefiles/india_bangladesh/india_bangladesh3.shp"
 
 ## Inversion
 PriorError: 0.5
@@ -79,22 +79,22 @@ Met: "geosfp"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
-SetupTemplateRundir: true
-SetupSpinupRun: false
-SetupJacobianRuns: false
-SetupInversion: false
-SetupPosteriorRun: false
+SetupTemplateRundir: false
+SetupSpinupRun: true
+SetupJacobianRuns: true
+SetupInversion: true
+SetupPosteriorRun: true
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: false
-DoJacobian: false
-DoInversion: false
-DoPosterior: false
+DoSpinup: true
+DoJacobian: true
+DoInversion: true
+DoPosterior: true
 
 ## IMI preview
-DoPreview: true
+DoPreview: false
 DOFSThreshold: 0
 
 ##====================================================================
@@ -138,43 +138,47 @@ AIRS: false
 
 ## resources to allocate to slurm jobs
 SimulationCPUs: 32
-SimulationMemory: 32000
+SimulationMemory: 64000
 JacobianCPUs: 1
-JacobianMemory: 2000
+JacobianMemory: 128000
 RequestedTime: "0-6:00"
-SchedulerPartition: "debug"
+
+# Clean up output directory by deleting data_sensitivities folder?
+CleanUp: false
 
 ##--------------------------------------------------------------------
 ## Settings for running on a local cluster
 ##--------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/home/ubuntu/imi_output_dir"
+OutputPath: "/n/home12/aoortalonso/holyscratch/integrated_methane_inversion/imi_output_dir"
 
 ## Path to GEOS-Chem input data
-DataPath: "/home/ubuntu/ExtData"
-
+DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 ## Environment files
-CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
-CondaEnv: "geo"
+GEOSChemEnv: "/n/home12/aoortalonso/holyscratch/integrated_methane_inversion/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
+CondaEnv: "imi_env"
+SchedulerPartition: "seas_compute,huce_cascade,huce_intel,serial_requeue"
 
 ## Download initial restart file from AWS S3?
 RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
-BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
-BCversion: "v2023-04"
+## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
+## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
+BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions"
+BCversion: "v2023-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: You will be charged if your ec2 instance is not in the
-##         us-east-1 region.
-PreviewDryRun: true
-SpinupDryrun: true
-ProductionDryRun: true
-PosteriorDryRun: true
-BCdryrun: true
+##  NOTE: Must have AWS CLI enabled
+PreviewDryRun: false
+SpinupDryrun: false
+ProductionDryRun: false
+PosteriorDryRun: false
+BCdryrun: false
