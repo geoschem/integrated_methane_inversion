@@ -87,6 +87,7 @@ config_required = [
     "RequestedTime",
     "SchedulerPartition",
     "KalmanMode",
+    "S3Upload",
 ]
 
 # dict of variables that are required if another variable is set to true 
@@ -101,6 +102,10 @@ conditional_dict["ReducedDimensionStateVector"] = [
     "NumberOfElements",
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
+conditional_dict["S3Upload"] = [
+    "S3UploadPath",
+    "S3UploadFiles",
+]
 
 if __name__ == "__main__":
     config_path = sys.argv[1]

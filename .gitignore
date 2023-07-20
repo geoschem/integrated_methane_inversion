@@ -10,3 +10,4 @@ __pycache__/
 slurm-*.out
 *~
 imi_output.log
+.env
