@@ -3,19 +3,17 @@
 
 import sys
 import yaml
+import datetime
+import requests
 import xarray as xr
 import numpy as np
 import pandas as pd
-import yaml
-import requests
+import geopandas as gpd
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
 from shapely.geometry import Point
-
-import datetime
 from dateutil.relativedelta import relativedelta
-import geopandas as gpd
-import sys
+
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
@@ -329,7 +327,7 @@ def get_plumes(month, year):
                 df = pd.read_csv(file) # reads from the csv file into a pandas dataframe
                 plume = plume.append(df, ignore_index=True)
             except:
-                print("ERROR FETCHING CSV FILE")
+                print(f"Warning: Unable to access data for csv file at {csvUrl}. The file may not exist or there may be a connection problem.")
     return plume
 
 
@@ -384,10 +382,9 @@ def SRON_plumes(config):
     plumes = pd.DataFrame()
     shapefile_path = config["ShapeFile"] 
     startDate = datetime.datetime.strptime(str(config["StartDate"]), "%Y%m%d")
-    if startDate.year < 2023: # SRON plumes are only available beginning in 2023
-        return None
-        
     endDate = datetime.datetime.strptime(str(config["EndDate"]), "%Y%m%d")
+    if endDate.year < 2023: # SRON plumes are only available beginning in 2023
+        return None
     custom_vectorfile = not config["CreateAutomaticRectilinearStateVectorFile"]
     LatMax = config["LatMax"]
     LatMin = config["LatMin"]
@@ -399,8 +396,9 @@ def SRON_plumes(config):
     
     #calls the get_plumes function for every month in the selected time frame
     while currentDate <= endDate:
-        p = get_plumes(str(currentDate.month), str(currentDate.year))
-        plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True) 
+        if currentDate.year >= 2023: # SRON plumes are only available beginning in 2023
+            p = get_plumes(str(currentDate.month), str(currentDate.year))
+            plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True) 
         currentDate = currentDate + relativedelta(months=1)
     
     #filters through the dataset to remove any plumes outside the ROI
@@ -460,18 +458,25 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    plumes = SRON_plumes(config)
     coords = read_coordinates(config["ForcedNativeResolutionElements"])
+    
+    if "SRON" in config["PointSourceDatasets"]:
+        print("Fetching plumes from SRON database...")
+        plumes = SRON_plumes(config)
+    else: 
+        plumes = None
+    
     if plumes is not None:
         if coords is None:
             coords = plumes
         else:
             coords.extend(plumes)
-        if (len(coords)) > config["NumberOfElements"]:
-                coords = coords[0:config["NumberOfElements"] - 1]
+
+        
 
     if coords is None:
         # No forced pixels inputted
+        print(f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset.")
         return sensitivities
 
     if config["Res"] == "0.25x0.3125":
@@ -480,10 +485,23 @@ def force_native_res_pixels(config, clusters, sensitivities):
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
+    
+    for lat, lon in coords:
+        lon = np.floor(lon / lon_step) * lon_step
+        lat = np.floor(lat / lat_step) * lat_step
+
+ 
+    coords = sorted(set(map(tuple, coords)), reverse=True) # Remove any duplicate coordinates within the same gridcell. 
+    coords = [list(coordinate) for coordinate in coords]
+    
+
+    if len(coords) > config["NumberOfElements"]:
+        coords = coords[0:config["NumberOfElements"] - 1]
 
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
         binned_lat = np.floor(lat / lat_step) * lat_step
+
 
         try:
             cluster_index = int(

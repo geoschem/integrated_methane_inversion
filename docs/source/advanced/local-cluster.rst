@@ -32,7 +32,7 @@ IMI folder using these commands:
     $ cd GCClassic
     $ git submodule update --init --recursive
 
-See `Downloading rhe GEOS-Chem source code <https://geos-chem.readthedocs.io/en/latest/building-gc/download-source-code.html>`__ for more details.
+See `Downloading the GEOS-Chem source code <https://geos-chem.readthedocs.io/en/latest/building-gc/download-source-code.html>`__ for more details.
 
 Navigate back to the top-level IMI folder and view the contents:
 
@@ -54,15 +54,16 @@ for AWS and Harvard's Cannon cluster.
     conda_env.yml  slurm/  spack_env.env
     
     envs/Harvard-Cannon:
-    ch4_inv.yml                gcc.gfortran10.2_cannon.env*  gcc.ifort19_cannon.env*
-    config.harvard-cannon.yml  gcc.ifort17_cannon.env*       README
+    ch4_inv.yml                gcclassic.rocky+gnu10.minimal.env*  gcclassic.rocky+gnu10.env*
+    config.harvard-cannon.yml  gcclassic.rocky+gnu12.minimal.env*      README
 
 We recommend you add a subfolder within ``envs`` for your own system
 to easily access your customized files needed for the IMI. In this
 directory, we recommend storing any environment files needed to load
 the  libraries for GEOS-Chem (e.g. fortran compiler, netcdf, openmpi,
 cmake), a conda environment file, and a copy of the IMI configuration file
-modified for your system. See the files in ``envs/Harvard-Cannon`` for examples.
+modified for your system. See the files in ``envs/Harvard-Cannon`` for examples. 
+We recommend basing your config file off of ``config.harvard-cannon.yml``.
 
 Within the copied IMI configuration file, you will need to modify the
 settings in the section labeled "Settings for running on your local
@@ -92,6 +93,11 @@ If you do not pass a configuration file, ``config.yml`` in
 the top-level IMI directory will be used. That file is set up for
 running the IMI on AWS by default.
 
+You can also run the IMI with slurm if your local cluster supports this by running:
+
+.. code-block:: console
+
+    $ sbatch -p <partition-name> -c <num-cores> --mem <amount-mem> -t <time-limit> ./run_imi.sh config.harvard-cannon.yml
 
 
     

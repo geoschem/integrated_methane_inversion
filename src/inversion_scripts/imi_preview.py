@@ -328,6 +328,15 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    expectedDOFS = np.round(sum(a),5)
+    if expectedDOFS < config["DOFSThreshold"]:
+        print(f"\nExpected DOFS = {expectedDOFS} are less than DOFSThreshold = {config['DOFSThreshold']}. Exiting.\n")
+        print("Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n")
+        # if run with sbatch this ensures the exit code is not lost.
+        file = open(".error_status_file.txt", 'w')
+        file.write("Error Status: 1")
+        file.close()
+        sys.exit(1)
 
 
 def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):

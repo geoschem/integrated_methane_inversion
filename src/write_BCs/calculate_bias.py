@@ -29,19 +29,29 @@ smoothing_time_window = 30
 # highest positive bias
 def replace_outliers(data, perc=0.01):
     # calculate percentile
-    threshold = data.quantile(perc, skipna=True)
+    # TODO: this is a temporary fix that maintains reproducibility of 
+    # boundary conditions for v2023-06 despite differences in start and 
+    # end dates. previously we calculated the threshold using 99th percentile
+    # of the entire data period and used that threshold to replace outlier 
+    # values, but the percentile value varies with the selected time period.
+    threshold = -105.18692708
+    #threshold = data.quantile(perc, skipna=True)
     sign = abs(threshold) / threshold
 
     # find outliers and replace them with max among remaining values
     # .where replace outliers with nan
     mask = data.where(abs(data) <= abs(threshold))
-    max_value = abs(mask).max().values
+    # TODO: update this
+    max_value = 105.18692707628912
+    #max_value = abs(mask).max().values
 
     # fill na values with the next highest values below the threshold
     mask = mask.fillna(max_value * sign)
 
-    # remove the quantile coordinate
-    data = mask.drop_vars("quantile")
+    # Note: removed for hardcoding of threshold
+    # # remove the quantile coordinate
+    # data = mask.drop_vars("quantile")
+    data = mask
 
     return data
 
