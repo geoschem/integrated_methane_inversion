@@ -82,7 +82,9 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     ds.A.attrs["units"] = "1"
 
     # Create netcdf
-    ds.to_netcdf(save_path)
+    ds.to_netcdf(
+        save_path, encoding={v: {"zlib": True, "complevel": 9} for v in ds.data_vars}
+    )
 
     print(f"Saved gridded file to {save_path}")
 
