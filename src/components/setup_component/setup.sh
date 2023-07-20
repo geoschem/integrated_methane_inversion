@@ -141,7 +141,8 @@ setup_imi() {
     ## Create state vector file
     ##=======================================================================
 
-    if "$CreateAutomaticRectilinearStateVectorFile"; then
+
+    if [ "$CreateAutomaticRectilinearStateVectorFile" == "true" ] || [ "$RegionOfInterest" != "false" ]; then
         create_statevector
     else
         # Copy custom state vector to $RunDirs directory for later use

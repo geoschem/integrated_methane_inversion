@@ -255,6 +255,7 @@ def imi_preview(
         mask=mask,
         only_ROI=False,
     )
+
     plt.savefig(
         os.path.join(preview_dir, "preview_observations.png"),
         bbox_inches="tight",
@@ -295,6 +296,7 @@ def imi_preview(
         lon_bounds=None,
         lat_bounds=None,
         title="Observation density",
+        point_sources=config["ForcedNativeResolutionElements"],
         cbar_label="Number of observations",
         mask=mask,
         only_ROI=False,
