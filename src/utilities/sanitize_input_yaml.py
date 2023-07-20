@@ -15,7 +15,10 @@ config_required_aws = [
 ]
 
 # variables only required by local cluster
-config_required_local_cluster = []
+config_required_local_cluster = [
+    "DataPathTROPOMI",
+    "GEOSChemEnv",
+]
 
 # variables required on all systems
 config_required = [

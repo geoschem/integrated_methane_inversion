@@ -30,7 +30,7 @@ NestedGrid: true
 ##     "AF" : Africa ([-37,40], [-20,53])
 ##     "AS" : Asia ([-11,55],[60,150]) 
 ##     "EU" : Europe ([33,61],[-30,70])
-##     "ME" : Middle East ([12,44], [-20,70])
+##     "ME" : Middle East ([12,50], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
 ##     "OC" : Oceania ([-50,5], [110,180])
 ##     "RU" : Russia ([41,83], [19,180])
@@ -52,7 +52,7 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
-  
+
 ## Custom state vector
 StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
@@ -87,6 +87,14 @@ DoPosterior: false
 ## IMI preview
 DoPreview: true
 DOFSThreshold: 0
+
+## resource allocation settings for slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "0-24:00"
+SchedulerPartition: "debug"
 
 ##====================================================================
 ##
@@ -127,17 +135,9 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
-## resources to allocate to slurm jobs
-SimulationCPUs: 32
-SimulationMemory: 32000
-JacobianCPUs: 1
-JacobianMemory: 2000
-RequestedTime: "0-6:00"
-SchedulerPartition: "debug"
-
-##--------------------------------------------------------------------
-## Settings for running on a local cluster
-##--------------------------------------------------------------------
+##------------------------------------------------------------------
+## Settings for running on local cluster
+##------------------------------------------------------------------
 
 ## Path for IMI runs and output
 OutputPath: "/home/ubuntu/imi_output_dir"
@@ -150,6 +150,7 @@ CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
 CondaEnv: "geo"
 
 ## Download initial restart file from AWS S3?
+##  NOTE: Must have AWS CLI enabled
 RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
@@ -158,6 +159,8 @@ RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryCon
 RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
+## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
+## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 BCversion: "v2023-06"
 
