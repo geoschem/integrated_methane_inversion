@@ -59,6 +59,12 @@ run_preview() {
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
+    # Update for Kalman filter option
+    if "$KalmanMode"; then
+        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
+        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+    fi
+
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
 	-e "s:##:#:g" ch4_run.template > ${PreviewName}.run
@@ -100,7 +106,6 @@ run_preview() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
-        export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
         sbatch --mem $SimulationMemory \
         -c $SimulationCPUs \

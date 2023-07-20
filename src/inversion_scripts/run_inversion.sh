@@ -37,6 +37,7 @@ OutputPath={OUTPUT_PATH}
 Res={RES}
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
+PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
@@ -44,8 +45,9 @@ JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
 tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
 
-# Only matters for Kalman filter inversions, to be implemented in a future version of the IMI
-FirstSimSwitch=true
+# For Kalman filter: assume first inversion period (( i = 1 )) by default
+# Switch is flipped to false automatically if (( i > 1 ))
+FirstSimSwitch=$1
 
 printf "\n=== EXECUTING RUN_INVERSION.SH ===\n"
     
@@ -67,28 +69,34 @@ fi
 # Postprocess the SpeciesConc and LevelEdgeDiags files from GEOS-Chem
 #=======================================================================
 
+printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
+if "$FirstSimSwitch"; then
+    if [[ ! -d ${SpinupDir} ]]; then
+    printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
+    exit 1
+    fi
+    PrevDir=$SpinupDir
+else
+    PrevDir=$PosteriorRunDir
+    if [[ ! -d ${PosteriorRunDir} ]]; then
+    printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
+    exit 1
+    fi
+fi
+printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
+
 if ! "$PrecomputedJacobian"; then
 
-    printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
-    if "$FirstSimSwitch"; then
-        if [[ ! -d ${SpinupDir} ]]; then
-        printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-        exit 1
-        fi
-        PrevDir=$SpinupDir
-    else
-        PrevDir=%$PosteriorRunDir
-        if [[ ! -d ${PosteriorRunDir} ]]; then
-        printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-        exit 1
-        fi
-    fi
-    printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
-
+    # Postprocess all the Jacobian simulations
     python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate; wait
-    printf "DONE -- postproc_diags.py\n\n"
+
+else
+
+    # Only postprocess the Prior simulation
+    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
 
 fi
+printf "DONE -- postproc_diags.py\n\n"
 
 #=======================================================================
 # Calculate GEOS-Chem sensitivities and save to sensitivities directory
@@ -109,15 +117,11 @@ fi
 # Setup GC data directory in workdir
 #=======================================================================
 
-if ! "$PrecomputedJacobian"; then
+GCsourcepth="${PriorRunDir}/OutputDir"
 
-    GCsourcepth="${JacobianRunsDir}/${RunName}_0000/OutputDir"
-
-    printf "Calling setup_gc_cache.py\n"
-    python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-    printf "DONE -- setup_gc_cache.py\n\n"
-
-fi
+printf "Calling setup_gc_cache.py\n"
+python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+printf "DONE -- setup_gc_cache.py\n\n"
 
 #=======================================================================
 # Generate Jacobian matrix files 
@@ -136,10 +140,20 @@ fi
 # Do inversion
 #=======================================================================
 
+if ! "$PrecomputedJacobian"; then
+
+    jacobian_sf="None"
+
+else
+
+    jacobian_sf=./jacobian_scale_factors.npy
+
+fi
+
 posteriorSF="./inversion_result.nc"
 
 printf "Calling invert.py\n"
-python invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res; wait
+python invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf; wait
 printf "DONE -- invert.py\n\n"
 
 #=======================================================================

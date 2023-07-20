@@ -65,6 +65,7 @@ observational error (``ObsError``), or regularization parameter (``Gamma``). ::
 
     ## Inversion
     PrecomputedJacobian: true
+    ReferenceRunDir: "/path/to/your/run/dir"
 
     ## Setup modules
     SetupTemplateRundir: false

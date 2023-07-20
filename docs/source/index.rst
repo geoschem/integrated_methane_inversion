@@ -36,6 +36,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    :caption: Advanced Features
 
    advanced/running-with-tmux.rst
+   advanced/kalman-filter-mode.rst
    advanced/setting-up-jupyter.rst
    advanced/custom-state-vector.rst
    advanced/using-clustering-options.rst

@@ -39,6 +39,11 @@ setup_inversion() {
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
            -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
 
+    if "$KalmanMode"; then
+        # Rename inversion directory as template directory
+        mv ${RunDirs}/inversion ${RunDirs}/inversion_template
+    fi
+
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 }
 
@@ -48,8 +53,17 @@ setup_inversion() {
 run_inversion() {
     inversion_start=$(date +%s)
     printf "\n=== RUNNING INVERSION ===\n"
-
-    cd ${RunDirs}/inversion
+    FirstSimSwitch=true
+    if "$KalmanMode"; then
+        cd ${RunDirs}/kf_inversions/period${i}
+        # Modify inversion driver script to reflect current inversion period
+        sed -i "s|data_TROPOMI\"|data_TROPOMI\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
+        if (( i > 1 )); then
+            FirstSimSwitch=false
+        fi
+    else
+        cd ${RunDirs}/inversion
+    fi
 
     if ! "$isAWS"; then
         # Activate Conda environment
@@ -63,7 +77,7 @@ run_inversion() {
            -c $SimulationCPUs \
            -t $RequestedTime \
            -p $SchedulerPartition \
-           -W run_inversion.sh; wait;
+           -W run_inversion.sh $FirstSimSwitch; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

@@ -7,8 +7,8 @@ import numpy as np
 import re
 import os
 import datetime
-from utils import save_obj
-from operators.TROPOMI_operator import (
+from src.inversion_scripts.utils import save_obj
+from src.inversion_scripts.operators.TROPOMI_operator import (
     apply_average_tropomi_operator,
     apply_tropomi_operator,
 )

@@ -42,6 +42,11 @@ NestedGrid: true
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
 NestedRegion: "NA"
 
+## Kalman filter options
+KalmanMode: false
+UpdateFreqDays: 7
+NudgeFactor: 0.1
+
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8

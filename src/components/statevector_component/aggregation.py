@@ -6,7 +6,9 @@ import yaml
 import xarray as xr
 import numpy as np
 import pandas as pd
-from inversion_scripts.imi_preview import (
+import yaml
+import sys
+from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
 )
