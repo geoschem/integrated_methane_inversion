@@ -85,11 +85,17 @@ config_required = [
     "JacobianCPUs",
     "RequestedTime",
     "SchedulerPartition",
+    "S3Upload",
 ]
 
 clustering_vars = [
     "ClusteringMethod",
     "NumberOfElements",
+]
+
+S3UploadVars = [
+    "S3UploadPath",
+    "S3UploadFiles",
 ]
 
 if __name__ == "__main__":
@@ -100,6 +106,9 @@ if __name__ == "__main__":
     # only require clustering vars if reduced dimension state vector is true
     if config["ReducedDimensionStateVector"]:
         config_required = config_required + clustering_vars
+    if config["S3Upload"]:
+        config_required = config_required + S3UploadVars
+        
         
     # update required vars based on system
     if config["isAWS"]:
