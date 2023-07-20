@@ -74,8 +74,8 @@ setup_jacobian() {
 	    RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
 	    ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 	    if "$UseBCsForRestart"; then
-		sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-            fi
+		    sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+        fi
 	fi
    
 	# Update settings in geoschem_config.yml

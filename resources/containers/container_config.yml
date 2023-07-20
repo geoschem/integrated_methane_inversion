@@ -9,12 +9,9 @@ SafeMode: true
 S3Upload: false
 
 ## Period of interest
-StartDate: 20180501
-EndDate: 20180508
+StartDate: 20200501
+EndDate: 20200504
 SpinupMonths: 1
-
-## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: false
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
@@ -57,8 +54,8 @@ ForcedNativeResolutionElements:
   - [31.5, -104]
   
 ## Custom state vector
-StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
-ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
+StateVectorFile: "/home/al2/integrated_methane_inversion/resources/statevectors/StateVector.nc"
+ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
 PriorError: 0.5
@@ -131,8 +128,8 @@ TCCON: false
 AIRS: false
 
 ## resources to allocate to slurm jobs
-SimulationCPUs: 32
-SimulationMemory: 32000
+SimulationCPUs: 16
+SimulationMemory: 16000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-6:00"
@@ -143,25 +140,25 @@ SchedulerPartition: "debug"
 ##--------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/home/ubuntu/imi_output_dir"
+OutputPath: "/home/al2/imi_output_dir"
 
 ## Path to GEOS-Chem input data
-DataPath: "/home/ubuntu/ExtData"
+DataPath: "/home/al2/ExtData"
 
 ## Environment files
-CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
-CondaEnv: "geo"
+CondaFile: "/opt/conda/etc/profile.d/conda.sh"
+CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
 RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/al2/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/home/al2/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
-BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
+BCpath: "/home/al2/ExtData/BoundaryConditions"
 BCversion: "v2023-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
