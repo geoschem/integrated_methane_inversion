@@ -110,6 +110,20 @@ conditional_dict["S3Upload"] = [
     "S3UploadFiles",
 ]
 
+def raise_error_message(var):
+    """
+    Description: raise an error message about missing config variable
+    """    
+    message = (
+        "Error: Missing input variable: "
+        + var
+        + ". Please add to config.yml file."
+        + "\n More information on config variables are available at:"
+        + "https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html"
+    )
+    raise ValueError(message)
+    
+
 if __name__ == "__main__":
     config_path = sys.argv[1]
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
@@ -117,7 +131,9 @@ if __name__ == "__main__":
 
     # require additional variables if conditional dict key is set to true
     for key in conditional_dict.keys():
-        if config[key]:
+        if key not in inputted_config:
+            raise_error_message(key)
+        elif config[key]:
             config_required = config_required + conditional_dict[key]
 
     # update required vars based on system
@@ -128,14 +144,7 @@ if __name__ == "__main__":
 
     missing_input_vars = [x for x in required_vars if x not in inputted_config]
     for var in missing_input_vars:
-        message = (
-            "Error: Missing input variable: "
-            + var
-            + ". Please add to config.yml file."
-            + "\n More information on config variables are available at:"
-            + "https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html"
-        )
-        raise ValueError(message)
+        raise_error_message(var)
 
     if len(missing_input_vars) > 0:
         sys.exit(1)
