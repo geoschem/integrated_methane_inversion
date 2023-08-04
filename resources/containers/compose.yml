@@ -1,0 +1,19 @@
+# IMI Docker Compose File
+# This file is used to run the IMI Docker image
+# and define important parameters for the container
+# see README.md for more information
+services:
+  imi:
+    image: public.ecr.aws/w1q7j9l2/imi-docker-image:latest
+    volumes:
+    # comment out any volume mounts you do not need for your system
+      - /local/container/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
+      - /local/input/data:/home/al2/ExtData # mount input data directory
+      - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
+    environment:
+    # comment out any environment vars you do not need for your system
+      - IMI_CONFIG_PATH=config.yml # path starts from /home/al2/integrated_methane_inversions
+      ## ***** DO NOT push aws credentials to any public repositories *****
+      - AWS_ACCESS_KEY_ID=your_access_key_id
+      - AWS_SECRET_ACCESS_KEY=your_secret_access_key
+      - AWS_DEFAULT_REGION=us-east-1

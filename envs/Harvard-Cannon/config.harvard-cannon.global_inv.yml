@@ -6,6 +6,7 @@ RunName: "Global_IMI"
 isAWS: false
 UseSlurm: true
 SafeMode: true
+S3Upload: false
 
 ## Period of interest
 StartDate: 20180501
@@ -23,7 +24,7 @@ isRegional: false
 ##     "AF" : Africa ([-37,40], [-20,53])
 ##     "AS" : Asia ([-11,55],[60,150]) 
 ##     "EU" : Europe ([33,61],[-30,70])
-##     "ME" : Middle East ([12,44], [-20,70])
+##     "ME" : Middle East ([12,50], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
 ##     "OC" : Oceania ([-50,5], [110,180])
 ##     "RU" : Russia ([41,83], [19,180])
@@ -40,6 +41,11 @@ LonMax: 180
 LatMin: -90
 LatMax: 90
 
+## Kalman filter options
+KalmanMode: false
+UpdateFreqDays: 7
+NudgeFactor: 0.1
+
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 0
@@ -53,9 +59,9 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
-  
+
 ## Custom state vector
-StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Global_IMI/StateVector.nc"
+StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "None"
 
 ## Inversion
@@ -66,7 +72,7 @@ PrecomputedJacobian: false
 
 ## Grid
 ##   Options are 0.25x0.3125, 2x2.5, or 4x5
-Res: "4x5"
+Res: "2x2.5"
 
 ## Meteorology
 ##   Options are geosfp or merra2
@@ -75,7 +81,7 @@ Met: "geosfp"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
+SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
 SetupPosteriorRun: false
@@ -83,14 +89,22 @@ SetupPosteriorRun: false
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: true
+DoSpinup: false
 DoJacobian: false
 DoInversion: false
 DoPosterior: false
 
 ## IMI preview
-DoPreview: false
+DoPreview: true
 DOFSThreshold: 0
+
+## resource allocation settings for slurm jobs
+SimulationCPUs: 32
+SimulationMemory: 32000
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "0-24:00"
+SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
 
 ##====================================================================
 ##
@@ -131,17 +145,9 @@ GOSAT: false
 TCCON: false
 AIRS: false
 
-## resources to allocate to slurm jobs
-SimulationCPUs: 32
-SimulationMemory: 32000
-JacobianCPUs: 1
-JacobianMemory: 2000
-RequestedTime: "0-6:00"
-SchedulerPartition: "seas_compute,huce_cascade,huce_intel"
-
-##--------------------------------------------------------------------
-## Settings for running on a local cluster
-##--------------------------------------------------------------------
+##------------------------------------------------------------------
+## Settings for running on local cluster
+##------------------------------------------------------------------
 
 ## Path for IMI runs and output
 OutputPath: "/n/holyscratch01/jacob_lab/$USER"
@@ -155,7 +161,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 ## Environment files
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
-GEOSChemEnv: "/n/home06/nbalasus/envs/gcclassic.rocky+gnu12.minimal.env"
+GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
@@ -167,7 +173,6 @@ RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditi
 RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
-## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
 BCversion: "v2023-06"

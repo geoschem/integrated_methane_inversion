@@ -11,3 +11,4 @@ slurm-*.out
 *.log
 *~
 imi_output.log
+.env

@@ -8,8 +8,8 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
     This script addresses the fact that output files for the first day of a
     GEOS-Chem simulation do not include data for the first hour of the day; they
     go from 1-23h, instead of 0-23h. The solution is to combine the final output
-    file of a previous simulation (the spinup simulation), which contains data
-    for hour 0 of the last day, with the first output file of the more recent
+    file of a previous simulation (e.g., the spinup simulation), which contains
+    data for hour 0 of the last day, with the first output file of the more recent
     simulation (e.g., a sensitivity simulation). This needs to be done for both
     SpeciesConc and LevelEdgeDiags, and it needs to be done for every run
     directory: i.e., for every perturbed-state-vector-element simulation, and
@@ -63,11 +63,21 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
         final_file_SC = (
             f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0000z.nc4"
         )
-        merged_data_SC.to_netcdf(final_file_SC)
+        merged_data_SC.to_netcdf(
+            final_file_SC,
+            encoding={
+                v: {"zlib": True, "complevel": 9} for v in merged_data_SC.data_vars
+            },
+        )
         if "0000" in r:
             merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
             final_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
-            merged_data_LE.to_netcdf(final_file_LE)
+            merged_data_LE.to_netcdf(
+                final_file_LE,
+                encoding={
+                    v: {"zlib": True, "complevel": 9} for v in merged_data_LE.data_vars
+                },
+            )
 
     results = Parallel(n_jobs=-1)(delayed(process)(run) for run in rundirs)
 
@@ -98,12 +108,18 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day):
     final_file_SC = (
         f"{run_dirs_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0000z.nc4"
     )
-    merged_data_SC.to_netcdf(final_file_SC)
+    merged_data_SC.to_netcdf(
+        final_file_SC,
+        encoding={v: {"zlib": True, "complevel": 9} for v in merged_data_SC.data_vars},
+    )
     merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
     final_file_LE = (
         f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
     )
-    merged_data_LE.to_netcdf(final_file_LE)
+    merged_data_LE.to_netcdf(
+        final_file_LE,
+        encoding={v: {"zlib": True, "complevel": 9} for v in merged_data_LE.data_vars},
+    )
 
 
 if __name__ == "__main__":
@@ -114,7 +130,7 @@ if __name__ == "__main__":
     prev_run_pth = sys.argv[3]
     start_day = sys.argv[4]
 
-    if "posterior" in run_dirs_pth:
+    if "posterior" in run_dirs_pth or "0000" in run_dirs_pth:
         fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day)
     else:
         fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day)

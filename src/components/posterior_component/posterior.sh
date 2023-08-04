@@ -55,11 +55,14 @@ setup_posterior() {
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
+    # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-               -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+               -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
+               -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
+               -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi
 
     ### Turn on observation operators if requested, for posterior run
@@ -109,14 +112,24 @@ run_posterior() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
     
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
-
-    cd ${RunDirs}/inversion
+    if "$KalmanMode"; then
+        cd ${RunDirs}/kf_inversions/period${i}
+        if (( i == 1 )); then
+            PrevDir="${RunDirs}/spinup_run"
+        else
+            PrevDir="${RunDirs}/posterior_run"
+        fi
+    else
+        StartDate_i=$StartDate
+        EndDate_i=$EndDate
+        cd ${RunDirs}/inversion
+        PrevDir="${RunDirs}/spinup_run"
+    fi  
 
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
-    PrevDir="${RunDirs}/spinup_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate; wait
+    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i; wait
     printf "\n=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
@@ -126,7 +139,7 @@ run_posterior() {
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_geoschem_posterior"
     printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-    python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+    python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate_i $EndDate_i $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
@@ -139,7 +152,10 @@ run_posterior() {
     isPost="True"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
+
+    # convert vizualization notebooks to html
+    run_notebooks
 }

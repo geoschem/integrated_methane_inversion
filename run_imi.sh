@@ -21,6 +21,7 @@ source src/components/spinup_component/spinup.sh
 source src/components/jacobian_component/jacobian.sh
 source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
+source src/components/kalman_component/kalman.sh
 
 # trap and exit on errors
 trap 'imi_failed $LINENO' ERR
@@ -72,8 +73,10 @@ if "$SafeMode"; then
        ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
         
         printf "\nERROR: Run directories in ${RunDirs}/"
-	printf "\n   already exist. Please change RunName or change the"
-	printf "\n   Setup* options to false in the IMI config file.\n"
+        printf "\n   already exist. Please change RunName or change the"
+        printf "\n   Setup* options to false in the IMI config file.\n"
+        printf "\n  To proceed, and overwrite existing run directories, set"
+        printf "\n  SafeMode in the config file to false.\n" 
         printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi
@@ -84,10 +87,10 @@ if "$SafeMode"; then
        ([ -d "${RunDirs}/inversion" ] && "$DoInversion") || \
        ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
         printf "\nWARNING: Output files in ${RunDirs}/" 
-	printf "\n  may be overwritten. Please change RunName in the IMI"
-	printf "\n  config file to avoid overwriting files.\n"
+        printf "\n  may be overwritten. Please change RunName in the IMI"
+        printf "\n  config file to avoid overwriting files.\n"
         printf "\n  To proceed, and overwrite existing output files, set"
-	printf "\n  SafeMode in the config file to false.\n" 
+        printf "\n  SafeMode in the config file to false.\n" 
         printf "\nIMI $RunName Aborted\n"
         exit 1 
     fi
@@ -95,6 +98,8 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
+# add inversion path to python path
+export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
 ##=======================================================================
 ##  Download the TROPOMI data
@@ -141,23 +146,31 @@ if  "$DoSpinup"; then
 fi
 
 ##=======================================================================
+##  Run Kalman Filter Mode
+##=======================================================================
+if "$KalmanMode"; then
+    setup_kf
+    run_kf
+fi
+
+##=======================================================================
 ##  Submit Jacobian simulation
 ##=======================================================================
-if "$DoJacobian"; then
+if ("$DoJacobian" && ! "$KalmanMode"); then
     run_jacobian
 fi
 
 ##=======================================================================
 ##  Process data and run inversion
 ##=======================================================================
-if "$DoInversion"; then
+if ("$DoInversion" && ! "$KalmanMode"); then
     run_inversion
 fi
 
 ##=======================================================================
 ##  Submit posterior simulation and process the output
 ##=======================================================================
-if "$DoPosterior"; then
+if ("$DoPosterior" && ! "$KalmanMode"); then
     run_posterior
 fi
 
@@ -168,12 +181,10 @@ end_time=$(date)
 printf "\nIMI started : %s" "$start_time"
 printf "\nIMI ended   : %s" "$end_time"
 printf "\n"
-printf "\nRuntime statistics (s):"
-printf "\n Setup     : $( [[ ! -z $setup_end ]] && echo $(( $setup_end - $setup_start )) || echo 0 )"
-printf "\n Spinup     : $( [[ ! -z $spinup_end ]] && echo $(( $spinup_end - $spinup_start )) || echo 0 )"
-printf "\n Jacobian     : $( [[ ! -z $jacobian_end ]] && echo $(( $jacobian_end - $jacobian_start )) || echo 0 )"
-printf "\n Inversion     : $( [[ ! -z $inversion_end ]] && echo $(( $inversion_end - $inversion_start )) || echo 0 )"
-printf "\n Posterior     : $( [[ ! -z $posterior_end ]] && echo $(( $posterior_end - $posterior_start )) || echo 0 )\n\n"
+
+if ! "$KalmanMode"; then
+    print_stats
+fi 
 
 # copy output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then
@@ -183,5 +194,8 @@ fi
 # copy config file to run directory
 cd $InversionPath
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
+
+# Upload output to S3 if specified
+python src/utilities/s3_upload.py $ConfigFile
 
 exit 0

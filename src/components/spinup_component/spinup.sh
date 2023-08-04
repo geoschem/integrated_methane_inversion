@@ -38,13 +38,19 @@ setup_spinup() {
     ln -s $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-	printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+	    printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
     fi
     
     # Update settings in geoschem_config.yml
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
+
+    # Update for Kalman filter option
+    if "$KalmanMode"; then
+        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
+        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+    fi
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then

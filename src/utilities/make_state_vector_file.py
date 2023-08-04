@@ -46,7 +46,10 @@ def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth)
 
 
 def make_state_vector_file(
-    config_path, land_cover_pth, hemco_diag_pth, save_pth,
+    config_path,
+    land_cover_pth,
+    hemco_diag_pth,
+    save_pth,
 ):
     """
     Generates the state vector file for an analytical inversion.
@@ -188,7 +191,12 @@ def make_state_vector_file(
     # Save
     if save_pth is not None:
         print("Saving file {}".format(save_pth))
-        ds_statevector.to_netcdf(save_pth)
+        ds_statevector.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
+            },
+        )
 
     return ds_statevector
 
@@ -202,8 +210,8 @@ if __name__ == "__main__":
     save_pth = sys.argv[4]
 
     make_state_vector_file(
-        config_path, 
-        land_cover_pth, 
-        hemco_diag_pth, 
+        config_path,
+        land_cover_pth,
+        hemco_diag_pth,
         save_pth,
     )

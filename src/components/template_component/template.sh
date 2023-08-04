@@ -73,6 +73,13 @@ setup_template() {
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
+    # Modify HEMCO_Config.rc if running Kalman filter
+    if "$KalmanMode"; then
+        sed -i -e "s|use_emission_scale_factor: false|use_emission_scale_factor: true|g" geoschem_config.yml
+        sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
+               -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+    fi
+
     # Turn other options on/off according to settings above
     if "$UseEmisSF"; then
 	OLD="use_emission_scale_factor: false"
@@ -88,8 +95,8 @@ setup_template() {
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
     if [ ! "$isRegional" ]; then
-	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc
-	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
@@ -97,7 +104,7 @@ setup_template() {
     InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
 
     # If inversion period is < 32 days, use End diagnostic output frequency
-    if (( ${InvPeriodLength} < 32 )); then
+    if (( ${InvPeriodLength} < 32 )) || $KalmanMode; then
         sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
     fi
 

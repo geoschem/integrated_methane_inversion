@@ -18,6 +18,12 @@ General
        Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
+   * - ``S3Upload``
+     - Boolean for uploading output directory to S3. If ``true``, the ``S3UploadPath`` and ``S3UploadFiles`` settings must be set.
+   * - ``S3UploadPath``
+     - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
+   * - ``S3UploadFiles``
+     - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -126,6 +132,8 @@ Inversion
      - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``ReferenceRunDir``
+     - Path to IMI run directory with previously run jacobian simulations
 
 Grid
 ~~~~

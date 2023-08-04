@@ -6,7 +6,9 @@ import yaml
 import xarray as xr
 import numpy as np
 import pandas as pd
-from inversion_scripts.imi_preview import (
+import yaml
+import sys
+from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
 )
@@ -499,4 +501,7 @@ if __name__ == "__main__":
 
     # replace original statevector file
     print(f"Saving file {state_vector_path}")
-    new_sv.to_netcdf(state_vector_path)
+    new_sv.to_netcdf(
+        state_vector_path,
+        encoding={v: {"zlib": True, "complevel": 9} for v in new_sv.data_vars},
+    )

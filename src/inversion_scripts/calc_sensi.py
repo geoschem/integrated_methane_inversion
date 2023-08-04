@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import datetime
 from joblib import Parallel, delayed
-from utils import zero_pad_num_hour
+from src.inversion_scripts.utils import zero_pad_num_hour
 
 
 def zero_pad_num(n):
@@ -87,6 +87,7 @@ def calc_sensi(
         nlon = len(base_data["lon"])  # 52
         nlat = len(base_data["lat"])  # 61
         nlev = len(base_data["lev"])  # 47
+
         # For each hour
         def process(h):
             # Get the base run data for the hour
@@ -120,7 +121,10 @@ def calc_sensi(
                 name="Sensitivities",
             )
             sensi = sensi.to_dataset()
-            sensi.to_netcdf(f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc")
+            sensi.to_netcdf(
+                f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc",
+                encoding={v: {"zlib": True, "complevel": 9} for v in sensi.data_vars},
+            )
 
         results = Parallel(n_jobs=-1)(delayed(process)(hour) for hour in hours)
     print(f"Saved GEOS-Chem sensitivity files to {sensi_save_pth}")

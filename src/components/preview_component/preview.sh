@@ -35,6 +35,9 @@ run_preview() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
+    # remove old error status file if present
+    rm -f .error_status_file.txt
+    
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ${RunTemplate}/gcclassic .
@@ -55,6 +58,12 @@ run_preview() {
 
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
+
+    # Update for Kalman filter option
+    if "$KalmanMode"; then
+        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
+        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
+    fi
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
@@ -97,7 +106,6 @@ run_preview() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
-        export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
         sbatch --mem $SimulationMemory \
         -c $SimulationCPUs \
@@ -109,13 +117,8 @@ run_preview() {
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
-    # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
-    eval $(parse_yaml ${preview_dir}/preview_diagnostics.txt) 
-    if [ 1 -eq "$(echo "${expectedDOFS} < ${DOFSThreshold}" | bc)" ]; then  
-        printf "\nExpected DOFS = ${expectedDOFS} are less than DOFSThreshold = ${DOFSThreshold}. Exiting.\n"
-        printf "Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n"
-        exit 0
-    fi
+    # check if sbatch commands exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     # Navigate back to top-level directory
     cd ..

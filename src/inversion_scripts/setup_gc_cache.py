@@ -1,7 +1,7 @@
 import xarray as xr
 import datetime
 from joblib import Parallel, delayed
-from utils import zero_pad_num_hour
+from src.inversion_scripts.utils import zero_pad_num_hour
 
 
 def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
@@ -50,8 +50,14 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
             # Save to new .nc4 file at destination
             SpeciesConc_save_pth = f"{gc_destination_path}/GEOSChem.SpeciesConc.{d}_{zero_pad_num_hour(h)}00z.nc4"
             LevelEdgeDiags_save_pth = f"{gc_destination_path}/GEOSChem.LevelEdgeDiags.{d}_{zero_pad_num_hour(h)}00z.nc4"
-            SpeciesConc_for_hour.to_netcdf(SpeciesConc_save_pth)
-            LevelEdgeDiags_for_hour.to_netcdf(LevelEdgeDiags_save_pth)
+            SpeciesConc_for_hour.to_netcdf(
+                SpeciesConc_save_pth,
+                encoding={v: {"zlib": True, "complevel": 9} for v in SpeciesConc_for_hour.data_vars},
+            )
+            LevelEdgeDiags_for_hour.to_netcdf(
+                LevelEdgeDiags_save_pth,
+                encoding={v: {"zlib": True, "complevel": 9} for v in LevelEdgeDiags_for_hour.data_vars},
+            )
 
     results = Parallel(n_jobs=-1)(delayed(process)(day) for day in days)
     print(f"Set up hourly data files in {gc_destination_path}")
