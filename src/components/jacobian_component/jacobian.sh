@@ -29,6 +29,9 @@ setup_jacobian() {
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
