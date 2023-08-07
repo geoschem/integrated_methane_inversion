@@ -2,7 +2,6 @@ import datetime
 import pandas as pd
 import sys
 import os
-import warnings
 
 def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
     """
@@ -32,8 +31,8 @@ def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
             "Stepsize exceeds the end date for first period. Please reduce UpdateFreqDays."
         )
     elif remainder != 0:
-        raise Warning(
-            "Number of days between start date and end"
+        print(
+            "Warning: Number of days between start date and end"
             + f" date is not divisible by UpdateFreqDays: {stepsize_days}."
             + f" \nConsider updating end date to have +{remainder} days"
             + f" or reducing by -{stepsize_days - remainder} days."
