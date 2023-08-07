@@ -183,7 +183,7 @@ run_jacobian() {
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Get Jacobian scale factors
-        python ${InversionPath}/src/components/jacobian_component/get_jacobian_scalefactors.py $i $RunDirs $ReferenceRunDir; wait
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $i $RunDirs $ReferenceRunDir; wait
         printf "Got Jacobian scale factors\n"
     fi
 }
