@@ -32,8 +32,8 @@ setup_template() {
 	# Create a GEOS-FP 0.25x0.3125 nested NA CH4 run directory
 	cmd="3\n2\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
     else
-	# Create a GEOS-FP 4x5 CH4 run directory
-	cmd="3\n2\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	# Create a GEOS-FP 2x2.5 CH4 run directory
+	cmd="3\n2\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     fi
 
     # Create run directory
@@ -51,7 +51,7 @@ setup_template() {
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
-           -e "s:GEOSFP:${metUC}:g" \ geoschem_config.yml
+           -e "s:GEOSFP:${metUC}:g" geoschem_config.yml
     if "$isRegional"; then
         sed -i -e "s:0.25x0.3125:${gridResLong}:g" \
                -e "s:-130.0,  -60.0:${Lons}:g" \
@@ -98,6 +98,8 @@ setup_template() {
 	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc
 	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+    # else
+	# sed -i -e "s:GEOS_4x5:GEOS_${Res}:g" HEMCO_Config.rc
     fi
 
     # Determine length of inversion period in days

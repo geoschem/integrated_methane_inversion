@@ -162,7 +162,9 @@ def imi_preview(
     ]
     inversion_area_km = calculate_area_in_km(coords)
 
-    if config["Res"] == "0.25x0.3125":
+    if config["Res"] == "2x2.5":
+        res_factor = 0.125
+    elif config["Res"] == "0.25x0.3125":
         res_factor = 1
     elif config["Res"] == "0.5x0.625":
         res_factor = 0.5
@@ -462,7 +464,11 @@ def estimate_averaging_kernel(
     df["xch4"] = xch4
 
     # set resolution specific variables
-    if config["Res"] == "0.25x0.3125":
+    if config["Res"] == "2x2.5":
+        L_native = 200 * 1000  # Rough length scale of native state vector element [m]
+        lat_step = 2
+        lon_step = 2.5
+    elif config["Res"] == "0.25x0.3125":
         L_native = 25 * 1000  # Rough length scale of native state vector element [m]
         lat_step = 0.25
         lon_step = 0.3125
