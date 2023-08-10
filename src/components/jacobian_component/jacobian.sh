@@ -157,7 +157,7 @@ run_jacobian() {
         jacobian_end=$(date +%s)
     else
         # Add symlink pointing to jacobian matrix files from the reference
-	# inversion w/ precomputed Jacobian
+	    # inversion w/ precomputed Jacobian
         cd ${RunDirs}/kf_inversions/period${i}
 
         if "$KalmanMode"; then

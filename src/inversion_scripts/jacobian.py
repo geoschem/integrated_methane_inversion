@@ -62,7 +62,6 @@ def apply_operator(operator, params):
 
 
 if __name__ == "__main__":
-
     startday = sys.argv[1]
     endday = sys.argv[2]
     lonmin = float(sys.argv[3])
@@ -118,7 +117,6 @@ if __name__ == "__main__":
     # Map GEOS-Chem to TROPOMI observation space
     # Also return Jacobian matrix if build_jacobian=True
     for filename in sat_files:
-
         # Check if TROPOMI file has already been processed
         print("========================")
         shortname = re.split("\/", filename)[-1]
