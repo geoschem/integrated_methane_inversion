@@ -147,6 +147,7 @@ if ! "$PrecomputedJacobian"; then
 else
 
     jacobian_sf=./jacobian_scale_factors.npy
+    JacobianDir=./data_converted_reference
 
 fi
 

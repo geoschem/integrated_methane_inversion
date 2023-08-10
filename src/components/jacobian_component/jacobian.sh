@@ -156,18 +156,16 @@ run_jacobian() {
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
     else
-        # Replace the (empty) data_sensitivities folder with a symlink to the
-        # sensitivities from the reference inversion w/ precomputed Jacobian.
+        # Add symlink pointing to jacobian matrix files from the reference
+	# inversion w/ precomputed Jacobian
         cd ${RunDirs}/kf_inversions/period${i}
 
         if "$KalmanMode"; then
-            precomputedSensiCache=${ReferenceRunDir}/kf_inversions/period${i}/data_sensitivities
+            precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${i}/data_converted
         else
-            precomputedSensiCache=${ReferenceRunDir}/inversion/data_sensitivities
+            precomputedJacobianCache=${ReferenceRunDir}/inversion/data_converted
         fi
-        # mv rather than rm, to prevent accidental deletion of original data_sensitivities/ ?
-        mv data_sensitivities temp_dir
-        ln -s $precomputedSensiCache data_sensitivities
+        ln -s $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
         cd ${JacobianRunsDir}
