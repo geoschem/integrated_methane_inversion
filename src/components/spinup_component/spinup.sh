@@ -4,9 +4,28 @@
 #   - setup_spinup 
 #   - run_spinup 
 
+################################################
 # Description: Setup Spinup Directory
 # Usage:
 #   setup_spinup
+################################################
+# Necessary inherited variables:
+#  - $RunTemplate
+#  - $RunDirs
+#  - $RunName
+#  - $RestartFilePrefix
+#  - $UseBCsForRestart
+#  - $SpinupStart
+#  - $SpinupEnd
+#  - $StartDate
+#  - $EndDate
+#  - $KalmanMode
+#  - $HourlyCH4
+#  - $SpinupDryrun
+# Defined variables:
+#  - $SpinupName
+#  - $runDir
+#  - $RestartFile
 setup_spinup() {
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
@@ -79,9 +98,23 @@ setup_spinup() {
     printf "\n=== DONE CREATING SPINUP RUN DIRECTORY ===\n"
 }
 
+################################################
 # Description: Run Spinup Directory
 # Usage:
 #   run_spinup
+################################################
+# Necessary inherited variables:
+#  - $RunDirs
+#  - $isAWS
+#  - $GEOSChemEnv
+#  - $SimulationMemory
+#  - $SimulationCPUs
+#  - $RequestedTime
+#  - $SchedulerPartition
+#  - $RunName
+# Defined variables:
+#  - $spinup_start
+#  - $spinup_end
 run_spinup() {
     spinup_start=$(date +%s)
     printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"

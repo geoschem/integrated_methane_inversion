@@ -2,12 +2,40 @@
 
 # Functions available in this file include:
 #   - run_preview 
-#   - check_preview
 
+#############################################################################
 # Description: Run the IMI Preview
 #   The IMI Preview estimates the quality and cost given the set config file
 # Usage:
 #   run_preview
+#############################################################################
+# Necessary inherited variables:
+#  - $isAWS
+#  - $RunDirs
+#  - $RunName
+#  - $GEOSChemEnv
+#  - $RunTemplate
+#  - $StartDate
+#  - $EndDate
+#  - $RestartFilePreviewPrefix
+#  - $UseBCsForRestart
+#  - $KalmanMode
+#  - $PreviewDryRun
+#  - $SimulationMemory
+#  - $SimulationCPUs
+#  - $RequestedTime
+#  - $SchedulerPartition
+#  - $UseSlurm
+# Defined variables:
+#  - $PreviewName
+#  - $runDir
+#  - $RestartFilePreview
+#  - $PreviewEnd
+#  - $preview_file
+#  - $tropomi_cache
+#  - $config_path
+#  - $state_vector_path
+#  - $state_vector_path
 run_preview() {
     if ! "$isAWS"; then
 	# Load environment with modules for running GEOS-Chem Classic
