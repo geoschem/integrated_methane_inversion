@@ -4,20 +4,9 @@
 #   - setup_kf
 #   - run_kf
 
-###############################################
 # Description: Setup Kalman filter prereqiuisites
 # Usage:
 #   setup_kf
-###############################################
-# Necessary inherited variables:
-#  - $RunDirs
-#  - $InversionPath
-#  - $StartDate
-#  - $EndDate
-#  - $UpdateFreqDays
-#  - $nElements
-# Defined variables:
-#  - $StateVectorFile
 setup_kf() {
     StateVectorFile="${RunDirs}/StateVector.nc"
 
@@ -42,26 +31,9 @@ setup_kf() {
     nElements=$(ncmax StateVector ${StateVectorFile})
 }
 
-###############################################
 # Description: Run Kalman filter inversions
 # Usage:
 #   run_kf
-###############################################
-# Necessary inherited variables:
-#  - $DoJacobian
-#  - $DoInversion
-#  - $DoPosterior
-#  - $RunDirs
-#  - $RunName
-# Defined variables:
-#  - $JacobianRunsDir
-#  - $PriorRunDir
-#  - $PosteriorRunDir
-#  - $InversionDir
-#  - $PeriodsFile
-#  - $nPeriods
-#  - $FirstPeriod
-#  - $i
 run_kf() {
 
     if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
@@ -95,29 +67,9 @@ run_kf() {
 
 }
 
-###############################################
 # Description: Run inversion for period i
 # Usage:
 #   run_period
-###############################################
-# Necessary inherited variables:
-#  - $i
-#  - $RunDirs
-#  - $RunName
-#  - $PeriodsFile
-#  - $InversionPath
-#  - $JacobianRunsDir
-#  - $PosteriorRunDir
-#  - $ConfigFile
-#  - $NudgeFactor
-#  - $nElements
-# Defined variables:
-#  - $ithLine
-#  - $ithDates
-#  - $StartDate_i
-#  - $EndDate_i
-#  - $ConfigPath
-#  - $copydir
 run_period() {
     ##=======================================================================
     ##  Setup (dates, emission scale factors)

@@ -5,24 +5,9 @@
 #   - run_inversion 
 #   - run_notebooks 
 
-##################################################
 # Description: Setup inversion run directory
 # Usage:
 #   setup_inversion
-##################################################
-# Necessary inherited variables:
-#  - $InversionPath
-#  - $OutputPath
-#  - $RunName
-#  - $ConfigFile
-#  - $nElements
-#  - $LonMinInvDomain
-#  - $LonMaxInvDomain
-#  - $LatMinInvDomain
-#  - $LatMaxInvDomain
-#  - $gridResLong
-#  - $KalmanMode
-#  - $RunDirs
 setup_inversion() {
     printf "\n=== SETTING UP INVERSION DIRECTORY ===\n"
     
@@ -63,26 +48,9 @@ setup_inversion() {
     printf "\n=== DONE SETTING UP INVERSION DIRECTORY ===\n"
 }
 
-##################################################
 # Description: Run inversion
 # Usage:
 #   run_inversion
-##################################################
-# Necessary inherited variables:
-#  - $RunDirs
-#  - $i
-#  - $StartDate_i
-#  - $EndDate_i
-#  - $KalmanMode
-#  - $isAWS
-#  - $CondaEnv
-#  - $SimulationMemory
-#  - $SimulationCPUs
-#  - $RequestedTime
-#  - $SchedulerPartition
-# Defined variables:
-#  - $inversion_start
-#  - $FirstSimSwitch
 run_inversion() {
     inversion_start=$(date +%s)
     printf "\n=== RUNNING INVERSION ===\n"
@@ -119,13 +87,9 @@ run_inversion() {
     inversion_end=$(date +%s)
 }
 
-###############################################################
 # Description: Run visualization notebooks and export to html
 # Usage:
 #   run_notebooks
-###############################################################
-# Necessary inherited variables:
-#  - $RunDirs
 run_notebooks() {
     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
     cd ${RunDirs}/inversion

@@ -4,29 +4,9 @@
 #   - setup_jacobian 
 #   - run_jacobian 
 
-###############################################
 # Description: Setup jacobian run directory
 # Usage:
 #   setup_jacobian
-###############################################
-# Necessary inherited variables:
-#  - $RunTemplate
-#  - $RunDirs
-#  - $InversionPath
-#  - $nElements
-#  - $RunName
-#  - $OutputPath
-#  - $SpinupEnd
-#  - $DoSpinup
-#  - $StartDate
-#  - $UseBCsForRestart
-#  - $PerturbValue
-#  - $HourlyCH4
-#  - $ProductionDryRun
-# Defined variables:
-#  - $RestartFileFromSpinup
-#  - $RestartFile
-#  - $name
 setup_jacobian() {    
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
@@ -152,25 +132,9 @@ setup_jacobian() {
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
 }
 
-###############################################
 # Description: Run jacobian simulations
 # Usage:
 #   run_jacobian
-###############################################
-# Necessary inherited variables:
-#  - $PrecomputedJacobian
-#  - $RunDirs
-#  - $GEOSChemEnv
-#  - $KalmanMode
-#  - $ReferenceRunDir
-#  - $i
-#  - $JacobianRunsDir
-#  - $isAWS
-#  - $InversionPath
-# Defined variables:
-#  - $jacobian_start
-#  - $jacobian_end
-#  - $precomputedJacobianCache
 run_jacobian() {
     if ! "$PrecomputedJacobian"; then
         jacobian_start=$(date +%s)

@@ -4,31 +4,9 @@
 #   - create_statevector 
 #   - reduce_dimension
 
-#######################################################
 # Description: Create a native resolution state vector
 # Usage:
 #   create_statevector
-#######################################################
-# Necessary inherited variables:
-#  - $DataPath
-#  - $gridDir
-#  - $metDir
-#  - $constYr
-#  - $metUC
-#  - $gridRes
-#  - $NestedRegion
-#  - $LandCoverFileExtension
-#  - $isAWS
-#  - $RunDirs
-#  - $InversionPath
-#  - $ConfigFile
-# Defined variables:
-#  - $LandCoverFile
-#  - $HemcoDiagFile
-#  - $s3_lc_path
-#  - $s3_hd_path
-#  - $StateVectorFName
-#  - $config_path
 create_statevector() {
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     
@@ -63,28 +41,9 @@ create_statevector() {
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 }
 
-#######################################################################
 # Description: Reduce dimension of state vector with clustering method
 # Usage:
 #   reduce_dimension
-#######################################################################
-# Necessary inherited variables:
-#  - $RunDirs
-#  - $InversionPath
-#  - $ConfigFile
-#  - $UseSlurm
-#  - $SimulationMemory
-#  - $SimulationCPUs
-#  - $RequestedTime
-#  - $SchedulerPartition
-# Defined variables:
-#  - $config_path
-#  - $state_vector_path
-#  - $native_state_vector_path
-#  - $preview_dir
-#  - $tropomi_cache
-#  - $aggregation_file
-#  - $nElements
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 

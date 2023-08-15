@@ -4,72 +4,11 @@
 #   - setup_imi
 #   - activate_observations
 
-##################################################################################
 # Description:
 #   This script will set up an Integrated Methane Inversion (IMI) with GEOS-Chem.
 #   For documentation, see https://imi.readthedocs.io.
 # Usage:
 #   setup_imi
-##################################################################################
-# Necessary inherited variables:
-#  - $InversionPath
-#  - $isAWS
-#  - $GEOSChemEnv
-#  - $StartDate
-#  - $EndDate
-#  - $SpinupMonths
-#  - $CondaEnv
-#  - $UseSlurm
-#  - $CondaFile
-#  - $BCpath
-#  - $BCversion
-#  - $RestartDownload
-#  - $RestartFilePreviewPrefix
-#  - $Met
-#  - $Res
-#  - $NestedRegion
-#  - $OutputPath
-#  - $CreateAutomaticRectilinearStateVectorFile
-#  - $SetupTemplateRundir
-#  - $ReducedDimensionStateVector
-#  - $DoPreview
-#  - $SetupSpinupRun
-#  - $SetupPosteriorRun
-#  - $SetupJacobianRuns
-#  - $SetupInversion
-# Defined variables:
-#  - $SpinupStart
-#  - $SpinupEnd
-#  - $UseBCsForRestart
-#  - $output
-#  - $array
-#  - $cpu_str
-#  - $cpu_count
-#  - $fullBCpath
-#  - $RestartFile
-#  - $RestartFilePreview
-#  - $metUC
-#  - $metDir
-#  - $native
-#  - $constYr
-#  - $LandCoverFileExtension
-#  - $gridRes
-#  - $gridResLong
-#  - $GCClassicPath
-#  - $RunFilesPath
-#  - $RunDirs
-#  - $nElements
-#  - $LonMinInvDomain
-#  - $LonMaxInvDomain
-#  - $LatMinInvDomain
-#  - $LatMaxInvDomain
-#  - $Lons
-#  - $Lats
-#  - $runDir
-#  - $RunTemplate
-#  - $preview_start
-#  - $preview_end
-
 setup_imi() {
     printf "\n=== RUNNING SETUP ===\n"
 
@@ -286,20 +225,10 @@ setup_imi() {
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 }
 
-#################################################################
 # Description: Turn on switches for extra observation operators
 #   Works on geoschem_config.yml file in the current directory  
 # Usage:
 #   activate_observations
-#################################################################
-# Necessary inherited variables:
-#  - $GOSAT
-#  - $TCCON
-#  - $AIRS
-#  - $PLANEFLIGHT
-# Defined variables:
-#  - $OLD
-#  - $NEW
 activate_observations() {
     if "$GOSAT"; then
             OLD="GOSAT: false"

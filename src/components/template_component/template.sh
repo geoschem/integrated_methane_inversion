@@ -3,40 +3,9 @@
 # Functions available in this file include:
 #   - setup_template 
 
-########################################################
 # Description: Setup template GCClassic run directory
 # Usage:
 #   setup_template
-########################################################
-# Necessary inherited variables:
-#  - $InversionPath
-#  - $GCClassicPath
-#  - $RunDirs
-#  - $runDir
-#  - $DataPath
-#  - $RunTemplate
-#  - $isAWS
-#  - $StartDate
-#  - $EndDate
-#  - $metUC
-#  - $metDir
-#  - $gridResLong
-#  - $Lons
-#  - $Lats
-#  - $KalmanMode
-#  - $UseEmisSF
-#  - $UseOHSF
-#  - $NestedRegion
-#  - $native
-#  - $fullBCpath
-#  - $HourlyCH4
-# Defined variables:
-#  - $GC_USER_REGISTERED
-#  - $GC_DATA_ROOT
-#  - $OLD
-#  - $NEW
-#  - $InvPeriodLength
-
 setup_template() {
     printf "\n=== CREATING TEMPLATE RUN DIRECTORY ===\n"
 

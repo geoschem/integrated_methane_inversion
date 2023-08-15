@@ -4,26 +4,9 @@
 #   - setup_posterior 
 #   - run_posterior 
 
-########################################################
 # Description: Setup posterior GCClassic run directory
 # Usage:
 #   setup_posterior
-########################################################
-# Necessary inherited variables:
-#  - $RunTemplate
-#  - $RunDirs
-#  - $RunName
-#  - $SpinupEnd
-#  - $StartDate
-#  - $DoSpinup
-#  - $RestartFilePrefix
-#  - $HourlyCH4
-#  - $PosteriorDryRun
-# Defined variables:
-#  - $PosteriorName
-#  - $runDir
-#  - $RestartFileFromSpinup
-#  - $RestartFile
 setup_posterior() {
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
@@ -105,41 +88,9 @@ setup_posterior() {
 }
 
 
-###########################################################
 # Description: Run posterior simulation and process output
 # Usage:
 #   run_posterior
-###########################################################
-# Necessary inherited variables:
-#  - $InversionPath
-#  - $RunDirs
-#  - $RunName
-#  - $isAWS
-#  - $GEOSChemEnv
-#  - $SimulationMemory
-#  - $SimulationCPUs
-#  - $RequestedTime
-#  - $SchedulerPartition
-#  - $KalmanMode
-#  - $i
-# Defined variables:
-#  - $posterior_start
-#  - $PrevDir
-#  - $StartDate_i
-#  - $EndDate_i
-#  - $PosteriorRunDir
-#  - $GCsourcepth
-#  - $GCDir
-#  - $LonMinInvDomain
-#  - $LonMaxInvDomain
-#  - $LatMinInvDomain
-#  - $LatMaxInvDomain
-#  - $nElements
-#  - $FetchTROPOMI
-#  - $isPost
-#  - $tropomiCache
-#  - $BlendedTROPOMI
-#  - $posterior_end
 run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
