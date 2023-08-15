@@ -71,6 +71,15 @@ reduce_dimension() {
         cp $native_state_vector_path $state_vector_path
     fi
 
+    # conditionally add period_i to python args
+    python_args=($aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache)
+    if ("$KalmanMode" && "$DynamicKFClustering"); then
+        if [ -n "$period_i" ]; then
+            archive_sv=true
+            python_args+=($period_i)
+        fi
+    fi
+
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
@@ -79,9 +88,15 @@ reduce_dimension() {
         -c $SimulationCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
-        -W $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        -W "${python_args[@]}"; wait;
     else
-        python $aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+        python "${python_args[@]}"
+    fi
+
+    # archive state vector file if using Kalman filter
+    if "$archive_sv"; then
+        mkdir -p ${RunDirs}/archive_sv
+        cp $state_vector_path ${RunDirs}/archive_sv/StateVector_${period_i}.nc
     fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"

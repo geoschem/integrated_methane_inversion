@@ -56,6 +56,7 @@ OffshoreEmisThreshold: 0
 
 ## Clustering Options
 ReducedDimensionStateVector: false
+DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 

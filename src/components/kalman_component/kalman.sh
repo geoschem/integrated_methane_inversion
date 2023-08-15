@@ -58,7 +58,7 @@ run_kf() {
             FirstPeriod=1
         fi
         # run inversion for each period
-        for ((i=FirstPeriod;i<=nPeriods;i++)); do
+        for ((period_i=FirstPeriod;period_i<=nPeriods;period_i++)); do
             run_period
         done
     else
@@ -76,10 +76,15 @@ run_period() {
     ##=======================================================================
 
     # Print current period
-    echo -e "\nPeriod ${i}"
+    echo -e "\nPeriod ${period_i}"
 
     # Create inversion directory for the period
-    cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${i}
+    cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${period_i}
+
+    # Dynamically generate state vector for each period
+    if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
+        reduce_dimension
+    fi
 
     # Get Start/End dates of current period from periods.csv
     ithLine=$(sed "$((i+1))q;d" $PeriodsFile)

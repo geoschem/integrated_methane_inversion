@@ -473,6 +473,7 @@ if __name__ == "__main__":
     state_vector_path = sys.argv[3]
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
+    kf_index = sys.argv[6] if len(sys.argv) > 6 else None
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     output_file = open(f"{inversion_path}/imi_output.log", "a")
     sys.stdout = output_file
@@ -480,9 +481,16 @@ if __name__ == "__main__":
 
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
-    sensitivities = estimate_averaging_kernel(
-        config, state_vector_path, preview_dir, tropomi_cache
-    )
+    sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache]
+    
+    # dynamically generate sensitivities with only a 
+    # subset of the data if kf_index is not None
+    if kf_index is not None:
+        print(f"Dynamically generating clusters for period: {kf_index}.")
+        sensitivity_args.append(kf_index)
+        
+    sensitivities = estimate_averaging_kernel(*sensitivity_args)
+    
     if "ForcedNativeResolutionElements" in config.keys():
         sensitivities = force_native_res_pixels(
             config, original_clusters["StateVector"], sensitivities
