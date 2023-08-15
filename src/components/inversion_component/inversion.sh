@@ -3,6 +3,7 @@
 # Functions available in this file include:
 #   - setup_inversion 
 #   - run_inversion 
+#   - run_notebooks 
 
 # Description: Setup inversion run directory
 # Usage:

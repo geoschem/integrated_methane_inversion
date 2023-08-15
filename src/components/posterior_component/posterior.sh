@@ -90,7 +90,7 @@ setup_posterior() {
 
 # Description: Run posterior simulation and process output
 # Usage:
-#   setup_posterior
+#   run_posterior
 run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
