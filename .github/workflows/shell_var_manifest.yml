@@ -20,7 +20,6 @@ jobs:
 
     - name: Generate shell variable manifest
       run: |
-        cd integrated_methane_inversion
         python src/utilities/generate_var_manifest.py
     
     - name: Display event name 
