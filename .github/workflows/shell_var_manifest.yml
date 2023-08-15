@@ -1,0 +1,38 @@
+name: Build Blog JSON
+
+on:
+  push:
+    branches: 
+    - 'dev'
+    - 'dev-2.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env: 
+      CI_COMMIT_MESSAGE: Continuous Integration Manifest Generation
+      CI_COMMIT_AUTHOR: Continuous Integration
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.WORKFLOW_GIT_ACCESS_TOKEN }}
+
+    - name: Generate shell variable manifest
+      run: |
+        cd integrated_methane_inversion
+        python src/utilities/generate_var_manifest.py
+    
+    - name: Display event name 
+      run: echo "github.event_name=${{ github.event_name }}"
+        
+    - name: GIT Commit and Push
+      # Only run on main branch push (e.g. after pull request merge).
+      if: github.event_name == 'push'
+      run: |
+        git config --global user.name "${{ env.CI_COMMIT_AUTHOR }}"
+        git config --global user.email "username@users.noreply.github.com"
+        git add src/utilities/generate_var_manifest.py
+        git commit -a -m "${{ env.CI_COMMIT_MESSAGE }}"
+        git push
