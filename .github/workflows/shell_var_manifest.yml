@@ -5,6 +5,7 @@ on:
     branches: 
     - 'dev'
     - 'dev-2.0'
+    - 'chore/component-variable-manifests'
 
 jobs:
   build:
