@@ -12,7 +12,6 @@ jobs:
     env:
       CI_COMMIT_MESSAGE: Continuous Integration Manifest Generation
       CI_COMMIT_AUTHOR: ${{ github.event.repository.name }} Continuous Integration
-      is-auto-commit: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
