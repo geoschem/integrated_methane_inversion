@@ -421,7 +421,7 @@ def estimate_averaging_kernel(
     # use different date range for KF inversion if period_index is not None
     if kf_index is not None:
         periods = pd.read_csv(
-            f"{preview_dir.split('preview_run')[0]}kf_inversions/periods.csv"
+            f"{preview_dir.split('preview_run')[0]}periods.csv"
         )
         startday = str(periods.iloc[kf_index - 1]["Starts"])
         endday = str(periods.iloc[kf_index - 1]["Ends"])
