@@ -17,6 +17,8 @@ setup_kf() {
 
     # copy kf notebook to kf_inversions directory
     cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigFile'|g' kf_notebook.ipynb
+
 
     # Define Kalman filter update periods
     python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
