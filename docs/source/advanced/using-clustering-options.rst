@@ -82,6 +82,12 @@ csv file example:
 The csv file should have a header row with the column names ``lat`` and ``lon`` using lowercase letters. 
 The csv file can have additional columns, but they will be ignored.
 
+Dynamic Kalman Filter clustering
+--------------------------------
+When running the IMI in Kalman Filter mode, users can dynamically adjust clusters at each Kalman iteration 
+to best reflect the available information content by setting the ``DynamicKFClustering`` variable to 
+``true``. See the `Kalman Filter IMI <../advanced/kalman-filter-mode>`__ documentation for more details.
+
 IMI clustering scheme
 ---------------------
 The IMI clustering algorithm uses a similar k-means based method as described 
