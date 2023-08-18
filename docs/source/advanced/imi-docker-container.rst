@@ -140,10 +140,13 @@ This is an example of what a fully filled out compose.yml file looks like:::
           - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
           - AWS_DEFAULT_REGION=us-east-1
 
-## Running the IMI
+
+Running the IMI
+---------------
 Once you have configured the compose.yml file, you can run the IMI by running:::
 
     $ docker compose up
+
 
 from the same directory as your ``compose.yml`` file. This will start the IMI container and run the inversion. 
 The output will be saved to the directory you specified in the compose.yml file. 
