@@ -83,10 +83,6 @@ run_period() {
     # Create inversion directory for the period
     cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${period_i}
 
-    # Dynamically generate state vector for each period
-    if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
-        reduce_dimension
-    fi
 
     # Get Start/End dates of current period from periods.csv
     ithLine=$(sed "$((period_i+1))q;d" $PeriodsFile)
@@ -105,6 +101,11 @@ run_period() {
     echo "python path = $PYTHONPATH"
     python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor; wait
 
+    # Dynamically generate state vector for each period
+    if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
+        reduce_dimension
+    fi
+    
     ##=======================================================================
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
