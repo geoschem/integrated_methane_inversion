@@ -1,6 +1,6 @@
-=================
-The IMI Container
-=================
+==============================
+Using the IMI Docker container
+==============================
 
 What is a container?
 ====================
@@ -40,9 +40,7 @@ the section on `Using Singularity instead of Docker <#using-singularity-instead-
 -----------------
 Pulling the image
 -----------------
-To run the container you will first need to pull the image from our cloud repository
-
-::
+To run the container you will first need to pull the image from our cloud repository::
 
     $ docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest
 
@@ -62,21 +60,18 @@ The IMI needs input data in order to run the inversion. If you do not have the n
 locally then you will need to give the IMI container access to S3 on AWS, where the input data is available. This 
 can be done by specifying your 
 `aws credentials <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set>`__ in 
-the ``environment`` section of the compose.yml file. Eg:
-  
-::
+the ``environment`` section of the compose.yml file. Eg:::
+
     environment:
         - AWS_ACCESS_KEY_ID=your_access_key_id
         - AWS_SECRET_ACCESS_KEY=your_secret_access_key
         - AWS_DEFAULT_REGION=us-east-1
 
-
 Note: these credentials are sensitive, so do not post them publicly in any repository.
 
 If you already have the necessary input data available locally, then you can mount it to the IMI container in the 
-`volumes` section of the compose.yml file without setting your aws credentials. Eg:
+`volumes` section of the compose.yml file without setting your aws credentials. Eg:::
 
-::
     volumes:
         - /local/input/data:/home/al2/ExtData # mount input data directory
 
@@ -85,9 +80,8 @@ Storing the output data
 -----------------------
 In order to access the files from the inversion it is best to mount a volume from your local system onto the docker 
 container. This allows the results of the inversion to persist after the container exits. We recommend making a 
-dedicated IMI output directory using `mkdir`.
+dedicated IMI output directory using `mkdir`.::
 
-::
     volumes:
         - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
         - /local/container/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
@@ -101,9 +95,8 @@ mechanisms to update the config.yml file:
 1. If you would only like to update specific variables you can pass them in as environment variables:
 
 All environment variables matching the pattern ``IMI_<config-variable-name>`` will update their corresponding config.yml 
-variable. For example:
+variable. For example:::
 
-::
     environment:
         - IMI_StartDate=20200501 
         - IMI_EndDate=20200601
@@ -113,9 +106,8 @@ will replace the ``StartDate`` and ``EndDate`` in the IMI config.yml file.
 2. Replace the entire config.yml file with one from the host system:
 
 To apply a config.yml file from your local system to the docker container, specify it in your compose.yml file as a 
-volume. Then set the ``IMI_CONFIG_PATH`` environment variable to point to that path. Eg:
+volume. Then set the ``IMI_CONFIG_PATH`` environment variable to point to that path. Eg:::
 
-::
     volumes:
         - /local/path/to/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
     environment:
@@ -127,9 +119,8 @@ Note: any env variables matching the pattern specified in option 1 will overwrit
 
 Example compose.yml file
 ------------------------
-This is an example of what a fully filled out compose.yml file looks like:
+This is an example of what a fully filled out compose.yml file looks like:::
 
-::
     # IMI Docker Compose File
     # This file is used to run the IMI Docker image
     # and define important parameters for the container
@@ -149,11 +140,13 @@ This is an example of what a fully filled out compose.yml file looks like:
           - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
           - AWS_DEFAULT_REGION=us-east-1
 
-## Running the IMI
-Once you have configured the compose.yml file, you can run the IMI by running:
 
-::
+Running the IMI
+---------------
+Once you have configured the compose.yml file, you can run the IMI by running:::
+
     $ docker compose up
+
 
 from the same directory as your ``compose.yml`` file. This will start the IMI container and run the inversion. 
 The output will be saved to the directory you specified in the compose.yml file. 
@@ -170,11 +163,10 @@ Singularity is a container engine designed to run on HPC systems and local clust
 Docker to be installed.
 Note: using Singularity to run the IMI is untested and may not work as expected.
 
-First pull the image:
-::
+First pull the image:::
+
     $ singularity pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest
 
-Then run the image:
+Then run the image:::
 
-::
     $ singularity run imi-docker-repository_latest.sif

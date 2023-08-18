@@ -199,89 +199,10 @@ def plot_field(
     
     # Marks any specified high-resolution coordinates on the preview observation density map
     if point_sources:
-        if isinstance(point_sources, list):
-            for coord in point_sources:
-                ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
-            point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
-            ax.legend(handles=[point])
-        elif isinstance(point_sources, str):
-            with open(point_sources, 'r') as file:
-                csvFile = csv.reader(file, delimiter=';')
-                next(csvFile)
-                for line in csvFile:
-                    ax.plot(float(line[2].replace(',', '.')), float(line[1].replace(',','.')), marker="x", markeredgecolor="black")
-            point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
-            ax.legend(handles=[point])
-
-
-def plot_time_series(
-    x_data,
-    y_data,
-    line_labels,
-    title,
-    y_label,
-    x_label="Date",
-    DOFS=None,
-    fig_size=(15, 6),
-    x_rotation=45,
-    y_sci_notation=True,
-):
-    """
-    Function to plot inversion time series results.
-
-    Arguments
-        x_data         : x data datetimes to plot
-        y_data         : list of y data to plot
-        line_labels    : line label string for each y data
-        title          : plot title
-        y_label        : label for y axis
-        x_label        : label for x axis
-        DOFS           : DOFs for each interval
-        fig_size       : tuple for figure size
-        x_rotation     : rotation of x axis labels
-        y_sci_notation : whether to use scientific notation for y axis
-    """
-    assert len(y_data) == len(line_labels)
-    plt.clf()
-    # Set the figure size
-    _, ax1 = plt.subplots(figsize=fig_size)
-
-    # Plot emissions time series
-    for i in range(len(y_data)):
-        # only use line for moving averages
-        if "moving" in line_labels[i].lower():
-            ax1.plot(x_data, y_data[i], label=line_labels[i])
-        else:
-            ax1.plot(
-                x_data, y_data[i], linestyle="None", marker="o", label=line_labels[i]
-            )
-
-    lines = ax1.get_lines()
-
-    # Plot DOFS time series using red
-    if DOFS is not None:
-        # Create a twin y-axis
-        ax2 = ax1.twinx()
-        ax2.plot(x_data, DOFS, linestyle="None", marker="o", color="red", label="DOFS")
-        ax2.set_ylabel("DOFS", color="red")
-        ax2.tick_params(axis="y", labelcolor="red")
-        ax2.set_ylim(0, 1)
-        # add DOFS line to legend
-        lines = ax1.get_lines() + ax2.get_lines()
-
-    # use a date string for the x axis locations
-    plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator())
-    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    # tilt the x axis labels
-    plt.xticks(rotation=x_rotation)
-    # scientific notation for y axis
-    if y_sci_notation:
-        plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-    ax1.set_xlabel(x_label)
-    ax1.set_ylabel(y_label)
-    plt.title(title)
-    plt.legend(lines, [line.get_label() for line in lines])
-    plt.show()
+        for coord in point_sources:
+            ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
+        point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
+        ax.legend(handles=[point])
 
 
 def plot_time_series(

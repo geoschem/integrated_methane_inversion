@@ -3,6 +3,7 @@
 # Functions available in this file include:
 #   - setup_inversion 
 #   - run_inversion 
+#   - run_notebooks 
 
 # Description: Setup inversion run directory
 # Usage:
@@ -92,6 +93,8 @@ run_inversion() {
 run_notebooks() {
     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
     cd ${RunDirs}/inversion
+    # replace config file path in viz notebook
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigFile'|g' visualization_notebook.ipynb
     jupyter nbconvert --execute --to html visualization_notebook.ipynb
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }

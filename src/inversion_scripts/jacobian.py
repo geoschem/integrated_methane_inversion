@@ -73,6 +73,7 @@ if __name__ == "__main__":
     tropomi_cache = sys.argv[8]
     BlendedTROPOMI = sys.argv[9] == "true"
     isPost = sys.argv[10]
+    build_jacobian = sys.argv[11]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -81,13 +82,15 @@ if __name__ == "__main__":
     # Configuration
     workdir = "."
     sensi_cache = f"{workdir}/data_sensitivities"
-    if isPost.lower() == "false":
+    if build_jacobian.lower() == "true":
         build_jacobian = True
+    else:
+        build_jacobian = False
+    if isPost.lower() == "false":  # if sampling prior simulation
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
         vizdir = f"{workdir}/data_visualization"
     else:  # if sampling posterior simulation
-        build_jacobian = False
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
         vizdir = f"{workdir}/data_visualization_posterior"
