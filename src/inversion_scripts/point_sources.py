@@ -1,4 +1,5 @@
 # This file contains functions related to accessing point source data
+import os
 import datetime
 import requests
 import pandas as pd
@@ -83,6 +84,9 @@ def get_plumes(month, year):
     """
     sron_url = "https://earth.sron.nl/wp-content/uploads/"  # URL of the SRON database for weekly methane plumes
     url = sron_url + year + "/" + month.zfill(2)
+    write_dir = "SRON_plumes"
+    if not os.path.exists(write_dir):
+        os.makedirs(write_dir)
     response = requests.get(url)
     parser = BeautifulSoup(response.content, "html.parser")
     plume = pd.DataFrame()
@@ -94,17 +98,16 @@ def get_plumes(month, year):
             dates = csvUrl.split("_v")[1]
             try:
                 rcsv = requests.get(csvUrl, allow_redirects=True)
-                file = f"SRON_{dates}"
-                open(file, "wb").write(
-                    rcsv.content
-                )  # downloads all of the plumes from that week in a CSV file in the current directory
-                df = pd.read_csv(
-                    file
-                )  # reads from the csv file into a pandas dataframe
+                file_path = f"{SRON_plumes}/SRON_{dates}"
+                # downloads all of the plumes from that week in a CSV file in the current directory
+                open(file_path, "wb").write(rcsv.content)
+                # reads from the csv file into a pandas dataframe
+                df = pd.read_csv(file_path)
                 plume = plume.append(df, ignore_index=True)
             except:
                 print(
-                    f"Warning: Unable to access data for csv file at {csvUrl}. The file may not exist or there may be a connection problem."
+                    f"Warning: Unable to access data for csv file at {csvUrl}. "
+                    + "The file may not exist or there may be a connection problem."
                 )
     return plume
 
