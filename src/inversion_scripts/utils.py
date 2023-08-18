@@ -6,6 +6,8 @@ from pyproj import Geod
 import cartopy
 import cartopy.crs as ccrs
 import pickle
+import csv
+from matplotlib.lines import Line2D
 
 
 def save_obj(obj, name):
@@ -113,6 +115,7 @@ def plot_field(
     vmin=None,
     vmax=None,
     title=None,
+    point_sources=None,
     cbar_label=None,
     mask=None,
     only_ROI=False,
@@ -133,6 +136,7 @@ def plot_field(
         vmin       : colorbar lower bound
         vmax       : colorbar upper bound
         title      : plot title
+        point_sources: plot given point sources on map
         cbar_label : colorbar label
         mask       : mask for region of interest, boolean dataarray
         only_ROI   : zero out data outside the region of interest, true or false
@@ -192,6 +196,13 @@ def plot_field(
     # Title
     if title:
         ax.set_title(title)
+    
+    # Marks any specified high-resolution coordinates on the preview observation density map
+    if point_sources:
+        for coord in point_sources:
+            ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
+        point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
+        ax.legend(handles=[point])
 
 
 def plot_time_series(

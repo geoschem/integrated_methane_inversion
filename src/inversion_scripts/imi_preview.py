@@ -1,24 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#SBATCH -N 1
+# SBATCH -N 1
 
+import os
 import sys
+import yaml
+import time
+import warnings
+import datetime
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib
+import colorcet as cc
+import cartopy.crs as ccrs
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import yaml
-import os
-import datetime
-import time
-import warnings
-import cartopy.crs as ccrs
-import colorcet as cc
 from joblib import Parallel, delayed
+from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     count_obs_in_mask,
@@ -32,12 +33,13 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     read_tropomi,
     read_blended,
 )
-import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-def get_TROPOMI_data(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64):
+def get_TROPOMI_data(
+    file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64
+):
     """
     Returns a dict with the lat, lon, xch4, and albedo_swir observations
     extracted from the given tropomi file. Filters are applied to remove
@@ -228,6 +230,7 @@ def imi_preview(
         lat_bounds=None,
         levels=21,
         title="Prior emissions",
+        point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
         mask=mask,
         only_ROI=False,
@@ -255,6 +258,7 @@ def imi_preview(
         mask=mask,
         only_ROI=False,
     )
+
     plt.savefig(
         os.path.join(preview_dir, "preview_observations.png"),
         bbox_inches="tight",
@@ -326,12 +330,16 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    expectedDOFS = np.round(sum(a),5)
+    expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
-        print(f"\nExpected DOFS = {expectedDOFS} are less than DOFSThreshold = {config['DOFSThreshold']}. Exiting.\n")
-        print("Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n")
+        print(
+            f"\nExpected DOFS = {expectedDOFS} are less than DOFSThreshold = {config['DOFSThreshold']}. Exiting.\n"
+        )
+        print(
+            "Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n"
+        )
         # if run with sbatch this ensures the exit code is not lost.
-        file = open(".error_status_file.txt", 'w')
+        file = open(".error_status_file.txt", "w")
         file.write("Error Status: 1")
         file.close()
         sys.exit(1)
@@ -441,7 +449,9 @@ def estimate_averaging_kernel(
 
     # Read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
-        delayed(get_TROPOMI_data)(file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+        delayed(get_TROPOMI_data)(
+            file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64
+        )
         for file_path in tropomi_paths
     )
     # Remove any problematic observation dicts (eg. corrupted data file)
@@ -493,11 +503,10 @@ def estimate_averaging_kernel(
 
     # unpack list of tuples into individual lists
     emissions, L, num_obs = [list(item) for item in zip(*result)]
-    
+
     if np.sum(num_obs) < 1:
         sys.exit("Error: No observations found in region of interest")
     outstring2 = f"Found {np.sum(num_obs)} observations in the region of interest"
-
 
     # ----------------------------------
     # Estimate information content
@@ -507,7 +516,7 @@ def estimate_averaging_kernel(
     emissions = np.array(emissions)
     m = np.array(num_obs)  # Number of observations per state vector element
     L = np.array(L)
-    
+
     # If Kalman filter mode, count observations per inversion period
     if config["KalmanMode"]:
         startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
@@ -547,10 +556,10 @@ def estimate_averaging_kernel(
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
     outstring5 = f"expectedDOFS: {np.round(sum(a),5)}"
-    
+
     if config["KalmanMode"]:
         outstring5 += " per inversion period"
-        
+
     print(outstring3)
     print(outstring4)
     print(outstring5)

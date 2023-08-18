@@ -4,6 +4,7 @@
 #SBATCH -n 1
 #SBATCH -o "imi_output.log"
 
+
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
 #
@@ -196,6 +197,7 @@ cd $InversionPath
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
+cd $InversionPath
 python src/utilities/s3_upload.py $ConfigFile
 
 exit 0
