@@ -24,6 +24,8 @@ General
      - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
    * - ``S3UploadFiles``
      - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
+   * - ``PointSourceDataset``
+     - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
