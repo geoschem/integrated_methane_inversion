@@ -19,7 +19,8 @@ at 25 × 25 km\ :sup:`2`\  resolution.
 This site provides instructions for using the IMI, including launching an AWS compute instance, 
 configuring and running an inversion, and analyzing the results with a ready-made jupyter notebook.
 
-Some instructions are specific to the Amazon Web Services (AWS) cloud, but the IMI can also be run on a local compute cluster. 
+Some instructions are specific to the Amazon Web Services (AWS) cloud, but the IMI can also be run on a 
+local compute cluster either manually building the environment or using a docker container. 
 
 
 .. toctree::
@@ -43,6 +44,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    advanced/custom-region.rst
    advanced/inversion-ensemble.rst
    advanced/local-cluster.rst
+   advanced/imi-docker-container.rst
 
 .. toctree::
    :maxdepth: 1
