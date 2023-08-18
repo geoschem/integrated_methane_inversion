@@ -199,19 +199,10 @@ def plot_field(
     
     # Marks any specified high-resolution coordinates on the preview observation density map
     if point_sources:
-        if isinstance(point_sources, list):
-            for coord in point_sources:
-                ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
-            point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
-            ax.legend(handles=[point])
-        elif isinstance(point_sources, str):
-            with open(point_sources, 'r') as file:
-                csvFile = csv.reader(file, delimiter=';')
-                next(csvFile)
-                for line in csvFile:
-                    ax.plot(float(line[2].replace(',', '.')), float(line[1].replace(',','.')), marker="x", markeredgecolor="black")
-            point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
-            ax.legend(handles=[point])
+        for coord in point_sources:
+            ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
+        point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
+        ax.legend(handles=[point])
 
 
 def plot_time_series(

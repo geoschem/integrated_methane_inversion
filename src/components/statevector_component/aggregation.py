@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Point
 from dateutil.relativedelta import relativedelta
 
+from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
@@ -411,41 +412,6 @@ def SRON_plumes(config):
     return plumes_list
 
 
-def read_coordinates(coord_var):
-    """
-    Description:
-        Read coordinates either from a list of lists or a csv file
-    arguments:
-        coord_var   [] or String : either a list of coordinates or a csv file
-    Returns:                [[]] : list of [lat, lon] coordinates of floats
-    """
-
-    # handle path to csv file containg coordinates
-    if isinstance(coord_var, str):
-        if not coord_var.endswith(".csv"):
-            raise Exception(
-                "ForcedNativeResolutionElements expects either a .csv file or a list of lists."
-            )
-        coords_df = pd.read_csv(coord_var)
-
-        # check if lat and lon columns are present
-        if not ("lat" in coords_df.columns and "lon" in coords_df.columns):
-            raise Exception(
-                "lat or lon columns are not present in the csv file."
-                + " csv file must have lat and lon in header using lowercase."
-            )
-        # select lat and lon columns and convert to list of lists
-        return coords_df[["lat", "lon"]].values.tolist()
-
-    # handle list of lists
-    elif isinstance(coord_var, list):
-        return coord_var
-    else:
-        # Variable is neither a string nor a list
-        print("Warning: No ForcedNativeResolutionElements specified or invalid format.")
-        return None
-
-
 def force_native_res_pixels(config, clusters, sensitivities):
     """
     Description:
@@ -458,23 +424,9 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    coords = read_coordinates(config["ForcedNativeResolutionElements"])
-    
-    if "SRON" in config["PointSourceDatasets"]:
-        print("Fetching plumes from SRON database...")
-        plumes = SRON_plumes(config)
-    else: 
-        plumes = None
-    
-    if plumes is not None:
-        if coords is None:
-            coords = plumes
-        else:
-            coords.extend(plumes)
+    coords = get_point_source_coordinates(config)
 
-        
-
-    if coords is None:
+    if len(coords) == 0:
         # No forced pixels inputted
         print(f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset.")
         return sensitivities
@@ -491,7 +443,8 @@ def force_native_res_pixels(config, clusters, sensitivities):
         lat = np.floor(lat / lat_step) * lat_step
 
  
-    coords = sorted(set(map(tuple, coords)), reverse=True) # Remove any duplicate coordinates within the same gridcell. 
+    # Remove any duplicate coordinates within the same gridcell. 
+    coords = sorted(set(map(tuple, coords)), reverse=True) 
     coords = [list(coordinate) for coordinate in coords]
     
 

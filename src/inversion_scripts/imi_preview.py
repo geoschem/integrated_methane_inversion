@@ -19,6 +19,7 @@ import warnings
 import cartopy.crs as ccrs
 import colorcet as cc
 from joblib import Parallel, delayed
+from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     count_obs_in_mask,
@@ -228,6 +229,7 @@ def imi_preview(
         lat_bounds=None,
         levels=21,
         title="Prior emissions",
+        point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
         mask=mask,
         only_ROI=False,
@@ -296,7 +298,6 @@ def imi_preview(
         lon_bounds=None,
         lat_bounds=None,
         title="Observation density",
-        point_sources=config["ForcedNativeResolutionElements"],
         cbar_label="Number of observations",
         mask=mask,
         only_ROI=False,
