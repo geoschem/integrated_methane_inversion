@@ -98,16 +98,17 @@ def get_plumes(month, year):
             dates = csvUrl.split("_v")[1]
             try:
                 rcsv = requests.get(csvUrl, allow_redirects=True)
-                file_path = f"{SRON_plumes}/SRON_{dates}"
+                file_path = f"{write_dir}/SRON_{dates}"
                 # downloads all of the plumes from that week in a CSV file in the current directory
                 open(file_path, "wb").write(rcsv.content)
                 # reads from the csv file into a pandas dataframe
                 df = pd.read_csv(file_path)
-                plume = plume.append(df, ignore_index=True)
-            except:
+                plume = pd.concat([plume, df], ignore_index=True)
+            except Exception as err:
                 print(
                     f"Warning: Unable to access data for csv file at {csvUrl}. "
                     + "The file may not exist or there may be a connection problem."
+                    + f"\nError message: {err}"
                 )
     return plume
 
@@ -182,7 +183,11 @@ def SRON_plumes(config):
             p = get_plumes(str(currentDate.month), str(currentDate.year))
             plumes = pd.concat([plumes, pd.DataFrame(p)], ignore_index=True)
         currentDate = currentDate + relativedelta(months=1)
-
+    
+    # if no plumes found in the time frame, returns an empty list
+    if plumes.empty:
+        return []
+        
     # filters through the dataset to remove any plumes outside the ROI
     if custom_vectorfile:
         plumes = shapefile_filter(
