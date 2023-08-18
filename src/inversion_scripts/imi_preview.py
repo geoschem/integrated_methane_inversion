@@ -1,24 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-#SBATCH -N 1
+# SBATCH -N 1
 
+import os
 import sys
+import yaml
+import time
+import warnings
+import datetime
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib
+import colorcet as cc
+import cartopy.crs as ccrs
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import yaml
-import os
-import datetime
-import time
-import warnings
-import cartopy.crs as ccrs
-import colorcet as cc
 from joblib import Parallel, delayed
+from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     count_obs_in_mask,
@@ -32,7 +33,6 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     read_tropomi,
     read_blended,
 )
-import warnings
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -230,6 +230,7 @@ def imi_preview(
         lat_bounds=None,
         levels=21,
         title="Prior emissions",
+        point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
         mask=mask,
         only_ROI=False,
@@ -257,6 +258,7 @@ def imi_preview(
         mask=mask,
         only_ROI=False,
     )
+
     plt.savefig(
         os.path.join(preview_dir, "preview_observations.png"),
         bbox_inches="tight",
