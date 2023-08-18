@@ -95,7 +95,7 @@ setup_template() {
     InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
 
     # If inversion period is < 32 days, use End diagnostic output frequency
-    if (( ${InvPeriodLength} < 32 )); then
+    if (( ${InvPeriodLength} < 32 )) || $KalmanMode; then
         sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
     fi
 
