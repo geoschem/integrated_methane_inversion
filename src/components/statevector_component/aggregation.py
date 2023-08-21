@@ -469,10 +469,10 @@ if __name__ == "__main__":
         
     sensitivities = estimate_averaging_kernel(*sensitivity_args)
     
-    if "ForcedNativeResolutionElements" in config.keys():
-        sensitivities = force_native_res_pixels(
-            config, original_clusters["StateVector"], sensitivities
-        )
+    # force point sources to be high resolution by updating sensitivities
+    sensitivities = force_native_res_pixels(
+        config, original_clusters["StateVector"], sensitivities
+    )
     cluster_pairs = generate_cluster_pairs(config, sensitivities)
 
     print(
