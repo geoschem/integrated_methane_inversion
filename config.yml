@@ -53,8 +53,13 @@ BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 
+## Point source datasets
+## Used for visualizations and state vector clustering
+PointSourceDatasets: ["SRON"]
+
 ## Clustering Options
 ReducedDimensionStateVector: false
+DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 

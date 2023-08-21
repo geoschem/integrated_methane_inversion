@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #SBATCH -J {RunName}
 #SBATCH -N 1
 

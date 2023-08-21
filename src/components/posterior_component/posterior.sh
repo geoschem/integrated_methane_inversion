@@ -90,7 +90,7 @@ setup_posterior() {
 
 # Description: Run posterior simulation and process output
 # Usage:
-#   setup_posterior
+#   run_posterior
 run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
@@ -113,8 +113,8 @@ run_posterior() {
     
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
     if "$KalmanMode"; then
-        cd ${RunDirs}/kf_inversions/period${i}
-        if (( i == 1 )); then
+        cd ${RunDirs}/kf_inversions/period${period_i}
+        if (( period_i == 1 )); then
             PrevDir="${RunDirs}/spinup_run"
         else
             PrevDir="${RunDirs}/posterior_run"
@@ -150,9 +150,10 @@ run_posterior() {
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     FetchTROPOMI="False"
     isPost="True"
+    buildJacobian="False"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 

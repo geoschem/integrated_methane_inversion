@@ -2,7 +2,6 @@
 
 # Functions available in this file include:
 #   - run_preview 
-#   - check_preview
 
 # Description: Run the IMI Preview
 #   The IMI Preview estimates the quality and cost given the set config file
