@@ -92,7 +92,7 @@ Dynamic Kalman Filter clustering
 --------------------------------
 When running the IMI in Kalman Filter mode, users can dynamically adjust clusters at each Kalman iteration 
 to best reflect the available information content by setting the ``DynamicKFClustering`` variable to 
-``true``. See the `Kalman Filter IMI <../advanced/kalman-filter-mode>`__ documentation for more details.
+``true``. See the `Kalman Filter IMI <../advanced/kalman-filter-mode.html>`__ documentation for more details.
 
 IMI clustering scheme
 ---------------------
