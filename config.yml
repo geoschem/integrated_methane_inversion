@@ -60,6 +60,7 @@ PointSourceDatasets: ["SRON"]
 
 ## Clustering Options
 ReducedDimensionStateVector: false
+DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 

@@ -361,7 +361,7 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
 
 
 def estimate_averaging_kernel(
-    config, state_vector_path, preview_dir, tropomi_cache, preview=False
+    config, state_vector_path, preview_dir, tropomi_cache, preview=False, kf_index=None
 ):
     """
     Estimates the averaging kernel sensitivities using prior emissions
@@ -395,6 +395,23 @@ def estimate_averaging_kernel(
     ][0]
     prior_pth = os.path.join(preview_cache, hemco_diags_file)
     prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
+    
+    # Start and end dates of the inversion
+    startday = str(config["StartDate"])
+    endday = str(config["EndDate"])
+
+    # adjustments for when performing for dynamic kf clustering
+    if kf_index is not None:
+        # use different date range for KF inversion if kf_index is not None
+        rundir_path = preview_dir.split('preview_run')[0]
+        periods = pd.read_csv(f"{rundir_path}periods.csv")
+        startday = str(periods.iloc[kf_index - 1]["Starts"])
+        endday = str(periods.iloc[kf_index - 1]["Ends"])
+        
+        # use the nudged (prior) emissions for generating averaging kernel estimate
+        sf = xr.load_dataset(f"{rundir_path}archive_sf/prior_sf_period{kf_index}.nc")
+        prior = sf["ScaleFactor"] * prior
+        
 
     # Compute total emissions in the region of interest
     areas = xr.load_dataset(prior_pth)["AREA"]
@@ -416,9 +433,6 @@ def estimate_averaging_kernel(
     xlim = [float(state_vector.lon.min()), float(state_vector.lon.max())]
     ylim = [float(state_vector.lat.min()), float(state_vector.lat.max())]
 
-    # Start and end dates of the inversion
-    startday = str(config["StartDate"])
-    endday = str(config["EndDate"])
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
     startdate_np64 = np.datetime64(

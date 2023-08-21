@@ -84,6 +84,17 @@ inversion can be toggled on or off based on the config variable toggles
 posterior steps are dependent on each other for each inversion interval. The IMI will print an error 
 message if these variables are not toggled in tandem.
 
+Clustering in Kalman Filter mode
+--------------------------------
+Clustering the state vector in Kalman Filter mode is the same as clustering in standard IMI mode, but 
+with one optional, additional feature. By setting the config variable ``DynamicKFClustering`` to 
+``true``, the state vector will be updated at each iteration of the Kalman Filter. This is recommended 
+for areas with large seasonal differences in observation density to ensure that the clustering algorithm
+allocates high resolution state vector elements to areas with enough observations to constrain them.
+Generated state vectors at each iteration will be archived in the ``<imi-run-dir>/archive_sv`` directory.
+For more information on clustering, see the 
+`Clustering options page <../advanced/using-clustering-options>`__.
+
 Visualizing the results of the Kalman Filter
 --------------------------------------------
 The results of each chunked inversion time interval can be visualized using the standard visualization
@@ -92,6 +103,7 @@ notebook located in ``<imi-run-dir>/kf_inversions/period<period_number>/visualiz
 Additionally, we include another visualization notebook that can be used to visualize the results of
 the time series of varying emissions for the entire inversion period. This notebook is located in
 ``<imi-run-dir>/kf_inversions/kf_notebook.ipynb``.
+
 
 .. image:: img/variability_visualization.png
     :width: 500px

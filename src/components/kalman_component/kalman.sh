@@ -17,7 +17,7 @@ setup_kf() {
 
     # copy kf notebook to kf_inversions directory
     cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigFile'|g' kf_notebook.ipynb
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigFile'|g' ${RunDirs}/kf_inversions/kf_notebook.ipynb
 
 
     # Define Kalman filter update periods
@@ -60,7 +60,7 @@ run_kf() {
             FirstPeriod=1
         fi
         # run inversion for each period
-        for ((i=FirstPeriod;i<=nPeriods;i++)); do
+        for ((period_i=FirstPeriod;period_i<=nPeriods;period_i++)); do
             run_period
         done
     else
@@ -78,13 +78,14 @@ run_period() {
     ##=======================================================================
 
     # Print current period
-    echo -e "\nPeriod ${i}"
+    echo -e "\nPeriod ${period_i}"
 
     # Create inversion directory for the period
-    cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${i}
+    cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${period_i}
+
 
     # Get Start/End dates of current period from periods.csv
-    ithLine=$(sed "$((i+1))q;d" $PeriodsFile)
+    ithLine=$(sed "$((period_i+1))q;d" $PeriodsFile)
     ithDates=(${ithLine//,/ })
     StartDate_i=${ithDates[0]}
     EndDate_i=${ithDates[1]}
@@ -98,8 +99,13 @@ run_period() {
     # Prepare initial (prior) emission scale factors for the current period
     ConfigPath=${InversionPath}/${ConfigFile}
     echo "python path = $PYTHONPATH"
-    python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $i ${RunDirs} $NudgeFactor; wait
+    python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor; wait
 
+    # Dynamically generate state vector for each period
+    if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
+        reduce_dimension
+    fi
+    
     ##=======================================================================
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
@@ -112,11 +118,11 @@ run_period() {
 
     # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
     # NOTE: This also creates the posterior_sf_period{i}.nc file in archive_sf/
-    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $i ${RunDirs}; wait
+    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $period_i ${RunDirs}; wait
     echo "Multiplied posterior scale factors over record"
 
     # Print total posterior emissions
-    python ${InversionPath}/src/components/kalman_component/print_posterior_emissions.py $ConfigPath $i ${RunDirs}; wait
+    python ${InversionPath}/src/components/kalman_component/print_posterior_emissions.py $ConfigPath $period_i ${RunDirs}; wait
 
     run_posterior
 

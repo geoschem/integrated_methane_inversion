@@ -157,10 +157,11 @@ run_jacobian() {
         jacobian_end=$(date +%s)
     else
         # Add symlink pointing to jacobian matrix files from the reference
-        # inversion w/ precomputed Jacobian
+	    # inversion w/ precomputed Jacobian
+
         if "$KalmanMode"; then
-            cd ${RunDirs}/kf_inversions/period${i}
-            precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${i}/data_converted
+            cd ${RunDirs}/kf_inversions/period${period_i}
+            precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${period_i}/data_converted
         else
             cd ${RunDirs}/inversion
             precomputedJacobianCache=${ReferenceRunDir}/inversion/data_converted
@@ -181,7 +182,7 @@ run_jacobian() {
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Get Jacobian scale factors
-        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $i $RunDirs $ReferenceRunDir; wait
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir; wait
         printf "Got Jacobian scale factors\n"
     fi
 }
