@@ -35,6 +35,9 @@ run_preview() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
+    # remove old error status file if present
+    rm -f .error_status_file.txt
+    
     # Link to GEOS-Chem executable instead of having a copy in each run dir
     rm -rf gcclassic
     ln -s ${RunTemplate}/gcclassic .
@@ -62,12 +65,6 @@ run_preview() {
     chmod 755 ${PreviewName}.run
     rm -f ch4_run.template
 
-    if "$isAWS"; then
-        sed -i -e "/#SBATCH -t/d" \
-               -e "/#SBATCH --mem/d" \
-               -e "s:#SBATCH -c 8:#SBATCH -c ${cpu_count}:g" ${PreviewName}.run
-    fi
-
     ### Perform dry run if requested
     if "$PreviewDryRun"; then
         printf "\nExecuting dry-run for preview run...\n"
@@ -85,7 +82,11 @@ run_preview() {
 
     # Submit preview GEOS-Chem job to job scheduler
     if "$UseSlurm"; then
-        sbatch -W ${RunName}_Preview.run; wait;
+        sbatch --mem $SimulationMemory \
+               -c $SimulationCPUs \
+               -t $RequestedTime \
+               -p $SchedulerPartition \
+               -W ${RunName}_Preview.run; wait;
     else
         ./${RunName}_Preview.run
     fi
@@ -99,29 +100,20 @@ run_preview() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
-        # set number of cores and memory to run preview with
-        if "$isAWS"; then
-            sed -i -e "s:#SBATCH -n 8:#SBATCH -n ${cpu_count}:g" \
-                   -e "s:#SBATCH --mem:##SBATCH --mem:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
-        else
-            sed -i -e "s:##SBATCH:#SBATCH:g" \
-                   -e "s:{PREVIEW_MEMORY}:${PreviewMemory}:g" ${InversionPath}/src/inversion_scripts/imi_preview.py
-        fi
         export PYTHONPATH=${PYTHONPATH}:${InversionPath}/src/inversion_scripts/
         chmod +x $preview_file
-        sbatch -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
-    # Escape condition for DOFS threshold? Read diagnostics file for expectedDOFS variable
-    eval $(parse_yaml ${preview_dir}/preview_diagnostics.txt) 
-    if [ 1 -eq "$(echo "${expectedDOFS} < ${DOFSThreshold}" | bc)" ]; then  
-        printf "\nExpected DOFS = ${expectedDOFS} are less than DOFSThreshold = ${DOFSThreshold}. Exiting.\n"
-        printf "Consider increasing the inversion period, increasing the prior error, or using another prior inventory.\n"
-        exit 0
-    fi
+    # check if sbatch commands exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     # Navigate back to top-level directory
     cd ..

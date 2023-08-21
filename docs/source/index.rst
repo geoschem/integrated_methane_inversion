@@ -7,11 +7,7 @@ Integrated Methane Inversion (IMI)
    <a href="https://github.com/ACMG-CH4/CH4_inversion_workflow/releases"><img src="https://img.shields.io/github/v/release/ACMG-CH4/CH4_inversion_workflow?include_prereleases&label=Latest%20Pre-Release"></a>
    </p>
 
-.. important:: This is a prerelease of the Integrated Methane Inversion (IMI) user guide.
-   These pages contain the most up-to-date and accurate instructions for the IMI, but they
-   are still a work in progress. 
-   
-   Contributions (e.g., suggestions, edits, revisions) would be greatly appreciated. See
+.. important:: Contributions (e.g., suggestions, edits, revisions) would be greatly appreciated. See
    :ref:`editing this guide <editing_this_user_guide>` and our :doc:`contributing guidelines <reference/CONTRIBUTING>`. 
    If you find something hard to understand, let us know!
 
@@ -23,7 +19,8 @@ at 25 × 25 km\ :sup:`2`\  resolution.
 This site provides instructions for using the IMI, including launching an AWS compute instance, 
 configuring and running an inversion, and analyzing the results with a ready-made jupyter notebook.
 
-Some instructions are specific to the Amazon Web Services (AWS) cloud, but the IMI can also be run on a local compute cluster. 
+Some instructions are specific to the Amazon Web Services (AWS) cloud, but the IMI can also be run on a 
+local compute cluster either manually building the environment or using a docker container. 
 
 
 .. toctree::
@@ -47,6 +44,7 @@ Some instructions are specific to the Amazon Web Services (AWS) cloud, but the I
    advanced/custom-region.rst
    advanced/inversion-ensemble.rst
    advanced/local-cluster.rst
+   advanced/imi-docker-container.rst
 
 .. toctree::
    :maxdepth: 1

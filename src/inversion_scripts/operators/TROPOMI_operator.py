@@ -80,8 +80,8 @@ def apply_average_tropomi_operator(
     # Read GEOS_Chem data for the dates of interest
     all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
 
-    # Initialize array with n_gridcells rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
-    obs_GC = np.zeros([n_gridcells, 6], dtype=np.float32)
+    # Initialize array with n_gridcells rows and 5 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
+    obs_GC = np.zeros([n_gridcells, 5], dtype=np.float32)
     obs_GC.fill(np.nan)
 
     # For each gridcell dict with tropomi obs:
@@ -256,6 +256,8 @@ def apply_tropomi_operator(
         time = pd.to_datetime(str(TROPOMI["utctime"][iSat]))
         strdate = time.round("60min").strftime("%Y%m%d_%H")
         GEOSCHEM = all_date_gc[strdate]
+        dlon = np.median(np.diff(GEOSCHEM["lon"])) # GEOS-Chem lon resolution
+        dlat = np.median(np.diff(GEOSCHEM["lat"])) # GEOS-Chem lon resolution
 
         # Find GEOS-Chem lats & lons closest to the corners of the TROPOMI pixel
         longitude_bounds = TROPOMI["longitude_bounds"][iSat, jSat, :]
@@ -263,8 +265,8 @@ def apply_tropomi_operator(
         corners_lon_index = []
         corners_lat_index = []
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], GEOSCHEM["lon"])
-            jGC = nearest_loc(latitude_bounds[l], GEOSCHEM["lat"])
+            iGC = nearest_loc(longitude_bounds[l], GEOSCHEM["lon"], tolerance=max(dlon,0.5))
+            jGC = nearest_loc(latitude_bounds[l], GEOSCHEM["lat"], tolerance=max(dlat,0.5))
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
         # If the tolerance in nearest_loc() is not satisfied, skip the observation
@@ -276,8 +278,6 @@ def apply_tropomi_operator(
 
         # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
         overlap_area = np.zeros(len(gc_coords))
-        dlon = GEOSCHEM["lon"][1] - GEOSCHEM["lon"][0]
-        dlat = GEOSCHEM["lat"][1] - GEOSCHEM["lat"][0]
         # Polygon representing TROPOMI pixel
         polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
         # For each GEOS-Chem grid cell that touches the TROPOMI pixel:
@@ -455,87 +455,88 @@ def read_tropomi(filename):
     # Initialize dictionary for TROPOMI data
     dat = {}
 
-    # Store methane, QA, lat, lon
+    # Catch read errors in any of the variables
     try:
+        # Store methane, QA, lat, lon
         tropomi_data = xr.open_dataset(filename, group="PRODUCT")
+        dat["methane"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
+        dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
+        dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
+        dat["latitude"] = tropomi_data["latitude"].values[0, :, :]
+
+        # Store UTC time
+        reference_time = tropomi_data["time"].values
+        delta_time = tropomi_data["delta_time"][0].values
+        strdate = []
+        if delta_time.dtype == "<m8[ns]":
+            strdate = reference_time + delta_time
+        elif delta_time.dtype == "<M8[ns]":
+            strdate = delta_time
+        else:
+            print(delta_time.dtype)
+            pass
+        dat["utctime"] = strdate
+
+        # Store time for whole orbit
+        times = np.zeros(shape=dat["longitude"].shape, dtype="datetime64[ns]")
+        for k in range(dat["longitude"].shape[0]):
+            times[k, :] = strdate[k]
+        dat["time"] = times
+        tropomi_data.close()
+
+        # Store column averaging kernel, SWIR and NIR surface albedo
+        tropomi_data = xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS"
+        )
+        dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[0, :, :, ::-1]
+        dat["swir_albedo"] = tropomi_data["surface_albedo_SWIR"].values[0, :, :]
+        dat["nir_albedo"] = tropomi_data["surface_albedo_NIR"].values[0, :, :]
+        dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
+        tropomi_data.close()
+
+        # Store methane prior profile, dry air subcolumns
+        tropomi_data = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA")
+        dat["methane_profile_apriori"] = tropomi_data["methane_profile_apriori"].values[
+            0, :, :, ::-1
+        ]  # mol m-2
+        dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[
+            0, :, :, ::-1
+        ]  # mol m-2
+
+        # Also get pressure interval and surface pressure for use below
+        pressure_interval = (
+            tropomi_data["pressure_interval"].values[0, :, :] / 100
+        )  # Pa -> hPa
+        surface_pressure = (
+            tropomi_data["surface_pressure"].values[0, :, :] / 100
+        )  # Pa -> hPa
+        tropomi_data.close()
+
+        # Store latitude and longitude bounds for pixels
+        tropomi_data = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
+        dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[0, :, :, :]
+        dat["latitude_bounds"] = tropomi_data["latitude_bounds"].values[0, :, :, :]
+        tropomi_data.close()
+
+        # Store vertical pressure profile
+        n1 = dat["methane"].shape[
+            0
+        ]  # length of along-track dimension (scanline) of retrieval field
+        n2 = dat["methane"].shape[
+            1
+        ]  # length of across-track dimension (ground_pixel) of retrieval field
+        pressures = np.zeros([n1, n2, 12 + 1], dtype=np.float32)
+        pressures.fill(np.nan)
+        for i in range(12 + 1):
+            pressures[:, :, i] = surface_pressure - i * pressure_interval
+        dat["pressures"] = pressures
+
+    # Return an error if any of the variables were not read correctly
     except Exception as e:
         print(f"Error opening {filename}: {e}")
         return None
 
-    dat["methane"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
-    dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
-    dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
-    dat["latitude"] = tropomi_data["latitude"].values[0, :, :]
-
-    # Store UTC time
-    reference_time = tropomi_data["time"].values
-    delta_time = tropomi_data["delta_time"][0].values
-    strdate = []
-    if delta_time.dtype == "<m8[ns]":
-        strdate = reference_time + delta_time
-    elif delta_time.dtype == "<M8[ns]":
-        strdate = delta_time
-    else:
-        print(delta_time.dtype)
-        pass
-    dat["utctime"] = strdate
-
-    # Store time for whole orbit
-    times = np.zeros(shape=dat["longitude"].shape, dtype="datetime64[ns]")
-    for k in range(dat["longitude"].shape[0]):
-        times[k, :] = strdate[k]
-    dat["time"] = times
-    tropomi_data.close()
-
-    # Store column averaging kernel, SWIR and NIR surface albedo
-    tropomi_data = xr.open_dataset(
-        filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS"
-    )
-    dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[0, :, :, ::-1]
-    dat["swir_albedo"] = tropomi_data["surface_albedo_SWIR"].values[0, :, :]
-    dat["nir_albedo"] = tropomi_data["surface_albedo_NIR"].values[0, :, :]
-    dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
-    tropomi_data.close()
-
-    # Store methane prior profile, dry air subcolumns
-    tropomi_data = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA")
-    dat["methane_profile_apriori"] = tropomi_data["methane_profile_apriori"].values[
-        0, :, :, ::-1
-    ]  # mol m-2
-    dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[
-        0, :, :, ::-1
-    ]  # mol m-2
-
-    # Also get pressure interval and surface pressure for use below
-    pressure_interval = (
-        tropomi_data["pressure_interval"].values[0, :, :] / 100
-    )  # Pa -> hPa
-    surface_pressure = (
-        tropomi_data["surface_pressure"].values[0, :, :] / 100
-    )  # Pa -> hPa
-    tropomi_data.close()
-
-    # Store latitude and longitude bounds for pixels
-    tropomi_data = xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS")
-    dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[0, :, :, :]
-    dat["latitude_bounds"] = tropomi_data["latitude_bounds"].values[0, :, :, :]
-    tropomi_data.close()
-
-    # Store vertical pressure profile
-    n1 = dat["methane"].shape[
-        0
-    ]  # length of along-track dimension (scanline) of retrieval field
-    n2 = dat["methane"].shape[
-        1
-    ]  # length of across-track dimension (ground_pixel) of retrieval field
-    pressures = np.zeros([n1, n2, 12 + 1], dtype=np.float32)
-    pressures.fill(np.nan)
-    for i in range(12 + 1):
-        pressures[:, :, i] = surface_pressure - i * pressure_interval
-    dat["pressures"] = pressures
-
     return dat
-
 
 def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     """
@@ -571,6 +572,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
     print("Found", n_obs, "TROPOMI observations.")
     gc_lats = gc_lat_lon["lat"]
     gc_lons = gc_lat_lon["lon"]
+    dlon = np.median(np.diff(gc_lat_lon["lon"])) # GEOS-Chem lon resolution
+    dlat = np.median(np.diff(gc_lat_lon["lat"])) # GEOS-Chem lon resolution
     gridcell_dicts = get_gridcell_list(gc_lons, gc_lats)
 
     for k in range(n_obs):
@@ -584,8 +587,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
         corners_lat_index = []
 
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], gc_lons)
-            jGC = nearest_loc(latitude_bounds[l], gc_lats)
+            iGC = nearest_loc(longitude_bounds[l], gc_lons, tolerance=max(dlon,0.5))
+            jGC = nearest_loc(latitude_bounds[l], gc_lats, tolerance=max(dlat,0.5))
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
 
@@ -599,8 +602,6 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind):
 
         # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
         overlap_area = np.zeros(len(gc_coords))
-        dlon = gc_lons[1] - gc_lons[0]
-        dlat = gc_lats[1] - gc_lats[0]
 
         # Polygon representing TROPOMI pixel
         polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))

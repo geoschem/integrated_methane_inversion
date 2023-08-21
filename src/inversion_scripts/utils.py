@@ -18,6 +18,14 @@ def save_obj(obj, name):
         pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
+def save_netcdf(ds, save_path, comp_level=1):
+    """Save an xarray dataset to netcdf."""
+    ds.to_netcdf(
+        save_path,
+        encoding={v: {"zlib": True, "complevel": comp_level} for v in ds.data_vars},
+    )
+
+
 def load_obj(name):
     """Load something with Pickle."""
 
@@ -194,7 +202,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
     Description:
         Filter out any data that does not meet the following
         criteria: We only consider data within lat/lon/time bounds,
-        with QA > 0.5, and with safe surface albedo values
+        with QA > 0.5 and that don't cross the antimeridian
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
@@ -206,8 +214,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
         & (tropomi_data["time"] >= startdate)
         & (tropomi_data["time"] <= enddate)
         & (tropomi_data["qa_value"] >= 0.5)
-        & (tropomi_data["swir_albedo"] > 0.05)
-        & (tropomi_data["blended_albedo"] < 0.85)
+        & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
     )
 
 

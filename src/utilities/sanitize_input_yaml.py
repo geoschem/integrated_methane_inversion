@@ -16,7 +16,8 @@ config_required_aws = [
 
 # variables only required by local cluster
 config_required_local_cluster = [
-    "PreviewMemory",
+    "DataPathTROPOMI",
+    "GEOSChemEnv",
 ]
 
 # variables required on all systems
@@ -35,10 +36,11 @@ config_required = [
     "NestedGrid",
     "NestedRegion",
     "CreateAutomaticRectilinearStateVectorFile",
-    "ReducedDimensionStateVector",
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
+    "OffshoreEmisThreshold",
+    "ReducedDimensionStateVector",
     "StateVectorFile",
     "ShapeFile",
     "PriorError",
@@ -74,11 +76,29 @@ config_required = [
     "RestartFilePrefix",
     "RestartFilePreviewPrefix",
     "BCpath",
+    "BCversion",
     "PreviewDryRun",
     "SpinupDryrun",
     "ProductionDryRun",
     "PosteriorDryRun",
     "BCdryrun",
+    "SimulationMemory",
+    "SimulationCPUs",
+    "JacobianMemory",
+    "JacobianCPUs",
+    "RequestedTime",
+    "SchedulerPartition",
+    "S3Upload",
+]
+
+clustering_vars = [
+    "ClusteringMethod",
+    "NumberOfElements",
+]
+
+S3UploadVars = [
+    "S3UploadPath",
+    "S3UploadFiles",
 ]
 
 if __name__ == "__main__":
@@ -86,6 +106,13 @@ if __name__ == "__main__":
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     inputted_config = config.keys()
 
+    # only require clustering vars if reduced dimension state vector is true
+    if config["ReducedDimensionStateVector"]:
+        config_required = config_required + clustering_vars
+    if config["S3Upload"]:
+        config_required = config_required + S3UploadVars
+        
+        
     # update required vars based on system
     if config["isAWS"]:
         required_vars = config_required + config_required_aws

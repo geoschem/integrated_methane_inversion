@@ -97,14 +97,15 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Add favicon (small image in browser tabs)
+html_favicon = '_static/favicon.ico'
 
-'''
-# Display GEOS-Chem logo
-html_favicon = 'geos-chem-shared-docs/_static/favicon.png'
-html_logo = "geos-chem-shared-docs/_static/geos-chem-logo.svg"
+# Add IMI logo at top left
+html_logo = "_static/imi_logo_small.png"
+
+# Theme customization: show logo on white background, no version number
 html_theme_options = {
     'logo_only': True,
     'display_version': False,
-    'style_nav_header_background': '#FCFCFC',
+    'style_nav_header_background': '#FFFFFF',
 }
-'''
