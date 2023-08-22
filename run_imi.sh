@@ -2,6 +2,10 @@
 
 #SBATCH -N 1
 #SBATCH -n 1
+#SBATCH -c 5
+#SBATCH -p seas_compute,huce_cascade,huce_intel
+#SBATCH --mem=16000
+#SBATCH -t 2-10:00
 #SBATCH -o "imi_output.log"
 
 

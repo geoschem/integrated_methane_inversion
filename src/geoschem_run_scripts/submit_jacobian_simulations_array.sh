@@ -7,5 +7,5 @@ rm -f .error_status_file.txt
 sbatch --array={START}-{END} --mem $JacobianMemory \
 -c $JacobianCPUs \
 -t $RequestedTime \
--p $SchedulerPartition \
+-p $JacobianSchedulerPartition \
 -W run_jacobian_simulations.sh
