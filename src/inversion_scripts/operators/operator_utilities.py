@@ -31,7 +31,7 @@ def read_geoschem(date, gc_cache, build_jacobian=False, sensi_cache=None):
     gc_data = xr.open_dataset(filename)
     LON = gc_data["lon"].values
     LAT = gc_data["lat"].values
-    CH4 = gc_data["SpeciesConc_CH4"].values[0, :, :, :]
+    CH4 = gc_data["SpeciesConcVV_CH4"].values[0, :, :, :]
     CH4 = CH4 * 1e9  # Convert to ppb
     CH4 = np.einsum("lij->jil", CH4)
     gc_data.close()
