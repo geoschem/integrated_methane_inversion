@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "CONUS_example_application"
+RunName: "CONUS_example_application100"
 isAWS: false
 UseSlurm: true
 SafeMode: false
@@ -10,7 +10,8 @@ S3Upload: false
 
 ## Period of interest
 StartDate: 20230101
-EndDate: 20230702
+EndDate: 20230201
+# EndDate: 20230702
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
@@ -51,7 +52,7 @@ NudgeFactor: 0.1
 CreateAutomaticRectilinearStateVectorFile: false
 nBufferClusters: 16
 BufferDeg: 5
-LandThreshold: 0.25
+LandThreshold: .25
 OffshoreEmisThreshold: 0
 
 ## Point source datasets
@@ -82,7 +83,7 @@ Met: "geosfp"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
+SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
 SetupPosteriorRun: false
@@ -90,13 +91,13 @@ SetupPosteriorRun: false
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: true
+DoSpinup: false
 DoJacobian: false
 DoInversion: false
 DoPosterior: false
 
 ## IMI preview
-DoPreview: true
+DoPreview: false
 DOFSThreshold: 0
 
 ## resource allocation settings for slurm jobs
