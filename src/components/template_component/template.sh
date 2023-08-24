@@ -98,8 +98,6 @@ setup_template() {
 	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc
 	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
-    # else
-	# sed -i -e "s:GEOS_4x5:GEOS_${Res}:g" HEMCO_Config.rc
     fi
 
     # Determine length of inversion period in days

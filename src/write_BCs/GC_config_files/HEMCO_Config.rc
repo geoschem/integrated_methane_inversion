@@ -27,7 +27,7 @@
 ###############################################################################
 
 ROOT:                        /n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData/HEMCO
-METDIR:                      /n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData/GEOS_4x5/GEOS_FP
+METDIR:                      /n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData/GEOS_2x2.5/GEOS_FP
 GCAPSCENARIO:                not_used
 Logfile:                     *
 DiagnFile:                   HEMCO_Diagn.rc
