@@ -225,13 +225,13 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     Returns:                  int : max gridcells per cluster
     """
     if config["Res"] == "2x2.5":
-        max_aggregation_level = 4 # confirm
+        max_aggregation_level = 4
     elif config["Res"] == "0.25x0.3125":
         max_aggregation_level = 256
     elif config["Res"] == "0.5x0.625":
         max_aggregation_level = 64
 
-    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level)
+    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level) # 1-month: 10800/4 = 2700 > 600
     if background_elements_needed > desired_element_num:
         print(
             "Warning: too few clusters to create a background of 4x5 degree state vector elements."

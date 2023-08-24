@@ -12,6 +12,7 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     apply_average_tropomi_operator,
     apply_tropomi_operator,
 )
+from joblib import Parallel, delayed
 
 
 def apply_operator(operator, params):
@@ -120,7 +121,8 @@ if __name__ == "__main__":
 
     # Map GEOS-Chem to TROPOMI observation space
     # Also return Jacobian matrix if build_jacobian=True
-    for filename in sat_files:
+    def process(filename):
+    # for filename in sat_files:
 
         # Check if TROPOMI file has already been processed
         print("========================")
@@ -166,11 +168,15 @@ if __name__ == "__main__":
             )
 
             if output == None:
-                continue
+                return 0
+        else:
+            return 0
 
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
             save_obj(viz_output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
+        return 0
 
+    results = Parallel(n_jobs=-1)(delayed(process)(filename) for filename in sat_files)
     print(f"Wrote files to {outputdir}")

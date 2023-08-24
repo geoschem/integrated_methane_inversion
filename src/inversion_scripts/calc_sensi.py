@@ -87,24 +87,34 @@ def calc_sensi(
         nlon = len(base_data["lon"])  # 52
         nlat = len(base_data["lat"])  # 61
         nlev = len(base_data["lev"])  # 47
+        base_var = base_data["SpeciesConcVV_CH4"] # Read base data before loop
+
+        # Save this data into numpy array so we don't need to read files in loop
+        pert_datas = []
+         # For each state vector element
+        for e in elements:
+            # State vector elements are numbered 1..nelements
+            elem = zero_pad_num(e + 1)
+            # Load the SpeciesConc file for the current element and day
+            pert_data = xr.open_dataset(
+                f"{run_dirs_pth}/{run_name}_{elem}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4",
+                chunks='auto'
+            )
+            pert_datas.append(pert_data)
+            pert_data.close()
 
         # For each hour
         def process(h):
             # Get the base run data for the hour
-            base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
+            # base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
+            base = base_var[h, :, :, :]
             # Initialize sensitivities array
             sensi = np.empty((nelements, nlev, nlat, nlon))
             sensi.fill(np.nan)
             # For each state vector element
             for e in elements:
-                # State vector elements are numbered 1..nelements
-                elem = zero_pad_num(e + 1)
-                # Load the SpeciesConc file for the current element and day
-                pert_data = xr.load_dataset(
-                    f"{run_dirs_pth}/{run_name}_{elem}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
-                )
                 # Get the data for the current hour
-                pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
+                pert = pert_datas[e]["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
                 sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities

@@ -16,7 +16,7 @@ def do_inversion(
     prior_err=0.5,
     obs_err=15,
     gamma=0.25,
-    res="0.25x0.3125",
+    res="2.0x2.5",
     jacobian_sf=None,
 ):
     """
@@ -48,14 +48,17 @@ def do_inversion(
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
-    if "0.25x0.3125" in res:
+    if "2.0x2.5" in res:
+        degx = 4 * 2.5
+        degy = 4 * 2
+    elif "0.25x0.3125" in res:
         degx = 4 * 0.3125
         degy = 4 * 0.25
     elif "0.5x0.625" in res:
         degx = 4 * 0.625
         degy = 4 * 0.5
     else:
-        msg = "Bad input for res; must be '0.25x0.3125' or '0.5x0.625' "
+        msg = "Bad input for res; must be '2.0x2.5' or '0.25x0.3125' or '0.5x0.625' "
         raise ValueError(msg)
 
     xlim = [lon_min + degx, lon_max - degx]

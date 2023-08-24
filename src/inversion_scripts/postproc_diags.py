@@ -51,11 +51,11 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
 
         # Load output SpeciesConc and LevelEdgeDiags file
         output_file_SC = (
-            f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0005z.nc4"
+            f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0010z.nc4" # prev 0005
         )
         output_data_SC = xr.load_dataset(output_file_SC)
         if "0000" in r:
-            output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0005z.nc4"
+            output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0010z.nc4" # prev 0005
             output_data_LE = xr.load_dataset(output_file_LE)
 
         # Merge output and copied datasets and replace original files that were missing the first hour
@@ -95,11 +95,11 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day):
 
     # Load output SpeciesConc
     output_file_SC = (
-        f"{run_dirs_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0005z.nc4"
+        f"{run_dirs_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0010z.nc4" # prev 0005
     )
     output_data_SC = xr.load_dataset(output_file_SC)
     output_file_LE = (
-        f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0005z.nc4"
+        f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0010z.nc4" # prev 0005
     )
     output_data_LE = xr.load_dataset(output_file_LE)
 
