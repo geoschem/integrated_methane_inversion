@@ -67,9 +67,14 @@ native resolution element is preserved during the aggregation. In order for the 
 preserve the element, you must have enough ``NumberOfElements`` specified to accomodate the 
 number of gridcells you would like to force to be native resolution.
 
+Additionally, the ``PointSourceDatasets`` config variable can be used to automatically scrape emission 
+hotspots from external point source datasets. Currently, the only supported dataset is the ``"SRON"`` 
+`weekly plumes dataset <https://earth.sron.nl/methane-emissions/>`_.
+
 yaml list example:
 ::
     
+    PointSourceDatasets: ["SRON"]
     ForcedNativeResolutionElements:
       - [31.5, -104]
       - [32.5, -103.5]
@@ -77,10 +82,17 @@ yaml list example:
 csv file example:
 ::
     
+    PointSourceDatasets: ["SRON"]
     ForcedNativeResolutionElements: "/path/to/point_source_locations.csv"
 
 The csv file should have a header row with the column names ``lat`` and ``lon`` using lowercase letters. 
 The csv file can have additional columns, but they will be ignored.
+
+Dynamic Kalman Filter clustering
+--------------------------------
+When running the IMI in Kalman Filter mode, users can dynamically adjust clusters at each Kalman iteration 
+to best reflect the available information content by setting the ``DynamicKFClustering`` variable to 
+``true``. See the `Kalman Filter IMI <../advanced/kalman-filter-mode.html>`__ documentation for more details.
 
 IMI clustering scheme
 ---------------------

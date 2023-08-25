@@ -90,7 +90,7 @@ setup_posterior() {
 
 # Description: Run posterior simulation and process output
 # Usage:
-#   setup_posterior
+#   run_posterior
 run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
@@ -113,8 +113,8 @@ run_posterior() {
     
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
     if "$KalmanMode"; then
-        cd ${RunDirs}/kf_inversions/period${i}
-        if (( i == 1 )); then
+        cd ${RunDirs}/kf_inversions/period${period_i}
+        if (( period_i == 1 )); then
             PrevDir="${RunDirs}/spinup_run"
         else
             PrevDir="${RunDirs}/posterior_run"

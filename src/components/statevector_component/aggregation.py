@@ -5,9 +5,8 @@ import sys
 import yaml
 import xarray as xr
 import numpy as np
-import pandas as pd
-import yaml
-import sys
+
+from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
     map_sensitivities_to_sv,
@@ -261,13 +260,13 @@ def generate_cluster_pairs(config, sensitivities):
     desired_element_num = config["NumberOfElements"] - config["nBufferClusters"]
     # Error handling
     if desired_element_num < 0:
-        raise (
+        raise Exception(
             "Error in clustering algorithm: too few clusters requested."
             + f"requested {desired_element_num} clusters."
             + "Remember to take into account the number of buffer elements."
         )
     if desired_element_num > len(sensitivities):
-        raise (
+        raise Exception(
             "Error in clustering algorithm: too many clusters requested."
             + f" {len(sensitivities)} native resolution elements and "
             + f"requested {desired_element_num} elements."
@@ -296,41 +295,6 @@ def generate_cluster_pairs(config, sensitivities):
     return sorted(cluster_pairs, key=lambda x: x[0])
 
 
-def read_coordinates(coord_var):
-    """
-    Description:
-        Read coordinates either from a list of lists or a csv file
-    arguments:
-        coord_var   [] or String : either a list of coordinates or a csv file
-    Returns:                [[]] : list of [lat, lon] coordinates of floats
-    """
-
-    # handle path to csv file containg coordinates
-    if isinstance(coord_var, str):
-        if not coord_var.endswith(".csv"):
-            raise Exception(
-                "ForcedNativeResolutionElements expects either a .csv file or a list of lists."
-            )
-        coords_df = pd.read_csv(coord_var)
-
-        # check if lat and lon columns are present
-        if not ("lat" in coords_df.columns and "lon" in coords_df.columns):
-            raise Exception(
-                "lat or lon columns are not present in the csv file."
-                + " csv file must have lat and lon in header using lowercase."
-            )
-        # select lat and lon columns and convert to list of lists
-        return coords_df[["lat", "lon"]].values.tolist()
-
-    # handle list of lists
-    elif isinstance(coord_var, list):
-        return coord_var
-    else:
-        # Variable is neither a string nor a list
-        print("Warning: No ForcedNativeResolutionElements specified or invalid format.")
-        return None
-
-
 def force_native_res_pixels(config, clusters, sensitivities):
     """
     Description:
@@ -343,10 +307,13 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    coords = read_coordinates(config["ForcedNativeResolutionElements"])
+    coords = get_point_source_coordinates(config)
 
-    if coords is None:
+    if len(coords) == 0:
         # No forced pixels inputted
+        print(
+            f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset."
+        )
         return sensitivities
 
     if config["Res"] == "0.25x0.3125":
@@ -355,6 +322,17 @@ def force_native_res_pixels(config, clusters, sensitivities):
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
+
+    for lat, lon in coords:
+        lon = np.floor(lon / lon_step) * lon_step
+        lat = np.floor(lat / lat_step) * lat_step
+
+    # Remove any duplicate coordinates within the same gridcell.
+    coords = sorted(set(map(tuple, coords)), reverse=True)
+    coords = [list(coordinate) for coordinate in coords]
+
+    if len(coords) > config["NumberOfElements"]:
+        coords = coords[0 : config["NumberOfElements"] - 1]
 
     for lat, lon in coords:
         binned_lon = np.floor(lon / lon_step) * lon_step
@@ -473,6 +451,7 @@ if __name__ == "__main__":
     state_vector_path = sys.argv[3]
     preview_dir = sys.argv[4]
     tropomi_cache = sys.argv[5]
+    kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     output_file = open(f"{inversion_path}/imi_output.log", "a")
     sys.stdout = output_file
@@ -480,13 +459,20 @@ if __name__ == "__main__":
 
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
-    sensitivities = estimate_averaging_kernel(
-        config, state_vector_path, preview_dir, tropomi_cache
+    sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
+    
+    # dynamically generate sensitivities with only a 
+    # subset of the data if kf_index is not None
+    if kf_index is not None:
+        print(f"Dynamically generating clusters for period: {kf_index}.")
+        sensitivity_args.append(kf_index)
+        
+    sensitivities = estimate_averaging_kernel(*sensitivity_args)
+    
+    # force point sources to be high resolution by updating sensitivities
+    sensitivities = force_native_res_pixels(
+        config, original_clusters["StateVector"], sensitivities
     )
-    if "ForcedNativeResolutionElements" in config.keys():
-        sensitivities = force_native_res_pixels(
-            config, original_clusters["StateVector"], sensitivities
-        )
     cluster_pairs = generate_cluster_pairs(config, sensitivities)
 
     print(
