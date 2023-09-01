@@ -29,6 +29,9 @@ setup_jacobian() {
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
@@ -153,18 +156,16 @@ run_jacobian() {
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
     else
-        # Replace the (empty) data_sensitivities folder with a symlink to the
-        # sensitivities from the reference inversion w/ precomputed Jacobian.
-        cd ${RunDirs}/kf_inversions/period${i}
-
+        # Add symlink pointing to jacobian matrix files from the reference
+        # inversion w/ precomputed Jacobian
         if "$KalmanMode"; then
-            precomputedSensiCache=${ReferenceRunDir}/kf_inversions/period${i}/data_sensitivities
+            cd ${RunDirs}/kf_inversions/period${period_i}
+            precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${period_i}/data_converted
         else
-            precomputedSensiCache=${ReferenceRunDir}/inversion/data_sensitivities
+            cd ${RunDirs}/inversion
+            precomputedJacobianCache=${ReferenceRunDir}/inversion/data_converted
         fi
-        # mv rather than rm, to prevent accidental deletion of original data_sensitivities/ ?
-        mv data_sensitivities temp_dir
-        ln -s $precomputedSensiCache data_sensitivities
+        ln -s $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
         cd ${JacobianRunsDir}
@@ -180,7 +181,7 @@ run_jacobian() {
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Get Jacobian scale factors
-        python ${InversionPath}/src/components/jacobian_component/get_jacobian_scalefactors.py $i $RunDirs $ReferenceRunDir; wait
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir; wait
         printf "Got Jacobian scale factors\n"
     fi
 }

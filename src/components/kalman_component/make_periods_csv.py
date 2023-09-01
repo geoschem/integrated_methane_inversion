@@ -3,7 +3,6 @@ import pandas as pd
 import sys
 import os
 
-
 def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
     """
     Create a csv file containing start and end dates for Kalman filter update periods.
@@ -32,11 +31,11 @@ def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
             "Stepsize exceeds the end date for first period. Please reduce UpdateFreqDays."
         )
     elif remainder != 0:
-        raise Exception(
-            "Number of days between start date and end"
+        print(
+            "Warning: Number of days between start date and end"
             + f" date is not divisible by UpdateFreqDays: {stepsize_days}."
-            + f" \nUpdate end date to have +{remainder} days"
-            + f" or reduce by -{stepsize_days - remainder} days."
+            + f" \nConsider updating end date to have +{remainder} days"
+            + f" or reducing by -{stepsize_days - remainder} days."
         )
 
     # Use while loop to populate starts and ends

@@ -99,6 +99,7 @@ conditional_dict = {}
 conditional_dict["KalmanMode"] = [
     "UpdateFreqDays",
     "NudgeFactor",
+    "DynamicKFClustering"
 ]
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",

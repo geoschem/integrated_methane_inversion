@@ -45,8 +45,8 @@ JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
 tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
 
-# For Kalman filter: assume first inversion period (( i = 1 )) by default
-# Switch is flipped to false automatically if (( i > 1 ))
+# For Kalman filter: assume first inversion period (( period_i = 1 )) by default
+# Switch is flipped to false automatically if (( period_i > 1 ))
 FirstSimSwitch=$1
 
 printf "\n=== EXECUTING RUN_INVERSION.SH ===\n"
@@ -127,14 +127,20 @@ printf "DONE -- setup_gc_cache.py\n\n"
 # Generate Jacobian matrix files 
 #=======================================================================
 
+printf "Calling jacobian.py\n"
+isPost="False"
 if ! "$PrecomputedJacobian"; then
 
-    printf "Calling jacobian.py\n"
-    isPost="False"
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost; wait
-    printf " DONE -- jacobian.py\n\n"
+    buildJacobian="True"
+
+else
+
+    buildJacobian="False"
 
 fi
+
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
 # Do inversion

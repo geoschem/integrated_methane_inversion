@@ -24,6 +24,8 @@ General
      - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
    * - ``S3UploadFiles``
      - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
+   * - ``PointSourceDataset``
+     - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -94,6 +96,8 @@ For more information on using the clustering options take a look at the `cluster
 
    * - ``ReducedDimensionStateVector``
      - Boolean for whether to reduce the dimension of the statevector from the native resolution version by clustering elements. If ``false`` the native state vector is used with no dimension reduction.
+   * - ``DynamicKFClustering``
+     - Boolean for whether to update the statevector clustering with each Kalman Filter update. Note: ``KalmanMode`` must be set to true.
    * - ``ClusteringMethod``
      - Clustering method to use for state vector reduction. (eg. "kmeans" or "mini-batch-kmeans")
    * - ``NumberOfElements``
