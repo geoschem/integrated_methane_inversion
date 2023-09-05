@@ -9,5 +9,5 @@ __pycache__/
 .ipynb_checkpoints/
 slurm-*.out
 *~
-imi_output.log
+*.log
 .env
