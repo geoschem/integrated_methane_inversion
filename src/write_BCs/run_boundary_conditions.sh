@@ -9,8 +9,8 @@ cwd="$(pwd)"
 # Read in the config file and source the environment file
 source ../utilities/parse_yaml.sh
 eval $(parse_yaml config_boundary_conditions.yml)
-source ${GEOSChemEnv}
-echo "Environment file  --> ${GEOSChemEnv}" >> "${cwd}/boundary_conditions.log"
+source ${geosChemEnv}
+echo "Environment file  --> ${geosChemEnv}" >> "${cwd}/boundary_conditions.log"
 
 # As long as it doesn't exist, make the working directory and go to it
 if [[ -d "${workDir}" ]]; then
@@ -105,8 +105,8 @@ sbatch -W geoschem.run; wait;
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-sbatch -W -J blended -o=boundary_conditions.log -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py True $blendedDir"; wait; # run for Blended TROPOMI+GOSAT
-sbatch -W -J tropomi -o=boundary_conditions.log -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py False $tropomiDir"; wait; # run for TROPOMI data
+sbatch -W -J blended -o=boundary_conditions.log -p ${partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $condaEnv; python write_boundary_conditions.py True $blendedDir"; wait; # run for Blended TROPOMI+GOSAT
+sbatch -W -J tropomi -o=boundary_conditions.log -p ${partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $condaEnv; python write_boundary_conditions.py False $tropomiDir"; wait; # run for TROPOMI data
 echo "" >> "${cwd}/boundary_conditions.log"
 echo "Blended TROPOMI+GOSAT boundary conditions --> {!$workDir}/blended-boundary-conditions" >> "${cwd}/boundary_conditions.log"
 echo "TROPOMI boundary conditions               --> {!$workDir}/tropomi-boundary-conditions" >> "${cwd}/boundary_conditions.log"
