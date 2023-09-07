@@ -323,6 +323,11 @@ def apply_tropomi_operator(
                 coords[1] + dlat / 2,
                 coords[1] + dlat / 2,
             ]
+            # If this is a global 2.0 x 2.5 grid, extend the eastern-most grid cells to 180 degrees
+            if (dlon == 2.5) & (coords[0] == 177.5):
+                for i in [1,2]:
+                    geoschem_corners_lon[i] += dlon / 2
+
             polygon_geoschem = Polygon(
                 np.column_stack((geoschem_corners_lon, geoschem_corners_lat))
             )
@@ -422,6 +427,11 @@ def apply_tropomi_operator(
         # Compute virtual TROPOMI observation as weighted mean by overlapping area
         # i.e., need to divide out area [m2] from the previous step
         virtual_tropomi = area_weighted_virtual_tropomi / sum(overlap_area)
+
+        # For global inversions, area of overlap should equal area of TROPOMI pixel
+        # This is because the GEOS-Chem grid is continuous
+        if dlon > 2.0:
+            assert abs(sum(overlap_area)-polygon_tropomi.area)/polygon_tropomi.area < 0.01, f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_tropomi.area}) {k,longitude_bounds,latitude_bounds,gc_coords}"
 
         # Save actual and virtual TROPOMI data
         obs_GC[k, 0] = TROPOMI["methane"][

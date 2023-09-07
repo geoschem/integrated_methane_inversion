@@ -43,8 +43,8 @@ sed -i -e "s|'CH4',|#'CH4',|g" \
     -e "s|'Metrics',|#'Metrics',|g" \
     -e "s|'StateMet',|#'StateMet',|g" \
     -e "s|#'LevelEdgeDiags',|'LevelEdgeDiags',|g" \
-    -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000100 000000',|g" \
-    -e "s|Restart.duration:           'End',|Restart.duration:           '00000100 000000',|g" \
+    -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000001 000000',|g" \
+    -e "s|Restart.duration:           'End',|Restart.duration:           '00000001 000000',|g" \
     -e "s|SpeciesConc.frequency:      00000100 000000|SpeciesConc.frequency:      00000000 010000|g" \
     -e "s|SpeciesConc.duration:       00000100 000000|SpeciesConc.duration:       00000000 010000|g" \
     -e "s|SpeciesConc.mode:           'time-averaged'|SpeciesConc.mode:           'instantaneous'|g" \
