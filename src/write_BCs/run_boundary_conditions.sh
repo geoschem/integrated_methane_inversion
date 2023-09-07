@@ -101,12 +101,12 @@ sed -i -e "s|huce_intel,seas_compute,shared|huce_cascade|g" \
     -e "s|--mem=15000|--mem=64000|g" \
     -e "s|-t 0-12:00|-t 07-00:00|g"\
     -e "s|-c 8|-c 24|g" geoschem.run
-sbatch geoschem.run
+sbatch -W geoschem.run; wait;
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-echo "\n"
-sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py True $tropomiDir"; wait; # run for Blended TROPOMI+GOSAT
-echo "Blended TROPOMI+GOSAT boundary conditions --> {!$workDir}/blended-boundary-conditions"
-sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py False $blendedDir"; wait; # run for TROPOMI data
-echo "TROPOMI boundary conditions               --> {!$workDir}/tropomi-boundary-conditions"
+sbatch -W -J blended -o=boundary_conditions.log -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py True $blendedDir"; wait; # run for Blended TROPOMI+GOSAT
+sbatch -W -J tropomi -o=boundary_conditions.log -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py False $tropomiDir"; wait; # run for TROPOMI data
+echo "" >> "${cwd}/boundary_conditions.log"
+echo "Blended TROPOMI+GOSAT boundary conditions --> {!$workDir}/blended-boundary-conditions" >> "${cwd}/boundary_conditions.log"
+echo "TROPOMI boundary conditions               --> {!$workDir}/tropomi-boundary-conditions" >> "${cwd}/boundary_conditions.log"
