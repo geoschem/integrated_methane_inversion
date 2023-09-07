@@ -214,7 +214,7 @@ if __name__ == "__main__":
     # For each file, remove the total column bias from each level of the GEOS-Chem boundary condition
     for filename in files:
         l = [index for index,date in enumerate(strdate) if date == re.search(r'(\d{8})_(\d{4}z)', filename).group(1)]
-        assert len(l) == 1, "ERROR -> there should only be bias per boundary condition file"ArithmeticError
+        assert len(l) == 1, "ERROR -> there should only be bias per boundary condition file"
         index = l[0]
         bias_for_this_boundary_condition_file = bias[index, :, :]
 
