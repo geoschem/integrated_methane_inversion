@@ -72,7 +72,7 @@ echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00"
 
 # Prepare the restart file
 rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
-if [[ ${gcstartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
+if [[ ${gcStartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
     cp "${cwd}/GEOSChem.Restart.20180401_0000z.nc4" Restarts/
 else 
     if [[ -e ${restartFilePath} ]]; then # use your own restart file
