@@ -30,7 +30,7 @@ setup_kf() {
     mkdir -p ${RunDirs}/archive_sf
 
     # Number of state vector elements
-    nElements=$(ncmax StateVector ${StateVectorFile})
+    nElements=$(ncmax StateVector ${StateVectorFile} ${OptimizeBCs})
 }
 
 # Description: Run Kalman filter inversions

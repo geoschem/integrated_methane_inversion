@@ -18,6 +18,7 @@ def do_inversion(
     gamma=0.25,
     res="0.25x0.3125",
     jacobian_sf=None,
+    prior_err_bc=None,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -200,6 +201,12 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
+    
+    # if optimizing boundary conditions, add prior error for BCs
+    # as the last 4 elements of the diagonal
+    if prior_err_bc is not None:
+        Sa_diag[-4:] = prior_err_bc**2
+        
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
@@ -253,6 +260,7 @@ if __name__ == "__main__":
     gamma = float(sys.argv[10])
     res = sys.argv[11]
     jacobian_sf = sys.argv[12]
+    prior_err_BC = float(sys.argv[13]) if len(sys.argv) > 13 else None
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -271,6 +279,7 @@ if __name__ == "__main__":
         gamma,
         res,
         jacobian_sf,
+        prior_err_BC,
     )
     xhat = out[0]
     ratio = out[1]

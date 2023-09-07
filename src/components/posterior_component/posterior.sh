@@ -100,6 +100,13 @@ run_posterior() {
         source ${GEOSChemEnv}
     fi
 
+    if "$OptimizeBCs"; then
+        PerturbBCValues="[0.0, 0.0, 0.0, 0.0]"
+        # turn on BC optimization for the corresponding edge and revert emission perturbation
+        sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW: [0.0, 0.0, 0.0, 0.0]|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+            -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+    fi 
+
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch --mem $SimulationMemory \
@@ -147,7 +154,7 @@ run_posterior() {
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc ${OptimizeBCs})
     FetchTROPOMI="False"
     isPost="True"
     buildJacobian="False"
@@ -159,4 +166,13 @@ run_posterior() {
 
     # convert vizualization notebooks to html
     run_notebooks
+}
+
+# Description: Generates the updated NSEW perturbation to apply to domain edge BCs
+# Usage:
+#   generate_optimized_BC_values <path-to-inversion-result> <bc-pert-value>
+generate_optimized_BC_values() {
+    python -c "import sys; import xarray;\
+    xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-4:];\
+    print(xhat.tolist())" $1
 }

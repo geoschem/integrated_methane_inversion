@@ -53,6 +53,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
+OptimizeBCs: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -71,7 +72,8 @@ StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevecto
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-PriorError: 0.5
+PriorError: 0.5 # in percentage
+PriorErrorBCs: 10.0 # in ppb
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -125,7 +127,8 @@ SchedulerPartition: "debug"
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-PerturbValue: 1.5
+PerturbValue: 1.5 # perturbation percentage
+PerturbValueBCs: 10.0 # perturbation (in ppb)
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false
