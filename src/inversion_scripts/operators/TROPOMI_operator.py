@@ -431,7 +431,7 @@ def apply_tropomi_operator(
         # For global inversions, area of overlap should equal area of TROPOMI pixel
         # This is because the GEOS-Chem grid is continuous
         if dlon > 2.0:
-            assert abs(sum(overlap_area)-polygon_tropomi.area)/polygon_tropomi.area < 0.01, f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_tropomi.area}) {k,longitude_bounds,latitude_bounds,gc_coords}"
+            assert abs(sum(overlap_area)-polygon_tropomi.area)/polygon_tropomi.area < 0.01, f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_tropomi.area})"
 
         # Save actual and virtual TROPOMI data
         obs_GC[k, 0] = TROPOMI["methane"][
