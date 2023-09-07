@@ -20,7 +20,8 @@ if [[ -d "${workDir}" ]]; then
 fi
 mkdir -p "${workDir}"
 echo "Working directory --> ${workDir}" >> "${cwd}/boundary_conditions.log"
-mkdir -p "${workDir}/smoothed-boundary-conditions"
+mkdir -p "${workDir}/tropomi-boundary-conditions"
+mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
 
 # Get GCClassic v14.2.1 and create the run directory
@@ -102,4 +103,8 @@ sbatch geoschem.run
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py"; wait;
+echo "\n"
+sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py True $tropomiDir"; wait; # run for Blended TROPOMI+GOSAT
+echo "BLENDED BOUNDARY CONDITIONS --> {!$workDir}/blended-boundary-conditions"
+sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py False $blendedDir"; wait; # run for TROPOMI data
+echo "TROPOMI BOUNDARY CONDITIONS --> {!$workDir}/tropomi-boundary-conditions"

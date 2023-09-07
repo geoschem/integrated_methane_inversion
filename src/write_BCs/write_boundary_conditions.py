@@ -18,6 +18,10 @@ from src.inversion_scripts.operators.operator_utilities import nearest_loc
 from src.inversion_scripts.operators.TROPOMI_operator import apply_tropomi_operator
 from src.inversion_scripts.utils import save_obj, load_obj
 
+blendedTROPOMI = (sys.argv[1] == "True")
+satelliteDir = sys.argv[2]
+print(f"Using files at {satelliteDir}")
+
 """
 This script works in three parts, utilizing the GEOS-Chem output from run_boundary_conditions.sh
 (1) Make a gridded (2.0 x 2.5 x daily) field of TROPOMI/GEOS-Chem co-locations
@@ -58,7 +62,7 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
     
     result = apply_tropomi_operator(
         filename = filename,
-        BlendedTROPOMI = config["blendedTROPOMI"],
+        BlendedTROPOMI = blendedTROPOMI,
         n_elements = False, # Not relevant
         gc_startdate = start_time_of_interest,
         gc_enddate = end_time_of_interest,
@@ -79,9 +83,11 @@ if __name__ == "__main__":
     end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["endDate"], "%Y%m%d"))
 
     # List of all TROPOMI files that interesct our time period of interest
-    TROPOMI_files = sorted([file for file in glob.glob(os.path.join(config["tropomiDir"], "*.nc"))
+    TROPOMI_files = sorted([file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
                             if (start_time_of_interest <= get_TROPOMI_times(file)[0] <= end_time_of_interest)
                             and (start_time_of_interest <= get_TROPOMI_times(file)[1] <= end_time_of_interest)])
+    print(f"First TROPOMI file -> {TROPOMI_files[0]}")
+    print(f"Last TROPOMI file  -> {TROPOMI_files[-1]}")
 
     # Using as many cores as you have, apply the TROPOMI operator to each file
     obsGC_and_filenames = Parallel(n_jobs=-1)(delayed(apply_tropomi_operator_to_one_tropomi_file)(filename) for filename in TROPOMI_files)
@@ -218,4 +224,9 @@ if __name__ == "__main__":
                 for lev in range(original_data.shape[1]):
                     original_data[t, lev, :, :] -= bias_for_this_boundary_condition_file
             ds["SpeciesBC_CH4"].values = original_data
-            ds.to_netcdf(os.path.join(config["workDir"], "smoothed-boundary-conditions"))
+            if blendedTROPOMI:
+                print(f"Writing to {os.path.join(config["workDir"], "blended-boundary-conditions")}")
+                ds.to_netcdf(os.path.join(config["workDir"], "blended-boundary-conditions"))
+            else:
+                print(f"Writing to {os.path.join(config["workDir"], "tropomi-boundary-conditions")}")
+                ds.to_netcdf(os.path.join(config["workDir"], "tropomi-boundary-conditions"))
