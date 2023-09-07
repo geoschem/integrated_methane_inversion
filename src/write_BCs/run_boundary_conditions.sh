@@ -3,7 +3,6 @@
 #SBATCH --mem=4000
 #SBATCH --time=07-00:00
 #SBATCH --output=debug.log
-#SBATCH --partition=huce_cascade
 
 cwd="$(pwd)"
 
@@ -105,6 +104,6 @@ sbatch geoschem.run
 cd "${cwd}"
 echo "\n"
 sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py True $tropomiDir"; wait; # run for Blended TROPOMI+GOSAT
-echo "BLENDED BOUNDARY CONDITIONS --> {!$workDir}/blended-boundary-conditions"
+echo "Blended TROPOMI+GOSAT boundary conditions --> {!$workDir}/blended-boundary-conditions"
 sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py False $blendedDir"; wait; # run for TROPOMI data
-echo "TROPOMI BOUNDARY CONDITIONS --> {!$workDir}/tropomi-boundary-conditions"
+echo "TROPOMI boundary conditions               --> {!$workDir}/tropomi-boundary-conditions"
