@@ -1,0 +1,22 @@
+## Day range (inclusive) that you want to generate BCs for
+startDate: "20180401"
+endDate: "20180531"
+
+## A directory with a lot of space where you can write the BCs (and intermediate files)
+workDir: "/n/holylfs05/LABS/jacob_lab/Users/nbalasus/v2023-09-IMI-Blended-BCs"
+
+## Whether to use Blended data and location of the TROPOMI data
+blendedTROPOMI: false
+tropomiDir: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
+
+## Conda environment to use, GEOS-Chem environment to use, and partitions to run on
+CondaEnv: imi_env
+GEOSChemEnv: /n/home06/nbalasus/envs/gcclassic.rocky+gnu10.minimal.env
+Partition: huce_cascade
+
+## A restart file for GEOS-Chem for your simulation start date (startdate - 16 days)
+## Only will be used if your simulation starts on a day besides 20180401
+restartFilePath:
+
+# Debug or not?
+debug: false

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=boundaryConditions
+#SBATCH --job-name=boundary_conditions
 #SBATCH --mem=4000
 #SBATCH --time=07-00:00
 #SBATCH --output=debug.log
@@ -9,17 +9,18 @@ cwd="$(pwd)"
 
 # Read in the config file and source the environment file
 source ../utilities/parse_yaml.sh
-eval $(parse_yaml config_write_BCs.yml)
+eval $(parse_yaml config_boundary_conditions.yml)
 source ${GEOSChemEnv}
-echo "Environment file  --> ${GEOSChemEnv}" >> "${cwd}/boundaryConditions.log"
+echo "Environment file  --> ${GEOSChemEnv}" >> "${cwd}/boundary_conditions.log"
 
 # As long as it doesn't exist, make the working directory and go to it
 if [[ -d "${workDir}" ]]; then
-    echo "ERROR             --> Directory ${workDir} exists." >> "${cwd}/boundaryConditions.log"
+    echo "ERROR             --> Directory ${workDir} exists." >> "${cwd}/boundary_conditions.log"
     exit 1
 fi
 mkdir -p "${workDir}"
-echo "Working directory --> ${workDir}" >> "${cwd}/boundaryConditions.log"
+echo "Working directory --> ${workDir}" >> "${cwd}/boundary_conditions.log"
+mkdir -p "${workDir}/smoothed-boundary-conditions"
 cd "${workDir}"
 
 # Get GCClassic v14.2.1 and create the run directory
@@ -45,7 +46,7 @@ sed -i -e "s|'CH4',|#'CH4',|g" \
     -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000100 000000',|g" \
     -e "s|Restart.duration:           'End',|Restart.duration:           '00000100 000000',|g" \
     -e "s|SpeciesConc.frequency:      00000100 000000|SpeciesConc.frequency:      00000000 010000|g" \
-    -e "s|SpeciesConc.duration:       00000100 000000|SpeciesConc.duration:       00000001 000000|g" \
+    -e "s|SpeciesConc.duration:       00000100 000000|SpeciesConc.duration:       00000000 010000|g" \
     -e "s|SpeciesConc.mode:           'time-averaged'|SpeciesConc.mode:           'instantaneous'|g" \
     -e "s|'SpeciesConcMND_?ALL?          ',|#'SpeciesConcMND_?ALL?          ',|g" \
     -e "s|LevelEdgeDiags.frequency:   00000100 000000|LevelEdgeDiags.frequency:   00000000 010000|g" \
@@ -66,7 +67,7 @@ fi
 gcEndDate=$(date -d "$endDate +1 days" +%Y%m%d)
 sed -i -e "s|start_date: \[20190101, 000000\]|start_date: [${gcStartDate}, 000000]|g" \
     -e "s|end_date: \[20190201, 000000\]|end_date: [${gcEndDate}, 000000]|g" geoschem_config.yml
-echo "GC run times        --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00" >> "${cwd}/boundaryConditions.log"
+echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00" >> "${cwd}/boundary_conditions.log"
 
 # Prepare the restart file
 rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
@@ -76,12 +77,12 @@ elif [[ -e ${restartFilePath} ]]; then # use your own restart file
     restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
     if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
         echo "ERROR             --> your restart file date (${restartFileDate}) \
-              doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundaryConditions.log"
+              doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundary_conditions.log"
         exit 1
     fi
     cp "${restartFilePath}" Restarts/
 else
-    echo "ERROR             --> the restart file does not exist!" >> "${cwd}/boundaryConditions.log"
+    echo "ERROR             --> the restart file does not exist!" >> "${cwd}/boundary_conditions.log"
     exit 1
 fi
 
@@ -97,3 +98,7 @@ sed -i -e "s|huce_intel,seas_compute,shared|huce_cascade|g" \
     -e "s|-t 0-12:00|-t 07-00:00|g"\
     -e "s|-c 8|-c 24|g" geoschem.run
 sbatch geoschem.run
+
+# Write the boundary conditions using write_boundary_conditions.py
+cd "${cwd}"
+sbatch -W -p ${Partition} -t 7-00:00 --mem 96000 -c 48 --wrap "source ~/.bashrc; conda activate $CondaEnv; python write_boundary_conditions.py"; wait;
