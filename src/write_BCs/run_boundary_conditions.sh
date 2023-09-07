@@ -74,17 +74,20 @@ echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00"
 rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
 if [[ ${gcstartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
     cp "${cwd}/GEOSChem.Restart.20180401_0000z.nc4" Restarts/
-elif [[ -e ${restartFilePath} ]]; then # use your own restart file
-    restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
-    if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
-        echo "ERROR             --> your restart file date (${restartFileDate}) \
-              doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundary_conditions.log"
+else 
+    if [[ -e ${restartFilePath} ]]; then # use your own restart file
+        restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
+        if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
+            echo "ERROR             --> your restart file date (${restartFileDate}) \
+                doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundary_conditions.log"
+            exit 1
+        else
+            cp "${restartFilePath}" Restarts/
+        fi
+    else
+        echo "ERROR             --> the restart file does not exist!" >> "${cwd}/boundary_conditions.log"
         exit 1
     fi
-    cp "${restartFilePath}" Restarts/
-else
-    echo "ERROR             --> the restart file does not exist!" >> "${cwd}/boundary_conditions.log"
-    exit 1
 fi
 
 # Remove debug log file if not debug (everything written via  >> debug.log 2>&1)
