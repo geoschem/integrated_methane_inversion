@@ -127,7 +127,15 @@ setup_imi() {
         gridDir="${Res}_${NestedRegion}"
     fi
 
+    # Clone version 14.2.1 of GCClassic
     # Define path to GEOS-Chem run directory files
+    cd "${InversionPath}"
+    rm -rf GCClassic
+    git clone https://github.com/geoschem/GCClassic.git
+    cd GCClassic
+    git checkout dac5a54 # most recent dev/14.2.1 @ 1 Sep 2023 12:44 PM (update this once 14.2.1 officially released)
+    git submodule update --init --recursive
+    cd ..
     GCClassicPath="${InversionPath}/GCClassic"
     RunFilesPath="${GCClassicPath}/run"
 

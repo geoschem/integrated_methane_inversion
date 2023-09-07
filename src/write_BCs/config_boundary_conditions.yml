@@ -15,8 +15,7 @@ GEOSChemEnv: /n/home06/nbalasus/envs/gcclassic.rocky+gnu10.minimal.env
 Partition: huce_cascade
 
 ## A restart file for GEOS-Chem for your simulation start date (startdate - 16 days)
-## Only will be used if your simulation starts on a day besides 20180401
-restartFilePath:
+restartFilePath: /path/to/restart/file
 
 # Debug or not?
 debug: false

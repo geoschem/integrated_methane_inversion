@@ -57,8 +57,9 @@ sed -i -e "s|'CH4',|#'CH4',|g" \
 # Modify geoschem_config.yml
 # - run GC earlier than you want BCs to accomodate a 15 day average going back in time
 # - e.g., the BCs for 15 May 2023 require 1 May 2023-15 May 2023 data
-if [[ ${startDate} -ge "20180415" ]]; then
-    gcStartDate=$(date -d "$startDate -14 days" +%Y%m%d)
+# - run one day earlier than that because GEOS-Chem won't write SpeciesConc/LevelEdgeDiag for t = 0
+if [[ ${startDate} -ge "20180416" ]]; then
+    gcStartDate=$(date -d "$startDate -15 days" +%Y%m%d)
 else
     gcStartDate="20180401"
 fi
@@ -71,7 +72,7 @@ echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00"
 
 # Prepare the restart file
 rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
-if [[ ${startDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
+if [[ ${gcstartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
     cp "${cwd}/GEOSChem.Restart.20180401_0000z.nc4" Restarts/
 elif [[ -e ${restartFilePath} ]]; then # use your own restart file
     restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
