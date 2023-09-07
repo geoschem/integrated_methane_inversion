@@ -225,8 +225,8 @@ if __name__ == "__main__":
                     original_data[t, lev, :, :] -= bias_for_this_boundary_condition_file
             ds["SpeciesBC_CH4"].values = original_data
             if blendedTROPOMI:
-                print(f"Writing to {os.path.join(config["workDir"], "blended-boundary-conditions")}")
+                print(f"Writing to {os.path.join(config['workDir'], 'blended-boundary-conditions')}")
                 ds.to_netcdf(os.path.join(config["workDir"], "blended-boundary-conditions"))
             else:
-                print(f"Writing to {os.path.join(config["workDir"], "tropomi-boundary-conditions")}")
+                print(f"Writing to {os.path.join(config['workDir'], 'tropomi-boundary-conditions')}")
                 ds.to_netcdf(os.path.join(config["workDir"], "tropomi-boundary-conditions"))
