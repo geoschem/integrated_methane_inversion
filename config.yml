@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_Permian_1week"
+RunName: "Test_Permian_1week_true"
 isAWS: true
 UseSlurm: true
 SafeMode: true
@@ -84,18 +84,18 @@ Met: "geosfp"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: false
-SetupJacobianRuns: false
-SetupInversion: false
-SetupPosteriorRun: false
+SetupSpinupRun: true
+SetupJacobianRuns: true
+SetupInversion: true
+SetupPosteriorRun: true
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: false
-DoJacobian: false
-DoInversion: false
-DoPosterior: false
+DoSpinup: true
+DoJacobian: true
+DoInversion: true
+DoPosterior: true
 
 ## IMI preview
 DoPreview: true

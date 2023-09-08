@@ -109,8 +109,9 @@ setup_template() {
 
     # Modify HISTORY.rc
     sed -i -e "s:'CH4':#'CH4':g" \
-           -e "s:'Metrics:#'Metrics:g" HISTORY.rc
-    
+           -e "s:'Metrics:#'Metrics:g" \
+           -e "s:'StateMet:#'StateMet:g" HISTORY.rc
+           
     # If turned on, save out hourly CH4 concentrations to daily files
     if "$HourlyCH4"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
