@@ -26,8 +26,8 @@
 
 ## Directions for doing this operationally at Harvard
 1. Run from `20180401` until the last day you have both satellite data and met fields.
-   - example: `startDate: 20230531`.
+   - example: `startDate: 20180401`, `endDate: 20230531`.
 2. **Before deleting your `workDir`**, in `workDir/gc_run/Restarts/`, copy the restart file from > 15 days before your the next day you will need boundary conditions to a persistent storage location.
-   - example: `GEOSChem.Restart.20230501_0000z.nc4`.
+   - example: `GEOSChem.Restart.20230430_0000z.nc4`.
 3. When the satellite data and met fields become available, generate boundary conditions up until your new end date, but start with a little overlap to check for consistentcy.
-   - example: `startDate: 20230515_0000z.nc4`, `endDate: 20230630_0000z.nc4` (using `GEOSChem.Restart.20230501_0000z.nc4`), then check consistency between your new and previously generated boundary conditions for `20230515` until `20230531`.
+   - example: `startDate: 20230515_0000z.nc4`, `endDate: 20230630_0000z.nc4` (using `GEOSChem.Restart.20230430_0000z.nc4`), then check consistency between your new and previously generated boundary conditions for `20230515` until `20230531`.

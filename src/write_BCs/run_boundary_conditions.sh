@@ -78,8 +78,7 @@ else
     if [[ -e ${restartFilePath} ]]; then # use your own restart file
         restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
         if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
-            echo "ERROR             --> your restart file date (${restartFileDate}) \
-                doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundary_conditions.log"
+            echo "ERROR             --> your restart file date (${restartFileDate}) doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundary_conditions.log"
             exit 1
         else
             cp "${restartFilePath}" Restarts/
