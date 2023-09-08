@@ -169,7 +169,7 @@ def SRON_plumes(config):
     startDate = datetime.datetime.strptime(str(config["StartDate"]), "%Y%m%d")
     endDate = datetime.datetime.strptime(str(config["EndDate"]), "%Y%m%d")
     if endDate.year < 2023:  # SRON plumes are only available beginning in 2023
-        return []
+        return None
     custom_vectorfile = not config["CreateAutomaticRectilinearStateVectorFile"]
     LatMax = config["LatMax"]
     LatMin = config["LatMin"]
