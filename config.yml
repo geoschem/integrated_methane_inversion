@@ -72,8 +72,10 @@ StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevecto
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-PriorError: 0.5 # in percentage
-PriorErrorBCs: 10.0 # in ppb
+## Note PriorError is a relative percentage 
+## and PerturbValueBCs is in ppb
+PriorError: 0.5
+PriorErrorBCs: 10.0
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -127,8 +129,10 @@ SchedulerPartition: "debug"
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-PerturbValue: 1.5 # perturbation percentage
-PerturbValueBCs: 10.0 # perturbation (in ppb)
+## Note PerturbValue is a relative scalefactor and 
+## PerturbValueBCs is in ppb
+PerturbValue: 1.5
+PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false

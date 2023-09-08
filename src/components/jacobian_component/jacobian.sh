@@ -94,9 +94,9 @@ setup_jacobian() {
         # The last four state vector elements are reserved for BC optimization of NSEW
         # domain edges. If the current state vector element is one of these, then
         # turn on BC optimization for the corresponding edge and revert emission perturbation
-        PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
         if [ $x -gt $bcThreshold ]; then
-            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW: [0.0, 0.0, 0.0, 0.0]|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+            PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
+            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW: \[0.0, 0.0, 0.0, 0.0\]|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
                 -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
                 -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
                 -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml

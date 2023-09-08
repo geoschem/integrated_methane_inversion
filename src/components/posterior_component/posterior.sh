@@ -101,9 +101,16 @@ run_posterior() {
     fi
 
     if "$OptimizeBCs"; then
-        PerturbBCValues="[0.0, 0.0, 0.0, 0.0]"
+        if "$KalmanMode"; then
+            period_i=$((period_i+1))
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+        else
+            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+        fi
+        # set BC optimal delta values
+        PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)
         # turn on BC optimization for the corresponding edge and revert emission perturbation
-        sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW: [0.0, 0.0, 0.0, 0.0]|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+        sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW: \[0.0, 0.0, 0.0, 0.0\]|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
             -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
     fi 
 
