@@ -79,14 +79,14 @@ if __name__ == "__main__":
 
     ### Part 1 ###
 
-    # From config file, get the start and end times that we will be writing boundary conditions for (+20 days on the end because of our temporal smoothing)
+    # From config file, get the start and end times that we will be writing boundary conditions for
     start_time_of_interest = np.datetime64(datetime.datetime.strptime(config["startDate"], "%Y%m%d"))
-    end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["endDate"], "%Y%m%d"))
+    end_time_of_interest = np.datetime64(datetime.datetime.strptime(config["endDate"], "%Y%m%d")) + np.timedelta64(1, 'D')
 
     # List of all TROPOMI files that interesct our time period of interest
     TROPOMI_files = sorted([file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
                             if (start_time_of_interest <= get_TROPOMI_times(file)[0] <= end_time_of_interest)
-                            and (start_time_of_interest <= get_TROPOMI_times(file)[1] <= end_time_of_interest)])
+                            or (start_time_of_interest <= get_TROPOMI_times(file)[1] <= end_time_of_interest)])
     print(f"First TROPOMI file -> {TROPOMI_files[0]}")
     print(f"Last TROPOMI file  -> {TROPOMI_files[-1]}")
 
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         LAT = data["lat"].values
 
     # List of all days in our time range of interest
-    alldates = np.arange(start_time_of_interest, end_time_of_interest + np.timedelta64(1, 'D'), dtype='datetime64[D]')
+    alldates = np.arange(start_time_of_interest, end_time_of_interest, dtype='datetime64[D]')
     alldates = [day.astype(datetime.datetime).strftime("%Y%m%d") for day in alldates]
 
     # Initialize arrays for regridding
@@ -116,19 +116,19 @@ if __name__ == "__main__":
         # For each TROPOMI observation, assign it to a GEOS-Chem grid cell
         for iNN in range(NN):
                 
-                # Which day are we on (this is not perfect right now because orbits can cross from one day to the next...
-                # but it is the best we can do right now without changing apply_tropomi_operator)
-                file_times = re.search(r'(\d{8}T\d{6})_(\d{8}T\d{6})', filename)
-                assert file_times is not None, "check TROPOMI filename - wasn't able to find start and end times in the filename"
-                date = datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
-                time_ind = alldates.index(date)
+            # Which day are we on (this is not perfect right now because orbits can cross from one day to the next...
+            # but it is the best we can do right now without changing apply_tropomi_operator)
+            file_times = re.search(r'(\d{8}T\d{6})_(\d{8}T\d{6})', filename)
+            assert file_times is not None, "check TROPOMI filename - wasn't able to find start and end times in the filename"
+            date = datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
+            time_ind = alldates.index(date)
 
-                c_TROPOMI, c_GC, lon0, lat0 = obsGC[iNN, :4]
-                ii = nearest_loc(lon0, LON, tolerance=5)
-                jj = nearest_loc(lat0, LAT, tolerance=4)
-                daily_TROPOMI[ii, jj, time_ind] += c_TROPOMI
-                daily_GC[ii, jj, time_ind] += c_GC
-                daily_count[ii, jj, time_ind] += 1
+            c_TROPOMI, c_GC, lon0, lat0 = obsGC[iNN, :4]
+            ii = nearest_loc(lon0, LON, tolerance=5)
+            jj = nearest_loc(lat0, LAT, tolerance=4)
+            daily_TROPOMI[ii, jj, time_ind] += c_TROPOMI
+            daily_GC[ii, jj, time_ind] += c_GC
+            daily_count[ii, jj, time_ind] += 1
 
     # Normalize by how many observations got assigned to a grid cell to finish the regridding
     daily_count[daily_count == 0] = np.nan
