@@ -12,7 +12,7 @@ blendedDir: "/n/holylfs05/LABS/jacob_lab/Lab/imi/ch4/blended"
 ## Conda environment to use, GEOS-Chem environment to use, and partitions to run on
 condaEnv: imi_env
 geosChemEnv: "/n/home06/nbalasus/envs/gcclassic.rocky+gnu10.minimal.env"
-partition: huce_cascade
+partition: huce_cascade,seas_compute
 
 ## A restart file for GEOS-Chem for your simulation start date (startdate - 16 days)
 restartFilePath: "/path/to/restart/file"

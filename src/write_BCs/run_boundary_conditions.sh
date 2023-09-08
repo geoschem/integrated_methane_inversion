@@ -96,7 +96,7 @@ fi
 
 # Modify and submit the run script
 cp runScriptSamples/operational_examples/harvard_cannon/geoschem.run .
-sed -i -e "s|huce_intel,seas_compute,shared|huce_cascade|g" \
+sed -i -e "s|huce_intel,seas_compute,shared|huce_cascade,seas_compute|g" \
     -e "s|--mem=15000|--mem=64000|g" \
     -e "s|-t 0-12:00|-t 07-00:00|g"\
     -e "s|-c 8|-c 24|g" geoschem.run
