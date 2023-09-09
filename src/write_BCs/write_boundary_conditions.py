@@ -20,8 +20,8 @@ from src.inversion_scripts.utils import save_obj, load_obj
 
 blendedTROPOMI = (sys.argv[1] == "True")
 satelliteDir = sys.argv[2]
-start_time_of_interest = datetime.datetime.strptime(sys.argv[3], "%Y%m%d")
-end_time_of_interest = datetime.datetime.strptime(sys.argv[4], "%Y%m%d")
+start_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
+end_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
 print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
 print(f"Using files at {satelliteDir}")
 
