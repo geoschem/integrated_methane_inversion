@@ -3,7 +3,7 @@ import os
 from joblib import Parallel, delayed
 
 
-def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
+def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
     """
     This script addresses the fact that output files for the first day of a
     GEOS-Chem simulation do not include data for the first hour of the day; they
@@ -31,12 +31,23 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
         prev_run_pth     [str] : Path to the spinup or posterior run directory
         start_day        [str] : First day of simulation, for which the daily
                                  output is missing data; e.g., "20180501"
+        res              [str] : Resolution string; e.g., "0.25x0.3125"
     """
 
     # List run directories
     contents = os.listdir(run_dirs_pth)
     rundirs = [r for r in contents if run_name in r]
 
+    # Determine timestamp in filename
+    if "0.25x0.3125" in res:
+        timestamp = "0005"
+    elif "0.5x0.625" in res:
+        timestamp = "0005"
+    elif "2.0x2.5" in res:
+        timestamp = "0010"
+    elif "4.0x5.0" in res:
+        timestamp = "0010"
+    
     # Process them
     def process(r):
         # Load hour zero from end of spinup run or previous posterior simulation
@@ -51,11 +62,11 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
 
         # Load output SpeciesConc and LevelEdgeDiags file
         output_file_SC = (
-            f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0010z.nc4" # prev 0005
+            f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_{timestamp}z.nc4"
         )
         output_data_SC = xr.load_dataset(output_file_SC)
         if "0000" in r:
-            output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0010z.nc4" # prev 0005
+            output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_{timestamp}z.nc4"
             output_data_LE = xr.load_dataset(output_file_LE)
 
         # Merge output and copied datasets and replace original files that were missing the first hour
@@ -82,7 +93,18 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
     results = Parallel(n_jobs=-1)(delayed(process)(run) for run in rundirs)
 
 
-def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day):
+def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
+
+    # Determine timestamp in filename
+    if "0.25x0.3125" in res:
+        timestamp = "0005"
+    elif "0.5x0.625" in res:
+        timestamp = "0005"
+    elif "2.0x2.5" in res:
+        timestamp = "0010"
+    elif "4.0x5.0" in res:
+        timestamp = "0010"
+    
     # Load hour zero from end of spinup run or previous posterior simulation
     prev_file_SC = (
         f"{prev_run_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0000z.nc4"
@@ -95,11 +117,11 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day):
 
     # Load output SpeciesConc
     output_file_SC = (
-        f"{run_dirs_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0010z.nc4" # prev 0005
+        f"{run_dirs_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_{timestamp}z.nc4"
     )
     output_data_SC = xr.load_dataset(output_file_SC)
     output_file_LE = (
-        f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0010z.nc4" # prev 0005
+        f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_{timestamp}z.nc4"
     )
     output_data_LE = xr.load_dataset(output_file_LE)
 
@@ -129,8 +151,9 @@ if __name__ == "__main__":
     run_dirs_pth = sys.argv[2]
     prev_run_pth = sys.argv[3]
     start_day = sys.argv[4]
+    res = sys.argv[5]
 
     if "posterior" in run_dirs_pth or "0000" in run_dirs_pth:
-        fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day)
+        fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res)
     else:
-        fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day)
+        fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res)

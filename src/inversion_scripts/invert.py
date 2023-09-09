@@ -16,7 +16,7 @@ def do_inversion(
     prior_err=0.5,
     obs_err=15,
     gamma=0.25,
-    res="2.0x2.5",
+    res="0.25x0.3125",
     jacobian_sf=None,
 ):
     """
@@ -32,7 +32,7 @@ def do_inversion(
         prior_err    [float] : Prior error standard deviation (default 0.5)
         obs_err      [float] : Observational error standard deviation (default 15 ppb)
         gamma        [float] : Regularization parameter (default 0.25)
-        res          [str]   : '0.25x0.3125' or '0.5x0.625' -- from config.yml
+        res          [str]   : Resolution string from config.yml (default '0.25x0.3125')
         jacobian_sf  [str]   : Path to Jacobian scale factors file if using precomputed K
 
     Returns
@@ -48,18 +48,16 @@ def do_inversion(
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
-    if "2.0x2.5" in res:
-        degx = 4 * 2.5
-        degy = 4 * 2
-    elif "0.25x0.3125" in res:
+    # This assumes 0.25x0.3125 and 0.5x0.625 simulations are always regional
+    if "0.25x0.3125" in res:
         degx = 4 * 0.3125
         degy = 4 * 0.25
     elif "0.5x0.625" in res:
         degx = 4 * 0.625
         degy = 4 * 0.5
     else:
-        msg = "Bad input for res; must be '2.0x2.5' or '0.25x0.3125' or '0.5x0.625' "
-        raise ValueError(msg)
+        degx = 0
+        degy = 0
 
     xlim = [lon_min + degx, lon_max - degx]
     ylim = [lat_min + degy, lat_max - degy]

@@ -71,12 +71,12 @@ Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
-##   Options are 0.25x0.3125, 2x2.5, or 4x5
-Res: "2x2.5"
+##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
+Res: "2.0x2.5"
 
 ## Meteorology
-##   Options are geosfp or merra2
-Met: "geosfp"
+##   Options are GEOSFP or MERRA2
+Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
@@ -98,13 +98,16 @@ DoPosterior: false
 DoPreview: true
 DOFSThreshold: 0
 
-## resource allocation settings for slurm jobs
+## Resource allocation settings for slurm jobs
 SimulationCPUs: 32
 SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
+
+## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
+MaxSimultaneousRuns: 50
 
 ##====================================================================
 ##

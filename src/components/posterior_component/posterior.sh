@@ -129,7 +129,7 @@ run_posterior() {
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i; wait
+    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res; wait
     printf "\n=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data

@@ -88,12 +88,12 @@ printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
 if ! "$PrecomputedJacobian"; then
 
     # Postprocess all the Jacobian simulations
-    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate; wait
+    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate $Res; wait
 
 else
 
     # Only postprocess the Prior simulation
-    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
+    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate $Res; wait
 
 fi
 printf "DONE -- postproc_diags.py\n\n"

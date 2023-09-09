@@ -29,6 +29,11 @@ setup_jacobian() {
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    if [ $MaxSimultaneousRuns -gt 0 ]; then
+	sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    else
+	sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
+    fi
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
