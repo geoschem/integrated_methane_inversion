@@ -21,8 +21,10 @@ from src.inversion_scripts.utils import save_obj, load_obj
 # Arguments from run_boundary_conditions.sh
 blendedTROPOMI = (sys.argv[1] == "True") # use blended data?
 satelliteDir = sys.argv[2] # where is the satellite data?
-# Start of GC output (+1 day because we ran 1 day extra at the start to account for data not being written at t=0)
-start_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d")) + np.timedelta64(1, 'D')
+# Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
+start_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
+if start_time_of_interest != np.datetime64("2018-04-01T00:00:00"):
+    start_time_of_interest += np.timedelta(1, "D")
 # End of GC output
 end_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
 print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
