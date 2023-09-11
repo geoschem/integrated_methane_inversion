@@ -157,7 +157,7 @@ def part2(daily_means):
 
     # Expand to 3 dimensions
     nan_value_filler_3d = bias.copy() * np.nan
-    for i in range(len(LON)):
+    for i in range(len(daily_means["lon"].values)):
         nan_value_filler_3d[:,:,i] = nan_value_filler_2d
 
     # Use these values to fill NaNs
