@@ -12,6 +12,10 @@ eval $(parse_yaml config_boundary_conditions.yml)
 source ${geosChemEnv}
 echo "Environment file  --> ${geosChemEnv}" >> "${cwd}/boundary_conditions.log"
 
+# Information needed for GEOS-Chem simulations
+export GC_USER_REGISTERED=true
+export GC_DATA_ROOT="${geosChemDataPath}"
+
 # As long as it doesn't exist, make the working directory and go to it
 if [[ -d "${workDir}" ]]; then
     echo "ERROR             --> Directory ${workDir} exists." >> "${cwd}/boundary_conditions.log"

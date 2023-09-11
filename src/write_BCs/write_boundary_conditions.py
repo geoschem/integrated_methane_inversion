@@ -18,33 +18,6 @@ from src.inversion_scripts.operators.operator_utilities import nearest_loc
 from src.inversion_scripts.operators.TROPOMI_operator import apply_tropomi_operator
 from src.inversion_scripts.utils import save_obj, load_obj
 
-# Arguments from run_boundary_conditions.sh
-blendedTROPOMI = (sys.argv[1] == "True") # use blended data?
-satelliteDir = sys.argv[2] # where is the satellite data?
-# Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
-start_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
-if start_time_of_interest != np.datetime64("2018-04-01T00:00:00"):
-    start_time_of_interest += np.timedelta64(1, "D")
-# End of GC output
-end_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
-print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
-print(f"Using files at {satelliteDir}")
-
-"""
-This script works in three parts, utilizing the GEOS-Chem output from run_boundary_conditions.sh
-(1) Make a gridded (2.0 x 2.5 x daily) field of TROPOMI/GEOS-Chem co-locations
-    - for every TROPOMI observation, apply the TROPOMI operator to the GEOS-Chem fields
-    - average the TROPOMI XCH4 and GEOS-Chem XCH4 to a (2.0 x 2.5) grid for each day
-(2) Make a gridded (2.0 x 2.5 x daily) field of the bias between TROPOMI and GEOS-Chem
-    - subtract the TROPOMI and GEOS-Chem grids from part 1 to get a starting point for the bias
-    - smooth this field spatially (5 lon grid boxes, 5 lat grid boxes) then temporally (15 days backwards)
-    - fill NaN values with the latitudinal average at that time
-        - for a latitudinal average to be defined, there must be >= 30 grid cells at that latitude
-        - when a latitudinal average cannot be found, the closest latitudinal average is used
-(3) Write the boundary conditions
-    - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions
-"""
-
 def get_TROPOMI_times(filename):
     
     """
@@ -82,9 +55,7 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
     
     return result["obs_GC"],filename
 
-if __name__ == "__main__":
-
-    ### Part 1 ###
+def part1(satelliteDir, start_time_of_interest, end_time_of_interest):
 
     # List of all TROPOMI files that interesct our time period of interest
     TROPOMI_files = sorted([file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
@@ -143,22 +114,24 @@ if __name__ == "__main__":
     regrid_GC = np.einsum("ijl->lji", daily_GC) # (lon, lat, time) -> (time, lat, lon)
 
     # Make a Dataset with variables of (TROPOMI_CH4, GC_CH4) and dims of (lon, lat, time)
-    ds = xr.Dataset({
-        'TROPOMI_CH4': xr.DataArray(
-            data = regrid_TROPOMI,
-            dims = ["time", "lat", "lon"],
-            coords = {"time": alldates, "lat": LAT, "lon": LON}
-            ),
-        'GC_CH4': xr.DataArray(
-            data = regrid_GC,
-            dims = ["time", "lat", "lon"],
-            coords = {"time": alldates, "lat": LAT, "lon": LON}
-            ),
-    })
+    daily_means = xr.Dataset({
+                    'TROPOMI_CH4': xr.DataArray(
+                        data = regrid_TROPOMI,
+                        dims = ["time", "lat", "lon"],
+                        coords = {"time": alldates, "lat": LAT, "lon": LON}
+                        ),
+                    'GC_CH4': xr.DataArray(
+                        data = regrid_GC,
+                        dims = ["time", "lat", "lon"],
+                        coords = {"time": alldates, "lat": LAT, "lon": LON}
+                        ),
+                })
 
-    ### Part 2 ###
+    return daily_means
 
-    bias = ds["GC_CH4"] - ds["TROPOMI_CH4"]
+def part2(daily_means):
+
+    bias = daily_means["GC_CH4"] - daily_means["TROPOMI_CH4"]
 
     # Smooth spatially
     bias = bias.rolling(lat=5,              # five lat grid boxes (10 degrees)
@@ -198,11 +171,13 @@ if __name__ == "__main__":
             print(f"WARNING -> using 0.0 ppb as bias for {bias['time'].values[t]}")
             bias[t,:,:] = bias[t,:,:].fillna(0)
 
-    ### Part 3 ###
+    return bias
+
+def part3(bias):
 
     # Get dates and convert the total column bias to mol/mol
     strdate = bias["time"].values
-    bias = bias.values * 1e-9
+    bias_mol_mol = bias.values * 1e-9
 
     # Only write BCs for our date range
     files = sorted(glob.glob(os.path.join(config["workDir"], "gc_run", "OutputDir", "GEOSChem.BoundaryConditions*.nc4")))
@@ -220,7 +195,7 @@ if __name__ == "__main__":
         l = [index for index,date in enumerate(strdate) if date == re.search(r'(\d{8})_(\d{4}z)', filename).group(1)]
         assert len(l) == 1, "ERROR -> there should only be bias per boundary condition file"
         index = l[0]
-        bias_for_this_boundary_condition_file = bias[index, :, :]
+        bias_for_this_boundary_condition_file = bias_mol_mol[index, :, :]
 
         with xr.open_dataset(filename) as ds:
             original_data = ds["SpeciesBC_CH4"].values.copy()
@@ -234,3 +209,37 @@ if __name__ == "__main__":
             else:
                 print(f"Writing to {os.path.join(config['workDir'], 'tropomi-boundary-conditions', os.path.basename(filename))}")
                 ds.to_netcdf(os.path.join(config["workDir"], "tropomi-boundary-conditions", os.path.basename(filename)))
+
+
+if __name__ == "__main__":
+
+    # Arguments from run_boundary_conditions.sh
+    blendedTROPOMI = (sys.argv[1] == "True") # use blended data?
+    satelliteDir = sys.argv[2] # where is the satellite data?
+    # Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
+    start_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
+    if start_time_of_interest != np.datetime64("2018-04-01T00:00:00"):
+        start_time_of_interest += np.timedelta64(1, "D")
+    # End of GC output
+    end_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
+    print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
+    print(f"Using files at {satelliteDir}")
+
+    """
+    This script works in three parts, utilizing the GEOS-Chem output from run_boundary_conditions.sh
+    (1) Make a gridded (2.0 x 2.5 x daily) field of TROPOMI/GEOS-Chem co-locations
+        - for every TROPOMI observation, apply the TROPOMI operator to the GEOS-Chem fields
+        - average the TROPOMI XCH4 and GEOS-Chem XCH4 to a (2.0 x 2.5) grid for each day
+    (2) Make a gridded (2.0 x 2.5 x daily) field of the bias between TROPOMI and GEOS-Chem
+        - subtract the TROPOMI and GEOS-Chem grids from part 1 to get a starting point for the bias
+        - smooth this field spatially (5 lon grid boxes, 5 lat grid boxes) then temporally (15 days backwards)
+        - fill NaN values with the latitudinal average at that time
+            - for a latitudinal average to be defined, there must be >= 30 grid cells at that latitude
+            - when a latitudinal average cannot be found, the closest latitudinal average is used
+    (3) Write the boundary conditions
+        - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions
+    """
+
+    daily_means = part1(satelliteDir, start_time_of_interest, end_time_of_interest)
+    bias = part2(daily_means)
+    part3(bias)

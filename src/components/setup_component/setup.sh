@@ -130,12 +130,16 @@ setup_imi() {
     # Clone version 14.2.1 of GCClassic
     # Define path to GEOS-Chem run directory files
     cd "${InversionPath}"
-    rm -rf GCClassic
-    git clone https://github.com/geoschem/GCClassic.git
-    cd GCClassic
-    git checkout dac5a54 # most recent dev/14.2.1 @ 1 Sep 2023 12:44 PM (update this once 14.2.1 officially released)
-    git submodule update --init --recursive
-    cd ..
+    if [ ! -d "GCClassic" ]; then
+        git clone https://github.com/geoschem/GCClassic.git
+        cd GCClassic
+        git checkout dac5a54 # most recent dev/14.2.1 @ 1 Sep 2023 12:44 PM (update this once 14.2.1 officially released)
+        git submodule update --init --recursive
+        cd ..
+    else
+        echo "Warning: GCClassic already exists so it won't be cloned."
+        echo "Make sure your version is 14.2.1!"
+    fi
     GCClassicPath="${InversionPath}/GCClassic"
     RunFilesPath="${GCClassicPath}/run"
 
