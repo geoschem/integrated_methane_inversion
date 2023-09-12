@@ -55,7 +55,7 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
     
     return result["obs_GC"],filename
 
-def part1(satelliteDir, start_time_of_interest, end_time_of_interest):
+def create_daily_means(satelliteDir, start_time_of_interest, end_time_of_interest):
 
     # List of all TROPOMI files that interesct our time period of interest
     TROPOMI_files = sorted([file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
@@ -129,7 +129,7 @@ def part1(satelliteDir, start_time_of_interest, end_time_of_interest):
 
     return daily_means
 
-def part2(daily_means):
+def calculate_bias(daily_means):
 
     bias = daily_means["GC_CH4"] - daily_means["TROPOMI_CH4"]
 
@@ -173,7 +173,7 @@ def part2(daily_means):
 
     return bias
 
-def part3(bias):
+def write_bias_corrected_files(bias):
 
     # Get dates and convert the total column bias to mol/mol
     strdate = bias["time"].values
@@ -240,6 +240,6 @@ if __name__ == "__main__":
         - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions
     """
 
-    daily_means = part1(satelliteDir, start_time_of_interest, end_time_of_interest)
-    bias = part2(daily_means)
-    part3(bias)
+    daily_means = create_daily_means(satelliteDir, start_time_of_interest, end_time_of_interest)
+    bias = calculate_bias(daily_means)
+    write_bias_corrected_files(bias)

@@ -11,7 +11,7 @@
    - `Partition`       - which partition to run the jobs on.
    - `restartFilePath` - restart file for GEOS-Chem.
       - if your simulation starts on 1 April 2018, this won't be used (`GEOSChem.Restart.20180401_0000z.nc4` will).
-         - this file comes from a simulation from a CH4 simulation by Todd Mooring that is constrained by NOAA surface observations.
+         - this file comes from a CH4 simulation by Todd Mooring that is constrained by NOAA surface observations.
       - if your simulation starts on another date, it should use a restart file from the simulation that started on 1 April 2018.
       - this is accomodated by the fact that the simulation is setup to write daily restart files.
       - to determine what day your restart file should be for, subtract 15 days from `startDate`.
