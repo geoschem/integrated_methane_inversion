@@ -119,11 +119,11 @@ DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 ## Path to TROPOMI Data
 DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
 
-## Environment files
+## Environment files (edit paths as necessary)
 ## See envs/README to create the Conda environment specified below
-NCOEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.ifort17_cannon.env"
-GEOSChemEnv: "/n/home05/msulprizio/GC/CH4/integrated_methane_inversion/envs/Harvard-Cannon/gcc.gfortran10.2_cannon.env"
-CondaEnv: "ch4_inv"
+NCOEnv: "/n/jacob_lab/Lab/cannon-env/envs/gnu10/gcclassic.rocky+gnu10.env"
+GEOSChemEnv: "/n/jacob_lab/Lab/cannon-env/envs/gnu10/gcclassic.rocky+gnu10.minimal.env"
+CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
@@ -131,12 +131,12 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/jacob_lab/Lab/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/jacob_lab/Lab/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
-BCpath: "/n/jacob_lab/Lab/seasasfs02/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2"
+BCpath: "/n/jacob_lab/Lab/CH4_inversion/InputData/BoundaryConditions/OutputDir_bias_corrected_dk_2"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##  NOTE: Must have AWS CLI enabled
