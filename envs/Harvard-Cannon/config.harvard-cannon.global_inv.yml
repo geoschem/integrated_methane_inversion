@@ -53,8 +53,13 @@ BufferDeg: 0
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 
+## Point source datasets
+## Used for visualizations and state vector clustering
+PointSourceDatasets: ["SRON"]
+
 ## Clustering Options
 ReducedDimensionStateVector: false
+DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
@@ -80,7 +85,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
-SetupTemplateRundir: true
+SetupTemplateRundir: false
 SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
@@ -95,6 +100,7 @@ DoInversion: false
 DoPosterior: false
 
 ## IMI preview
+##   NOTE: RunSetup must be true to run preview
 DoPreview: true
 DOFSThreshold: 0
 
@@ -161,13 +167,16 @@ DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 ## Path to TROPOMI Data
 DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
-## Environment files
+## Conda environment file
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
+
+## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
+##   NOTE: Copy your own file in the envs/ directory within the IMI
 GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
-##  NOTE: Must have AWS CLI enabled
+##   NOTE: Must have AWS CLI enabled
 RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
@@ -181,7 +190,7 @@ BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
 BCversion: "v2023-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##  NOTE: Must have AWS CLI enabled
+##   NOTE: Must have AWS CLI enabled
 PreviewDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false

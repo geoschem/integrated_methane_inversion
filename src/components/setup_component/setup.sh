@@ -15,13 +15,13 @@ setup_imi() {
     cd ${InversionPath}
 
     if ! "$isAWS"; then
-		if [ ! -f "${GEOSChemEnv}" ]; then
-			printf "\nGEOS-Chem environment file does not exist!"
-			printf "\nIMI $RunName Aborted\n"
-			exit 1
-		else
-	        # Load environment with modules for compiling GEOS-Chem Classic
-    	    source ${GEOSChemEnv}
+	if [ ! -f "${InversionPath}/${GEOSChemEnv}" ]; then
+	    printf "\nGEOS-Chem environment file does not exist!"
+	    printf "\nIMI $RunName Aborted\n"
+	    exit 1
+	else
+	    # Load environment with modules for compiling GEOS-Chem Classic
+    	    source ${InversionPath}/${GEOSChemEnv}
     	fi
     fi
 
@@ -126,8 +126,8 @@ setup_imi() {
 	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
 	exit 1
     fi
-
-    if [ "$isRegional" ]; then
+    # Use cropped met for regional simulations instead of using global met
+    if "$isRegional"; then
         gridDir="${gridDir}_${RegionID}"
     fi
 

@@ -100,6 +100,7 @@ DoInversion: false
 DoPosterior: false
 
 ## IMI preview
+##   NOTE: RunSetup must be true to run preview
 DoPreview: true
 DOFSThreshold: 0
 
@@ -163,7 +164,7 @@ OutputPath: "/home/ubuntu/imi_output_dir"
 ## Path to GEOS-Chem input data
 DataPath: "/home/ubuntu/ExtData"
 
-## Environment files
+## Conde anvironment file
 CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
 CondaEnv: "geo"
 
@@ -177,6 +178,7 @@ RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryCon
 RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
+## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 BCversion: "v2023-06"
 

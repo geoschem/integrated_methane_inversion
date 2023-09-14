@@ -32,15 +32,23 @@ setup_template() {
 	metNum="1"
     elif [ "$Met" = "GEOSFP" ]; then
 	metNum="2"
+    else
+	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
+	printf "\n Options are GEOSFP or MERRA2.\n"
+	exit 1
     fi	
-    if [ "$Res" = "4x5" ]; then
+    if [ "$Res" = "4.0x5.0" ]; then
 	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-    elif [ "$Res" == "2x2.5" ]; then
+    elif [ "$Res" == "2.0x2.5" ]; then
 	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
 	cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.25x0.3125" ]; then
 	cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+    else
+	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+	exit 1
     fi
 
     # Create run directory
@@ -97,7 +105,7 @@ setup_template() {
 
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
-    if [ "$isRegional" ]; then
+    if "$isRegional"; then
 	sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
 	sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
@@ -125,16 +133,22 @@ setup_template() {
                -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
     fi
 
-    if ! "$isAWS"; then
-	# Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
     # Remove sample restart file
     rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
+
+    if ! "$isAWS"; then
+	if [ ! -f "${InversionPath}/${GEOSChemEnv}" ]; then
+	    printf "\nGEOS-Chem environment file does not exist!"
+	    printf "\nIMI $RunName Aborted\n"
+	    exit 1
+	else
+            # Load environment with modules for compiling GEOS-Chem Classic
+            source ${InversionPath}/${GEOSChemEnv}
+	fi
+    fi
     
     # Compile GEOS-Chem and store executable in template run directory
     printf "\nCompiling GEOS-Chem...\n"
