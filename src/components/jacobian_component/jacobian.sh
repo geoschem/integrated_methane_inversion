@@ -162,8 +162,7 @@ run_jacobian() {
         jacobian_end=$(date +%s)
     else
         # Add symlink pointing to jacobian matrix files from the reference
-	    # inversion w/ precomputed Jacobian
-
+        # inversion w/ precomputed Jacobian
         if "$KalmanMode"; then
             cd ${RunDirs}/kf_inversions/period${period_i}
             precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${period_i}/data_converted

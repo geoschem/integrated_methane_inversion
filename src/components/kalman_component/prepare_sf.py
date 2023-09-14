@@ -104,9 +104,11 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Get the final posterior scale factors
             sf["ScaleFactor"] = scaled_nudged_posterior_emis / original_emis
 
-            # Reset buffer area to 1 # TODO Do we want this feature?
-            # sf["ScaleFactor"] = sf["ScaleFactor"].where(state_vector_labels <= last_ROI_element)  # Replace buffers with nan
-            # sf["ScaleFactor"] = sf["ScaleFactor"].fillna(1)  # Fill nan with 1
+            # Reset buffer area to 1 
+            # Note: resetting the buffer area to 1 seems to prevent issues where 
+            # emissions can become negative.
+            sf["ScaleFactor"] = sf["ScaleFactor"].where(state_vector_labels <= last_ROI_element)  # Replace buffers with nan
+            sf["ScaleFactor"] = sf["ScaleFactor"].fillna(1)  # Fill nan with 1
 
         print(
             f"Used HEMCO emissions up to week {p} to prepare prior scaling factors for this week."

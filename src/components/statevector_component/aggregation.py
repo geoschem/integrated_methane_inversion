@@ -284,6 +284,11 @@ def generate_cluster_pairs(config, sensitivities):
         config, sensitivities, desired_element_num
     )
 
+    # temporarily set the upper bound limit to prevent recursion error 
+    # for large domains. python has a default recursion limit of 1000
+    limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(len(sensitivities))
+    
     # determine dofs threshold for each cluster and create cluster pairings
     target_dofs_per_cluster = sum(sensitivities) / desired_element_num
     cluster_pairs = find_cluster_pairs(
@@ -292,6 +297,7 @@ def generate_cluster_pairs(config, sensitivities):
         desired_element_num,
         max_aggregation_level,
     )
+    sys.setrecursionlimit(limit)
 
     # put cluster pairs into format expected by clustering algorithm
     cluster_pairs = list(cluster_pairs.items())
@@ -479,10 +485,10 @@ if __name__ == "__main__":
         
     sensitivities = estimate_averaging_kernel(*sensitivity_args)
     
-    if "ForcedNativeResolutionElements" in config.keys():
-        sensitivities = force_native_res_pixels(
-            config, original_clusters["StateVector"], sensitivities
-        )
+    # force point sources to be high resolution by updating sensitivities
+    sensitivities = force_native_res_pixels(
+        config, original_clusters["StateVector"], sensitivities
+    )
     cluster_pairs = generate_cluster_pairs(config, sensitivities)
 
     print(

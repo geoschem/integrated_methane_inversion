@@ -10,5 +10,5 @@ __pycache__/
 slurm-*.out
 *.log
 *~
-imi_output.log
+*.log
 .env

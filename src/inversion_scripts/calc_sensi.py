@@ -106,15 +106,14 @@ def calc_sensi(
         # For each hour
         def process(h):
             # Get the base run data for the hour
-            # base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
-            base = base_var[h, :, :, :]
+            base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
             # Initialize sensitivities array
             sensi = np.empty((nelements, nlev, nlat, nlon))
             sensi.fill(np.nan)
             # For each state vector element
             for e in elements:
                 # Get the data for the current hour
-                pert = pert_datas[e]["SpeciesConcVV_CH4"][h, :, :, :]
+                pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
                 sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
