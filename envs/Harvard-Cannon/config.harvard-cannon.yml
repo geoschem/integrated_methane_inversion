@@ -119,10 +119,10 @@ DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 ## Path to TROPOMI Data
 DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/lshen/CH4/TROPOMI/data"
 
-## Environment files (edit paths as necessary)
+## Environment files
 ## See envs/README to create the Conda environment specified below
-NCOEnv: "/n/jacob_lab/Lab/cannon-env/envs/gnu10/gcclassic.rocky+gnu10.env"
-GEOSChemEnv: "/n/jacob_lab/Lab/cannon-env/envs/gnu10/gcclassic.rocky+gnu10.minimal.env"
+NCOEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.env"
+GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
