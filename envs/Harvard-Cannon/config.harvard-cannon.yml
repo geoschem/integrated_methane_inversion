@@ -73,7 +73,7 @@ ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
 ## Note PriorError is a relative percentage 
-## and PerturbValueBCs is in ppb
+## and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
 ObsError: 15
