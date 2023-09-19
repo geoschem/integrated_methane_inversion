@@ -202,22 +202,34 @@ def do_inversion(
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
     
-    # if optimizing boundary conditions, add prior error for BCs
-    # as the last 4 elements of the diagonal
+    # if optimizing boundary conditions, adjust for it in the inversion
+    bc_idx = n_elements
     if prior_err_bc is not None:
+        # add prior error for BCs
+        # as the last 4 elements of the diagonal
         Sa_diag[-4:] = prior_err_bc**2
+        bc_idx -= 4
         
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
-    xhat = 1 + ratio
+    
+    # update scale factors by 1 to match what geoschem expects
+    # Note: if optimizing BCs, the last 4 elements are in concentration 
+    # space, so we do not need to add 1
+    # xhat = 1 + ratio
+    xhat = ratio.copy()
+    xhat[:bc_idx] += 1
 
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
 
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
+    
+    # Print some statistics
+    print("Min:", xhat[:bc_idx].min(), "Mean:", xhat[:bc_idx].mean(), "Max", xhat[:bc_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
@@ -287,9 +299,6 @@ if __name__ == "__main__":
     KTinvSoyKxA = out[3]
     S_post = out[4]
     A = out[5]
-
-    # Print some statistics
-    print("Min:", xhat.min(), "Mean:", xhat.mean(), "Max", xhat.max())
 
     # Save results
     dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")

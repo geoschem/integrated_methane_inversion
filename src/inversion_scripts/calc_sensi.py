@@ -110,7 +110,7 @@ def calc_sensi(
                 pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
                 if (perturbationBC is not None) and (e > (nelements-4)):
-                    sensitivities = (pert.values - base.values) / (perturbationBC*1e-9)
+                    sensitivities = (pert.values - base.values) / perturbationBC
                 else:
                     sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
