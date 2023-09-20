@@ -112,6 +112,8 @@ run_posterior() {
         # turn on BC optimization for the corresponding edge and revert emission perturbation
         sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
             -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+
+        printf "\n=== BC OPTIMIZATION: BC optimized perturbation values for NSEW set to: ${PerturbBCValues} ===\n"
     fi 
 
     # Submit job to job scheduler
