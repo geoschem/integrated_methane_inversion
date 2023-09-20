@@ -280,7 +280,8 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
     Description:
         Filter out any data that does not meet the following
         criteria: We only consider data within lat/lon/time bounds,
-        with QA > 0.5 and that don't cross the antimeridian
+        with QA > 0.5 and that don't cross the antimeridian.
+        Also, we filter out water pixels and south of 60S.
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
@@ -293,6 +294,8 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
         & (tropomi_data["time"] <= enddate)
         & (tropomi_data["qa_value"] >= 0.5)
         & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
+        & (tropomi_data["surface_classification"] != 1)
+        & (tropomi_data["latitude"] > -60)
     )
 
 def filter_blended(blended_data, xlim, ylim, startdate, enddate):
@@ -303,7 +306,8 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate):
         that don't cross the antimeridian, and we filter out all
         coastal pixels (surface classification 3) and inland water
         pixels with a poor fit (surface classifcation 2, 
-        SWIR chi-2 > 20000) (recommendation from Balasus et al. 2023)
+        SWIR chi-2 > 20000) (recommendation from Balasus et al. 2023).
+        Also, we filter out water pixels and south of 60S.
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
@@ -316,6 +320,8 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate):
         & (blended_data["time"] <= enddate)
         & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
         & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
+        & (blended_data["surface_classification"] != 1)
+        & (blended_data["latitude"] > -60)
     )
 
 
