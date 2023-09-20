@@ -27,13 +27,13 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities):
     """
 
     if e == (nelements - 4): # North boundary
-        check = sensitivities.isel(lat=[-3,-2,-1],lon=slice(3,-3)).mean().values
+        check = np.mean(sensitivities[:,-3:,3:-3])
     elif e == (nelements - 3): # South boundary
-        check = sensitivities.isel(lat=[0,1,2],lon=slice(3,-3)).mean().values
+        check = np.mean(sensitivities[:,0:3,3:-3])
     elif e == (nelements - 2): # East boundary
-        check = sensitivities.isel(lon=[-3,-2,-1]).mean().values
+        check = np.mean(sensitivities[:,:,-3:])
     elif e == (nelements - 1): # West boundary
-        check = sensitivities.isel(lon=[0,1,2]).mean().values
+        check = np.mean(sensitivities[:,:,0:3])
     assert abs(check - 1e-9) < 1e-11, f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
 
 def calc_sensi(
@@ -131,7 +131,8 @@ def calc_sensi(
                 # Compute and store the sensitivities
                 if (perturbationBC is not None) and (e >= (nelements-4)):
                     sensitivities = (pert.values - base.values) / perturbationBC
-                    test_GC_output_for_BC_perturbations(e, nelements, sensitivities)
+                    if h != 0: # because we take the first hour on the first day from spinup
+                        test_GC_output_for_BC_perturbations(e, nelements, sensitivities)
                 else:
                     sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
