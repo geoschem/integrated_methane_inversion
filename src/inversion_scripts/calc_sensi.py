@@ -109,7 +109,7 @@ def calc_sensi(
                 # Get the data for the current hour
                 pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
-                if (perturbationBC is not None) and (e > (nelements-4)):
+                if (perturbationBC is not None) and (e >= (nelements-4)):
                     sensitivities = (pert.values - base.values) / perturbationBC
                 else:
                     sensitivities = (pert.values - base.values) / perturbation
