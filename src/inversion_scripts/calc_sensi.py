@@ -15,6 +15,26 @@ def zero_pad_num(n):
         nstr = "0" + nstr
     return nstr
 
+def test_GC_output_for_BC_perturbations(e, nelements, sensitivities):
+
+    """
+    Ensures that CH4 boundary condition perturbation in GEOS-Chem is working as intended
+    sensitivities = (pert-base)/perturbationBC which should equal 1e-9 inside the perturbed borders
+    example: the north boundary is perturbed by 10 ppb
+             pert-base=10e-9 mol/mol in the 3 grid cells that have been perturbed
+             perturbationBC=10 ppb
+             sensitivities = (pert-base)/perturbationBC = 1e-9
+    """
+
+    if e == (nelements - 4): # North boundary
+        check = sensitivities.isel(lat=[-3,-2,-1],lon=slice(3,-3)).mean().values
+    elif e == (nelements - 3): # South boundary
+        check = sensitivities.isel(lat=[0,1,2],lon=slice(3,-3)).mean().values
+    elif e == (nelements - 2): # East boundary
+        check = sensitivities.isel(lon=[-3,-2,-1]).mean().values
+    elif e == (nelements - 1): # West boundary
+        check = sensitivities.isel(lon=[0,1,2]).mean().values
+    assert abs(check - 1e-9) < 1e-11, f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
 
 def calc_sensi(
     nelements, perturbation, startday, endday, run_dirs_pth, run_name, sensi_save_pth, perturbationBC
@@ -111,6 +131,7 @@ def calc_sensi(
                 # Compute and store the sensitivities
                 if (perturbationBC is not None) and (e >= (nelements-4)):
                     sensitivities = (pert.values - base.values) / perturbationBC
+                    test_GC_output_for_BC_perturbations(e, nelements, sensitivities)
                 else:
                     sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
