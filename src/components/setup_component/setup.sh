@@ -161,7 +161,8 @@ setup_imi() {
         create_statevector
     else
         # Copy custom state vector to $RunDirs directory for later use
-        cp $StateVectorFile ${RunDirs}/StateVector.nc
+        printf "\nCopying state vector file\n"
+        cp -v $StateVectorFile ${RunDirs}/StateVector.nc
     fi
 
     # Determine number of elements in state vector file

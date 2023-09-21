@@ -40,7 +40,7 @@ run_preview() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    # remove old error status file if present
+    # Remove old error status file if present
     rm -f .error_status_file.txt
     
     # Link to GEOS-Chem executable instead of having a copy in each run dir
@@ -92,6 +92,7 @@ run_preview() {
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
     # Submit preview GEOS-Chem job to job scheduler
+    printf "\nRunning preview GEOS-Chem simulation... "
     if "$UseSlurm"; then
         sbatch --mem $SimulationMemory \
                -c $SimulationCPUs \
@@ -101,15 +102,18 @@ run_preview() {
     else
         ./${RunName}_Preview.run
     fi
-    # Run preview script
+
+    # Specify inputs for preview script
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
     tropomi_cache=${RunDirs}/data_TROPOMI
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
-    # if running end to end script with sbatch then use
-    # sbatch to take advantage of multiple cores 
+    # Run preview script
+    # If running end to end script with sbatch then use
+    # sbatch to take advantage of multiple cores
+    printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
         chmod +x $preview_file
         sbatch --mem $SimulationMemory \
