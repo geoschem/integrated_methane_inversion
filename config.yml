@@ -164,7 +164,7 @@ OutputPath: "/home/ubuntu/imi_output_dir"
 ## Path to GEOS-Chem input data
 DataPath: "/home/ubuntu/ExtData"
 
-## Conde anvironment file
+## Conda anvironment file
 CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
 CondaEnv: "geo"
 
