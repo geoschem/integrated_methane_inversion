@@ -36,11 +36,15 @@ imi_failed() {
 
 # Description: Print max value of given variable in netCDF file
 #   Returns int if only trailing zeros, float otherwise
+#   if (optional) 3rd argument is true, add 4 to the max value
+#   this is useful for adding in elements to account for 
+#   optimization of BCs
 # Usage:
-#   ncmax <variable> <netCDF file path>
+#   ncmax <variable> <netCDF file path> <optimize BCs>
 ncmax() {
-    python -c "import sys; import xarray; \
-    print('%g' % xarray.open_dataset(sys.argv[2])[sys.argv[1]].max())" $1 $2
+    python -c "import sys; import xarray;\
+    bc_offset = 4 if len(sys.argv) > 3 and sys.argv[3] == 'true' else 0;\
+    print('%g' % (xarray.open_dataset(sys.argv[2])[sys.argv[1]].max()+bc_offset))" $1 $2 $3
 }
 
 # Description: Print min value of given variable in netCDF file
