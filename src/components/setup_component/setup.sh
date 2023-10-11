@@ -93,12 +93,12 @@ setup_imi() {
     ##=======================================================================
     ## Define met and grid fields for HEMCO_Config.rc
     ##=======================================================================
-    if [ "$Met" == "GEOSFP" ]; then
+    if [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
         metDir="GEOS_FP"
         native="0.25x0.3125"
         constYr="2011"
         LandCoverFileExtension="nc"
-    elif [ "$Met" == "MERRA2" ]; then
+    elif [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metDir="MERRA2"
         native="0.5x0.625"
         constYr="2015"

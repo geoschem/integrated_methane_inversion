@@ -8,17 +8,6 @@
 # Usage:
 #   run_preview
 run_preview() {
-    if ! "$isAWS"; then
-	if [ ! -f "${InversionPath}/${GEOSChemEnv}" ]; then
-	    printf "\nGEOS-Chem environment file does not exist!"
-	    printf "\nIMI $RunName Aborted\n"
-	    exit 1
-	else
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${InversionPath}/${GEOSChemEnv}
-	fi
-    fi
-
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 

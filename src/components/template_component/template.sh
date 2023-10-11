@@ -28,9 +28,9 @@ setup_template() {
     # Commands to feed to createRunDir.sh
     # Run directories are created for the global domain by default. If needed,
     # the regional domain specified in config.yml will be adjusted for below.
-    if [ "$Met" = "MERRA2" ]; then
+    if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
 	metNum="1"
-    elif [ "$Met" = "GEOSFP" ]; then
+    elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
 	metNum="2"
     else
 	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
@@ -140,17 +140,6 @@ setup_template() {
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
 
-    if ! "$isAWS"; then
-	if [ ! -f "${InversionPath}/${GEOSChemEnv}" ]; then
-	    printf "\nGEOS-Chem environment file does not exist!"
-	    printf "\nIMI $RunName Aborted\n"
-	    exit 1
-	else
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${InversionPath}/${GEOSChemEnv}
-	fi
-    fi
-    
     # Compile GEOS-Chem and store executable in template run directory
     printf "\nCompiling GEOS-Chem...\n"
     cd build

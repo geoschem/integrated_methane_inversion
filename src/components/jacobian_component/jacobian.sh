@@ -30,6 +30,11 @@ setup_jacobian() {
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
     if [ $MaxSimultaneousRuns -gt 0 ]; then
+	# Error check
+	if [ $MaxSimultaneousRuns -gt $nElements ]; then
+	    printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nElements}. Please modify MaxSimultenaousRuns in config.yml" 
+            exit 9999
+	fi
 	sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
     else
 	sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh

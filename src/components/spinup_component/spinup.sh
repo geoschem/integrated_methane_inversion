@@ -88,17 +88,6 @@ run_spinup() {
 
     cd ${RunDirs}/spinup_run
 
-    if ! "$isAWS"; then
-	if [ ! -f "${InversionPath}/${GEOSChemEnv}" ]; then
-	    printf "\nGEOS-Chem environment file does not exist!"
-	    printf "\nIMI $RunName Aborted\n"
-	    exit 1
-	else
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${InversionPath}/${GEOSChemEnv}
-	fi
-    fi
-
     # Submit job to job scheduler
     sbatch --mem $SimulationMemory \
     -c $SimulationCPUs \
