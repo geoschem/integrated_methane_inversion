@@ -3,6 +3,7 @@
 # Functions available in this file include:
 #   - setup_jacobian 
 #   - run_jacobian 
+#   - generate_BC_perturb_values
 
 # Description: Setup jacobian run directory
 # Usage:
@@ -91,9 +92,26 @@ setup_jacobian() {
         fi
 	fi
    
-	# Update settings in geoschem_config.yml
-	sed -i -e "s|emission_perturbation: 1.0|emission_perturbation: ${PerturbValue}|g" \
-	       -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
+	# Update settings in geoschem_config.yml except for the base run
+    if [ $x -ne 0 ]; then
+	    sed -i -e "s|emission_perturbation: 1.0|emission_perturbation: ${PerturbValue}|g" \
+	           -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
+    fi
+
+    # BC optimization setup
+    if "$OptimizeBCs"; then
+        bcThreshold=$(($nElements - 4))
+        # The last four state vector elements are reserved for BC optimization of NSEW
+        # domain edges. If the current state vector element is one of these, then
+        # turn on BC optimization for the corresponding edge and revert emission perturbation
+        if [ $x -gt $bcThreshold ]; then
+            PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
+            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+                -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
+                -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
+                -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
+        fi
+    fi 
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
@@ -194,4 +212,19 @@ run_jacobian() {
         python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir; wait
         printf "Got Jacobian scale factors\n"
     fi
+}
+
+# Description: Print perturbation string for BC optimization
+#   based on the current state vector element
+#   Returns [float, float, float, float]
+# Usage:
+#   generate_BC_perturb_values <bcThreshold> <element-number> <pert-value>
+generate_BC_perturb_values() {
+    python -c "import sys;\
+    bc_perturb = [0.0, 0.0, 0.0, 0.0];\
+    bcThreshold = int(sys.argv[1]) + 1;\
+    element = int(sys.argv[2]);\
+    pert_index = element % bcThreshold;\
+    bc_perturb[pert_index] = float(sys.argv[3]);\
+    print(bc_perturb)" $1 $2 $3
 }

@@ -85,6 +85,8 @@ State vector
      - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file. Default value is ``0.25``.
    * - ``OffshoreEmisThreshold``
      - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
+   * - ``OptimizeBCs``
+     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs`` Default value is ``false``.
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
@@ -130,6 +132,8 @@ Inversion
 
    * - ``PriorError``
      - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
+   * - ``PriorErrorBCs``
+     - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
    * - ``ObsError``
      - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
    * - ``Gamma``
@@ -232,6 +236,8 @@ These settings are intended for advanced users who wish to modify additional GEO
 
    * - ``PerturbValue``
      - Value to perturb emissions by in each sensitivity simulation. Default value is ``1.5``.
+   * - ``PerturbValueBCs``
+     - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using `OptimizeBCs`. Default value is ``10.0`` ppb.
    * - ``UseEmisSF``
      - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
    * - ``UseOHSF``
