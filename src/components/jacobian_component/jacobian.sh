@@ -41,21 +41,37 @@ setup_jacobian() {
     # apply the perturbation to each
     while [ $x -le $nElements ]; do
 
-	# Current state vector element
-	xUSE=$x
+	    # Current state vector element
+	    xUSE=$x
 
-	# Add zeros to string name
-	if [ $x -lt 10 ]; then
-	    xstr="000${x}"
-	elif [ $x -lt 100 ]; then
-	    xstr="00${x}"
-	elif [ $x -lt 1000 ]; then
-	    xstr="0${x}"
-	else
-	    xstr="${x}"
-	fi
+	    # Add zeros to string name
+	    if [ $x -lt 10 ]; then
+	        xstr="000${x}"
+	    elif [ $x -lt 100 ]; then
+	        xstr="00${x}"
+	    elif [ $x -lt 1000 ]; then
+	        xstr="0${x}"
+	    else
+	        xstr="${x}"
+	    fi
 
-	# Define the run directory name
+        create_simulation_dir
+    
+        # Increment
+	    x=$[$x+1]
+    done
+
+    if "$LognormalErrors"; then
+        x="background"
+        xstr=$x
+        create_simulation_dir
+    fi
+
+    printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
+}
+
+create_simulation_dir() {
+    # Define the run directory name
 	name="${RunName}_${xstr}"
 
 	# Make the directory
@@ -83,7 +99,7 @@ setup_jacobian() {
 	fi
    
 	# Update settings in geoschem_config.yml except for the base run
-    if [ $x -ne 0 ]; then
+    if [ $x -ne 0 ] && [ "$x" != "background" ]; then
 	    sed -i -e "s|emission_perturbation: 1.0|emission_perturbation: ${PerturbValue}|g" \
 	           -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
     fi
@@ -105,7 +121,7 @@ setup_jacobian() {
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
-	if [ $x -eq 0 ]; then
+	if [ $x -eq 0 ] || [ "$x" = "background" ]; then
 	    if "$HourlyCH4"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' \
                    -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
@@ -120,13 +136,19 @@ setup_jacobian() {
         fi
 	fi
 
+    # for background simulation, disable the emissions
+    # needed for lognormal error inversion
+    if [ "$x" = "background" ]; then
+        sed -i -e 's/EMISSIONS              :       true/EMISSIONS              :       false/g' HEMCO_Config.rc
+    fi
+
 	# Create run script from template
 	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
     ### Turn on observation operators if requested, only for base run
-    if [ $x -eq 0 ]; then
+    if [ $x -eq 0 ] || [ "$x" = "background" ]; then
     	activate_observations
     fi
 
@@ -139,15 +161,8 @@ setup_jacobian() {
         fi
     fi
 
-	# Navigate back to top-level directory
+    # Navigate back to top-level directory
 	cd ../..
-
-	# Increment
-	x=$[$x+1]
-
-    done
-
-    printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
 }
 
 # Description: Run jacobian simulations
@@ -170,6 +185,14 @@ run_jacobian() {
 
         # check if any jacobians exited with non-zero exit code
         [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+
+        if "$LognormalErrors"; then
+            sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W run_bkgd_simulation.sh; wait;
+        fi
 
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
@@ -195,7 +218,11 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch -W run_prior_simulation.sh; wait;
+        sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W run_prior_simulation.sh; wait;
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Get Jacobian scale factors
@@ -218,3 +245,4 @@ generate_BC_perturb_values() {
     bc_perturb[pert_index] = float(sys.argv[3]);\
     print(bc_perturb)" $1 $2 $3
 }
+

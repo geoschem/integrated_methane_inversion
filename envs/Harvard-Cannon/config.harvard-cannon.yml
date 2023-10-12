@@ -79,6 +79,7 @@ PriorErrorBCs: 10.0
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
+LognormalErrors: true
 
 ## Grid
 ##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
@@ -88,17 +89,17 @@ Met: "geosfp"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: false
-SetupJacobianRuns: false
-SetupInversion: false
+SetupSpinupRun: true
+SetupJacobianRuns: true
+SetupInversion: true
 SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: false
-DoJacobian: false
-DoInversion: false
+DoSpinup: true
+DoJacobian: true
+DoInversion: true
 DoPosterior: false
 
 ## IMI preview

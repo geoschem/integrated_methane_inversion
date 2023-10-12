@@ -1,0 +1,117 @@
+import os
+import sys
+import yaml
+import pickle as pickle
+import numpy as np
+import xarray as xr
+from utils import load_obj
+
+def calculate_superobservation_error(sO, p):
+    """
+    Returns the estimated observational error accounting for superobservations.
+    Using eqn (5) from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
+    Args:
+        sO : float
+            observational error specified in config file
+        p  : float
+            average number of observations contained within each superobservation
+    Returns:
+         s_super: float
+            observational error for superobservations
+    """
+    # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
+    r_retrieval = 0.55
+    s_transport = 4.5
+    s_super = np.sqrt(
+        sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
+    )
+    return s_super
+
+def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_error, background=False):
+    # Get observed and GEOS-Chem-simulated TROPOMI columns
+    files = [f for f in np.sort(os.listdir(satdat_dir)) if "TROPOMI" in f]
+    # lat = np.array([])
+    # lon = np.array([])
+    tropomi = np.array([])
+    geos_prior = np.array([])
+    so = np.array([])
+    for i, f in enumerate(files):
+        # Get paths
+        pth = os.path.join(satdat_dir,f)
+        # Get same file from bc folder
+        # Load TROPOMI/GEOS-Chem and Jacobian matrix data from the .pkl file
+        obj = load_obj(pth)
+        # If there aren't any TROPOMI observations on this day, skip
+        if obj['obs_GC'].shape[0] == 0:
+            continue
+        # Otherwise, grab the TROPOMI/GEOS-Chem data
+        obs_GC = obj['obs_GC']
+        # Only consider data within latitude and longitude bounds
+        ind = np.where((obs_GC[:,2]>=lon_bounds[0]) & (obs_GC[:,2]<=lon_bounds[1]) & 
+                       (obs_GC[:,3]>=lat_bounds[0]) & (obs_GC[:,3]<=lat_bounds[1]))
+        if (len(ind[0]) == 0):          # Skip if no data in bounds
+            continue
+        obs_GC = obs_GC[ind[0],:]       # TROPOMI and GEOS-Chem data within bounds
+        # Record lat, lon, tropomi ch4, and geos ch4
+        # lat = np.concatenate((lat, obs_GC[:,3]))
+        # lon = np.concatenate((lon, obs_GC[:,2]))
+        if background:
+            geos_prior = np.concatenate((geos_prior, obs_GC[:,1]))
+        else:
+            tropomi = np.concatenate((tropomi, obs_GC[:,0]))
+            geos_prior = np.concatenate((geos_prior, obs_GC[:,1]))
+            # Get same file from bc folder
+            if i == 0:
+                K = obj["K"][ind[0]]
+            else:
+                K = np.append(K, obj["K"][ind[0]], axis = 0)
+            s_superO_1 = calculate_superobservation_error(obs_error, 1)
+            s_superO_p = np.array([
+                calculate_superobservation_error(obs_error, p) if p >= 1 else s_superO_1
+                for p in obs_GC[:, 4]
+            ])
+        gP = s_superO_p**2 / s_superO_1**2
+        obs_error = gP * obs_error
+
+        # check to make sure obs_err isn't negative, set 1 as default value
+        obs_error = [obs if obs > 0 else 1 for obs in obs_error]
+        so = np.concatenate((so, obs_error))
+    
+    gc_ch4_prior = np.asmatrix(geos_prior)
+    if background:
+        return gc_ch4_prior
+    
+    obs_tropomi = np.asmatrix(tropomi)
+    return gc_ch4_prior, obs_tropomi, K, so
+
+
+if __name__ == "__main__":
+    # read in arguments
+    satdat_dir = sys.argv[1]
+    state_vector_filepath = sys.argv[2]
+    obs_error = sys.argv[2]
+    background = sys.argv[3] == "true"
+    
+    # directory containing partial K matrices
+    satdat_dir = '/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/inversion/data_converted'
+    # Get observed and GEOS-Chem-simulated TROPOMI columns
+    files = np.sort(os.listdir(satdat_dir))
+    files = [f for f in files if "TROPOMI" in f]
+    x = np.array([])
+
+    state_vector_filepath = '/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/StateVector.nc'
+    state_vector = xr.load_dataset(state_vector_filepath)
+    state_vector_labels = state_vector['StateVector']
+    lon_bounds = [np.min(state_vector.lon.values), np.max(state_vector.lon.values)]
+    lat_bounds = [np.min(state_vector.lat.values), np.max(state_vector.lat.values)]
+
+    # Paths to GEOS/satellite data
+    output = merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_error, background)
+    if background:
+        np.savez("gc_ch4_bkgd.npz", gc_ch4_prior=output)
+    else:
+        gc_ch4_prior, obs_tropomi, jacobian_K, so = output
+        np.savez("full_jacobian_K.npz", K=jacobian_K)
+        np.savez("obs_ch4_tropomi.npz", obs_tropomi=obs_tropomi)
+        np.savez("gc_ch4_prior.npz", gc_ch4_prior=gc_ch4_prior)
+        np.savez("so_super.npz", so=so)

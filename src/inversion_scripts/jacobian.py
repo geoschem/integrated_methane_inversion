@@ -74,6 +74,7 @@ if __name__ == "__main__":
     BlendedTROPOMI = sys.argv[9] == "true"
     isPost = sys.argv[10]
     build_jacobian = sys.argv[11]
+    build_bkgd_tropomi = sys.argv[12] if len(sys.argv) > 11 else False
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -164,6 +165,26 @@ if __name__ == "__main__":
                     "sensi_cache": sensi_cache,
                 },
             )
+            
+            if build_bkgd_tropomi == "true":
+                background_cache = f"{gc_cache}_background"
+                outputdir_background = f"{outputdir}_background"
+                bkgd_output = apply_operator(
+                    "TROPOMI_average",
+                    {
+                        "filename": filename,
+                        "BlendedTROPOMI": BlendedTROPOMI,
+                        "n_elements": n_elements,
+                        "gc_startdate": gc_startdate,
+                        "gc_enddate": gc_enddate,
+                        "xlim": xlim,
+                        "ylim": ylim,
+                        "gc_cache": background_cache,
+                        "build_jacobian": build_jacobian,
+                        "sensi_cache": sensi_cache,
+                    },
+                )
+            
 
             if output == None:
                 continue
@@ -172,5 +193,7 @@ if __name__ == "__main__":
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
             save_obj(viz_output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
+            if build_bkgd_tropomi == "true":
+               save_obj(bkgd_output, f"{outputdir_background}/{date}_GCtoTROPOMI.pkl")
 
     print(f"Wrote files to {outputdir}")
