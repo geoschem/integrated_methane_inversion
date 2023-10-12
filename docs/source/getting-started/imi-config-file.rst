@@ -55,19 +55,31 @@ Region of interest
    :widths: 30, 70
    :class: tight-table 
 
+   * - ``isRegional``
+     - Boolean for using the GEOS-Chem regional simulation. This should be set to ``false`` for global inversions.
+   * - ``RegionID``
+     - Two character region ID for using pre-cropped meteorology fields. Select ``AF`` for Africa, ``AS`` for Asia, ``EU`` for Europe, ``ME`` for the Middle East, ``NA`` for North America, ``OC`` for Oceania, ``RU`` for Russia, or ``SA`` for South America. To use global meteorology fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available regional domains.
    * - ``LonMin``
-     - Minimum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
+     - Minimum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``, otherwise lat/lon bounds are determined from ``StateVectorFile``).
    * - ``LonMax``
-     - Maximum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
+     - Maximum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``, otherwise lat/lon bounds are determined from ``StateVectorFile``).
    * - ``LatMin``
-     - Minimum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
+     - Minimum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``, otherwise lat/lon bounds are determined from ``StateVectorFile``).
    * - ``LatMax``
-     - Maximum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``).
-   * - ``NestedGrid``
-     - Boolean for using the GEOS-Chem nested grid simulation. Must be
-       ``true`` for IMI regional inversions.
-   * - ``NestedRegion``
-     - Nesting domain for the inversion. Select ``AF`` for Africa, ``AS`` for Asia, ``EU`` for Europe, ``ME`` for the Middle East, ``NA`` for North America, ``OC`` for Oceania, ``RU`` for Russia, or ``SA`` for South America. For global met fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available nested-grid domains.
+     - Maximum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``, otherwise lat/lon bounds are determined from ``StateVectorFile``).
+
+Kalman filter options
+~~~~~~~~~~~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``KalmanMode``
+     - Boolean for using Kalman filter
+   * - ``UpdateFreqDays``
+     - Number of days
+   * - ``NudgeFactor``
+     - Nudge factor
 
 State vector 
 ~~~~~~~~~~~~
@@ -87,6 +99,15 @@ State vector
      - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
    * - ``OptimizeBCs``
      - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs`` Default value is ``false``.
+
+Point source datasets
+~~~~~~~~~~~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``PointSourceDatasets``
+     - Used for visualization and state vector clustering
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
@@ -140,8 +161,6 @@ Inversion
      - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
-   * - ``ReferenceRunDir``
-     - Path to IMI run directory with previously run jacobian simulations
 
 Grid
 ~~~~
@@ -150,9 +169,9 @@ Grid
    :class: tight-table
 
    * - ``Res``
-     - Resolution for inversion. Options are ``"0.25x0.3125"`` and ``"0.5x0.625"``.
+     - Resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``.
    * - ``Met``
-     - Meteorology to use for the inversion. Options are ``"geosfp"`` (for ``Res: "0.25x0.3125"``) and ``"merra2"`` (for ``Res: "0.5x0.625"``).
+     - Meteorology to use for the inversion. Options are ``"GEOSFP"`` or ``"MERRA2"``.
 
 Setup modules
 ~~~~~~~~~~~~~
@@ -279,7 +298,7 @@ the IMI on a local cluster<../advanced/local-cluster>`).
    * - ``RestartFilePreviewPrefix``
      - Path to initial GEOS-Chem restart file plus file prefix (e.g. ``GEOSChem.BoundaryConditions.`` or ``GEOSChem.Restart.``). The date string and file extension (``YYYYMMDD_0000z.nc4``) will be appended. This file will be used to initialize the preview simulation.
    * - ``BCpath``
-     - Path to GEOS-Chem boundary condition files (for nested grid simulations).
+     - Path to GEOS-Chem boundary condition files (for regional simulations).
    * - ``BCversion``
      - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2023-04``). Note: this will be appended onto BCpath as a subdirectory.
    * - ``PreviewDryRun``
