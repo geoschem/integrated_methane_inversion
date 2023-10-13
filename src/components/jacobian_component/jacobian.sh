@@ -186,9 +186,6 @@ run_jacobian() {
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
 
-        # check if any jacobians exited with non-zero exit code
-        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
-
         if "$LognormalErrors"; then
             sbatch --mem $SimulationMemory \
                 -c $SimulationCPUs \
@@ -196,6 +193,9 @@ run_jacobian() {
                 -p $SchedulerPartition \
                 -W run_bkgd_simulation.sh; wait;
         fi
+
+        # check if any jacobians exited with non-zero exit code
+        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
