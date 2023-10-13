@@ -33,6 +33,9 @@ setup_jacobian() {
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
+    cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_bkgd_simulation.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
@@ -100,7 +103,7 @@ create_simulation_dir() {
    
 	# Update settings in geoschem_config.yml except for the base run
     if [ $x -ne 0 ] && [ "$x" != "background" ]; then
-	    sed -i -e "s|emission_perturbation: 1.0|emission_perturbation: ${PerturbValue}|g" \
+	    sed -i -e "s|emission_perturbation_factor: 1.0|emission_perturbation_factor: ${PerturbValue}|g" \
 	           -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
     fi
 
@@ -114,7 +117,7 @@ create_simulation_dir() {
             PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
             sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
                 -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
-                -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
+                -e "s|emission_perturbation_factor: ${PerturbValue}|emission_perturbation_factor: 1.0|g" \
                 -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
         fi
     fi 
