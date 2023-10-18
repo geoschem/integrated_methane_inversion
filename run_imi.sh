@@ -53,13 +53,13 @@ if ! "$isAWS"; then
     conda activate $CondaEnv
 
     # Load environment for compiling and running GEOS-Chem
-    if [ ! -f "${InversionPath}/${GEOSChemEnv}" ]; then
-	printf "\nGEOS-Chem environment file does not exist!"
+    if [ ! -f "${GEOSChemEnv}" ]; then
+	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
 	printf "\nIMI $RunName Aborted\n"
 	exit 1
     else
 	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
-        source ${InversionPath}/${GEOSChemEnv}
+        source ${GEOSChemEnv}
     fi
 
 fi
