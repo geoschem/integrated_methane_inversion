@@ -18,7 +18,8 @@ def do_inversion(
     gamma=0.25,
     res="0.25x0.3125",
     jacobian_sf=None,
-    prior_err_bc=None,
+    prior_err_bc=0.0,
+    prior_err_oh=0.0,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -35,6 +36,8 @@ def do_inversion(
         gamma        [float] : Regularization parameter (default 0.25)
         res          [str]   : Resolution string from config.yml (default '0.25x0.3125')
         jacobian_sf  [str]   : Path to Jacobian scale factors file if using precomputed K
+        prior_err_bc [float] : Prior error standard deviation (default 0.0)
+        prior_err_oh [float] : Prior error standard deviation (default 0.0)
 
     Returns
         xhat         [float] : Posterior scaling factors
@@ -202,15 +205,24 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
-    
-    # if optimizing boundary conditions, adjust for it in the inversion
+
+    # If optimizing OH, adjust for it in the inversion
+    if prior_err_oh > 0.0:
+        # add prior error for OH as the last element of the diagonal
+        Sa_diag[-1:] = prior_err_oh**2
+        OH_idx = n_elements - 1
+
+    # If optimizing boundary conditions, adjust for it in the inversion
     bc_idx = n_elements
-    if prior_err_bc is not None:
-        # add prior error for BCs
-        # as the last 4 elements of the diagonal
-        Sa_diag[-4:] = prior_err_bc**2
-        bc_idx -= 4
-        
+    if prior_err_bc > 0.0:
+        # add prior error for BCs as the last 4 elements of the diagonal
+        if prior_err_oh > 0.0:
+            Sa_diag[-5:] = prior_err_bc**2
+            bc_idx -= 5
+        else:
+            Sa_diag[-4:] = prior_err_bc**2
+            bc_idx -= 4
+
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
@@ -222,6 +234,8 @@ def do_inversion(
     # xhat = 1 + ratio
     xhat = ratio.copy()
     xhat[:bc_idx] += 1
+    if prior_err_oh > 0.0:
+        xhat[oh_idx] += 1
 
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
@@ -273,7 +287,8 @@ if __name__ == "__main__":
     gamma = float(sys.argv[10])
     res = sys.argv[11]
     jacobian_sf = sys.argv[12]
-    prior_err_BC = float(sys.argv[13]) if len(sys.argv) > 13 else None
+    prior_err_BC = float(sys.argv[13])
+    prior_err_OH = float(sys.argv[14])
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -293,6 +308,7 @@ if __name__ == "__main__":
         res,
         jacobian_sf,
         prior_err_BC,
+        prior_err_OH,
     )
     xhat = out[0]
     ratio = out[1]

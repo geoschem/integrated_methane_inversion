@@ -103,11 +103,18 @@ printf "DONE -- postproc_diags.py\n\n"
 #=======================================================================
 
 if ! "$PrecomputedJacobian"; then
-    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache)
-    # add an argument to calc_sensi.py if optimizing BCs
+    # add an argument to calc_sensi.py if optimizing BCs and/or OH
     if "$OptimizeBCs"; then
-        python_args+=($PerturbValueBCs)
+        pertBCs=$PerturbValueBCs
+    else
+	pertBCs=0.0
     fi
+    if "$OptimizeOH"; then
+        pertOH=$PerturbValueOH
+    else
+	pertOH=0.0
+    fi
+    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
     printf "Calling calc_sensi.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- calc_sensi.py\n\n"
@@ -130,13 +137,9 @@ printf "DONE -- setup_gc_cache.py\n\n"
 printf "Calling jacobian.py\n"
 isPost="False"
 if ! "$PrecomputedJacobian"; then
-
     buildJacobian="True"
-
 else
-
     buildJacobian="False"
-
 fi
 
 python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
@@ -147,22 +150,24 @@ printf " DONE -- jacobian.py\n\n"
 #=======================================================================
 
 if ! "$PrecomputedJacobian"; then
-
     jacobian_sf="None"
-
 else
-
     jacobian_sf=./jacobian_scale_factors.npy
-
 fi
 
 posteriorSF="./inversion_result.nc"
 
-python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
-# add an argument to calc_sensi.py if optimizing BCs
 if "$OptimizeBCs"; then
-    python_args+=($PriorErrorBCs)
+    ErrorBCs=$PriorErrorBCs
+else
+    ErrorBCs=0.0
 fi
+if "$OptimizeOH"; then
+    ErrorOH=$PriorErrorOH
+else
+    ErrorOH=0.0
+fi
+python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf $ErrorBCs $ErrorOH)
 printf "Calling invert.py\n"
 python "${python_args[@]}"; wait
 printf "DONE -- invert.py\n\n"

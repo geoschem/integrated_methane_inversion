@@ -56,7 +56,7 @@ Region of interest
    :class: tight-table 
 
    * - ``isRegional``
-     - Boolean for using the GEOS-Chem regional simulation. This should be set to ``false`` for global inversions.
+     - Boolean for using the GEOS-Chem regional simulation. This should be set to ``false`` for global inversions. Default value is ``true``.
    * - ``RegionID``
      - Two character region ID for using pre-cropped meteorology fields. Select ``AF`` for Africa, ``AS`` for Asia, ``EU`` for Europe, ``ME`` for the Middle East, ``NA`` for North America, ``OC`` for Oceania, ``RU`` for Russia, or ``SA`` for South America. To use global meteorology fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available regional domains.
    * - ``LonMin``
@@ -98,7 +98,9 @@ State vector
    * - ``OffshoreEmisThreshold``
      - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
    * - ``OptimizeBCs``
-     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs`` Default value is ``false``.
+     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``false``.
+   * - ``OptimizeOH``
+     - Boolean to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
 
 Point source datasets
 ~~~~~~~~~~~~~~~~~~~~~
@@ -153,6 +155,8 @@ Inversion
 
    * - ``PriorError``
      - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
+   * - ``PriorErrorOH``
+     - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
    * - ``PriorErrorBCs``
      - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
    * - ``ObsError``
@@ -169,9 +173,10 @@ Grid
    :class: tight-table
 
    * - ``Res``
-     - Resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``.
+     - Resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
    * - ``Met``
-     - Meteorology to use for the inversion. Options are ``"GEOSFP"`` or ``"MERRA2"``.
+     - Meteorology to use for the inversion. Options are ``"GEOSFP"``
+       or ``"MERRA2"``. Default value is ``GEOSFP``.
 
 Setup modules
 ~~~~~~~~~~~~~
@@ -255,8 +260,10 @@ These settings are intended for advanced users who wish to modify additional GEO
 
    * - ``PerturbValue``
      - Value to perturb emissions by in each sensitivity simulation. Default value is ``1.5``.
+   * - ``PerturbValueOH``
+     - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``
-     - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using `OptimizeBCs`. Default value is ``10.0`` ppb.
+     - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
    * - ``UseEmisSF``
      - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
    * - ``UseOHSF``

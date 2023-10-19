@@ -1,3 +1,4 @@
+
 ## IMI configuration file
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
@@ -52,7 +53,8 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
+OptimizeOH: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -71,10 +73,11 @@ StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError is a relative percentage 
-## and PriorErrorBCs is in ppb
+## Note PriorError and PriorErrorOH are relative percentages
+##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
+PriorErrorOH: 0.5
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -135,9 +138,10 @@ MaxSimultaneousRuns: 50
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is a relative scalefactor and 
+## Note PerturbValue and PerturbValueOH are relative scalefactors and 
 ## PerturbValueBCs is in ppb
 PerturbValue: 1.5
+PerturbValueOH: 1.5
 PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
