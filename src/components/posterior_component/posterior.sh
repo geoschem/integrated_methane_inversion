@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#SBATCH -o posterior.out
+#SBATCH -e posterior.err
+
 # Functions available in this file include:
 #   - setup_posterior 
 #   - run_posterior 

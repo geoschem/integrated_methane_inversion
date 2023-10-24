@@ -216,7 +216,7 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     Description:
         Returns the maximum aggregation level based on the number of desired
         elements and the resolution. By default, if there are enough elements
-        we default to using a max aggregation level corresponding to a 4x5
+        we default to using a max aggregation level corresponding to a 8x10
         grid cell.
     arguments:
         config             {dict} : imi config file
@@ -225,13 +225,13 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     Returns:                  int : max gridcells per cluster
     """
     if config["Res"] == "2x2.5":
-        max_aggregation_level = 4
+        max_aggregation_level = 16 # Setting background to 8x10 for global
     elif config["Res"] == "0.25x0.3125":
-        max_aggregation_level = 256
+        max_aggregation_level = 1024
     elif config["Res"] == "0.5x0.625":
-        max_aggregation_level = 64
+        max_aggregation_level = 256
 
-    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level) # 1-month: 10800/4 = 2700 > 600
+    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level)
     if background_elements_needed > desired_element_num:
         print(
             "Warning: too few clusters to create a background of 4x5 degree state vector elements."
@@ -282,15 +282,23 @@ def generate_cluster_pairs(config, sensitivities):
         config, sensitivities, desired_element_num
     )
 
+    # temporarily set the upper bound limit to prevent recursion error 
+    # for large domains. python has a default recursion limit of 1000
+    limit = sys.getrecursionlimit()
+    sys.setrecursionlimit(len(sensitivities))
+
     # determine dofs threshold for each cluster and create cluster pairings
-    target_dofs_per_cluster = sum(sensitivities) / desired_element_num
+    target_dofs_per_cluster = sum(sensitivities) / desired_element_num # hardcode
+    print(f"Sum of sensitivities is {sum(sensitivities)}.")
+    print(f"Target DOFS per cluster is {target_dofs_per_cluster}.") # make higher threshold to get more aggregated elements
     cluster_pairs = find_cluster_pairs(
         sensitivities,
         target_dofs_per_cluster,
         desired_element_num,
         max_aggregation_level,
     )
-
+    sys.setrecursionlimit(limit)
+    
     # put cluster pairs into format expected by clustering algorithm
     cluster_pairs = list(cluster_pairs.items())
     print(f"Generated cluster pairings: {cluster_pairs}")

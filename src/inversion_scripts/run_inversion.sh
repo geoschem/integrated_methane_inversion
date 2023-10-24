@@ -1,8 +1,11 @@
 #!/bin/bash
 
 #SBATCH -N 1
-#SBATCH -o run_inversion_%j.out
-#SBATCH -e run_inversion_%j.err
+#SBATCH -o run_inversion_J.out
+#SBATCH -e run_inversion_J.err
+#SBATCH -t 0-6:00
+#SBATCH --mem=20000
+#SBATCH -p seas_compute,shared,huce_intel
 
 ##=======================================================================
 ## Parse config.yml file
@@ -10,8 +13,8 @@
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
-invPath={INVERSION_PATH}
-configFile={CONFIG_FILE}
+invPath=/n/home12/mhe/integrated_methane_inversion
+configFile=config.harvard-cannon.global_inv.yml
 
 # Get configuration
 #  This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
@@ -28,18 +31,18 @@ eval $(parse_yaml ${invPath}/${configFile})
 #=======================================================================
 # Configuration (these settings generated on initial setup)
 #=======================================================================
-LonMinInvDomain={LON_MIN}
-LonMaxInvDomain={LON_MAX}
-LatMinInvDomain={LAT_MIN}
-LatMaxInvDomain={LAT_MAX}
-nElements={STATE_VECTOR_ELEMENTS}
-OutputPath={OUTPUT_PATH}
-Res={RES}
+LonMinInvDomain=-180
+LonMaxInvDomain=177.5
+LatMinInvDomain=-60
+LatMaxInvDomain=88
+nElements=1000
+OutputPath=/n/holyscratch01/jacob_lab/mhe
+Res=2.0x2.5
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
-StateVectorFile={STATE_VECTOR_PATH}
+StateVectorFile=../StateVector.nc
 GCDir="./data_geoschem"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
@@ -69,78 +72,87 @@ fi
 # Postprocess the SpeciesConc and LevelEdgeDiags files from GEOS-Chem
 #=======================================================================
 
-printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
-if "$FirstSimSwitch"; then
-    if [[ ! -d ${SpinupDir} ]]; then
-    printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-    exit 1
-    fi
-    PrevDir=$SpinupDir
-else
-    PrevDir=$PosteriorRunDir
-    if [[ ! -d ${PosteriorRunDir} ]]; then
-    printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-    exit 1
-    fi
-fi
-printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
+# printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
+# if "$FirstSimSwitch"; then
+#    if [[ ! -d ${SpinupDir} ]]; then
+#    printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
+#    exit 1
+#    fi
+#    PrevDir=$SpinupDir
+# else
+#    PrevDir=$PosteriorRunDir
+#    if [[ ! -d ${PosteriorRunDir} ]]; then
+#    printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
+#    exit 1
+#    fi
+# fi
+# printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
 
-if ! "$PrecomputedJacobian"; then
+# if ! "$PrecomputedJacobian"; then
 
-    # Postprocess all the Jacobian simulations
-    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate; wait
+#    # Postprocess all the Jacobian simulations
+#    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate; wait
 
-else
+# else
 
-    # Only postprocess the Prior simulation
-    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
+#    # Only postprocess the Prior simulation
+#    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
 
-fi
-printf "DONE -- postproc_diags.py\n\n"
+# fi
+# printf "DONE -- postproc_diags.py\n\n"
 
 #=======================================================================
 # Calculate GEOS-Chem sensitivities and save to sensitivities directory
 #=======================================================================
 
-if ! "$PrecomputedJacobian"; then
+# if ! "$PrecomputedJacobian"; then
 
-    # 50% perturbation
-    Perturbation=0.5
+#    # 50% perturbation
+#    Perturbation=0.5
 
-    printf "Calling calc_sensi.py\n"
-    python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache; wait
-    printf "DONE -- calc_sensi.py\n\n"
+#    printf "Calling calc_sensi.py\n"
+#    python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache; wait
+#    printf "DONE -- calc_sensi.py\n\n"
 
-fi
+# fi
 
 #=======================================================================
 # Setup GC data directory in workdir
 #=======================================================================
 
-GCsourcepth="${PriorRunDir}/OutputDir"
+# GCsourcepth="${PriorRunDir}/OutputDir"
 
-printf "Calling setup_gc_cache.py\n"
-python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-printf "DONE -- setup_gc_cache.py\n\n"
+# printf "Calling setup_gc_cache.py\n"
+# python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+# printf "DONE -- setup_gc_cache.py\n\n"
 
 #=======================================================================
 # Generate Jacobian matrix files 
 #=======================================================================
 
-printf "Calling jacobian.py\n"
-isPost="False"
-if ! "$PrecomputedJacobian"; then
+# printf "Calling jacobian.py\n"
+# isPost="False"
+# if ! "$PrecomputedJacobian"; then
 
-    buildJacobian="True"
+#    buildJacobian="True"
 
-else
+# else
 
-    buildJacobian="False"
+#    buildJacobian="False"
 
-fi
+# fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
-printf " DONE -- jacobian.py\n\n"
+# python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+# printf " DONE -- jacobian.py\n\n"
+
+# remove all sensitivity netCDF files in the data_sensitivities folder after constructing the Jacobian to save storage
+# if [ "$(ls -A $JacobianDir)" ]; then
+#    # cd $sensiCache
+#    printf "TEST: Removing sensitivities files\n\n"
+#    # find . -type f -delete
+#    printf " DONE removing sensitivities files\n\n"
+#    # cd ..
+# fi
 
 #=======================================================================
 # Do inversion
@@ -156,19 +168,19 @@ else
 
 fi
 
-posteriorSF="./inversion_result.nc"
+posteriorSF="./inversion_result_J.nc"
 
-printf "Calling invert.py\n"
-python invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf; wait
-printf "DONE -- invert.py\n\n"
+printf "Calling invert_calcJ.py\n"
+python invert_calcJ.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf; wait
+printf "DONE -- invert_calcJ.py\n\n"
 
-#=======================================================================
+# =======================================================================
 # Create gridded posterior scaling factor netcdf file
-#=======================================================================
-GriddedPosterior="./gridded_posterior.nc"
+# =======================================================================
+# GriddedPosterior="./gridded_posterior.nc"
 
-printf "Calling make_gridded_posterior.py\n"
-python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
-printf "DONE -- make_gridded_posterior.py\n\n"
+# printf "Calling make_gridded_posterior.py\n"
+# python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+# printf "DONE -- make_gridded_posterior.py\n\n"
 
 exit 0

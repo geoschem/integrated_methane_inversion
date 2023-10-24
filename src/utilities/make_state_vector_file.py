@@ -82,14 +82,14 @@ def make_state_vector_file(
     k_buffer_clust = config["nBufferClusters"]
 
     # Load land cover data and HEMCO diagnostics
-    lc = xr.load_dataset(land_cover_pth)
+    lc_orig = xr.load_dataset(land_cover_pth)
     hd = xr.load_dataset(hemco_diag_pth)
 
     # Require hemco diags on same global grid as land cover map
     hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
 
     # Select / group fields together
-    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
+    lc = (lc_orig["FRLAKE"] + lc_orig["FRLAND"] + lc_orig["FRLANDIC"]).drop("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
     # Check compatibility of region of interest
@@ -130,12 +130,13 @@ def make_state_vector_file(
     statevector = lc.where(lc == -9999.0)
 
     # Set pixels in buffer areas to 0
-    statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
-    statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
+    if is_regional:
+        statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
+        statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
     # Also set pixels over water to 0, unless there are offshore emissions
     if land_threshold:
-        # Where there is neither land nor emissions, replace with 0
+        # Where there is neither land nor emissions, replace with -9999
         land = lc.where((lc > land_threshold) | (hd > emis_threshold))
         statevector.values[land.isnull().values] = -9999
 
@@ -162,18 +163,18 @@ def make_state_vector_file(
         X = np.array(coords)
         kmeans = KMeans(n_clusters=k_buffer_clust, random_state=0).fit(X)
 
-    # Assign pixels to state vector
-    # -------------------------------------------------------------------------
-    highres_statevector_max = np.nanmax(statevector.values)
-    n_rows = statevector.shape[0]
-    n_cols = statevector.shape[1]
-    for r in range(n_rows):
-        for c in range(n_cols):
-            if statevector[r, c].values == 0:
-                statevector[r, c] = (
-                    kmeans.predict([[c, r]])[0] + 1 + highres_statevector_max
-                )
-    # -------------------------------------------------------------------------
+        # Assign pixels to state vector
+        # -------------------------------------------------------------------------
+        highres_statevector_max = np.nanmax(statevector.values)
+        n_rows = statevector.shape[0]
+        n_cols = statevector.shape[1]
+        for r in range(n_rows):
+            for c in range(n_cols):
+                if statevector[r, c].values == 0:
+                    statevector[r, c] = (
+                        kmeans.predict([[c, r]])[0] + 1 + highres_statevector_max
+                    )
+        # -------------------------------------------------------------------------
 
     # Make dataset
     da_statevector = statevector.copy()
@@ -197,6 +198,39 @@ def make_state_vector_file(
                 v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
             },
         )
+
+    if not is_regional:
+
+        # Postprocessing: Open the state vector file
+        state_vector_filepath = './StateVector.nc'
+        state_vector = xr.load_dataset(state_vector_filepath)
+
+        # make Greenland/large ice-covered region coordinates NaN
+        lc_orig = lc_orig.isel(lon=lc_orig.lon >= lon_min_inv_domain, lat=lc_orig.lat >= lat_min_inv_domain)
+        lc_orig = lc_orig.isel(lon=lc_orig.lon <= lon_max_inv_domain, lat=lc_orig.lat <= lat_max_inv_domain)
+        mask = lc_orig["FRLANDIC"].values < 0.5
+        state_vector["StateVector"].values[~mask[0]] = np.nan
+
+        ds_statevector = state_vector["StateVector"].to_dataset()
+
+        # Add attribute metadata
+        ds_statevector.lat.attrs["units"] = "degrees_north"
+        ds_statevector.lat.attrs["long_name"] = "Latitude"
+        ds_statevector.lon.attrs["units"] = "degrees_east"
+        ds_statevector.lon.attrs["long_name"] = "Longitude"
+        ds_statevector.StateVector.attrs["units"] = "none"
+        ds_statevector.StateVector.attrs["missing_value"] = -9999
+        ds_statevector.StateVector.attrs["_FillValue"] = -9999
+
+        # Save
+        if save_pth is not None:
+            print("Saving file {}".format(save_pth))
+            ds_statevector.to_netcdf(
+                save_pth,
+                encoding={
+                    v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
+                },
+            )
 
     return ds_statevector
 
