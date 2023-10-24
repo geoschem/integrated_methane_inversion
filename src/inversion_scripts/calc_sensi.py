@@ -15,9 +15,29 @@ def zero_pad_num(n):
         nstr = "0" + nstr
     return nstr
 
+def test_GC_output_for_BC_perturbations(e, nelements, sensitivities):
+
+    """
+    Ensures that CH4 boundary condition perturbation in GEOS-Chem is working as intended
+    sensitivities = (pert-base)/perturbationBC which should equal 1e-9 inside the perturbed borders
+    example: the north boundary is perturbed by 10 ppb
+             pert-base=10e-9 mol/mol in the 3 grid cells that have been perturbed
+             perturbationBC=10 ppb
+             sensitivities = (pert-base)/perturbationBC = 1e-9
+    """
+
+    if e == (nelements - 4): # North boundary
+        check = np.mean(sensitivities[:,-3:,3:-3])
+    elif e == (nelements - 3): # South boundary
+        check = np.mean(sensitivities[:,0:3,3:-3])
+    elif e == (nelements - 2): # East boundary
+        check = np.mean(sensitivities[:,:,-3:])
+    elif e == (nelements - 1): # West boundary
+        check = np.mean(sensitivities[:,:,0:3])
+    assert abs(check - 1e-9) < 1e-11, f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
 
 def calc_sensi(
-    nelements, perturbation, startday, endday, run_dirs_pth, run_name, sensi_save_pth
+        nelements, perturbation, startday, endday, run_dirs_pth, run_name, sensi_save_pth, perturbationBC, perturbationOH
 ):
     """
     Loops over output data from GEOS-Chem perturbation simulations to compute sensitivities
@@ -25,12 +45,14 @@ def calc_sensi(
 
     Arguments
         nelements      [int]   : Number of state vector elements
-        perturbation   [float] : Size of perturbation (e.g., 0.5)
+        perturbation   [float] : Size of emissions perturbation (e.g., 1.5)
         startday       [str]   : First day of inversion period; formatted YYYYMMDD
         endday         [str]   : Last day of inversion period; formatted YYYYMMDD
         run_dirs_pth   [str]   : Path to directory containing GC Jacobian run directories
         run_name       [str]   : Simulation run name; e.g. 'CH4_Jacobian'
         sensi_save_pth [str]   : Path to save the sensitivity data
+        perturbationBC [float] : Size of BC perturbation in ppb (eg. 10.0)
+        perturbationOH [float] : Size of OH perturbation in ppb (eg. 1.5)
 
     Resulting 'sensi' files look like:
 
@@ -62,6 +84,8 @@ def calc_sensi(
                     sensi[element,:,:,:] = sens
                 save sensi as netcdf with appropriate coordinate variables
     """
+    # subtract by 1 because here we assume .5 is a +50% perturbation
+    perturbation = perturbation - 1
 
     # Make date range
     days = []
@@ -106,17 +130,24 @@ def calc_sensi(
         # For each hour
         def process(h):
             # Get the base run data for the hour
-            # base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
-            base = base_var[h, :, :, :]
+            base = base_data["SpeciesConcVV_CH4"][h, :, :, :]
             # Initialize sensitivities array
             sensi = np.empty((nelements, nlev, nlat, nlon))
             sensi.fill(np.nan)
             # For each state vector element
             for e in elements:
                 # Get the data for the current hour
-                pert = pert_datas[e]["SpeciesConcVV_CH4"][h, :, :, :]
+                pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
-                sensitivities = (pert.values - base.values) / perturbation
+                if ((perturbationOH > 0.0) and (e >= nelements-1)):
+                    sensitivities = (pert.values - base.values) / perturbationOH
+                elif (perturbationBC > 0.0):
+                    if ((perturbationOH > 0.0) and (e >= (nelements-5))) or ((perturbationOH <= 0.0) and (e >= (nelements-4))):
+                        sensitivities = (pert.values - base.values) / perturbationBC
+                        if h != 0: # because we take the first hour on the first day from spinup
+                            test_GC_output_for_BC_perturbations(e, nelements, sensitivities)
+                else:
+                    sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
             # Save sensi as netcdf with appropriate coordinate variables
             sensi = xr.DataArray(
@@ -150,6 +181,8 @@ if __name__ == "__main__":
     run_dirs_pth = sys.argv[5]
     run_name = sys.argv[6]
     sensi_save_pth = sys.argv[7]
+    perturbationBC = float(sys.argv[8])
+    perturbationOH = float(sys.argv[9])
 
     calc_sensi(
         nelements,
@@ -159,4 +192,6 @@ if __name__ == "__main__":
         run_dirs_pth,
         run_name,
         sensi_save_pth,
+        perturbationBC,
+        perturbationOH
     )

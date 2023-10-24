@@ -326,15 +326,18 @@ def force_native_res_pixels(config, clusters, sensitivities):
         )
         return sensitivities
 
-    if config["Res"] == "2x2.5":
-        lat_step = 2
-        lon_step = 2.5
-    elif config["Res"] == "0.25x0.3125":
+    if config["Res"] == "0.25x0.3125":
         lat_step = 0.25
         lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
+    elif config["Res"] == "2.0x2.5":
+        lat_step = 2.0
+        lon_step = 2.5
+    elif config["Res"] == "4.0x5.0":
+        lat_step = 4.0
+        lon_step = 5.0
 
     for lat, lon in coords:
         lon = np.floor(lon / lon_step) * lon_step
@@ -482,10 +485,10 @@ if __name__ == "__main__":
         
     sensitivities = estimate_averaging_kernel(*sensitivity_args)
     
-    if "ForcedNativeResolutionElements" in config.keys():
-        sensitivities = force_native_res_pixels(
-            config, original_clusters["StateVector"], sensitivities
-        )
+    # force point sources to be high resolution by updating sensitivities
+    sensitivities = force_native_res_pixels(
+        config, original_clusters["StateVector"], sensitivities
+    )
     cluster_pairs = generate_cluster_pairs(config, sensitivities)
 
     print(

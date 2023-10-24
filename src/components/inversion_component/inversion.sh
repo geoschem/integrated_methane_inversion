@@ -38,7 +38,7 @@ setup_inversion() {
            -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
            -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-           -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
+           -e "s:{RES}:${Res}:g" inversion/run_inversion.sh
 
     if "$KalmanMode"; then
         # Rename inversion directory as template directory
@@ -90,16 +90,16 @@ run_inversion() {
 # Description: Run visualization notebooks and export to html
 # Usage:
 #   run_notebooks
-# run_notebooks() {
-#     config_path=${InversionPath}/${ConfigFile}
-#     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
-#     if "$KalmanMode"; then
-#         cd ${RunDirs}/kf_inversions/period${period_i}
-#     else
-#         cd ${RunDirs}/inversion
-#     fi
-#     # replace config file path in viz notebook
-#     sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$config_path'|g' visualization_notebook.ipynb
-#     jupyter nbconvert --execute --to html visualization_notebook.ipynb
-#     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
-# }
+run_notebooks() {
+    config_path=${InversionPath}/${ConfigFile}
+    printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
+    if "$KalmanMode"; then
+        cd ${RunDirs}/kf_inversions/period${period_i}
+    else
+        cd ${RunDirs}/inversion
+    fi
+    # replace config file path in viz notebook
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$config_path'|g' visualization_notebook.ipynb
+    jupyter nbconvert --execute --to html visualization_notebook.ipynb
+    printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
+}

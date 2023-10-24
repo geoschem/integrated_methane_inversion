@@ -26,14 +26,29 @@ setup_template() {
     fi
 
     # Commands to feed to createRunDir.sh
-    # Grid and meteorology fields will be replaced below by the settings
-    #  in config.yml
-    if "$isRegional"; then
-	# Create a GEOS-FP 0.25x0.3125 nested NA CH4 run directory
-	cmd="3\n2\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+    # Run directories are created for the global domain by default. If needed,
+    # the regional domain specified in config.yml will be adjusted for below.
+    if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
+	metNum="1"
+    elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
+	metNum="2"
     else
-	# Create a GEOS-FP 2x2.5 CH4 run directory
-	cmd="3\n2\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
+	printf "\n Options are GEOSFP or MERRA2.\n"
+	exit 1
+    fi	
+    if [ "$Res" = "4.0x5.0" ]; then
+	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+    elif [ "$Res" == "2.0x2.5" ]; then
+	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+    elif [ "$Res" == "0.5x0.625" ]; then
+	cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+    elif [ "$Res" == "0.25x0.3125" ]; then
+	cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+    else
+	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+	exit 1
     fi
 
     # Create run directory
@@ -50,14 +65,10 @@ setup_template() {
 
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
-           -e "s:20190201:${EndDate}:g" \
-           -e "s:GEOSFP:${metUC}:g" geoschem_config.yml
+           -e "s:20190201:${EndDate}:g" geoschem_config.yml
     if "$isRegional"; then
-        sed -i -e "s:0.25x0.3125:${gridResLong}:g" \
-               -e "s:-130.0,  -60.0:${Lons}:g" \
-               -e "s:9.75,  60.0:${Lats}:g" geoschem_config.yml
-    else
-	sed -i -e "s:4.0x5.0:${gridResLong}:g" geoschem_config.yml
+        sed -i -e "s:-180.0, 180.0:${Lons}:g" \
+               -e "s:-90.0, 90.0:${Lats}:g" geoschem_config.yml
     fi
 
     # For CH4 inversions always turn analytical inversion on
@@ -94,9 +105,9 @@ setup_template() {
 
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
-    if [ ! "$isRegional" ]; then
-	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc
-	sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_${native}_${RegionID}\/${metDir}:g" HEMCO_Config.rc.gmao_metfields
+    if "$isRegional"; then
+	sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
+	sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
@@ -113,7 +124,8 @@ setup_template() {
 
     # Modify HISTORY.rc
     sed -i -e "s:'CH4':#'CH4':g" \
-           -e "s:'Metrics:#'Metrics:g" HISTORY.rc
+           -e "s:'Metrics:#'Metrics:g" \
+           -e "s:'StateMet:#'StateMet:g" HISTORY.rc
     
     # If turned on, save out hourly CH4 concentrations to daily files
     if "$HourlyCH4"; then
@@ -122,17 +134,12 @@ setup_template() {
                -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
     fi
 
-    if ! "$isAWS"; then
-	# Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
     # Remove sample restart file
     rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
-    
+
     # Compile GEOS-Chem and store executable in template run directory
     printf "\nCompiling GEOS-Chem...\n"
     cd build

@@ -16,8 +16,10 @@ def do_inversion(
     prior_err=0.5,
     obs_err=15,
     gamma=0.25,
-    res="2.0x2.5",
+    res="0.25x0.3125",
     jacobian_sf=None,
+    prior_err_bc=0.0,
+    prior_err_oh=0.0,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -32,8 +34,10 @@ def do_inversion(
         prior_err    [float] : Prior error standard deviation (default 0.5)
         obs_err      [float] : Observational error standard deviation (default 15 ppb)
         gamma        [float] : Regularization parameter (default 0.25)
-        res          [str]   : '0.25x0.3125' or '0.5x0.625' -- from config.yml
+        res          [str]   : Resolution string from config.yml (default '0.25x0.3125')
         jacobian_sf  [str]   : Path to Jacobian scale factors file if using precomputed K
+        prior_err_bc [float] : Prior error standard deviation (default 0.0)
+        prior_err_oh [float] : Prior error standard deviation (default 0.0)
 
     Returns
         xhat         [float] : Posterior scaling factors
@@ -48,18 +52,16 @@ def do_inversion(
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
-    if "2.0x2.5" in res:
-        degx = 4 * 2.5
-        degy = 4 * 2
-    elif "0.25x0.3125" in res:
+    # This assumes 0.25x0.3125 and 0.5x0.625 simulations are always regional
+    if "0.25x0.3125" in res:
         degx = 4 * 0.3125
         degy = 4 * 0.25
     elif "0.5x0.625" in res:
         degx = 4 * 0.625
         degy = 4 * 0.5
     else:
-        msg = "Bad input for res; must be '2.0x2.5' or '0.25x0.3125' or '0.5x0.625' "
-        raise ValueError(msg)
+        degx = 0
+        degy = 0
 
     xlim = [lon_min + degx, lon_max - degx]
     ylim = [lat_min + degy, lat_max - degy]
@@ -203,17 +205,46 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
+
+    # If optimizing OH, adjust for it in the inversion
+    if prior_err_oh > 0.0:
+        # add prior error for OH as the last element of the diagonal
+        Sa_diag[-1:] = prior_err_oh**2
+        OH_idx = n_elements - 1
+
+    # If optimizing boundary conditions, adjust for it in the inversion
+    bc_idx = n_elements
+    if prior_err_bc > 0.0:
+        # add prior error for BCs as the last 4 elements of the diagonal
+        if prior_err_oh > 0.0:
+            Sa_diag[-5:] = prior_err_bc**2
+            bc_idx -= 5
+        else:
+            Sa_diag[-4:] = prior_err_bc**2
+            bc_idx -= 4
+
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
-    xhat = 1 + ratio
+    
+    # update scale factors by 1 to match what geoschem expects
+    # Note: if optimizing BCs, the last 4 elements are in concentration 
+    # space, so we do not need to add 1
+    # xhat = 1 + ratio
+    xhat = ratio.copy()
+    xhat[:bc_idx] += 1
+    if prior_err_oh > 0.0:
+        xhat[oh_idx] += 1
 
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
 
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
+    
+    # Print some statistics
+    print("Min:", xhat[:bc_idx].min(), "Mean:", xhat[:bc_idx].mean(), "Max", xhat[:bc_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
@@ -256,6 +287,8 @@ if __name__ == "__main__":
     gamma = float(sys.argv[10])
     res = sys.argv[11]
     jacobian_sf = sys.argv[12]
+    prior_err_BC = float(sys.argv[13])
+    prior_err_OH = float(sys.argv[14])
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -274,6 +307,8 @@ if __name__ == "__main__":
         gamma,
         res,
         jacobian_sf,
+        prior_err_BC,
+        prior_err_OH,
     )
     xhat = out[0]
     ratio = out[1]
@@ -281,9 +316,6 @@ if __name__ == "__main__":
     KTinvSoyKxA = out[3]
     S_post = out[4]
     A = out[5]
-
-    # Print some statistics
-    print("Min:", xhat.min(), "Mean:", xhat.mean(), "Max", xhat.max())
 
     # Save results
     dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")

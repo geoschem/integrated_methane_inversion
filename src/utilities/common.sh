@@ -39,7 +39,7 @@ imi_failed() {
 # Usage:
 #   ncmax <variable> <netCDF file path>
 ncmax() {
-    python -c "import sys; import xarray; \
+    python -c "import sys; import xarray;\
     print('%g' % xarray.open_dataset(sys.argv[2])[sys.argv[1]].max())" $1 $2
 }
 

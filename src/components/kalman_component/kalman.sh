@@ -31,6 +31,12 @@ setup_kf() {
 
     # Number of state vector elements
     nElements=$(ncmax StateVector ${StateVectorFile})
+    if "$OptimizeBCs"; then
+	nElements=$((nElements+4))
+    fi
+    if "$OptimizeOH";then
+	nElements=$((nElements+1))
+    fi
 }
 
 # Description: Run Kalman filter inversions

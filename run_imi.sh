@@ -55,6 +55,17 @@ if ! "$isAWS"; then
     printf "\nActivating conda environment: ${CondaEnv}\n"
     eval "$(conda shell.bash hook)"
     conda activate $CondaEnv
+
+    # Load environment for compiling and running GEOS-Chem
+    if [ ! -f "${GEOSChemEnv}" ]; then
+	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
+	printf "\nIMI $RunName Aborted\n"
+	exit 1
+    else
+	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
+        source ${GEOSChemEnv}
+    fi
+
 fi
 
 # Check all necessary config variables are present
@@ -200,6 +211,8 @@ cd $InversionPath
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
-# python src/utilities/s3_upload.py $ConfigFile
+if "$S3Upload"; then
+    python src/utilities/s3_upload.py $ConfigFile
+fi
 
 exit 0

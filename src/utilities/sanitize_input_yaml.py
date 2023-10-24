@@ -110,6 +110,8 @@ conditional_dict["S3Upload"] = [
     "S3UploadPath",
     "S3UploadFiles",
 ]
+conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
+conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
 
 def raise_error_message(var):
     """
@@ -123,7 +125,7 @@ def raise_error_message(var):
         + "https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html"
     )
     raise ValueError(message)
-    
+
 
 if __name__ == "__main__":
     config_path = sys.argv[1]

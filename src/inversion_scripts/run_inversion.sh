@@ -90,13 +90,13 @@ fi
 
 # if ! "$PrecomputedJacobian"; then
 
-#    # Postprocess all the Jacobian simulations
-#    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate; wait
+    # Postprocess all the Jacobian simulations
+    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate $Res; wait
 
 # else
 
-#    # Only postprocess the Prior simulation
-#    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
+    # Only postprocess the Prior simulation
+    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate $Res; wait
 
 # fi
 # printf "DONE -- postproc_diags.py\n\n"
@@ -105,16 +105,23 @@ fi
 # Calculate GEOS-Chem sensitivities and save to sensitivities directory
 #=======================================================================
 
-# if ! "$PrecomputedJacobian"; then
-
-#    # 50% perturbation
-#    Perturbation=0.5
-
-#    printf "Calling calc_sensi.py\n"
-#    python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache; wait
-#    printf "DONE -- calc_sensi.py\n\n"
-
-# fi
+if ! "$PrecomputedJacobian"; then
+    # add an argument to calc_sensi.py if optimizing BCs and/or OH
+    if "$OptimizeBCs"; then
+        pertBCs=$PerturbValueBCs
+    else
+	pertBCs=0.0
+    fi
+    if "$OptimizeOH"; then
+        pertOH=$PerturbValueOH
+    else
+	pertOH=0.0
+    fi
+    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
+    printf "Calling calc_sensi.py\n"
+    python "${python_args[@]}"; wait
+    printf "DONE -- calc_sensi.py\n\n"
+fi
 
 #=======================================================================
 # Setup GC data directory in workdir
@@ -133,13 +140,9 @@ fi
 # printf "Calling jacobian.py\n"
 # isPost="False"
 # if ! "$PrecomputedJacobian"; then
-
 #    buildJacobian="True"
-
 # else
-
 #    buildJacobian="False"
-
 # fi
 
 # python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
@@ -159,20 +162,27 @@ fi
 #=======================================================================
 
 if ! "$PrecomputedJacobian"; then
-
     jacobian_sf="None"
-
 else
-
     jacobian_sf=./jacobian_scale_factors.npy
-
 fi
 
 posteriorSF="./inversion_result_J.nc"
 
-printf "Calling invert_calcJ.py\n"
-python invert_calcJ.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf; wait
-printf "DONE -- invert_calcJ.py\n\n"
+if "$OptimizeBCs"; then
+    ErrorBCs=$PriorErrorBCs
+else
+    ErrorBCs=0.0
+fi
+if "$OptimizeOH"; then
+    ErrorOH=$PriorErrorOH
+else
+    ErrorOH=0.0
+fi
+python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf $ErrorBCs $ErrorOH)
+printf "Calling invert.py\n"
+python "${python_args[@]}"; wait
+printf "DONE -- invert.py\n\n"
 
 # =======================================================================
 # Create gridded posterior scaling factor netcdf file

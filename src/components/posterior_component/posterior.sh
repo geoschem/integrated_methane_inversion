@@ -103,6 +103,34 @@ run_posterior() {
         source ${GEOSChemEnv}
     fi
 
+    if "$OptimizeBCs"; then
+        if "$KalmanMode"; then
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+        else
+            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+        fi
+        # set BC optimal delta values
+        PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)
+        # add BC optimization delta to boundary condition edges
+        sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+            -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+
+        printf "\n=== BC OPTIMIZATION: BC optimized perturbation values for NSEW set to: ${PerturbBCValues} ===\n"
+    fi
+
+    if "$OptimizeOH"; then
+        if "$KalmanMode"; then
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+        else
+            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+        fi
+        # set OH optimal delta values
+        PerturbOHValue=$(generate_optimized_OH_value $inv_result_path)
+        # add OH optimization delta to boundary condition edges
+        sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbOHValue}|g" HEMCO_Config.rc
+        printf "\n=== OH OPTIMIZATION: OH optimized perturbation value set to: ${PerturbOHValue} ===\n"
+    fi 
+
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch --mem $SimulationMemory \
@@ -132,7 +160,7 @@ run_posterior() {
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i; wait
+    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res; wait
     printf "\n=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
@@ -151,6 +179,12 @@ run_posterior() {
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+	nElements=$((nElements+4))
+    fi
+    if "$OptimizeOH";then
+	nElements=$((nElements+1))
+    fi
     FetchTROPOMI="False"
     isPost="True"
     buildJacobian="False"
@@ -162,4 +196,28 @@ run_posterior() {
 
     # convert vizualization notebooks to html
     run_notebooks
+}
+
+# Description: Generates the updated NSEW perturbation to apply to domain edge BCs
+# Usage:
+#   generate_optimized_BC_values <path-to-inversion-result> <bc-pert-value>
+generate_optimized_BC_values() {
+    if $OptimizeOH
+       python -c "import sys; import xarray;\
+       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-5:];\
+       print(xhat.tolist())" $1
+    else
+       python -c "import sys; import xarray;\
+       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-4:];\
+       print(xhat.tolist())" $1
+    fi
+}
+
+# Description: Generates the updated perturbation to apply to OH
+# Usage:
+#   generate_optimized_OH_values <path-to-inversion-result> <oh-pert-value>
+generate_optimized_OH_value() {
+    python -c "import sys; import xarray;\
+    xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-1:];\
+    print(xhat.tolist())" $1
 }
