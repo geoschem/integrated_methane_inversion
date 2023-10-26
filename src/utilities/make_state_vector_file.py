@@ -162,17 +162,16 @@ def make_state_vector_file(
         X = np.array(coords)
         kmeans = KMeans(n_clusters=k_buffer_clust, random_state=0).fit(X)
 
-    # Assign pixels to state vector
-    # -------------------------------------------------------------------------
-    highres_statevector_max = np.nanmax(statevector.values)
-    n_rows = statevector.shape[0]
-    n_cols = statevector.shape[1]
-    for r in range(n_rows):
-        for c in range(n_cols):
-            if statevector[r, c].values == 0:
-                statevector[r, c] = (
-                    kmeans.predict([[c, r]])[0] + 1 + highres_statevector_max
-                )
+        # Assign pixels to state vector
+        highres_statevector_max = np.nanmax(statevector.values)
+        n_rows = statevector.shape[0]
+        n_cols = statevector.shape[1]
+        for r in range(n_rows):
+            for c in range(n_cols):
+                if statevector[r, c].values == 0:
+                    statevector[r, c] = (
+                        kmeans.predict([[c, r]])[0] + 1 + highres_statevector_max
+                    )
     # -------------------------------------------------------------------------
 
     # Make dataset
