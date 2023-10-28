@@ -75,11 +75,11 @@ Kalman filter options
    :class: tight-table
 
    * - ``KalmanMode``
-     - Boolean for using Kalman filter
+     - Boolean for running the IMI using a Kalman filter for continuous updates (``true``) or using a single inversion (``false``). See more details about Kalman Mode in the `Kalman filter documentation <../advanced/kalman-filter-mode.html>`_.
    * - ``UpdateFreqDays``
-     - Number of days
+     - Number of days in each Kalman filter update cycle eg. ``7`` days. 
    * - ``NudgeFactor``
-     - Nudge factor
+     - Fraction of original prior emissions to use in the prior for each Kalman filter update (eg. ``0.1``). See Kalman mode documentation for more details.
 
 State vector 
 ~~~~~~~~~~~~
@@ -107,7 +107,7 @@ Point source datasets
    :class: tight-table
 
    * - ``PointSourceDatasets``
-     - Used for visualization and state vector clustering
+     - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Only available option is ``["SRON"]``.
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
