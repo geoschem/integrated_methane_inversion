@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -N 1
-#SBATCH -o run_inversion_J.out
-#SBATCH -e run_inversion_J.err
+#SBATCH -o run_inversion_OH.out
+#SBATCH -e run_inversion_OH.err
 #SBATCH -t 0-6:00
 #SBATCH --mem=20000
 #SBATCH -p seas_compute,shared,huce_intel
@@ -72,56 +72,56 @@ fi
 # Postprocess the SpeciesConc and LevelEdgeDiags files from GEOS-Chem
 #=======================================================================
 
-# printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
-# if "$FirstSimSwitch"; then
-#    if [[ ! -d ${SpinupDir} ]]; then
-#    printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-#    exit 1
-#    fi
-#    PrevDir=$SpinupDir
-# else
-#    PrevDir=$PosteriorRunDir
-#    if [[ ! -d ${PosteriorRunDir} ]]; then
-#    printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-#    exit 1
-#    fi
-# fi
-# printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
+printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
+if "$FirstSimSwitch"; then
+   if [[ ! -d ${SpinupDir} ]]; then
+   printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
+   exit 1
+   fi
+   PrevDir=$SpinupDir
+else
+   PrevDir=$PosteriorRunDir
+   if [[ ! -d ${PosteriorRunDir} ]]; then
+   printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
+   exit 1
+   fi
+fi
+printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
 
-# if ! "$PrecomputedJacobian"; then
+if ! "$PrecomputedJacobian"; then
 
     # Postprocess all the Jacobian simulations
     python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate $Res; wait
 
-# else
+else
 
     # Only postprocess the Prior simulation
     python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate $Res; wait
 
-# fi
-# printf "DONE -- postproc_diags.py\n\n"
+fi
+printf "DONE -- postproc_diags.py\n\n"
 
 #=======================================================================
 # Calculate GEOS-Chem sensitivities and save to sensitivities directory
 #=======================================================================
 
-if ! "$PrecomputedJacobian"; then
-    # add an argument to calc_sensi.py if optimizing BCs and/or OH
-    if "$OptimizeBCs"; then
-        pertBCs=$PerturbValueBCs
-    else
-	pertBCs=0.0
-    fi
-    if "$OptimizeOH"; then
-        pertOH=$PerturbValueOH
-    else
-	pertOH=0.0
-    fi
-    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
-    printf "Calling calc_sensi.py\n"
-    python "${python_args[@]}"; wait
-    printf "DONE -- calc_sensi.py\n\n"
-fi
+# if ! "$PrecomputedJacobian"; then
+#     # add an argument to calc_sensi.py if optimizing BCs and/or OH
+#     if "$OptimizeBCs"; then
+#         pertBCs=$PerturbValueBCs
+#     else
+# 	pertBCs=0.0
+#     fi
+#     if "$OptimizeOH"; then
+#         pertOH=$PerturbValueOH
+#     else
+# 	pertOH=0.0
+#     fi
+#     python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
+#     printf "Calling calc_sensi.py\n"
+#     python "${python_args[@]}"; wait
+#     printf "DONE -- calc_sensi.py\n\n"
+# fi
 
 #=======================================================================
 # Setup GC data directory in workdir
@@ -167,7 +167,7 @@ else
     jacobian_sf=./jacobian_scale_factors.npy
 fi
 
-posteriorSF="./inversion_result_J.nc"
+posteriorSF="./inversion_result.nc"
 
 if "$OptimizeBCs"; then
     ErrorBCs=$PriorErrorBCs

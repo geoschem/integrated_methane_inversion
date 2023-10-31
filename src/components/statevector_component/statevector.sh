@@ -48,55 +48,55 @@ create_statevector() {
 # Description: Reduce dimension of state vector with clustering method
 # Usage:
 #   reduce_dimension
-# reduce_dimension() {
-#     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
+reduce_dimension() {
+    printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
-#     # First run the Preview if necessary to get prior emissions
-#     if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-#         printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-#         run_preview
-#     fi
+    # First run the Preview if necessary to get prior emissions
+    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
+        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
+        run_preview
+    fi
 
-#     # set input variables
-#     config_path=${InversionPath}/${ConfigFile}
-#     state_vector_path=${RunDirs}/StateVector.nc
-#     native_state_vector_path=${RunDirs}/NativeStateVector.nc
+    # set input variables
+    config_path=${InversionPath}/${ConfigFile}
+    state_vector_path=${RunDirs}/StateVector.nc
+    native_state_vector_path=${RunDirs}/NativeStateVector.nc
 
-#     preview_dir=${RunDirs}/preview_run
-#     tropomi_cache=${RunDirs}/data_TROPOMI
-#     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
+    preview_dir=${RunDirs}/preview_run
+    tropomi_cache=${RunDirs}/data_TROPOMI
+    aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
-#     if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
-#         # copy the original state vector file for subsequent statevector generations
-#         printf "\nCopying native state vector file to NativeStateVector.nc \n"
-#         cp $state_vector_path $native_state_vector_path
-#     else
-#         # replace state vector file with clean, native resolution state vector
-#         cp $native_state_vector_path $state_vector_path
-#     fi
+    if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
+        # copy the original state vector file for subsequent statevector generations
+        printf "\nCopying native state vector file to NativeStateVector.nc \n"
+        cp $state_vector_path $native_state_vector_path
+    else
+        # replace state vector file with clean, native resolution state vector
+        cp $native_state_vector_path $state_vector_path
+    fi
 
-#     # conditionally add period_i to python args
-#     python_args=($aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache)
-#     archive_sv=false
-#     if ("$KalmanMode" && "$DynamicKFClustering"); then
-#         if [ -n "$period_i" ]; then
-#             archive_sv=true
-#             python_args+=($period_i)
-#         fi
-#     fi
+    # conditionally add period_i to python args
+    python_args=($aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache)
+    archive_sv=false
+    if ("$KalmanMode" && "$DynamicKFClustering"); then
+        if [ -n "$period_i" ]; then
+            archive_sv=true
+            python_args+=($period_i)
+        fi
+    fi
 
-#     # if running end to end script with sbatch then use
-#     # sbatch to take advantage of multiple cores 
-#     if "$UseSlurm"; then
-#         chmod +x $aggregation_file
-#         sbatch --mem $SimulationMemory \
-#         -c $SimulationCPUs \
-#         -t $RequestedTime \
-#         -p $SchedulerPartition \
-#         -W "${python_args[@]}"; wait;
-#     else
-#         python "${python_args[@]}"
-#     fi
+    # if running end to end script with sbatch then use
+    # sbatch to take advantage of multiple cores 
+    if "$UseSlurm"; then
+        chmod +x $aggregation_file
+        sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W "${python_args[@]}"; wait;
+    else
+        python "${python_args[@]}"
+    fi
 
     # archive state vector file if using Kalman filter
     if "$archive_sv"; then
@@ -104,6 +104,12 @@ create_statevector() {
         cp $state_vector_path ${RunDirs}/archive_sv/StateVector_${period_i}.nc
     fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+	nElements=$((nElements+4))
+    fi
+    if "$OptimizeOH";then
+	nElements=$((nElements+1))
+    fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 }

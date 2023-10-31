@@ -224,7 +224,7 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    if config["Res"] == "2x2.5":
+    if config["Res"] == "2.0x2.5":
         max_aggregation_level = 16 # Setting background to 8x10 for global
     elif config["Res"] == "0.25x0.3125":
         max_aggregation_level = 1024

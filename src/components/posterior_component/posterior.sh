@@ -105,9 +105,9 @@ run_posterior() {
 
     if "$OptimizeBCs"; then
         if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result_OH.nc"
         else
-            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+            inv_result_path="${RunDirs}/inversion/inversion_result_OH.nc"
         fi
         # set BC optimal delta values
         PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)
@@ -120,9 +120,9 @@ run_posterior() {
 
     if "$OptimizeOH"; then
         if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result_OH.nc"
         else
-            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+            inv_result_path="${RunDirs}/inversion/inversion_result_OH.nc"
         fi
         # set OH optimal delta values
         PerturbOHValue=$(generate_optimized_OH_value $inv_result_path)
