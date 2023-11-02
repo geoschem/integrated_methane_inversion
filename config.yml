@@ -98,6 +98,7 @@ SetupPosteriorRun: false
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 DoInversion: false
@@ -115,6 +116,11 @@ JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
+
+## Options to speed up the IMI
+UseTotalPriorEmis: true
+CombineJacobianRuns: true
+NumJacobianRuns: 2
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1

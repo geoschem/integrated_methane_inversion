@@ -47,7 +47,7 @@ UpdateFreqDays: 7
 NudgeFactor: 0.1
 
 ## State vector
-CreateAutomaticRectilinearStateVectorFile: true
+CreateAutomaticRectilinearStateVectorFile: false
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
@@ -67,7 +67,7 @@ ForcedNativeResolutionElements:
   - [31.5, -104]
 
 ## Custom state vector
-StateVectorFile: "/path/to/StateVector.nc"
+StateVectorFile: "/n/home05/msulprizio/S/Test_IMI/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
@@ -89,7 +89,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
-SetupTemplateRundir: true
+SetupTemplateRundir: false
 SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
@@ -98,6 +98,7 @@ SetupPosteriorRun: false
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
+DoPriorEmis: false
 DoSpinup: false
 DoJacobian: false
 DoInversion: false
@@ -109,12 +110,18 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
+PriorMemory: 50000
 SimulationCPUs: 32
 SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
+
+## Options to speed up the IMI
+UseTotalPriorEmis: true
+CombineJacobianRuns: true
+NumJacobianRuns: 2
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: 50

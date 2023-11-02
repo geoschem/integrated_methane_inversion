@@ -143,7 +143,7 @@ setup_imi() {
     fi
 
     ##=======================================================================
-    ## Create state vector file
+    ## Create or copy state vector file
     ##=======================================================================
 
     if "$CreateAutomaticRectilinearStateVectorFile"; then
@@ -182,6 +182,15 @@ setup_imi() {
         reduce_dimension
     fi
 
+    ##=======================================================================
+    ## Generate Prior Emissions
+    ##=======================================================================
+    priorDir="prior_run"
+    RunPrior="${RunDirs}/${priorDir}"
+    if "$DoPriorEmis"; then
+       run_prior
+    fi
+    
     ##=======================================================================
     ##  Set up IMI preview run directory
     ##=======================================================================
