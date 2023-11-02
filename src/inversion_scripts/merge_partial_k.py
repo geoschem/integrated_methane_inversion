@@ -27,7 +27,7 @@ def calculate_superobservation_error(sO, p):
     )
     return s_super
 
-def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_error, background=False):
+def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, background=False):
     # Get observed and GEOS-Chem-simulated TROPOMI columns
     files = [f for f in np.sort(os.listdir(satdat_dir)) if "TROPOMI" in f]
     # lat = np.array([])
@@ -36,6 +36,7 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_error, background=Fa
     geos_prior = np.array([])
     so = np.array([])
     for i, f in enumerate(files):
+        obs_error = obs_err # reset obs_error to original value
         # Get paths
         pth = os.path.join(satdat_dir,f)
         # Get same file from bc folder
@@ -70,12 +71,12 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_error, background=Fa
                 calculate_superobservation_error(obs_error, p) if p >= 1 else s_superO_1
                 for p in obs_GC[:, 4]
             ])
-        gP = s_superO_p**2 / s_superO_1**2
-        obs_error = gP * obs_error
+            gP = s_superO_p**2 / s_superO_1**2
+            obs_error = gP * obs_error
 
-        # check to make sure obs_err isn't negative, set 1 as default value
-        obs_error = [obs if obs > 0 else 1 for obs in obs_error]
-        so = np.concatenate((so, obs_error))
+            # check to make sure obs_err isn't negative, set 1 as default value
+            obs_error = [obs if obs > 0 else 1 for obs in obs_error]
+            so = np.concatenate((so, obs_error))
     
     gc_ch4_prior = np.asmatrix(geos_prior)
     if background:
@@ -89,17 +90,15 @@ if __name__ == "__main__":
     # read in arguments
     satdat_dir = sys.argv[1]
     state_vector_filepath = sys.argv[2]
-    obs_error = sys.argv[2]
-    background = sys.argv[3] == "true"
+    obs_error = float(sys.argv[3])
+    background = sys.argv[4] == "true"
     
     # directory containing partial K matrices
-    satdat_dir = '/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/inversion/data_converted'
     # Get observed and GEOS-Chem-simulated TROPOMI columns
     files = np.sort(os.listdir(satdat_dir))
     files = [f for f in files if "TROPOMI" in f]
     x = np.array([])
 
-    state_vector_filepath = '/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/StateVector.nc'
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector['StateVector']
     lon_bounds = [np.min(state_vector.lon.values), np.max(state_vector.lon.values)]

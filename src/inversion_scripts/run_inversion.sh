@@ -166,8 +166,8 @@ posteriorSF="./inversion_result.nc"
 
 # for lognormal errors we merge our y, y_bkgd and partial K matrices
 if "$LognormalErrors"; then
-    python merge_partial_k.py "./data_converted" $StateVectorFile "false"
-    python merge_partial_k.py "./data_converted_background" $StateVectorFile "true"
+    python merge_partial_k.py "./data_converted" $StateVectorFile $ObsError "false"
+    python merge_partial_k.py "./data_converted_background" $StateVectorFile $ObsError "true"
     # TODO: add actual lognormal invert.py
     # python lognormal_invert.py
     echo "Exiting before inversion"
