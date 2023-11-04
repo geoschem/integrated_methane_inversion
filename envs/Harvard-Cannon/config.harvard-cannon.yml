@@ -53,7 +53,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -74,7 +74,7 @@ ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 ## Inversion
 ## Note PriorError is a relative percentage 
 ## and PriorErrorBCs is in ppb
-PriorError: 0.5
+PriorError: 2.5
 PriorErrorBCs: 10.0
 ObsError: 15
 Gamma: 1.0
@@ -92,7 +92,7 @@ SetupTemplateRundir: true
 SetupSpinupRun: true
 SetupJacobianRuns: true
 SetupInversion: true
-SetupPosteriorRun: false
+SetupPosteriorRun: true
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
@@ -100,10 +100,10 @@ RunSetup: true
 DoSpinup: true
 DoJacobian: true
 DoInversion: true
-DoPosterior: false
+DoPosterior: true
 
 ## IMI preview
-DoPreview: true
+DoPreview: false
 DOFSThreshold: 0
 
 ## resource allocation settings for slurm jobs
