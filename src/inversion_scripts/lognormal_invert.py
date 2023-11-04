@@ -1,234 +1,297 @@
-# TODO: merge this script with invert.py to avoid redundancy
-# This script performs the inversion but using lognormal 
-# errors instead of normal errors. As an alternative to 
-# the invert.py script. 
+# Description: Script to perform inversion using lognormal errors
+# Usage: python lognormal_invert.py <path_to_config_file> <path_to_state_vector_file>
 
+# TODO: merge this script with invert.py to avoid redundancy
+# This script performs the inversion but using lognormal
+# errors instead of normal errors. As an alternative to
+# the invert.py script.
+
+import sys
+import yaml
+from itertools import product
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
-import os
-import yaml
-import pickle as pickle
-import cartopy.crs as ccrs
-import colorcet as cc
+from netCDF4 import Dataset
 from scipy.sparse import spdiags
-from datetime import datetime
 
-# Implementing lognormal errors based on Zichong Chen's matlab script lrme1.m
 
-# %cd /n/holylfs05/LABS/jacob_lab/shancock/imi_SA/inversion
+def lognormal_invert(config, state_vector_filepath):
+    """
+    Description:
+        Run inversion using lognormal errors following method from eqn 2 of
+        Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
+        Outputs inversion results to netcdf files.
+    Arguments:
+        state_vector_filepath [String] : path to state vector netcdf file
+        config                [Dict]   : dictionary of config variables
+    """
+    state_vector = xr.load_dataset(state_vector_filepath)
+    state_vector_labels = state_vector["StateVector"]
+    lats, lons = state_vector_labels.lat, state_vector_labels.lon
 
-config = yaml.load(open("/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/config_Test_Permian_1week_14_0_2.yml"), Loader=yaml.FullLoader)
-state_vector_filepath = "/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/StateVector.nc"
-inversion_data_pth = "/Users/lucasestrada/Downloads/Test_Permian_1week_14_0_2/inversion/"
-state_vector = xr.load_dataset(state_vector_filepath)
-state_vector_labels = state_vector['StateVector']
-lon_bounds = [np.min(state_vector.lon.values), np.max(state_vector.lon.values)]
-lat_bounds = [np.min(state_vector.lat.values), np.max(state_vector.lat.values)]
-lats, lons = state_vector_labels.lat, state_vector_labels.lon
+    # used to determine convergence of xn 5e-3 is .5%
+    convergence_threshold = 5e-3
 
-# GET TROPOMI DATA
+    # Load in the observation and background data
+    ds = np.load("obs_ch4_tropomi.npz")
+    y = np.asmatrix(ds["obs_tropomi"])
+    ds = np.load("gc_ch4_bkgd.npz")
+    ybkg = np.asmatrix(ds["gc_ch4_bkgd"])
 
-ds = np.load(inversion_data_pth+"obs_ch4_tropomi.npz")
-y_TROPOMI = np.asmatrix(ds["obs_ch4_tropomi"])
-ds = np.load(inversion_data_pth+"gc_ch4_bkgd.npz")
-ybkg_TROPOMI = np.asmatrix(ds["gc_ch4_bkgd"])
-# ds = np.load(inversion_data_pth+"sve.npz")
-# sve = ds["sve"]
-y_ybkg_diff_TROPOMI = y_TROPOMI-ybkg_TROPOMI
-# ds = np.load(inversion_data_pth+"albedo.npz", "wb")
-# albedo = np.asmatrix(ds["albedo"])
+    # We only solve using lognormal errors for state vector elements
+    # within the domain of interest, not the buffer elements, or the
+    # BC elements. So, to do this we split K into two matrices, one
+    # for the lognormal elements, and one for the normal elements.
+    optimize_bcs = config["OptimizeBCs"] == "true"
+    num_buffer_elems = int(config["nBufferClusters"])
+    num_normal_elems = num_buffer_elems + 4 if optimize_bcs else num_buffer_elems
+    ds = np.load("full_jacobian_K.npz")
+    K_lognormal = np.asmatrix(ds["K"][:, :-num_normal_elems]) * 1e9
+    K_normal = np.asmatrix(ds["K"][:, -num_normal_elems:]) * 1e9
 
-# mask = (y_ybkg_diff_TROPOMI > 0) & (~np.isnan(sve)) & (albedo > 0.05)
-# mask_simple = np.array(mask)[0]
-# y_TROPOMI, ybkg_TROPOMI, y_ybkg_diff_TROPOMI = y_TROPOMI[mask], ybkg_TROPOMI[mask], y_ybkg_diff_TROPOMI[mask]
+    # get the So matrix
+    ds = np.load("so_super.npz")
+    so = ds["so"] ** 2
 
-ds = np.load(inversion_data_pth+"K_blended.npz")
-K600_TROPOMI = np.asmatrix(ds["K"])*1e9
-ds = np.load(inversion_data_pth+"K16_blended.npz")
-K16_TROPOMI = np.asmatrix(ds["K16"])*1e9
+    # Calculate the difference between tropomi and the background
+    # simulation, which has no emissions
+    y_ybkg_diff = y - ybkg
+    ybkg, y, y_ybkg_diff = (
+        np.swapaxes(ybkg, 0, 1),
+        np.swapaxes(y, 0, 1),
+        np.swapaxes(y_ybkg_diff, 0, 1),
+    )
+    K_full = np.concatenate((K_lognormal, K_normal), axis=1)
 
-ds = np.load(inversion_data_pth+"so_super.npz")
-so_TROPOMI = ds["so"]**2
+    # fixed kappa of 10 following Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
+    kappa = 10
+    m, n = np.shape(K_lognormal)
 
-# CONCATENATE GOSAT AND TROPOMI DATA
-y = y_TROPOMI
-ybkg = ybkg_TROPOMI
-so = so_TROPOMI
-K600 = K600_TROPOMI
-K16 = K16_TROPOMI
+    # Create base xa and lnxa matrices
+    # Note: the resulting xa matrix has lognormal elements until the final bc elements
+    xa = np.ones((n, 1)) * 1.0
+    lnxa = np.asmatrix(np.log(xa))
+    xa_bcs = np.zeros((num_normal_elems, 1)) * 1.0
+    xa = np.asmatrix(np.concatenate((xa, xa_bcs), axis=0))
+    lnxa = np.asmatrix(np.concatenate((lnxa, xa_bcs), axis=0))
 
-y_ybkg_diff = y-ybkg
-ybkg, y,  y_ybkg_diff = np.swapaxes(ybkg, 0,1), np.swapaxes(y, 0,1), np.swapaxes(y_ybkg_diff, 0,1)
-K = np.concatenate((K600,K16),axis=1)
+    # Create inverted So matrix
+    Soinv = spdiags(1 / so, 0, m, m)
 
-kappa=10
-m,n = np.shape(K600)
+    # Define Sa, gamma, and Sa_bc values to iterate through
+    prior_errors = [float(config["PriorError"])]
+    sa_bc_vals = [float(config["PriorErrorBCs"])] if optimize_bcs else [None]
+    gamma_vals = [float(config["Gamma"])]
 
-xa = np.ones((n,1))*1.0
-lnxa = np.asmatrix(np.log(xa))
-xa_bcs = np.zeros((16,1))*1.0
-xa = np.asmatrix(np.concatenate((xa,xa_bcs),axis=0))
-lnxa = np.asmatrix(np.concatenate((lnxa,xa_bcs),axis=0))
+    # iterate through different combination of gamma, lnsa, and sa_bc
+    # TODO: for now we will only allow one value for each of these
+    # TODO: parallelize this once we allow vectorization of these values
+    combinations = list(product(gamma_vals, prior_errors, sa_bc_vals))
+    for gamma, sa, sa_bc in combinations:
+        lnsa_val = np.log(sa)
+        results_save_path = "inversion_result_ln.nc"
 
-soinv = 1/so
-So = spdiags(so,0,m,m)
-Soinv = spdiags(soinv,0,m,m)
+        invso_over_gamma = 1 / (so / gamma)
+        So_over_gamma_inv = spdiags(invso_over_gamma, 0, m, m)
 
-lnsa_vals = [np.log(2), np.log(2.5), np.log(1.5)]
-# lnsa_vals = [np.log(2)]
-sa_bc_vals = [10,20,5]
-# sa_bc_vals = [10]
-# gamma_vals = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]
-# gamma_vals = [0.075,0.085,0.095]
-gamma_vals = [0.025,0.02,0.3]
-wetland_priors = ["unfccc","LPJ_CRU", "LPJ_ERA5", "LPJ_ERA5_MSWEP", "LPJ_MERRA2", "unfccc_wetcharts_2010_2019", ]
-# wetland_priors = ["unfccc"]
-for gamma in gamma_vals:
-    invso_over_gamma = 1/(so/gamma)
-    So_over_gamma_inv = spdiags(invso_over_gamma,0,m,m)
-    for wetland_prior in wetland_priors:
-        ds = np.load(inversion_data_pth+f"x_{wetland_prior}_blended.npz")
-        xch40_TROPOMI =  np.asmatrix(ds["x_unfccc"][mask_simple])
-        
-        ds = np.load(inversion_data_pth+f"x_{wetland_prior}_gosat.npz")
-        xch40_GOSAT =  np.asmatrix(ds["x_unfccc"])
-        
-        xch40 = np.append(xch40_GOSAT, xch40_TROPOMI, axis = 1)
-        for lnsa_val in lnsa_vals:
-            for sa_bc in sa_bc_vals:
-                results_save_path = f"/n/holyscratch01/jacob_lab/shancock/results/results_gamma_{gamma}_lnsa_{lnsa_val}_bcsa_{sa_bc}_{wetland_prior}_with_gosat.npz"
-                if os.path.exists(results_save_path):
-                    continue
-                print(gamma, lnsa_val, sa_bc, wetland_prior)
-                lnsa = lnsa_val**2 * np.ones((n,1))
-                sa_bcs = sa_bc**2*np.ones((16,1))
-                lnsa_arr = np.concatenate((lnsa, sa_bcs), axis=0)
-                # invlnsa = 1/lnsa
-                # invlnsa_short = spdiags(np.squeeze(invlnsa[:600]),0,n,n)
-                lnsa = np.zeros((n+16,n+16))
-                np.fill_diagonal(lnsa, lnsa_arr)
-                # lnsa = spdiags(np.squeeze(lnsa),0,n+16,n+16)
-                # invlnsa = spdiags(np.squeeze(invlnsa),0,n+16,n+16)
-                invlnsa = np.linalg.inv(lnsa)
+        lnsa = lnsa_val**2 * np.ones((n, 1))
 
-                # INVERSION
-                # Starting from prior
-                xn=xa
-                lnxn=lnxa
+        # For the buffer elems and BCs we apply a different Sa value
+        if optimize_bcs:
+            bc_errors = sa_bc**2 * np.ones((4, 1))
+            buffer_errors = sa**2 * np.ones((num_normal_elems - 4, 1))
+            sa_normal = np.concatenate((buffer_errors, bc_errors), axis=0)
+        else:
+            sa_normal = sa**2 * np.ones((num_normal_elems, 1))
 
-                lnk = np.concatenate((np.multiply(K600,np.transpose(xn[:600])), K16), axis = 1)
+        # concatenate lognormal prior errors with normal prior errors
+        lnsa_arr = np.concatenate((lnsa, sa_normal), axis=0)
 
-                print(len(y_ybkg_diff) - np.shape(y_ybkg_diff[y_ybkg_diff<0])[1])
+        # Create lnSa matrix
+        lnsa = np.zeros((n + num_normal_elems, n + num_normal_elems))
+        np.fill_diagonal(lnsa, lnsa_arr)
+        invlnsa = np.linalg.inv(lnsa)
 
-                gamma_lnk_transpose_Soinv = gamma*np.transpose(lnk)@Soinv #Used in term1 and term2
+        # we start with xa and lnxa using the prior values (scale factors of 1)
+        xn = xa
+        lnxn = lnxa
 
-                term1 = np.linalg.inv(gamma_lnk_transpose_Soinv@lnk+np.multiply((1+kappa),invlnsa))
+        lnk = np.concatenate(
+            (
+                np.multiply(K_lognormal, np.transpose(xn[:-num_normal_elems])),
+                K_normal,
+            ),
+            axis=1,
+        )
 
-                term2 = gamma_lnk_transpose_Soinv@(y_ybkg_diff-(K@xn))
+        # We decompose eqn 2 into 3 terms
+        # term 1: gamma*ln(K).T@inv(So)@ln(K) + inv((1+kappa)*inv(ln(sa)))
+        # term 2: gamma*ln(K).T@inv(So)@(y_ybkg_diff - K@xa)
+        # term 3: -inv(ln(sa))@(ln(xn) - ln(xa))
+        # We can then solve for xn iteratively by doing:
+        # xn = x(n-1) + term1@(term2 + term3)
+        # where x(n-1) is the previous iteration of xn until convergence
+        gamma_lnk_transpose_Soinv = (
+            gamma * np.transpose(lnk) @ Soinv
+        )  # Used in term1 and term2
 
-                term3 = -1*invlnsa @ (lnxn - lnxa)
+        term1 = np.linalg.inv(
+            gamma_lnk_transpose_Soinv @ lnk + np.multiply((1 + kappa), invlnsa)
+        )
 
-                ii = -1
-                lnxn_update = lnxn+term1@(term2+term3)
+        term2 = gamma_lnk_transpose_Soinv @ (y_ybkg_diff - (K_full @ xn))
 
-                temp = max(abs(np.exp(lnxn_update[:600]) - np.exp(lnxn[:600]))/np.exp(lnxn[:600]))
+        term3 = -1 * invlnsa @ (lnxn - lnxa)
 
-                while temp >= 5e-3:
-                    ii = ii+1
-                    print("{}, The max relative diff is {}".format(ii, temp))
-                    print("START: ", ii, datetime.now())
-                    lnxn = lnxn_update
-                    xn = np.concatenate((np.exp(lnxn[:600]), lnxn[600:]), axis = 0)
-                    lnk = np.concatenate((np.multiply(K600,np.transpose(xn[:600])), K16), axis = 1)
-                    gamma_lnk_transpose_Soinv = gamma*np.transpose(lnk)@Soinv #
-                    term1 = np.linalg.inv(gamma_lnk_transpose_Soinv@lnk+(1+kappa)*invlnsa)
-                    term2 = gamma_lnk_transpose_Soinv@(y_ybkg_diff-(K@xn))
-                    term3 = -1*invlnsa @ (lnxn - lnxa)
-                    lnxn_update = lnxn+term1@(term2+term3)
-                    temp = max(abs(np.exp(lnxn_update[:600]) - np.exp(lnxn[:600]))/np.exp(lnxn[:600]))
+        lnxn_update = lnxn + term1 @ (term2 + term3)
 
-                print("Done Iterating")
-                lnxn=lnxn_update
-                xn = np.concatenate((np.exp(lnxn[:600]), lnxn[600:]),axis=0)
-                print("Post Proccessing")
-                lnk = np.concatenate((np.multiply(K600,np.transpose(xn[:600])), K16), axis = 1)
-                kso= np.transpose(lnk)@So_over_gamma_inv
-                lns=np.linalg.inv(kso@lnk+invlnsa)
-                G=lns@kso
-                ak=G@lnk
-                dofs=np.trace(ak);
+        xn_iteration_pct_diff = max(
+            abs(
+                np.exp(lnxn_update[:-num_normal_elems])
+                - np.exp(lnxn[:-num_normal_elems])
+            )
+            / np.exp(lnxn[:-num_normal_elems])
+        )
 
-                dlns=np.diag(lns[:600,:600]);
-                xnmean= np.concatenate((np.multiply(xn[:600],np.expand_dims(np.exp(dlns*(0.5)), axis=1)),xn[600:]))
-
-                Ja = np.transpose(lnxn[:600]-lnxa[:600])@invlnsa[:600,:600]@(lnxn[:600]-lnxa[:600])
-
-                print("JA:", Ja)
-                Ja_with_BCs = np.transpose(lnxn-lnxa)@invlnsa@(lnxn-lnxa)
-                print("Ja with BCs", Ja_with_BCs)
-                print(np.amin(xnmean[:600]),np.average(xnmean[:600]),np.amax(xnmean[:600]))
-
-                # Plot up results
-                xhat = xnmean
-                xhat_arr = np.zeros((len(lats), len(lons)))
-                for i in range(np.shape(xhat)[0]):
-                    idx = np.where(state_vector_labels == float(i+1))
-                    xhat_arr[idx] = xhat[i]
-                xhat_arr = xr.DataArray(data=xhat_arr, 
-                     dims=["lat", "lon"],
-                     coords=dict(
-                         lon=(["lon"], lons.values),
-                         lat=(["lat"], lats.values),
-                     ),)
-                scale = xhat_arr
-                fig = plt.figure(figsize=(8,8))
-                plt.rcParams.update({'font.size': 16})
-                ax = fig.subplots(1,1,subplot_kw={'projection': ccrs.PlateCarree()})
-
-                plot_field(ax, scale, cmap='RdBu_r',
-                           lon_bounds=lon_bounds, lat_bounds=lat_bounds,
-                           vmin=-0.5, vmax=2.5, title='Scale factors', cbar_label='Scale factor',
-                           only_ROI=False, state_vector_labels=state_vector_labels)
-
-                ak_sensitivities = np.diagonal(ak)
-                ak_arr = np.zeros((len(lats), len(lons)))
-                for i in range(np.shape(ak_sensitivities)[0]):
-                    idx = np.where(state_vector_labels == float(i+1))
-                    ak_arr[idx] = ak_sensitivities[i]
-
-                ak_arr = xr.DataArray(data=ak_arr, 
-                                         dims=["lat", "lon"],
-                                         coords=dict(
-                                             lon=(["lon"], lons.values),
-                                             lat=(["lat"], lats.values),
-                                         ),)
-                fig = plt.figure(figsize=(8,8))
-                plt.rcParams.update({'font.size': 16})
-                ax = fig.subplots(1,1,subplot_kw={'projection': ccrs.PlateCarree()})
-
-                plot_field(ax, ak_arr, cmap=cc.cm.CET_L19,
-                           lon_bounds=lon_bounds, lat_bounds=lat_bounds,
-                           title='Averaging kernel sensitivities', cbar_label='Sensitivity', 
-                           only_ROI=False, state_vector_labels=state_vector_labels)
-                plt.show()
-
-                np.savez(results_save_path, xn=xnmean,lnxn=lnxn,lns=lns,ak=ak,dofs=dofs,Ja=Ja)
-
-                # Save out gridded posterior
-                ds = xr.Dataset(
-                    {
-                        "ScaleFactor": (["lat", "lon"], scale.data)
-                    },
-                    coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
+        # Iterate for calculation of ln(xn) until convergence threshold is met (5e-3)
+        print("Status: Iterating to calculate ln(xn)")
+        while xn_iteration_pct_diff >= convergence_threshold:
+            lnxn = lnxn_update
+            xn = np.concatenate(
+                (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]),
+                axis=0,
+            )
+            lnk = np.concatenate(
+                (
+                    np.multiply(K_lognormal, np.transpose(xn[:-num_normal_elems])),
+                    K_normal,
+                ),
+                axis=1,
+            )
+            gamma_lnk_transpose_Soinv = gamma * np.transpose(lnk) @ Soinv  #
+            term1 = np.linalg.inv(
+                gamma_lnk_transpose_Soinv @ lnk + (1 + kappa) * invlnsa
+            )
+            term2 = gamma_lnk_transpose_Soinv @ (y_ybkg_diff - (K_full @ xn))
+            term3 = -1 * invlnsa @ (lnxn - lnxa)
+            lnxn_update = lnxn + term1 @ (term2 + term3)
+            xn_iteration_pct_diff = max(  # percent diff between xn and xn_update
+                abs(
+                    np.exp(lnxn_update[:-num_normal_elems])
+                    - np.exp(lnxn[:-num_normal_elems])
                 )
+                / np.exp(lnxn[:-num_normal_elems])
+            )
 
-                # Add attribute metadata
-                ds.lat.attrs["units"] = "degrees_north"
-                ds.lat.attrs["long_name"] = "Latitude"
-                ds.lon.attrs["units"] = "degrees_east"
-                ds.lon.attrs["long_name"] = "Longitude"
-                ds.ScaleFactor.attrs["units"] = "1"
+        print("Status: Done Iterating")
+        lnxn = lnxn_update
+        xn = np.concatenate(
+            (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]), axis=0
+        )
+        lnk = np.concatenate(
+            (
+                np.multiply(K_lognormal, np.transpose(xn[:-num_normal_elems])),
+                K_normal,
+            ),
+            axis=1,
+        )
+        kso = np.transpose(lnk) @ So_over_gamma_inv
+        lns = np.linalg.inv(kso @ lnk + invlnsa)
+        G = lns @ kso
+        ak = G @ lnk
+        dofs = np.trace(ak)
 
-                # Create netcdf
-                ds.to_netcdf(f"/n/holyscratch01/jacob_lab/shancock/results/gridded_posterior_gamma_{gamma}_lnsa_{lnsa_val}_bcsa_{sa_bc}_{wetland_prior}_with_gosat.nc")
+        dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
+        xnmean = np.concatenate(
+            (
+                np.multiply(
+                    xn[:-num_normal_elems],
+                    np.expand_dims(np.exp(dlns * (0.5)), axis=1),
+                ),
+                xn[-num_normal_elems:],
+            )
+        )
+
+        Ja = (
+            np.transpose(lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
+            @ invlnsa[:-num_normal_elems, :-num_normal_elems]
+            @ (lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
+        )
+
+        print(f"Diagnostics:\n  (Ja: {Ja}, gamma: {gamma}, sa: {sa}, sa_bc: {sa_bc})")
+
+        # Diagnostic for Ja with BCs
+        # Ja_with_BCs = np.transpose(lnxn - lnxa) @ invlnsa @ (lnxn - lnxa)
+        # print("Ja with BCs", Ja_with_BCs)
+
+        # Plot up results
+        xhat = xnmean
+        xhat_arr = np.zeros((len(lats), len(lons)))
+        for i in range(np.shape(xhat)[0]):
+            idx = np.where(state_vector_labels == float(i + 1))
+            xhat_arr[idx] = xhat[i]
+
+        scale_factors = xr.DataArray(
+            data=xhat_arr,
+            dims=["lat", "lon"],
+            coords=dict(
+                lon=(["lon"], lons.values),
+                lat=(["lat"], lats.values),
+            ),
+        )
+
+        ak_sensitivities = np.diagonal(ak)
+        ak_arr = np.zeros((len(lats), len(lons)))
+        for i in range(np.shape(ak_sensitivities)[0]):
+            idx = np.where(state_vector_labels == float(i + 1))
+            ak_arr[idx] = ak_sensitivities[i]
+
+        ak_arr = xr.DataArray(
+            data=ak_arr,
+            dims=["lat", "lon"],
+            coords=dict(
+                lon=(["lon"], lons.values),
+                lat=(["lat"], lats.values),
+            ),
+        )
+
+        # save inversion results
+        dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
+        dataset.createDimension("nvar", state_vector_labels.max().item())
+        dataset.createDimension("float", 1)
+        nc_xn = dataset.createVariable("xn", np.float32, ("nvar"))
+        nc_lnxn = dataset.createVariable("lnxn", np.float32, ("nvar"))
+        nc_lnS_post = dataset.createVariable("lnS_post", np.float32, ("nvar", "nvar"))
+        nc_A = dataset.createVariable("A", np.float32, ("nvar", "nvar"))
+        nc_dofs = dataset.createVariable("DOFS", np.float32, ("float",))
+        nc_Ja = dataset.createVariable("Ja", np.float32, ("float",))
+        nc_xn[:] = xnmean.flatten()
+        nc_lnxn[:] = lnxn.flatten()
+        nc_lnS_post[:, :] = lns
+        nc_A[:, :] = ak
+        nc_dofs[0] = dofs
+        nc_Ja[0] = Ja
+        dataset.close()
+
+        # Save out gridded posterior
+        ds = xr.Dataset(
+            {"ScaleFactor": (["lat", "lon"], scale_factors.data)},
+            coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
+        )
+
+        # Add attribute metadata
+        ds.lat.attrs["units"] = "degrees_north"
+        ds.lat.attrs["long_name"] = "Latitude"
+        ds.lon.attrs["units"] = "degrees_east"
+        ds.lon.attrs["long_name"] = "Longitude"
+        ds.ScaleFactor.attrs["units"] = "1"
+
+        # Create netcdf
+        ds.to_netcdf("gridded_posterior_ln.nc")
+
+
+if __name__ == "__main__":
+    config_path = sys.argv[1]
+    state_vector_filepath = sys.argv[2]
+    config = yaml.safe_load(config_path)
+    lognormal_invert(config, state_vector_filepath)

@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # Paths to GEOS/satellite data
     output = merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_error, background)
     if background:
-        np.savez("gc_ch4_bkgd.npz", gc_ch4_prior=output)
+        np.savez("gc_ch4_bkgd.npz", gc_ch4_bkgd=output)
     else:
         gc_ch4_prior, obs_tropomi, jacobian_K, so = output
         np.savez("full_jacobian_K.npz", K=jacobian_K)

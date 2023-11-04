@@ -164,14 +164,14 @@ fi
 
 posteriorSF="./inversion_result.nc"
 
-# for lognormal errors we merge our y, y_bkgd and partial K matrices
 if "$LognormalErrors"; then
+    # for lognormal errors we merge our y, y_bkgd and partial K matrices
     python merge_partial_k.py "./data_converted" $StateVectorFile $ObsError "false"
     python merge_partial_k.py "./data_converted_background" $StateVectorFile $ObsError "true"
-    # TODO: add actual lognormal invert.py
-    # python lognormal_invert.py
-    echo "Exiting before inversion"
-    exit 1
+    # then we run the inversion
+    printf "Calling lognormal_invert.py\n"
+    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile
+    printf "DONE -- lognormal_invert.py\n\n"
 else
     python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
     # add an argument to calc_sensi.py if optimizing BCs
@@ -181,16 +181,14 @@ else
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- invert.py\n\n"
+    #=======================================================================
+    # Create gridded posterior scaling factor netcdf file
+    #=======================================================================
+    GriddedPosterior="./gridded_posterior.nc"
+
+    printf "Calling make_gridded_posterior.py\n"
+    python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+    printf "DONE -- make_gridded_posterior.py\n\n"
 fi
-
-
-#=======================================================================
-# Create gridded posterior scaling factor netcdf file
-#=======================================================================
-GriddedPosterior="./gridded_posterior.nc"
-
-printf "Calling make_gridded_posterior.py\n"
-python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
-printf "DONE -- make_gridded_posterior.py\n\n"
 
 exit 0
