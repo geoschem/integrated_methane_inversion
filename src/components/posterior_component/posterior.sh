@@ -105,9 +105,9 @@ run_posterior() {
     fi
 
     if $LognormalErrors; then
-        inversion_result_filename="inversion_result.nc"
-    else
         inversion_result_filename="inversion_result_ln.nc"
+    else
+        inversion_result_filename="inversion_result.nc"
     fi
 
     if "$OptimizeBCs"; then
