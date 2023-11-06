@@ -51,9 +51,13 @@ setup_posterior() {
     sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
     
     # Update settings in HEMCO_Config.rc
+    if "$LognormalErrors"; then
+        gridded_posterior_filename="gridded_posterior_ln.nc"
+    else
+        gridded_posterior_filename="gridded_posterior.nc"
+    fi
     sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-           -e "s|gridded_posterior.nc|${RunDirs}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
-
+           -e "s|${gridded_posterior_filename}|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
@@ -100,11 +104,17 @@ run_posterior() {
         source ${GEOSChemEnv}
     fi
 
+    if $LognormalErrors; then
+        inversion_result_filename="inversion_result.nc"
+    else
+        inversion_result_filename="inversion_result_ln.nc"
+    fi
+
     if "$OptimizeBCs"; then
         if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
         else
-            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+            inv_result_path="${RunDirs}/inversion/${inversion_result_filename}"
         fi
         # set BC optimal delta values
         PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)

@@ -162,7 +162,6 @@ else
 
 fi
 
-posteriorSF="./inversion_result.nc"
 
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
@@ -173,6 +172,7 @@ if "$LognormalErrors"; then
     python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile
     printf "DONE -- lognormal_invert.py\n\n"
 else
+    posteriorSF="./inversion_result.nc"
     python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
     # add an argument to calc_sensi.py if optimizing BCs
     if "$OptimizeBCs"; then

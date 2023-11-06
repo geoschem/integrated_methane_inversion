@@ -142,7 +142,8 @@ create_simulation_dir() {
     # for background simulation, disable the emissions
     # needed for lognormal error inversion
     if [ "$x" = "background" ]; then
-        sed -i -e 's/EMISSIONS              :       true/EMISSIONS              :       false/g' HEMCO_Config.rc
+        sed -i -e 's/EMISSIONS              :       true/EMISSIONS              :       false/g' \
+               -e 's/GFED                   : on    CH4/GFED                   : off    CH4/g' HEMCO_Config.rc
     fi
 
 	# Create run script from template

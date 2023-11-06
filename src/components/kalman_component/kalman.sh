@@ -118,7 +118,7 @@ run_period() {
 
     # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
     # NOTE: This also creates the posterior_sf_period{i}.nc file in archive_sf/
-    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $period_i ${RunDirs}; wait
+    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $period_i ${RunDirs} $LognormalErrors; wait
     echo "Multiplied posterior scale factors over record"
 
     # Print total posterior emissions
