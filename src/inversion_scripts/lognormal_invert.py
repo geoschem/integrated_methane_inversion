@@ -89,7 +89,7 @@ def lognormal_invert(config, state_vector_filepath):
     combinations = list(product(gamma_vals, prior_errors, sa_bc_vals))
     for gamma, sa, sa_bc in combinations:
         lnsa_val = np.log(sa)
-        results_save_path = "inversion_result_ln.nc"
+        results_save_path = f"inversion_result_ln.nc"
 
         invso_over_gamma = 1 / (so / gamma)
         So_over_gamma_inv = spdiags(invso_over_gamma, 0, m, m)
@@ -293,5 +293,6 @@ def lognormal_invert(config, state_vector_filepath):
 if __name__ == "__main__":
     config_path = sys.argv[1]
     state_vector_filepath = sys.argv[2]
-    config = yaml.safe_load(config_path)
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
     lognormal_invert(config, state_vector_filepath)
