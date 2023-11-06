@@ -142,8 +142,12 @@ create_simulation_dir() {
     # for background simulation, disable the emissions
     # needed for lognormal error inversion
     if [ "$x" = "background" ]; then
+        # TODO: OH_pert_factor sed will be unnecessary once geoschem Emissions logical is fixed
+        # until  then we remove the OH_pert_factor line and add it back in before (((Emissions
+        sed -i '0,/(((EMISSIONS/s//2 OH_pert_factor  1.0 - - - xy 1 1\n(((EMISSIONS/' HEMCO_Config.rc
         sed -i -e 's/EMISSIONS              :       true/EMISSIONS              :       false/g' \
-               -e 's/GFED                   : on    CH4/GFED                   : off    CH4/g' HEMCO_Config.rc
+               -e 's/GFED                   : on    CH4/GFED                   : off    CH4/g' \
+               -e '0,/(((EMISSIONS/{(((EMISSIONS/i 2 OH_pert_factor  1.0 - - - xy 1 1}' HEMCO_Config.rc 
     fi
 
 	# Create run script from template
