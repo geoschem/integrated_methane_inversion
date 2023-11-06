@@ -74,7 +74,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Get the gridded posterior for period p
             gridded_posterior_filename = (
                 "gridded_posterior_ln.nc"
-                if config["LognormalErrors"] == "true"
+                if config["LognormalErrors"]
                 else "gridded_posterior.nc"
             )
             gridded_posterior_path = os.path.join(

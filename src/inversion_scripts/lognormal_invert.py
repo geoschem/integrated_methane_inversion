@@ -42,7 +42,12 @@ def lognormal_invert(config, state_vector_filepath):
     # within the domain of interest, not the buffer elements, or the
     # BC elements. So, to do this we split K into two matrices, one
     # for the lognormal elements, and one for the normal elements.
-    optimize_bcs = config["OptimizeBCs"] == "true"
+    optimize_bcs = config["OptimizeBCs"]
+    num_sv_elems = (
+        int(state_vector_labels.max().item()) + 4
+        if optimize_bcs
+        else state_vector_labels.max().item()
+    )
     num_buffer_elems = int(config["nBufferClusters"])
     num_normal_elems = num_buffer_elems + 4 if optimize_bcs else num_buffer_elems
     ds = np.load("full_jacobian_K.npz")
@@ -257,7 +262,7 @@ def lognormal_invert(config, state_vector_filepath):
 
         # save inversion results
         dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
-        dataset.createDimension("nvar", state_vector_labels.max().item())
+        dataset.createDimension("nvar", num_sv_elems)
         dataset.createDimension("float", 1)
         nc_xn = dataset.createVariable("xhat", np.float32, ("nvar"))
         nc_lnxn = dataset.createVariable("lnxn", np.float32, ("nvar"))
