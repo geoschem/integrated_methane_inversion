@@ -91,6 +91,7 @@ config_required = [
     "SchedulerPartition",
     "KalmanMode",
     "S3Upload",
+    "LognormalErrors"
 ]
 
 # dict of variables that are required if another variable is set to true 

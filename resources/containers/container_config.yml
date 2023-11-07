@@ -53,7 +53,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -79,6 +79,7 @@ PriorErrorBCs: 10.0
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
+LognormalErrors: false
 
 ## Grid
 ##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
