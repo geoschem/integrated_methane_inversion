@@ -229,36 +229,33 @@ def lognormal_invert(config, state_vector_filepath):
         # Ja_with_BCs = np.transpose(lnxn - lnxa) @ invlnsa @ (lnxn - lnxa)
         # print("Ja with BCs", Ja_with_BCs)
 
-        # Plot up results
+        # Create gridded datarrays of S_post, xhat, and A
         xhat = xnmean
         xhat_arr = np.zeros((len(lats), len(lons)))
+        ak_sensitivities = np.diagonal(ak)
+        ak_arr = np.zeros((len(lats), len(lons)))
+        lnS_post = np.diagonal(lns)
+        lnS_post_arr = np.zeros((len(lats), len(lons)))
         for i in range(np.shape(xhat)[0]):
             idx = np.where(state_vector_labels == float(i + 1))
             xhat_arr[idx] = xhat[i]
-
-        scale_factors = xr.DataArray(
-            data=xhat_arr,
-            dims=["lat", "lon"],
-            coords=dict(
-                lon=(["lon"], lons.values),
-                lat=(["lat"], lats.values),
-            ),
-        )
-
-        ak_sensitivities = np.diagonal(ak)
-        ak_arr = np.zeros((len(lats), len(lons)))
-        for i in range(np.shape(ak_sensitivities)[0]):
-            idx = np.where(state_vector_labels == float(i + 1))
             ak_arr[idx] = ak_sensitivities[i]
+            lnS_post_arr[idx] = lnS_post[i]
 
-        ak_arr = xr.DataArray(
-            data=ak_arr,
+        # handy lambda function to make a dataArray from numpy array
+        make_dataArray = lambda arr: xr.DataArray(
+            data=arr,
             dims=["lat", "lon"],
             coords=dict(
                 lon=(["lon"], lons.values),
                 lat=(["lat"], lats.values),
             ),
         )
+
+        # transform to data arrays
+        scale_factors = make_dataArray(xhat_arr)
+        ak_arr = make_dataArray(ak_arr)
+        lnS_post_arr = make_dataArray(lnS_post_arr)
 
         # save inversion results
         dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
@@ -280,7 +277,11 @@ def lognormal_invert(config, state_vector_filepath):
 
         # Save out gridded posterior
         ds = xr.Dataset(
-            {"ScaleFactor": (["lat", "lon"], scale_factors.data)},
+            {
+                "ScaleFactor": (["lat", "lon"], scale_factors.data),
+                "A": (["lat", "lon"], ak_arr.data),
+                "S_post": (["lat", "lon"], lnS_post_arr.data),
+            },
             coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
         )
 
