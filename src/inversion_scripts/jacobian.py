@@ -74,7 +74,7 @@ if __name__ == "__main__":
     BlendedTROPOMI = sys.argv[9] == "true"
     isPost = sys.argv[10]
     build_jacobian = sys.argv[11]
-    build_bkgd_tropomi = sys.argv[12] if len(sys.argv) > 11 else False
+    build_bkgd_tropomi = sys.argv[12] if len(sys.argv) > 12 else False
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
