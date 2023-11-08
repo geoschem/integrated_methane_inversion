@@ -57,7 +57,7 @@ setup_posterior() {
         gridded_posterior_filename="gridded_posterior.nc"
     fi
     sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-           -e "s|${gridded_posterior_filename}|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
+           -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
