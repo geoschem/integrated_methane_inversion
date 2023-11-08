@@ -112,6 +112,7 @@ conditional_dict["S3Upload"] = [
     "S3UploadFiles",
 ]
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
+conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 
 def raise_error_message(var):
     """

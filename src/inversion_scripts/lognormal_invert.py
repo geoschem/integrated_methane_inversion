@@ -85,14 +85,15 @@ def lognormal_invert(config, state_vector_filepath):
 
     # Define Sa, gamma, and Sa_bc values to iterate through
     prior_errors = [float(config["PriorError"])]
+    sa_buffer_elems = [float(config["PriorErrorBufferElements"])]
     sa_bc_vals = [float(config["PriorErrorBCs"])] if optimize_bcs else [None]
     gamma_vals = [float(config["Gamma"])]
 
     # iterate through different combination of gamma, lnsa, and sa_bc
     # TODO: for now we will only allow one value for each of these
     # TODO: parallelize this once we allow vectorization of these values
-    combinations = list(product(gamma_vals, prior_errors, sa_bc_vals))
-    for gamma, sa, sa_bc in combinations:
+    combinations = list(product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems))
+    for gamma, sa, sa_bc, sa_buffer in combinations:
         lnsa_val = np.log(sa)
         results_save_path = f"inversion_result_ln.nc"
 
@@ -104,10 +105,10 @@ def lognormal_invert(config, state_vector_filepath):
         # For the buffer elems and BCs we apply a different Sa value
         if optimize_bcs:
             bc_errors = sa_bc**2 * np.ones((4, 1))
-            buffer_errors = sa**2 * np.ones((num_normal_elems - 4, 1))
+            buffer_errors = sa_buffer**2 * np.ones((num_normal_elems - 4, 1))
             sa_normal = np.concatenate((buffer_errors, bc_errors), axis=0)
         else:
-            sa_normal = sa**2 * np.ones((num_normal_elems, 1))
+            sa_normal = sa_buffer**2 * np.ones((num_normal_elems, 1))
 
         # concatenate lognormal prior errors with normal prior errors
         lnsa_arr = np.concatenate((lnsa, sa_normal), axis=0)
@@ -223,7 +224,7 @@ def lognormal_invert(config, state_vector_filepath):
             @ (lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
         )
 
-        print(f"Diagnostics:\n  (Ja: {Ja}, gamma: {gamma}, sa: {sa}, sa_bc: {sa_bc})")
+        print(f"Diagnostics:\n  (Ja: {Ja}, gamma: {gamma}, sa: {sa}, sa_bc: {sa_bc}, sa_buffer: {sa_buffer})")
 
         # Diagnostic for Ja with BCs
         # Ja_with_BCs = np.transpose(lnxn - lnxa) @ invlnsa @ (lnxn - lnxa)
