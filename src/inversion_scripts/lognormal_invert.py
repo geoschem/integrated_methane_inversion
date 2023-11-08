@@ -181,7 +181,9 @@ def lognormal_invert(config, state_vector_filepath):
             term2 = gamma_lnk_transpose_Soinv @ (y_ybkg_diff - (K_full @ xn))
             term3 = -1 * invlnsa @ (lnxn - lnxa)
             lnxn_update = lnxn + term1 @ (term2 + term3)
-            xn_iteration_pct_diff = max(  # percent diff between xn and xn_update
+            
+            # calc percent diff between xn and xn_update to determine if convergence is met
+            xn_iteration_pct_diff = max(  
                 abs(
                     np.exp(lnxn_update[:-num_normal_elems])
                     - np.exp(lnxn[:-num_normal_elems])
@@ -201,12 +203,15 @@ def lognormal_invert(config, state_vector_filepath):
             ),
             axis=1,
         )
+        
+        # Calculate averaging kernel and degrees of freedom for signal
         kso = np.transpose(lnk) @ So_over_gamma_inv
         lns = np.linalg.inv(kso @ lnk + invlnsa)
         G = lns @ kso
         ak = G @ lnk
         dofs = np.trace(ak)
 
+        # Calculate posterior mean xhat
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
         xnmean = np.concatenate(
             (
@@ -218,6 +223,8 @@ def lognormal_invert(config, state_vector_filepath):
             )
         )
 
+        # Calculate Ja diagnostic only for domain of interest (ignoring buffer and BC elements)
+        # Ja diagnostic is useful for determining regurlarization parameter (gamma)
         Ja = (
             np.transpose(lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
             @ invlnsa[:-num_normal_elems, :-num_normal_elems]
@@ -225,10 +232,6 @@ def lognormal_invert(config, state_vector_filepath):
         )
 
         print(f"Diagnostics:\n  (Ja: {Ja}, gamma: {gamma}, sa: {sa}, sa_bc: {sa_bc}, sa_buffer: {sa_buffer})")
-
-        # Diagnostic for Ja with BCs
-        # Ja_with_BCs = np.transpose(lnxn - lnxa) @ invlnsa @ (lnxn - lnxa)
-        # print("Ja with BCs", Ja_with_BCs)
 
         # Create gridded datarrays of S_post, xhat, and A
         xhat = xnmean
@@ -243,7 +246,7 @@ def lognormal_invert(config, state_vector_filepath):
             ak_arr[idx] = ak_sensitivities[i]
             lnS_post_arr[idx] = lnS_post[i]
 
-        # handy lambda function to make a dataArray from numpy array
+        # lambda function to make a DataArray from numpy array
         make_dataArray = lambda arr: xr.DataArray(
             data=arr,
             dims=["lat", "lon"],
@@ -257,8 +260,28 @@ def lognormal_invert(config, state_vector_filepath):
         scale_factors = make_dataArray(xhat_arr)
         ak_arr = make_dataArray(ak_arr)
         lnS_post_arr = make_dataArray(lnS_post_arr)
+        
+        # create gridded posterior
+        ds = xr.Dataset(
+            {
+                "ScaleFactor": (["lat", "lon"], scale_factors.data),
+                "A": (["lat", "lon"], ak_arr.data),
+                "S_post": (["lat", "lon"], lnS_post_arr.data),
+            },
+            coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
+        )
+        
+        # Add attribute metadata
+        ds.lat.attrs["units"] = "degrees_north"
+        ds.lat.attrs["long_name"] = "Latitude"
+        ds.lon.attrs["units"] = "degrees_east"
+        ds.lon.attrs["long_name"] = "Longitude"
+        ds.ScaleFactor.attrs["units"] = "1"
 
-        # save inversion results
+        # save to netcdf file
+        ds.to_netcdf("gridded_posterior_ln.nc")
+
+        # Save (ungridded) inversion results
         dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
         dataset.createDimension("nvar", num_sv_elems)
         dataset.createDimension("float", 1)
@@ -275,26 +298,6 @@ def lognormal_invert(config, state_vector_filepath):
         nc_dofs[0] = dofs
         nc_Ja[0] = Ja
         dataset.close()
-
-        # Save out gridded posterior
-        ds = xr.Dataset(
-            {
-                "ScaleFactor": (["lat", "lon"], scale_factors.data),
-                "A": (["lat", "lon"], ak_arr.data),
-                "S_post": (["lat", "lon"], lnS_post_arr.data),
-            },
-            coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
-        )
-
-        # Add attribute metadata
-        ds.lat.attrs["units"] = "degrees_north"
-        ds.lat.attrs["long_name"] = "Latitude"
-        ds.lon.attrs["units"] = "degrees_east"
-        ds.lon.attrs["long_name"] = "Longitude"
-        ds.ScaleFactor.attrs["units"] = "1"
-
-        # Create netcdf
-        ds.to_netcdf("gridded_posterior_ln.nc")
 
 
 if __name__ == "__main__":

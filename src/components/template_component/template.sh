@@ -73,7 +73,7 @@ setup_template() {
     if "$KalmanMode"; then
         sed -i -e "s|use_emission_scale_factor: false|use_emission_scale_factor: true|g" geoschem_config.yml
         sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-               -e "s|${gridded_posterior_filename}|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+               -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
     fi
 
     # Turn other options on/off according to settings above

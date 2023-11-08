@@ -28,7 +28,6 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
-    cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
     cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
