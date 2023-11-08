@@ -4,28 +4,8 @@ import yaml
 import pickle as pickle
 import numpy as np
 import xarray as xr
-from utils import load_obj
+from src.inversion_scripts.utils import load_obj, calculate_superobservation_error
 
-def calculate_superobservation_error(sO, p):
-    """
-    Returns the estimated observational error accounting for superobservations.
-    Using eqn (5) from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
-    Args:
-        sO : float
-            observational error specified in config file
-        p  : float
-            average number of observations contained within each superobservation
-    Returns:
-         s_super: float
-            observational error for superobservations
-    """
-    # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
-    r_retrieval = 0.55
-    s_transport = 4.5
-    s_super = np.sqrt(
-        sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
-    )
-    return s_super
 
 def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, background=False):
     # Get observed and GEOS-Chem-simulated TROPOMI columns
@@ -97,7 +77,6 @@ if __name__ == "__main__":
     # Get observed and GEOS-Chem-simulated TROPOMI columns
     files = np.sort(os.listdir(satdat_dir))
     files = [f for f in files if "TROPOMI" in f]
-    x = np.array([])
 
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector['StateVector']

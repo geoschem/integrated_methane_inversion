@@ -74,7 +74,7 @@ ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianB
 ## Inversion
 ## Note PriorError is a relative percentage 
 ## and PriorErrorBCs is in ppb
-## PriorErrorBufferElements is only used if LognormalErrors: true
+## PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
