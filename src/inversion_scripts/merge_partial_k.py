@@ -33,12 +33,11 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, background=Fals
         if (len(ind[0]) == 0):          # Skip if no data in bounds
             continue
         obs_GC = obs_GC[ind[0],:]       # TROPOMI and GEOS-Chem data within bounds
-        # Record lat, lon, tropomi ch4, and geos ch4
-        # lat = np.concatenate((lat, obs_GC[:,3]))
-        # lon = np.concatenate((lon, obs_GC[:,2]))
+        
+        # only return background if background is true
         if background:
             geos_prior = np.concatenate((geos_prior, obs_GC[:,1]))
-        else:
+        else: # otherwise, return full jacobian, obs, so, and prior
             tropomi = np.concatenate((tropomi, obs_GC[:,0]))
             geos_prior = np.concatenate((geos_prior, obs_GC[:,1]))
             # Get same file from bc folder
