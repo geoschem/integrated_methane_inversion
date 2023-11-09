@@ -76,9 +76,9 @@ def lognormal_invert(config, state_vector_filepath):
     # Note: the resulting xa matrix has lognormal elements until the final bc elements
     xa = np.ones((n, 1)) * 1.0
     lnxa = np.asmatrix(np.log(xa))
-    xa_bcs = np.zeros((num_normal_elems, 1)) * 1.0
-    xa = np.asmatrix(np.concatenate((xa, xa_bcs), axis=0))
-    lnxa = np.asmatrix(np.concatenate((lnxa, xa_bcs), axis=0))
+    xa_normal = np.zeros((num_normal_elems, 1)) * 1.0
+    xa = np.asmatrix(np.concatenate((xa, xa_normal), axis=0))
+    lnxa = np.asmatrix(np.concatenate((lnxa, xa_normal), axis=0))
 
     # Create inverted So matrix
     Soinv = spdiags(1 / so, 0, m, m)
