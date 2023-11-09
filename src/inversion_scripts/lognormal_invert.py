@@ -174,7 +174,7 @@ def lognormal_invert(config, state_vector_filepath):
                 ),
                 axis=1,
             )
-            gamma_lnk_transpose_Soinv = gamma * np.transpose(lnk) @ Soinv  #
+            gamma_lnk_transpose_Soinv = gamma * np.transpose(lnk) @ Soinv
             term1 = np.linalg.inv(
                 gamma_lnk_transpose_Soinv @ lnk + (1 + kappa) * invlnsa
             )
