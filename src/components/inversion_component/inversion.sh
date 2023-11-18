@@ -14,19 +14,23 @@ setup_inversion() {
     cd ${OutputPath}/$RunName
     mkdir -p -v inversion
     mkdir -p inversion/data_converted
+    mkdir -p inversion/data_converted_background
     mkdir -p inversion/data_geoschem
+    mkdir -p inversion/data_geoschem_background
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/lognormal_invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
     cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \

@@ -130,10 +130,14 @@ Inversion
    :widths: 30, 70
    :class: tight-table
 
+   * - ``LognormalErrors``
+     - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
      - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
    * - ``PriorErrorBCs``
      - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
+   * - ``PriorErrorBufferElements``
+     - Error in the prior estimates for buffer elements (1-sigma; relative). Default is ``0.5`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
    * - ``ObsError``
      - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
    * - ``Gamma``

@@ -3,7 +3,7 @@
 import glob
 import numpy as np
 from netCDF4 import Dataset
-from src.inversion_scripts.utils import load_obj
+from src.inversion_scripts.utils import load_obj, calculate_superobservation_error
 
 
 def do_inversion(
@@ -232,29 +232,6 @@ def do_inversion(
     print("Min:", xhat[:bc_idx].min(), "Mean:", xhat[:bc_idx].mean(), "Max", xhat[:bc_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
-
-
-# TODO Dry this out
-def calculate_superobservation_error(sO, p):
-    """
-    Returns the estimated observational error accounting for superobservations.
-    Using eqn (5) from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
-    Args:
-        sO : float
-            observational error specified in config file
-        p  : float
-            average number of observations contained within each superobservation
-    Returns:
-         s_super: float
-            observational error for superobservations
-    """
-    # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
-    r_retrieval = 0.55
-    s_transport = 4.5
-    s_super = np.sqrt(
-        sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
-    )
-    return s_super
 
 
 if __name__ == "__main__":

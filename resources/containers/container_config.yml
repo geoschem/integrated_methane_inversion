@@ -53,7 +53,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -74,8 +74,11 @@ ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianB
 ## Inversion
 ## Note PriorError is a relative percentage 
 ## and PriorErrorBCs is in ppb
+## PriorErrorBufferElements is only used if LognormalErrors is true
+LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
+PriorErrorBufferElements: 0.5
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false

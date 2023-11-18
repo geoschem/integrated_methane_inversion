@@ -6,14 +6,13 @@ import yaml
 from src.inversion_scripts.utils import sum_total_emissions
 
 
-
 def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     """
-    Function to prepare scale factors for HEMCO emissions. 
-    
-    This is done at the beginning of an inversion, to generate the appropriate scale factors for the 
-    prior simulation. In the first period, the scale factors are just unit scale factors (i.e., use 
-    the emissions from HEMCO directly). In following periods, the scale factors are derived from 
+    Function to prepare scale factors for HEMCO emissions.
+
+    This is done at the beginning of an inversion, to generate the appropriate scale factors for the
+    prior simulation. In the first period, the scale factors are just unit scale factors (i.e., use
+    the emissions from HEMCO directly). In following periods, the scale factors are derived from
     previous inversion results, including nudging to the original prior emission estimates.
 
     Arguments
@@ -58,14 +57,12 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     # the initial scale factors for the current period.
     period_number = int(period_number)
     if period_number > 1:
-
         # List all available HEMCO diagnostic files from the prior simulation
         hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
         hemco_list.sort()
 
         # For each period up to (but not including) the current one
         for p in range(period_number - 1):
-
             # Add one since we're counting from period 1, not 0
             p = p + 1
 
@@ -75,8 +72,13 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
 
             # Get the gridded posterior for period p
+            gridded_posterior_filename = (
+                "gridded_posterior_ln.nc"
+                if config["LognormalErrors"]
+                else "gridded_posterior.nc"
+            )
             gridded_posterior_path = os.path.join(
-                base_directory, f"kf_inversions/period{p}/gridded_posterior.nc"
+                base_directory, f"kf_inversions/period{p}/{gridded_posterior_filename}"
             )
             posterior_p = xr.load_dataset(gridded_posterior_path)
 
@@ -104,10 +106,12 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Get the final posterior scale factors
             sf["ScaleFactor"] = scaled_nudged_posterior_emis / original_emis
 
-            # Reset buffer area to 1 
-            # Note: resetting the buffer area to 1 seems to prevent issues where 
+            # Reset buffer area to 1
+            # Note: resetting the buffer area to 1 seems to prevent issues where
             # emissions can become negative.
-            sf["ScaleFactor"] = sf["ScaleFactor"].where(state_vector_labels <= last_ROI_element)  # Replace buffers with nan
+            sf["ScaleFactor"] = sf["ScaleFactor"].where(
+                state_vector_labels <= last_ROI_element
+            )  # Replace buffers with nan
             sf["ScaleFactor"] = sf["ScaleFactor"].fillna(1)  # Fill nan with 1
 
         print(
@@ -140,8 +144,8 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
     )
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     config_path = sys.argv[1]
     period_number = sys.argv[2]
     base_directory = sys.argv[3]

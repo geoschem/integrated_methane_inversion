@@ -38,6 +38,7 @@ Res={RES}
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
+BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
@@ -123,6 +124,11 @@ printf "Calling setup_gc_cache.py\n"
 python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
 
+# for lognormal errors we use the clean background run
+if "$LognormalErrors"; then
+    python setup_gc_cache.py $StartDate $EndDate "${BackgroundRunDir}/OutputDir" "./data_geoschem_background"; wait
+fi
+
 #=======================================================================
 # Generate Jacobian matrix files 
 #=======================================================================
@@ -139,7 +145,7 @@ else
 
 fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian $LognormalErrors; wait
 printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
@@ -156,24 +162,33 @@ else
 
 fi
 
-posteriorSF="./inversion_result.nc"
 
-python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
-# add an argument to calc_sensi.py if optimizing BCs
-if "$OptimizeBCs"; then
-    python_args+=($PriorErrorBCs)
+if "$LognormalErrors"; then
+    # for lognormal errors we merge our y, y_bkgd and partial K matrices
+    python merge_partial_k.py "./data_converted" $StateVectorFile $ObsError "false"
+    python merge_partial_k.py "./data_converted_background" $StateVectorFile $ObsError "true"
+    # then we run the inversion
+    printf "Calling lognormal_invert.py\n"
+    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile
+    printf "DONE -- lognormal_invert.py\n\n"
+else
+    posteriorSF="./inversion_result.nc"
+    python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
+    # add an argument to calc_sensi.py if optimizing BCs
+    if "$OptimizeBCs"; then
+        python_args+=($PriorErrorBCs)
+    fi
+    printf "Calling invert.py\n"
+    python "${python_args[@]}"; wait
+    printf "DONE -- invert.py\n\n"
+    #=======================================================================
+    # Create gridded posterior scaling factor netcdf file
+    #=======================================================================
+    GriddedPosterior="./gridded_posterior.nc"
+
+    printf "Calling make_gridded_posterior.py\n"
+    python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+    printf "DONE -- make_gridded_posterior.py\n\n"
 fi
-printf "Calling invert.py\n"
-python "${python_args[@]}"; wait
-printf "DONE -- invert.py\n\n"
-
-#=======================================================================
-# Create gridded posterior scaling factor netcdf file
-#=======================================================================
-GriddedPosterior="./gridded_posterior.nc"
-
-printf "Calling make_gridded_posterior.py\n"
-python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
-printf "DONE -- make_gridded_posterior.py\n\n"
 
 exit 0

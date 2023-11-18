@@ -54,7 +54,7 @@ nBufferClusters: 16
 BufferDeg: 5
 LandThreshold: .25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -73,8 +73,11 @@ ShapeFile: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_application/in
 ## Inversion
 ## Note PriorError is a relative percentage 
 ## and PriorErrorBCs is in ppb
+## PriorErrorBufferElements is only used if LognormalErrors is true
+LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
+PriorErrorBufferElements: 0.5
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false

@@ -54,7 +54,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
             f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0005z.nc4"
         )
         output_data_SC = xr.load_dataset(output_file_SC)
-        if "0000" in r:
+        if "0000" in r or "background" in r:
             output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0005z.nc4"
             output_data_LE = xr.load_dataset(output_file_LE)
 
@@ -69,7 +69,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
                 v: {"zlib": True, "complevel": 9} for v in merged_data_SC.data_vars
             },
         )
-        if "0000" in r:
+        if "0000" in r or "background" in r:
             merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
             final_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
             merged_data_LE.to_netcdf(
