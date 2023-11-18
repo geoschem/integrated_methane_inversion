@@ -103,14 +103,14 @@ printf "DONE -- postproc_diags.py\n\n"
 #=======================================================================
 
 if ! "$PrecomputedJacobian"; then
-
-    # 50% perturbation
-    Perturbation=0.5
-
+    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache)
+    # add an argument to calc_sensi.py if optimizing BCs
+    if "$OptimizeBCs"; then
+        python_args+=($PerturbValueBCs)
+    fi
     printf "Calling calc_sensi.py\n"
-    python calc_sensi.py $nElements $Perturbation $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache; wait
+    python "${python_args[@]}"; wait
     printf "DONE -- calc_sensi.py\n\n"
-
 fi
 
 #=======================================================================
@@ -158,8 +158,13 @@ fi
 
 posteriorSF="./inversion_result.nc"
 
+python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
+# add an argument to calc_sensi.py if optimizing BCs
+if "$OptimizeBCs"; then
+    python_args+=($PriorErrorBCs)
+fi
 printf "Calling invert.py\n"
-python invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf; wait
+python "${python_args[@]}"; wait
 printf "DONE -- invert.py\n\n"
 
 #=======================================================================

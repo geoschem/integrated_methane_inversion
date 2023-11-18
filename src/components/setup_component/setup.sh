@@ -127,7 +127,25 @@ setup_imi() {
         gridDir="${Res}_${NestedRegion}"
     fi
 
+    # Clone version 14.2.1 of GCClassic
     # Define path to GEOS-Chem run directory files
+    cd "${InversionPath}"
+    if [ ! -d "GCClassic" ]; then
+        git clone https://github.com/geoschem/GCClassic.git
+        cd GCClassic
+        git checkout 14.2.1
+        git submodule update --init --recursive
+        cd ..
+    else
+        cd GCClassic
+        if grep -Fq "VERSION 14.2.1" CMakeLists.txt; then
+            echo "GCClassic already exists and is the correct version."
+        else
+            echo "ERROR: GCClassic already exists but is not version 14.2.1."
+            exit 1
+        fi
+        cd ..
+    fi
     GCClassicPath="${InversionPath}/GCClassic"
     RunFilesPath="${GCClassicPath}/run"
 
@@ -149,7 +167,7 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc) 
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc ${OptimizeBCs}) 
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds

@@ -53,6 +53,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
+OptimizeBCs: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -71,7 +72,10 @@ StateVectorFile: "/n/holyscratch01/jacob_lab/msulprizio/Test_IMI/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
+## Note PriorError is a relative percentage 
+## and PriorErrorBCs is in ppb
 PriorError: 0.5
+PriorErrorBCs: 10.0
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -114,7 +118,10 @@ SchedulerPartition: "seas_compute,huce_cascade,huce_intel"
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
+## Note PerturbValue is a relative scalefactor and 
+## PerturbValueBCs is in ppb
 PerturbValue: 1.5
+PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false
@@ -161,14 +168,14 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 ## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
-BCversion: "v2023-06"
+BCversion: "v2023-10"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##  NOTE: Must have AWS CLI enabled

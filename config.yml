@@ -54,6 +54,7 @@ nBufferClusters: 16
 BufferDeg: 5
 LandThreshold: .25
 OffshoreEmisThreshold: 0
+OptimizeBCs: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -70,7 +71,10 @@ StateVectorFile: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_applicat
 ShapeFile: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_application/integrated_methane_inversion/resources/shapefiles/conus.shp"
 
 ## Inversion
+## Note PriorError is a relative percentage 
+## and PriorErrorBCs is in ppb
 PriorError: 0.5
+PriorErrorBCs: 10.0
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -114,7 +118,10 @@ JacobianSchedulerPartition: "serial_requeue"
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
+## Note PerturbValue is a relative scalefactor and 
+## PerturbValueBCs is in ppb
 PerturbValue: 1.5
+PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
 UseEmisSF: false

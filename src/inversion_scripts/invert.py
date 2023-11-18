@@ -18,6 +18,7 @@ def do_inversion(
     gamma=0.25,
     res="0.25x0.3125",
     jacobian_sf=None,
+    prior_err_bc=None,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -200,17 +201,35 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
+    
+    # if optimizing boundary conditions, adjust for it in the inversion
+    bc_idx = n_elements
+    if prior_err_bc is not None:
+        # add prior error for BCs
+        # as the last 4 elements of the diagonal
+        Sa_diag[-4:] = prior_err_bc**2
+        bc_idx -= 4
+        
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
-    xhat = 1 + ratio
+    
+    # update scale factors by 1 to match what geoschem expects
+    # Note: if optimizing BCs, the last 4 elements are in concentration 
+    # space, so we do not need to add 1
+    # xhat = 1 + ratio
+    xhat = ratio.copy()
+    xhat[:bc_idx] += 1
 
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
 
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
+    
+    # Print some statistics
+    print("Min:", xhat[:bc_idx].min(), "Mean:", xhat[:bc_idx].mean(), "Max", xhat[:bc_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
@@ -253,6 +272,7 @@ if __name__ == "__main__":
     gamma = float(sys.argv[10])
     res = sys.argv[11]
     jacobian_sf = sys.argv[12]
+    prior_err_BC = float(sys.argv[13]) if len(sys.argv) > 13 else None
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -271,6 +291,7 @@ if __name__ == "__main__":
         gamma,
         res,
         jacobian_sf,
+        prior_err_BC,
     )
     xhat = out[0]
     ratio = out[1]
@@ -278,9 +299,6 @@ if __name__ == "__main__":
     KTinvSoyKxA = out[3]
     S_post = out[4]
     A = out[5]
-
-    # Print some statistics
-    print("Min:", xhat.min(), "Mean:", xhat.mean(), "Max", xhat.max())
 
     # Save results
     dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")
