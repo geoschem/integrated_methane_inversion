@@ -2,7 +2,7 @@ import xarray as xr
 import os
 
 
-def multiply_posteriors(period_number, base_directory):
+def multiply_posteriors(period_number, base_directory, lognormal):
     """
     Before running the posterior simulation to update initial conditions for the next period, need to
     apply the latest posterior scale factors to the dynamic ScaleFactors.nc file. The posterior

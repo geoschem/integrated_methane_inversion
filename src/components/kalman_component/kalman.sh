@@ -101,9 +101,18 @@ run_period() {
     echo "python path = $PYTHONPATH"
     python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor; wait
 
+    # copy archived sv to path
+    if "$UseArchivedStateVectors"; then
+        echo "Using archived sv: ${ReferenceStateVectors}/StateVector_${period_i}.nc"
+        cp ${ReferenceStateVectors}/StateVector_${period_i}.nc ${RunDirs}/StateVector.nc
+        mkdir -p ${RunDirs}/archive_sv
+        # copy to archive
+        cp ${RunDirs}/StateVector.nc ${RunDirs}/archive_sv/StateVector_${period_i}.nc
     # Dynamically generate state vector for each period
-    if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
+    elif ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
         reduce_dimension
+    else
+        echo "Using default state vector"
     fi
     
     ##=======================================================================

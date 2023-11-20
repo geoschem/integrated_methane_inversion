@@ -230,7 +230,15 @@ def do_inversion(
     
     # Print some statistics
     print("Min:", xhat[:bc_idx].min(), "Mean:", xhat[:bc_idx].mean(), "Max", xhat[:bc_idx].max())
-
+    
+    # Calculate J_A, where ratio = xhat - xA
+    # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
+    ratioT = ratio.transpose()
+    print(f'gamma: {gamma}')
+    J_A = ratioT @ inv_Sa @ ratio
+    J_A_n = J_A / n_elements # divide by number of state vector elements
+    print(f'Normalized J_A = {J_A_n}') # ideal gamma is where this is close to 1
+    
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
 
