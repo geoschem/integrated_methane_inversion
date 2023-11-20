@@ -213,12 +213,23 @@ run_jacobian() {
         # inversion w/ precomputed Jacobian
         if "$KalmanMode"; then
             cd ${RunDirs}/kf_inversions/period${period_i}
-            precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${period_i}/data_converted
+            precomputedJacobianCachePrefix=${ReferenceRunDir}/kf_inversions/period${period_i}
         else
             cd ${RunDirs}/inversion
-            precomputedJacobianCache=${ReferenceRunDir}/inversion/data_converted
+            precomputedJacobianCachePrefix=${ReferenceRunDir}/inversion
         fi
-        ln -s $precomputedJacobianCache data_converted_reference
+
+        precomputedJacobianCacheNormal=${precomputedJacobianCachePrefix}/data_converted
+        precomputedJacobianCacheLognormal=${precomputedJacobianCachePrefix}/data_converted_background
+        
+        if [ -d $precomputedJacobianCacheNormal ]; then
+            ln -s $precomputedJacobianCacheNormal data_converted_reference
+        fi
+
+        if [ -d $precomputedJacobianCacheLognormal ]; then
+            ln -s $precomputedJacobianCacheLognormal data_converted_reference_background
+        fi
+
 
         # Run the prior simulation
         cd ${JacobianRunsDir}

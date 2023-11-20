@@ -148,13 +148,7 @@ def do_inversion(
         obs_error = [obs if obs > 0 else 1 for obs in obs_error]
 
         # Jacobian entries for observations within bounds [ppb]
-        if jacobian_sf is None:
-            K = 1e9 * dat["K"][ind, :]
-        else:
-            # Get Jacobian from reference inversion
-            fi_ref = fi.replace("data_converted", "data_converted_reference")
-            dat_ref = load_obj(fi_ref)
-            K = 1e9 * dat_ref["K"][ind, :]
+        K = 1e9 * dat["K"][ind, :]
 
         # Number of observations
         print("Sum of Jacobian entries:", np.sum(K))

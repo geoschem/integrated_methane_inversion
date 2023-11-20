@@ -15,7 +15,7 @@ from netCDF4 import Dataset
 from scipy.sparse import spdiags
 
 
-def lognormal_invert(config, state_vector_filepath):
+def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     """
     Description:
         Run inversion using lognormal errors following method from eqn 2 of
@@ -51,8 +51,19 @@ def lognormal_invert(config, state_vector_filepath):
     num_buffer_elems = int(config["nBufferClusters"])
     num_normal_elems = num_buffer_elems + 4 if optimize_bcs else num_buffer_elems
     ds = np.load("full_jacobian_K.npz")
-    K_lognormal = np.asmatrix(ds["K"][:, :-num_normal_elems]) * 1e9
-    K_normal = np.asmatrix(ds["K"][:, -num_normal_elems:]) * 1e9
+    K_temp = np.asmatrix(ds["K"]) * 1e9
+    
+    # Apply scaling matrix if using precomputed Jacobian
+    if jacobian_sf is not None:
+        scale_factors = np.load(jacobian_sf)
+        reps = K_temp.shape[0]
+        scaling_matrix = np.tile(scale_factors, (reps, 1))
+        K_temp *= scaling_matrix
+    
+    # split K based on whether we are solving for lognormal or normal elements
+    # K_ROI is the matrix for the lognormal elements (the region of interest)
+    K_ROI = np.asmatrix(K_temp[:, :-num_normal_elems])
+    K_normal = np.asmatrix(K_temp[:, -num_normal_elems:])
 
     # get the So matrix
     ds = np.load("so_super.npz")
@@ -66,11 +77,11 @@ def lognormal_invert(config, state_vector_filepath):
         np.swapaxes(y, 0, 1),
         np.swapaxes(y_ybkg_diff, 0, 1),
     )
-    K_full = np.concatenate((K_lognormal, K_normal), axis=1)
+    K_full = np.concatenate((K_ROI, K_normal), axis=1)
 
     # fixed kappa of 10 following Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
     kappa = 10
-    m, n = np.shape(K_lognormal)
+    m, n = np.shape(K_ROI)
 
     # Create base xa and lnxa matrices
     # Note: the resulting xa matrix has lognormal elements until the final bc elements
@@ -124,7 +135,7 @@ def lognormal_invert(config, state_vector_filepath):
 
         lnk = np.concatenate(
             (
-                np.multiply(K_lognormal, np.transpose(xn[:-num_normal_elems])),
+                np.multiply(K_ROI, np.transpose(xn[:-num_normal_elems])),
                 K_normal,
             ),
             axis=1,
@@ -169,7 +180,7 @@ def lognormal_invert(config, state_vector_filepath):
             )
             lnk = np.concatenate(
                 (
-                    np.multiply(K_lognormal, np.transpose(xn[:-num_normal_elems])),
+                    np.multiply(K_ROI, np.transpose(xn[:-num_normal_elems])),
                     K_normal,
                 ),
                 axis=1,
@@ -198,7 +209,7 @@ def lognormal_invert(config, state_vector_filepath):
         )
         lnk = np.concatenate(
             (
-                np.multiply(K_lognormal, np.transpose(xn[:-num_normal_elems])),
+                np.multiply(K_ROI, np.transpose(xn[:-num_normal_elems])),
                 K_normal,
             ),
             axis=1,
@@ -303,6 +314,8 @@ def lognormal_invert(config, state_vector_filepath):
 if __name__ == "__main__":
     config_path = sys.argv[1]
     state_vector_filepath = sys.argv[2]
+    jacobian_sf = None if sys.argv[3] == "None" else sys.argv[3]
+    
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-    lognormal_invert(config, state_vector_filepath)
+    lognormal_invert(config, state_vector_filepath, jacobian_sf)
