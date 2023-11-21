@@ -170,7 +170,7 @@ if "$LognormalErrors"; then
     python merge_partial_k.py "${JacobianDir}_background" $StateVectorFile $ObsError "true"
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
-    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile
+    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
