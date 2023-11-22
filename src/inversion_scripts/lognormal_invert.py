@@ -106,7 +106,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     combinations = list(product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems))
     for gamma, sa, sa_bc, sa_buffer in combinations:
         lnsa_val = np.log(sa)
-        results_save_path = f"inversion_result_ln_new.nc"
+        results_save_path = f"inversion_result_ln.nc"
 
         # Create lnSa matrix
         # lnsa = lnsa_val**2 * np.ones((n, 1))
@@ -250,7 +250,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         ds.ScaleFactor.attrs["units"] = "1"
 
         # save to netcdf file
-        ds.to_netcdf("gridded_posterior_ln_new.nc")
+        ds.to_netcdf("gridded_posterior_ln.nc")
 
         # Save (ungridded) inversion results
         dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
