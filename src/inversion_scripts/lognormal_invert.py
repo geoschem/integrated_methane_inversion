@@ -135,16 +135,26 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         xn_iteration_pct_diff = 1
         
         # Iterate for calculation of ln(xn) until convergence threshold is met (5e-3)
+        # We decompose eqn 2 from chen et al into 4 terms
+        # term 1: gamma*K'.T@inv(So)@K'
+        # term 2: inv((1+kappa)*inv(ln(sa)))
+        # term 3: gamma*K'.T@inv(So)@(y_ybkg_diff - K@xn)
+        # term 4: -inv(ln(sa))@(ln(xn) - ln(xa))
+        # We can then solve for xn iteratively by doing:
+        # ln(xn) = x(n-1) + inv(term1+term2)@(term3 + term4)
+        # where x(n-1) is the previous iteration of xn until convergence
         print("Status: Iterating to calculate ln(xn)")
         while xn_iteration_pct_diff >= convergence_threshold:
             
+            # we need to transform lnxn to xn to calculate K_prime
             xn = np.concatenate(
                 (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]),
                 axis=0,
             )
+            # K_prime is the updated jacobian using the new xn from the previous iteration
             K_prime = np.concatenate((K_ROI * xn[:-num_normal_elems].T, K_normal), axis=1)
             
-            # commonly used term for term1 and term2
+            # commonly used term for term1 and term3
             gamma_K_prime_transpose_Soinv = gamma * K_prime.T @ Soinv
             
             # Compute the next xn_update
@@ -155,6 +165,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             term3 = gamma_K_prime_transpose_Soinv @ (y_ybkg_diff - K_full @ xn)
             term4 = invlnsa @ (lnxn - lnxa)
 
+            # put it all together to calculate lnxn_update
             lnxn_update = lnxn + inv_term @ (term3 - term4)
             
             # Check for convergence
