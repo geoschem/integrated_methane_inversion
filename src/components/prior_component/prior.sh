@@ -9,7 +9,7 @@
 #   run_prior
 run_prior() {
     prior_start=$(date +%s)
-    if [[ -d ${PriorDir} ]]; then
+    if [[ -d ${RunPrior} ]]; then
 	printf "\nERROR: ${PriorDir} already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
 	exit 9999
     fi
@@ -55,11 +55,16 @@ run_prior() {
     printf "\nCreated ${RunPrior}\n" 
 
     cd ${RunPrior}
-    
+
     # Modify HEMCO files based on settings in config.yml
-    sed -i -e "s:2019-07-01:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2} 00:g" \
-           -e "s:2019-08-01:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2} 01:g" HEMCO_sa_Time.rc
-    sed -i -e "/DiagnFreq:           00000100 000000/d" HEMCO_sa_Config.rc
+    sed -i -e "s:2019-07-01:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2}:g" \
+           -e "s:2019-08-01 00:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2} 01:g" HEMCO_sa_Time.rc
+
+    sed -i -e "s:_NA::g" -e "s:.NA.:.:g" HEMCO_Config.rc.gmao_metfields
+
+    sed -i -e "/DiagnFreq:           00000100 000000/d" \
+	   -e "/Negative values:     0/d" \
+	   -e "s/Verbose:             false/Verbose:             true/g" HEMCO_sa_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
@@ -86,7 +91,7 @@ run_prior() {
     printf "\nSubmitting prior emissions simulation\n\n"
 
     # Submit job to job scheduler
-    sbatch --mem $SimulationMemory \
+    sbatch --mem $PriorMemory \
     -c $SimulationCPUs \
     -t $RequestedTime \
     -p $SchedulerPartition \

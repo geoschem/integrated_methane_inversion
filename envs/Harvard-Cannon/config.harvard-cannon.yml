@@ -47,7 +47,7 @@ UpdateFreqDays: 7
 NudgeFactor: 0.1
 
 ## State vector
-CreateAutomaticRectilinearStateVectorFile: false
+CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
@@ -89,7 +89,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
-SetupTemplateRundir: false
+SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
