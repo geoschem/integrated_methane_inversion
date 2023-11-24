@@ -59,6 +59,9 @@ setup_template() {
     NEW="--> AnalyticalInv          :       true "
     sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
 
+    # Update time cycling flags to use most recent year
+    sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
+    
     # Modify path to state vector file in HEMCO_Config.rc
     OLD=" StateVector.nc"
     NEW=" ${RunDirs}/StateVector.nc"
