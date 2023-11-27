@@ -142,6 +142,7 @@ if ! "$PrecomputedJacobian"; then
 else
 
     buildJacobian="False"
+    JacobianDir="${JacobianDir}_reference"
 
 fi
 
@@ -165,11 +166,11 @@ fi
 
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
-    python merge_partial_k.py "./data_converted" $StateVectorFile $ObsError "false"
-    python merge_partial_k.py "./data_converted_background" $StateVectorFile $ObsError "true"
+    python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError "false"
+    python merge_partial_k.py "${JacobianDir}_background" $StateVectorFile $ObsError "true"
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
-    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile
+    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
