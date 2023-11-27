@@ -45,7 +45,9 @@ def do_inversion(
         A            [float] : Averaging kernel matrix
 
     """
-
+    # boolean for whether we are optimizing boundary conditions
+    bc_optimization = prior_err_bc is not None
+    
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
@@ -162,6 +164,10 @@ def do_inversion(
         # Apply scaling matrix if using precomputed Jacobian
         if jacobian_sf is not None:
             scale_factors = np.load(jacobian_sf)
+            if bc_optimization:
+                # add (unit) scale factors for BCs
+                # as the last 4 elements of the scaling matrix
+                scale_factors = np.append(scale_factors, np.ones(4)) 
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
             K *= scaling_matrix
@@ -204,7 +210,7 @@ def do_inversion(
     
     # if optimizing boundary conditions, adjust for it in the inversion
     bc_idx = n_elements
-    if prior_err_bc is not None:
+    if bc_optimization:
         # add prior error for BCs
         # as the last 4 elements of the diagonal
         Sa_diag[-4:] = prior_err_bc**2
