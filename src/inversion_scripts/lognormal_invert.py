@@ -56,6 +56,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # Apply scaling matrix if using precomputed Jacobian
     if jacobian_sf is not None:
         scale_factors = np.load(jacobian_sf)
+        # apply unit scaling for BC elements if optimizing BCs
+        if optimize_bcs:
+            scale_factors = np.append(scale_factors, np.ones(4))
         reps = K_temp.shape[0]
         scaling_matrix = np.tile(scale_factors, (reps, 1))
         K_temp *= scaling_matrix
