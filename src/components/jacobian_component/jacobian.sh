@@ -22,18 +22,29 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
+    if "$CombineJacobianRuns"; then
+	nRuns=$NumJacobianRuns
+
+	# Determine approx. number of CH4 tracers per Jacobian run
+	nTracers=$((nElements/NumJacobianRuns))
+	printf "\n - CombineJacobianRuns activated -\n"
+	printf "\nGenerating $NumJacobianRuns run directories with approx. $nTracers CH4 tracers (reperesenting state vector elements) per run\n"
+    else
+	nRuns=$nElements
+    fi
+
     # Copy run scripts
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
-           -e "s:{END}:${nElements}:g" \
+           -e "s:{END}:${nRuns}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
     if [ $MaxSimultaneousRuns -gt 0 ]; then
 	# Error check
-	if [ $MaxSimultaneousRuns -gt $nElements ]; then
-	    printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nElements}. Please modify MaxSimultenaousRuns in config.yml" 
+	if [ $MaxSimultaneousRuns -gt $nRuns ]; then
+	    printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nRuns}. Please modify MaxSimultenaousRuns in config.yml" 
             exit 9999
 	fi
 	sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
@@ -64,19 +75,28 @@ setup_jacobian() {
                -e "s|MeMo_SOIL_ABSORPTION   :       true|MeMo_SOIL_ABSORPTION   :       false|g" \
                -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
 
+	# Previous line
 	PrevLine='Cat Hier'
+
+	# New line to add after PrevLine
 	NewLine='\
 \
 0 CH4_Emis_Prior ../../prior_run/OutputDir/HEMCO_sa_diagnostics.$YYYY$MM$DD0000.nc EmisCH4_Total $YYYY/$MM/$DD/0 C xy kg/m2/s CH4 - 1 500'
+
+	# Add new line
 	sed -i -e "/$PrevLine/a $NewLine" ${RunTemplate}/HEMCO_Config.rc
     fi
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
-    x=0
+    if "$CombineJacobianRuns"; then
+	x=1
+    else
+	x=0
+    fi
 
     # Create run directory for each state vector element so we can
     # apply the perturbation to each
-    while [ $x -le $nElements ]; do
+    while [ $x -le $nRuns ]; do
 
 	# Current state vector element
 	xUSE=$x
@@ -155,6 +175,60 @@ setup_jacobian() {
             if "$HourlyCH4"; then
 		sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
             fi
+	fi
+
+	if "$CombineJacobianRuns"; then
+
+	    # Determine start and end element numbers for this run directory
+	    if [ $x -eq 0 ]; then
+		start=1
+	    else
+		start=$(( (x-1) * nTracers + (x-1) ))
+	    fi
+	    if [ $x -eq $nRuns ]; then
+		end=$nElements
+	    else
+		end=$(( start + nTracers ))
+	    fi
+
+	    # Initialize previous line
+	    PrevLine='- CH4'
+
+	    # Loop over element numbers for this run and add as CH4 tracers in
+	    # geoschem_config.yml and species_database.yml
+	    for i in $(seq $start $end); do
+
+		if [ $i -lt 10 ]; then
+		    istr="000${i}"
+		elif [ $x -lt 100 ]; then
+		    istr="00${i}"
+		elif [ $x -lt 1000 ]; then
+		    istr="0${i}"
+		else
+		    istr="${i}"
+		fi
+
+		# New line to add after PrevLine (spacing here is intentional)
+		NewLine='\
+      - CH4_'$istr
+
+		# Add new line
+                sed -i -e "/$PrevLine/a $NewLine" geoschem_config.yml
+
+		# Set a new previous line
+		PrevLine='- CH4_'$istr
+
+		# Next line after CH4 entries in species_database.yml
+		NextLine='CHBr3:'
+
+		# New line
+		NewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\  FullName: Methane'
+
+		# Add new lines in species_database.yml
+		sed -i -e "s|$NextLine|$NewLines\n$NextLine|g" species_database.yml
+
+	    done
+
 	fi
 
 	# Create run script from template

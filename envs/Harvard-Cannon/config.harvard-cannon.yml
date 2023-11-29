@@ -121,10 +121,10 @@ SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
 ## Options to speed up the IMI
 UseTotalPriorEmis: true
 CombineJacobianRuns: true
-NumJacobianRuns: 2
+NumJacobianRuns: 4
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: 50
+MaxSimultaneousRuns: -1
 
 ##====================================================================
 ##
