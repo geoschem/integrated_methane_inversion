@@ -44,6 +44,33 @@ setup_jacobian() {
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
 
+    if "$UseTotalPriorEmis"; then
+	printf "\nTurning off emission inventories and using total prior emissions in HEMCO_Config.rc\n"
+
+	# Modify HEMCO_Config.rc to turn off individual emission inventories
+	# and use total emissions saved out from prior emissions simulation
+	# instead
+	# Do this in template run directory to avoid having to repeat for each
+	# Jacobian run directory
+        sed -i -e "s|GHGI_v2_Express_Ext    :       true|GHGI_v2_Express_Ext    :       false|g" \
+               -e "s|Scarpelli_Canada       :       true|Scarpelli_Canada       :       false|g" \
+               -e "s|Scarpelli_Mexico       :       true|Scarpelli_Mexico       :       false|g" \
+               -e "s|GFEIv2                 :       true|GFEIv2                 :       false|g" \
+               -e "s|EDGARv7                :       true|EDGARv7                :       false|g" \
+               -e "s|JPL_WETCHARTS          :       true|JPL_WETCHARTS          :       false|g" \
+               -e "s|SEEPS                  :       true|SEEPS                  :       false|g" \
+               -e "s|RESERVOIRS             :       true|RESERVOIRS             :       false|g" \
+               -e "s|FUNG_TERMITES          :       true|FUNG_TERMITES          :       false|g" \
+               -e "s|MeMo_SOIL_ABSORPTION   :       true|MeMo_SOIL_ABSORPTION   :       false|g" \
+               -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
+
+	PrevLine='Cat Hier'
+	NewLine='\
+\
+0 CH4_Emis_Prior ../../prior_run/OutputDir/HEMCO_sa_diagnostics.$YYYY$MM$DD0000.nc EmisCH4_Total $YYYY/$MM/$DD/0 C xy kg/m2/s CH4 - 1 500'
+	sed -i -e "/$PrevLine/a $NewLine" ${RunTemplate}/HEMCO_Config.rc
+    fi
+
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
 
