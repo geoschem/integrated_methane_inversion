@@ -23,6 +23,11 @@ setup_jacobian() {
     mkdir -p -v jacobian_runs
 
     if "$CombineJacobianRuns"; then
+	if ! "$UseTotalPriorEmis"; then
+	    printf "\nERROR: UseTotalPriorEmis must be true when using CombineJacobianRuns. Please check config.yml.\n"
+	exit 9999
+	fi
+
 	nRuns=$NumJacobianRuns
 
 	# Determine approx. number of CH4 tracers per Jacobian run
@@ -191,11 +196,16 @@ setup_jacobian() {
 		end=$(( start + nTracers ))
 	    fi
 
-	    # Initialize previous line
-	    PrevLine='- CH4'
+	    # Modify restart file entry in HEMCO_Config.rc
+	    sed -i -e "s/SPC_/SPC_CH4/g"  -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
+
+	    # Initialize previous lines to search
+	    GcPrevLine='- CH4'
+	    HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
+	    HcoPrevLine2='CH4 - 1 500'
 
 	    # Loop over element numbers for this run and add as CH4 tracers in
-	    # geoschem_config.yml and species_database.yml
+	    # configuraton files
 	    for i in $(seq $start $end); do
 
 		if [ $i -lt 10 ]; then
@@ -208,24 +218,28 @@ setup_jacobian() {
 		    istr="${i}"
 		fi
 
-		# New line to add after PrevLine (spacing here is intentional)
-		NewLine='\
+		# Add lines to geoschem_config.yml
+		# Spacing in GcNewLine is intentional
+		GcNewLine='\
       - CH4_'$istr
+		sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
+		GcPrevLine='- CH4_'$istr
 
-		# Add new line
-                sed -i -e "/$PrevLine/a $NewLine" geoschem_config.yml
+		# Add lines to species_database.yml
+		SpcNextLine='CHBr3:'
+		SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\  FullName: Methane'
+		sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
-		# Set a new previous line
-		PrevLine='- CH4_'$istr
+		# Add lines to HEMCO_Config.yml
+		HcoNewLine1='\
+* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+		sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
+		HcoPrevLine1='CH4_'$istr' - 1 1'
 
-		# Next line after CH4 entries in species_database.yml
-		NextLine='CHBr3:'
-
-		# New line
-		NewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\  FullName: Methane'
-
-		# Add new lines in species_database.yml
-		sed -i -e "s|$NextLine|$NewLines\n$NextLine|g" species_database.yml
+		HcoNewLine2='\
+0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' - 1 500'
+		sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
+		HcoPrevLine2='CH4_'$istr' - 1 500'
 
 	    done
 
