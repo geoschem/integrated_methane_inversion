@@ -280,11 +280,11 @@ def generate_cluster_pairs(config, sensitivities):
         config, sensitivities, desired_element_num
     )
 
-    # temporarily set the upper bound limit to prevent recursion error 
+    # temporarily set the upper bound limit to prevent recursion error
     # for large domains. python has a default recursion limit of 1000
     limit = sys.getrecursionlimit()
     sys.setrecursionlimit(len(sensitivities))
-    
+
     # determine dofs threshold for each cluster and create cluster pairings
     target_dofs_per_cluster = sum(sensitivities) / desired_element_num
     cluster_pairs = find_cluster_pairs(
@@ -406,10 +406,19 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     # for each agg_level, cluster the data and assign the n_labels
     # with highest total sensitivity to the new label dataset
     for agg_level, n_labels in cluster_pairs:
+        # number of unassigned native resolution elements
         elements_left = np.count_nonzero(labels.values == 0)
 
+        # number of clusters yet to be assigned
+        clusters_left = desired_num_labels - int(labels.max())
+        
+        if clusters_left < n_labels:
+            # if there are fewer clusters left to assign than n_labels
+            # then evenly distribute the remaining clusters
+            # prevents the algorithm from generating one massive cluster
+            out_labels = cluster_data_kmeans(clusters_left, n_labels, mini_batch)
         # clustering for agg_level 1 is just the state vector
-        if agg_level == 1:
+        elif agg_level == 1:
             out_labels = sv.values
         else:
             out_labels = cluster_data_kmeans(
@@ -466,15 +475,15 @@ if __name__ == "__main__":
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
     sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
-    
-    # dynamically generate sensitivities with only a 
+
+    # dynamically generate sensitivities with only a
     # subset of the data if kf_index is not None
     if kf_index is not None:
         print(f"Dynamically generating clusters for period: {kf_index}.")
         sensitivity_args.append(kf_index)
-        
+
     sensitivities = estimate_averaging_kernel(*sensitivity_args)
-    
+
     # force point sources to be high resolution by updating sensitivities
     sensitivities = force_native_res_pixels(
         config, original_clusters["StateVector"], sensitivities
