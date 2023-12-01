@@ -411,12 +411,15 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
 
         # number of clusters yet to be assigned
         clusters_left = desired_num_labels - int(labels.max())
-        
+
         if clusters_left < n_labels:
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
-            out_labels = cluster_data_kmeans(clusters_left, n_labels, mini_batch)
+            out_labels = cluster_data_kmeans(
+                sensi["Sensitivities"].where(labels == 0), clusters_left, mini_batch
+            )
+            n_labels = clusters_left
         # clustering for agg_level 1 is just the state vector
         elif agg_level == 1:
             out_labels = sv.values
