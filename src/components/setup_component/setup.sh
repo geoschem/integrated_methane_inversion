@@ -133,15 +133,15 @@ setup_imi() {
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout 14.2.1
+        git checkout 14.2.3
         git submodule update --init --recursive
         cd ..
     else
         cd GCClassic
-        if grep -Fq "VERSION 14.2.1" CMakeLists.txt; then
+        if grep -Fq "VERSION 14.2.3" CMakeLists.txt; then
             echo "GCClassic already exists and is the correct version."
         else
-            echo "ERROR: GCClassic already exists but is not version 14.2.1."
+            echo "ERROR: GCClassic already exists but is not version 14.2.3."
             exit 1
         fi
         cd ..
