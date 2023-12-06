@@ -144,14 +144,14 @@ create_simulation_dir() {
     if [ "$x" = "background" ]; then
         # TODO: OH_pert_factor sed will be unnecessary once geoschem Emissions logical is fixed
         # until  then we remove the OH_pert_factor line and add it back in before at line 877
-        sed -i '/2 OH_pert_factor  1.0 - - - xy 1 1/d' HEMCO_Config.rc
+        # sed -i '/2 OH_pert_factor  1.0 - - - xy 1 1/d' HEMCO_Config.rc
         sed -i -e 's/EMISSIONS              :       true/EMISSIONS              :       false/g' \
                -e 's/GFED                   : on    CH4/GFED                   : off    CH4/g'  HEMCO_Config.rc
         
         # TODO: remove this hack once geoschem Emissions logical is fixed
-        echo '2 OH_pert_factor  1.0 - - - xy 1 1' > add.txt
-        sed -i -e '877r add.txt' HEMCO_Config.rc
-        rm add.txt
+        # echo '2 OH_pert_factor  1.0 - - - xy 1 1' > add.txt
+        # sed -i -e '877r add.txt' HEMCO_Config.rc
+        # rm add.txt
     fi
 
 	# Create run script from template
