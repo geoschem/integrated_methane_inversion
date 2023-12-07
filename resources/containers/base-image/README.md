@@ -8,7 +8,7 @@ Dockerfiles contain a list of instructions to build an image with the necessary 
 [Docker](https://www.docker.com/) must be installed to run or build IMI docker containers.
 
 ## Building the Docker image 
-To build the docker image, cd into the benchmarks/environments/ directory and run
+To build the docker image, cd into the resources/containers/base-image directory and run
 `$ docker build -t imi-base-image . --platform=linux/amd64`
 The `--platform=linux/amd64` flag specifies the architecture to mimic while building and ensures consistent builds regardless of whether the build is done on an arm system (apple silicon) or amd system (intel).
 
