@@ -335,20 +335,20 @@ if __name__ == "__main__":
     A = out[5]
 
     # Save results
-    # dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")
-    # nvar = dataset.createDimension("nvar", n_elements + 1)
-    # nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar", "nvar"))
-    # nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar"))
-    # nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar"))
-    # nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar"))
-    # nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar", "nvar"))
-    # nc_A = dataset.createVariable("A", np.float32, ("nvar", "nvar"))
-    # nc_KTinvSoK[:, :] = KTinvSoK
-    # nc_KTinvSoyKxA[:] = KTinvSoyKxA
-    # nc_ratio[:] = ratio
-    # nc_xhat[:] = xhat
-    # nc_S_post[:, :] = S_post
-    # nc_A[:, :] = A
-    # dataset.close()
+    dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")
+    nvar = dataset.createDimension("nvar", n_elements + 1)
+    nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar", "nvar"))
+    nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar"))
+    nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar"))
+    nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar"))
+    nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar", "nvar"))
+    nc_A = dataset.createVariable("A", np.float32, ("nvar", "nvar"))
+    nc_KTinvSoK[:, :] = KTinvSoK
+    nc_KTinvSoyKxA[:] = KTinvSoyKxA
+    nc_ratio[:] = ratio
+    nc_xhat[:] = xhat
+    nc_S_post[:, :] = S_post
+    nc_A[:, :] = A
+    dataset.close()
 
-    # print(f"Saved results to {output_path}")
+    print(f"Saved results to {output_path}")
