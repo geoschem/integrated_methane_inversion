@@ -1,5 +1,10 @@
 # Description: Script to perform inversion using lognormal errors
-# Usage: python lognormal_invert.py <path_to_config_file> <path_to_state_vector_file>
+# Usage: python lognormal_invert.py <path_to_config_file> <path_to_state_vector_file> <jacobian_sf>
+# Inputs:
+#       path_to_config_file: path to yaml config file
+#       path_to_state_vector_file: path to state vector netcdf file
+#       jacobian_sf: (optional) path to numpy array of scale factors for jacobian
+
 
 # TODO: merge this script with invert.py to avoid redundancy
 # This script performs the inversion but using lognormal
@@ -22,8 +27,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
         Outputs inversion results to netcdf files.
     Arguments:
-        state_vector_filepath [String] : path to state vector netcdf file
         config                [Dict]   : dictionary of config variables
+        state_vector_filepath [String] : path to state vector netcdf file
+        jacobian_sf           [String] : path to numpy array of scale factors
     """
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector["StateVector"]
@@ -67,6 +73,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # K_ROI is the matrix for the lognormal elements (the region of interest)
     K_ROI = K_temp[:, :-num_normal_elems]
     K_normal = K_temp[:, -num_normal_elems:]
+    K_full = np.concatenate((K_ROI, K_normal), axis=1)
 
     # get the So matrix
     ds = np.load("so_super.npz")
@@ -80,14 +87,13 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         np.swapaxes(y, 0, 1),
         np.swapaxes(y_ybkg_diff, 0, 1),
     )
-    K_full = np.concatenate((K_ROI, K_normal), axis=1)
 
     # fixed kappa of 10 following Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
     kappa = 10
     m, n = np.shape(K_ROI)
 
     # Create base xa and lnxa matrices
-    # Note: the resulting xa matrix has lognormal elements until the final bc elements
+    # Note: the resulting xa vector has lognormal elements until the final bc elements
     xa = np.ones((n, 1)) * 1.0
     lnxa = np.log(xa)
     xa_normal = np.zeros((num_normal_elems, 1)) * 1.0

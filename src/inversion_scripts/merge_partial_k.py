@@ -8,6 +8,28 @@ from src.inversion_scripts.utils import load_obj, calculate_superobservation_err
 
 
 def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, background=False):
+    """
+    Description:
+        This function is used to generate the full jacobian matrix (K), observations (y),
+        background vector, and observational error (So) for the lognormal inversion.
+        
+        The normal inversion script of the IMI reads in the jacobian matrix, observations,
+        and observational error piece by piece in order to avoid loading the full jacobian 
+        matrix into memory (which can be quite large). The lognormal inversion script
+        requires the full form of these variables to iteratively solve for the posterior.
+        Here we load in the partial jacobian matrices and observations from each satellite
+        data file and concatenate them into the full jacobian matrix and observation vector,
+        for use in the lognormal inversion script. We also calculate the observational error
+        and background vector.
+    
+    Parameters:
+        satdat_dir  [str]: path to directory containing satellite data files
+        lat_bounds [list]: list of latitude bounds to consider each bound is a tuple
+        lon_bounds [list]: list of longitude bounds to consider each bound is a tuple
+        obs_err   [float]: default observational error value
+        background [bool]: whether to return only the background vector
+    
+    """
     # Get observed and GEOS-Chem-simulated TROPOMI columns
     files = [f for f in np.sort(os.listdir(satdat_dir)) if "TROPOMI" in f]
     # lat = np.array([])
