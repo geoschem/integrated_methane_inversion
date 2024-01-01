@@ -219,17 +219,8 @@ run_jacobian() {
             precomputedJacobianCachePrefix=${ReferenceRunDir}/inversion
         fi
 
-        precomputedJacobianCacheNormal=${precomputedJacobianCachePrefix}/data_converted
-        precomputedJacobianCacheLognormal=${precomputedJacobianCachePrefix}/data_converted_background
-        
-        if [ -d $precomputedJacobianCacheNormal ]; then
-            ln -s $precomputedJacobianCacheNormal data_converted_reference
-        fi
-
-        if [ -d $precomputedJacobianCacheLognormal ]; then
-            ln -s $precomputedJacobianCacheLognormal data_converted_reference_background
-        fi
-
+        precomputedJacobianCache=${precomputedJacobianCachePrefix}/data_converted
+        ln -s $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
         cd ${JacobianRunsDir}

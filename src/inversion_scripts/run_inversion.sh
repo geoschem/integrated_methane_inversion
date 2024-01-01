@@ -118,16 +118,17 @@ fi
 # Setup GC data directory in workdir
 #=======================================================================
 
-GCsourcepth="${PriorRunDir}/OutputDir"
+if "$LognormalErrors"; then
+    # for lognormal errors we use the clean background run
+    GCsourcepth="${BackgroundRunDir}/OutputDir"
+else
+    # for normal errors we use the prior run
+    GCsourcepth="${PriorRunDir}/OutputDir"
+fi
 
 printf "Calling setup_gc_cache.py\n"
 python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
-
-# for lognormal errors we use the clean background run
-if "$LognormalErrors"; then
-    python setup_gc_cache.py $StartDate $EndDate "${BackgroundRunDir}/OutputDir" "./data_geoschem_background"; wait
-fi
 
 #=======================================================================
 # Generate Jacobian matrix files 
@@ -146,7 +147,7 @@ else
 
 fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian $LognormalErrors; wait
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
 printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
@@ -166,8 +167,8 @@ fi
 
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
-    python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError "false"
-    python merge_partial_k.py "${JacobianDir}_background" $StateVectorFile $ObsError "true"
+    python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError
+    
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
     python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
