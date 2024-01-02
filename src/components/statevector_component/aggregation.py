@@ -217,7 +217,7 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
         Returns the maximum aggregation level based on the number of desired
         elements and the resolution. By default, if there are enough elements
         we default to using a max aggregation level corresponding to a 8x10
-        grid cell.
+        grid cell (for global).
     arguments:
         config             {dict} : imi config file
         sensitivities    [double] : list of avging kernel senstivities
@@ -227,9 +227,9 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     if config["Res"] == "2.0x2.5":
         max_aggregation_level = 16 # Setting background to 8x10 for global
     elif config["Res"] == "0.25x0.3125":
-        max_aggregation_level = 1024
-    elif config["Res"] == "0.5x0.625":
         max_aggregation_level = 256
+    elif config["Res"] == "0.5x0.625":
+        max_aggregation_level = 64
 
     background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level)
     if background_elements_needed > desired_element_num:
@@ -240,7 +240,7 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
         # if there are too few clusters then we set the max aggregation level
         # to either total_native_elements/8 or total_native_elements
         denominator = 8 if desired_element_num > 8 else 1
-        max_aggregation_level = np.ceil(len(sensitivities) / denominator).astype(int)
+        max_aggregation_level = np.ceil(len(sensitivities) / denominator)
         print(
             f"Max aggregation level set to: {max_aggregation_level} elements in a cluster"
         )
@@ -282,13 +282,13 @@ def generate_cluster_pairs(config, sensitivities):
         config, sensitivities, desired_element_num
     )
 
-    # temporarily set the upper bound limit to prevent recursion error 
+    # temporarily set the upper bound limit to prevent recursion error
     # for large domains. python has a default recursion limit of 1000
     limit = sys.getrecursionlimit()
     sys.setrecursionlimit(len(sensitivities))
 
     # determine dofs threshold for each cluster and create cluster pairings
-    target_dofs_per_cluster = sum(sensitivities) / desired_element_num # hardcode
+    target_dofs_per_cluster = sum(sensitivities) / desired_element_num # alternatively hardcode
     print(f"Sum of sensitivities is {sum(sensitivities)}.")
     print(f"Target DOFS per cluster is {target_dofs_per_cluster}.") # make higher threshold to get more aggregated elements
     cluster_pairs = find_cluster_pairs(
@@ -298,7 +298,7 @@ def generate_cluster_pairs(config, sensitivities):
         max_aggregation_level,
     )
     sys.setrecursionlimit(limit)
-    
+
     # put cluster pairs into format expected by clustering algorithm
     cluster_pairs = list(cluster_pairs.items())
     print(f"Generated cluster pairings: {cluster_pairs}")
@@ -416,10 +416,22 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     # for each agg_level, cluster the data and assign the n_labels
     # with highest total sensitivity to the new label dataset
     for agg_level, n_labels in cluster_pairs:
+        # number of unassigned native resolution elements
         elements_left = np.count_nonzero(labels.values == 0)
 
+        # number of clusters yet to be assigned
+        clusters_left = desired_num_labels - int(labels.max())
+
+        if clusters_left < n_labels:
+            # if there are fewer clusters left to assign than n_labels
+            # then evenly distribute the remaining clusters
+            # prevents the algorithm from generating one massive cluster
+            out_labels = cluster_data_kmeans(
+                sensi["Sensitivities"].where(labels == 0), clusters_left, mini_batch
+            )
+            n_labels = clusters_left
         # clustering for agg_level 1 is just the state vector
-        if agg_level == 1:
+        elif agg_level == 1:
             out_labels = sv.values
         else:
             out_labels = cluster_data_kmeans(
@@ -476,15 +488,15 @@ if __name__ == "__main__":
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
     sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
-    
-    # dynamically generate sensitivities with only a 
+
+    # dynamically generate sensitivities with only a
     # subset of the data if kf_index is not None
     if kf_index is not None:
         print(f"Dynamically generating clusters for period: {kf_index}.")
         sensitivity_args.append(kf_index)
-        
+
     sensitivities = estimate_averaging_kernel(*sensitivity_args)
-    
+
     # force point sources to be high resolution by updating sensitivities
     sensitivities = force_native_res_pixels(
         config, original_clusters["StateVector"], sensitivities
