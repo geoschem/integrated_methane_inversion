@@ -72,7 +72,7 @@ StateVectorFile: "/home/al2/integrated_methane_inversion/resources/statevectors/
 ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError is a relative percentage 
+## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
 ## and PriorErrorBCs is in ppb
 ## PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false

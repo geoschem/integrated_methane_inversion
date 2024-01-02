@@ -155,6 +155,12 @@ run_period() {
         fi
         ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${xstr}/Restarts/.
     done
+
+    # Also link to posterior restart file in background directory if using lognormal errors
+    if "$LognormalErrors"; then
+        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
+    fi
+    
     echo "Copied posterior restart to $((x-1)) Jacobian run directories for next iteration"
 
     cd ${InversionPath}

@@ -14,9 +14,7 @@ setup_inversion() {
     cd ${OutputPath}/$RunName
     mkdir -p -v inversion
     mkdir -p inversion/data_converted
-    mkdir -p inversion/data_converted_background
     mkdir -p inversion/data_geoschem
-    mkdir -p inversion/data_geoschem_background
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
