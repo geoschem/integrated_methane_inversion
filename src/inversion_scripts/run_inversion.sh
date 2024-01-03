@@ -2,7 +2,6 @@
 
 #SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
-#SBATCH -e run_inversion_%j.err
 
 ##=======================================================================
 ## Parse config.yml file
@@ -95,7 +94,10 @@ else
 
     # Only postprocess the Prior simulation
     python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
-
+    if "$LognormalErrors"; then
+        # for lognormal errors we need to postprocess the background run too
+        python postproc_diags.py $RunName $BackgroundRunDir $PrevDir $StartDate; wait
+    fi
 fi
 printf "DONE -- postproc_diags.py\n\n"
 
@@ -168,7 +170,7 @@ fi
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
     python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError
-    
+
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
     python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
