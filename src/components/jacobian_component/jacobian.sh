@@ -239,6 +239,17 @@ run_jacobian() {
                 -W run_prior_simulation.sh; wait;
         printf "=== DONE PRIOR SIMULATION ===\n"
 
+        # Run the background simulation if lognormal errors enabled
+        if "$LognormalErrors"; then
+            printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
+            sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W run_bkgd_simulation.sh; wait;
+            printf "=== DONE BACKGROUND SIMULATION ===\n"
+        fi
+
         # Get Jacobian scale factors
         python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir; wait
         printf "Got Jacobian scale factors\n"
