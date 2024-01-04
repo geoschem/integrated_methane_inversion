@@ -33,9 +33,13 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
                                  output is missing data; e.g., "20180501"
     """
 
-    # List run directories
+    # Get list of run directories
     contents = os.listdir(run_dirs_pth)
-    rundirs = [r for r in contents if run_name in r]
+    rundirs = [
+        r
+        for r in contents
+        if run_name in r and os.path.isdir(os.path.join(run_dirs_pth, r))
+    ]
 
     # Process them
     def process(r):
@@ -130,7 +134,10 @@ if __name__ == "__main__":
     prev_run_pth = sys.argv[3]
     start_day = sys.argv[4]
 
-    if "posterior" in run_dirs_pth or "0000" in run_dirs_pth:
+    # Check if this is a posterior run, background run, or prior run
+    accepted_rundirs = ("posterior_run", f"{run_name}_0000", f"{run_name}_background")
+    
+    if run_dirs_pth.endswith((accepted_rundirs)):
         fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day)
     else:
         fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day)
