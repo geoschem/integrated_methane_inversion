@@ -24,6 +24,9 @@ spack load $SpackCompiler
 spack env activate $SpackEnvironmentName
 spack install --fail-fast --show-log-on-error
 spack clean --all
+
+# garbage collector to reduce the size of spack install
+spack gc -Ey
       
 # AutomaticallyLoadEnvironmentOnLogin
 echo spack env activate $SpackEnvironmentName >> /etc/bashrc
