@@ -44,6 +44,52 @@ def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cov
 
     return compatible
 
+def cluster_buffer_elements(data, num_clusters, offset):
+    """
+    Description:
+        Cluster all 0 valued elements in dataarray into desired num clusters
+    arguments:
+        data       [][]dataarray : xarrray sensitivity data
+        num_clusters         int : number of labels to assign data to
+        offset              bool : offset labels by this integer value
+    Returns:       [][]dataarray : labeled data
+    """
+    # Get the latitude and longitude coordinates as separate arrays
+    latitudes = data.coords["lat"].values
+    longitudes = data.coords["lon"].values
+    
+    data_copy = data.copy()
+
+    # Get the sensitivity values as a 1D array
+    Z = data.values.flatten()
+    # labels shape for later
+    # labels = np.zeros(Z.shape)
+    valid_indices = np.where(Z == 0)[0] 
+
+    # Flatten the latitude and longitude arrays into a 2D grid
+    # only keeping valid indices
+    X, Y = np.meshgrid(longitudes, latitudes)
+    X = X.flatten()[valid_indices]
+    Y = Y.flatten()[valid_indices]
+    
+    # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
+    features = np.column_stack((X, Y))
+
+    # Cluster the features using KMeans
+    # Mini-Batch k-means is much faster, but with less accuracy
+    kmeans = KMeans(n_clusters=num_clusters, random_state=0)
+
+    cluster_labels = kmeans.fit_predict(features)
+
+    # fill labels on corresponding valid indices of label array
+    # adjust labels by offset + 1
+    Z[valid_indices] = cluster_labels + offset + 1
+
+    # reconstruct 2D grid
+    # cluster_labels = Z.reshape(data.shape)
+    data_copy.values = Z.reshape(data.shape)
+    return data_copy
+
 
 def make_state_vector_file(
     config_path,
@@ -85,7 +131,8 @@ def make_state_vector_file(
     hd = xr.load_dataset(hemco_diag_pth)
 
     # Require hemco diags on same global grid as land cover map
-    hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
+    if np.abs(lc.lon.values - hd.lon.values).max() != 0:
+        hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
 
     # Select / group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
@@ -126,7 +173,7 @@ def make_state_vector_file(
     statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
     # Also set pixels over water to 0, unless there are offshore emissions
-    if land_threshold:
+    if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
         land = lc.where((lc > land_threshold) | (hd > emis_threshold))
         statevector.values[land.isnull().values] = -9999
@@ -138,31 +185,7 @@ def make_state_vector_file(
 
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
-    buffer_area = statevector.values == 0
-
-    # Get image coordinates of all pixels in buffer area
-    irows = np.arange(buffer_area.shape[0])
-    icols = np.arange(buffer_area.shape[1])
-    irows = np.transpose(np.tile(irows, (len(icols), 1)))
-    icols = np.tile(icols, (len(irows), 1))
-    irows_good = irows[buffer_area > 0]
-    icols_good = icols[buffer_area > 0]
-    coords = [[icols_good[j], irows_good[j]] for j in range(len(irows_good))]
-
-    # K-means
-    X = np.array(coords)
-    kmeans = KMeans(n_clusters=k_buffer_clust, random_state=0).fit(X)
-
-    # Assign pixels to state vector
-    highres_statevector_max = np.nanmax(statevector.values)
-    n_rows = statevector.shape[0]
-    n_cols = statevector.shape[1]
-    for r in range(n_rows):
-        for c in range(n_cols):
-            if statevector[r, c].values == 0:
-                statevector[r, c] = (
-                    kmeans.predict([[c, r]])[0] + 1 + highres_statevector_max
-                )
+    statevector = cluster_buffer_elements(statevector, k_buffer_clust, statevector.max().item())
     # -------------------------------------------------------------------------
 
     # Make dataset
