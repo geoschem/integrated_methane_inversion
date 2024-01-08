@@ -131,8 +131,12 @@ def make_state_vector_file(
     hd = xr.load_dataset(hemco_diag_pth)
 
     # Require hemco diags on same global grid as land cover map
-    if np.abs(lc.lon.values - hd.lon.values).max() != 0:
-        hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
+    # TODO remove this offset once the HEMCO standalone files 
+    # are regenerated with recent bugfix that corrects the offset
+    if config["Res"] == "0.25x0.3125":
+             hd["lon"] = hd["lon"] - 0.03125
+    elif config["Res"] == "0.5x0.625":
+             hd["lon"] = hd["lon"] - 0.0625
 
     # Select / group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
