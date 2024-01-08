@@ -155,7 +155,7 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    nElements=$(ncmax StateVector ${RunDirs}/NativeStateVector_test.nc)
     if "$OptimizeBCs"; then
 	nElements=$((nElements+4))
     fi
