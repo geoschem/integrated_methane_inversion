@@ -86,10 +86,11 @@ def make_state_vector_file(
     hd = xr.load_dataset(hemco_diag_pth)
 
     # Require hemco diags on same global grid as land cover map
-    hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
+    if np.abs(lc.lon.values - hd.lon.values).max() != 0: #JDE add a check
+        hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
 
-    # Select / group fields together, set ice fraction > 0.5 to NaN
-    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"].where(lc["FRLANDIC"] < 0.5,drop=True)).drop("time").squeeze()
+    # Select / group fields together based on land and ice threshold, above threshold is set to NaN
+    lc = (lc["FRLAKE"] + lc["FRLAND"].where(lc["FRLAND"]>0.01,drop=True) + lc["FRLANDIC"].where(lc["FRLANDIC"] < 0.1,drop=True)).drop("time").squeeze()
     # lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
@@ -128,7 +129,9 @@ def make_state_vector_file(
     hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
 
     # Initialize state vector from land cover, replacing all values with NaN (to be filled later)
-    statevector = lc.where(lc == -9999.0)
+   # statevector = lc.where(lc == -9999.0)
+    statevector = lc.copy(deep = True)
+    statevector[:] = np.nan
 
     # Set pixels in buffer areas to 0
     if is_regional:
@@ -136,10 +139,7 @@ def make_state_vector_file(
         statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
     # Also set pixels over water to 0, unless there are offshore emissions
-    if land_threshold:
-        # Where there is ice fraction > 0.5, replace with 0 (e.g. Greenland)
-        ice = xr.ufuncs.isnan(lc)
-        statevector.values[ice.values] = 0
+    if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
         land = lc.where((lc > land_threshold) | (hd > emis_threshold))
         statevector.values[land.isnull().values] = 0
@@ -202,40 +202,6 @@ def make_state_vector_file(
                 v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
             },
         )
-
-    # if not is_regional:
-
-    #     # Postprocessing: Open the state vector file
-    #     state_vector_filepath = './NativeStateVector_test.nc'
-    #     state_vector = xr.load_dataset(state_vector_filepath)
-
-    #     # make Greenland/large ice-covered region coordinates NaN
-    #     lc_orig = xr.load_dataset(land_cover_pth)
-    #     lc_orig = lc_orig.isel(lon=lc_orig.lon >= lon_min_inv_domain, lat=lc_orig.lat >= lat_min_inv_domain)
-    #     lc_orig = lc_orig.isel(lon=lc_orig.lon <= lon_max_inv_domain, lat=lc_orig.lat <= lat_max_inv_domain)
-    #     mask = lc_orig["FRLANDIC"].values < 0.5
-    #     state_vector["StateVector"].values[~mask[0]] = np.nan
-
-    #     ds_statevector = state_vector["StateVector"].to_dataset()
-
-    #     # Add attribute metadata
-    #     ds_statevector.lat.attrs["units"] = "degrees_north"
-    #     ds_statevector.lat.attrs["long_name"] = "Latitude"
-    #     ds_statevector.lon.attrs["units"] = "degrees_east"
-    #     ds_statevector.lon.attrs["long_name"] = "Longitude"
-    #     ds_statevector.StateVector.attrs["units"] = "none"
-    #     ds_statevector.StateVector.attrs["missing_value"] = -9999
-    #     ds_statevector.StateVector.attrs["_FillValue"] = -9999
-
-    #     # Save
-    #     if save_pth is not None:
-    #         print("Saving file {}".format(save_pth))
-    #         ds_statevector.to_netcdf(
-    #             save_pth,
-    #             encoding={
-    #                 v: {"zlib": True, "complevel": 9} for v in ds_statevector.data_vars
-    #             },
-    #         )
 
     return ds_statevector
 
