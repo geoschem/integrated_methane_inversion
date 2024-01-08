@@ -198,6 +198,8 @@ cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
 cd $InversionPath
-python src/utilities/s3_upload.py $ConfigFile
+if "$S3Upload"; then
+    python src/utilities/s3_upload.py $ConfigFile
+fi
 
 exit 0

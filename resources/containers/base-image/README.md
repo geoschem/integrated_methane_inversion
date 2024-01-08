@@ -2,13 +2,13 @@
 This directory contains the files necessary to build a docker image with all the necessary dependencies for running the IMI. The build time for this image takes a long time to build the spack dependencies, so it is meant to contain the software dependencies that take significant time to build and are not regularly updated (gcc, esmf, conda, etc). This is then used as a base-image for the imi Dockerfile, which adds the relevant imi source code to the image.
 
 # Dockerfile
-Dockerfiles contain a list of instructions to build an image with the necessary dependencies preinstalled. The Dockerfile starts with the amazonlinux:2 image available on dockerhub -- this image already contains the aws-cli. The Dockerfile then runs several installation scripts (located in the install-scripts/ directory) to install conda, spack, slurm, and any other necessary dependencies
+Dockerfiles contain a list of instructions to build an image with the necessary dependencies preinstalled. The Dockerfile starts with the amazonlinux:2 image available on dockerhub -- this image already contains the aws-cli. The Dockerfile then runs several installation scripts (located in the install-scripts/ directory) to install micromamba (conda), spack, slurm, and any other necessary dependencies
 
 ## Prerequisites
 [Docker](https://www.docker.com/) must be installed to run or build IMI docker containers.
 
 ## Building the Docker image 
-To build the docker image, cd into the benchmarks/environments/ directory and run
+To build the docker image, cd into the resources/containers/base-image directory and run
 `$ docker build -t imi-base-image . --platform=linux/amd64`
 The `--platform=linux/amd64` flag specifies the architecture to mimic while building and ensures consistent builds regardless of whether the build is done on an arm system (apple silicon) or amd system (intel).
 

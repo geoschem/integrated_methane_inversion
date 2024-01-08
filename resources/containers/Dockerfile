@@ -12,11 +12,6 @@ RUN mkdir /home/al2/imi_output_dir && mkdir /home/al2/ExtData
 # add imi source code to base image
 ADD ./ /home/al2/integrated_methane_inversion
 
-# add geoschem
-RUN git clone https://github.com/geoschem/GCClassic.git /home/al2/integrated_methane_inversion/GCClassic \
-    && cd /home/al2/integrated_methane_inversion/GCClassic \
-    && git checkout 14.0.2 && git submodule update --init --recursive
-
 # make imi run scripts executable
 RUN chmod -R +x /home/al2/integrated_methane_inversion/
 
