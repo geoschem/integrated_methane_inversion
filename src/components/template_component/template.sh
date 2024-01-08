@@ -71,9 +71,6 @@ setup_template() {
                -e "s:-90.0, 90.0:${Lats}:g" geoschem_config.yml
     fi
 
-    # For CH4 inversions always turn analytical inversion on
-    sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
-
     # Also turn on analytical inversion option in HEMCO_Config.rc
     OLD="--> AnalyticalInv          :       false"
     NEW="--> AnalyticalInv          :       true "
@@ -140,6 +137,9 @@ setup_template() {
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
 
+    # Copy input file for applying emissions perturbations via HEMCO
+    cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
+    
     # Compile GEOS-Chem and store executable in template run directory
     printf "\nCompiling GEOS-Chem...\n"
     cd build

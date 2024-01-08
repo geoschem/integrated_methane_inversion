@@ -67,7 +67,7 @@ ForcedNativeResolutionElements:
   - [31.5, -104]
 
 ## Custom state vector
-StateVectorFile: "/n/home05/msulprizio/S/Test_IMI/StateVector.nc"
+StateVectorFile: "/n/holyscratch01/jacob_lab/$USER/Test_IMI/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
@@ -89,6 +89,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
@@ -97,8 +98,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
-DoPriorEmis: false
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 DoInversion: false

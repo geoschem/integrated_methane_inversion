@@ -61,35 +61,16 @@ setup_jacobian() {
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
 
     if "$UseTotalPriorEmis"; then
-	printf "\nTurning off emission inventories and using total prior emissions in HEMCO_Config.rc\n"
+	printf "\nTurning on use of total prior emissions in HEMCO_Config.rc. This will ignore all other emission inventories.\n"
 
 	# Modify HEMCO_Config.rc to turn off individual emission inventories
 	# and use total emissions saved out from prior emissions simulation
 	# instead
 	# Do this in template run directory to avoid having to repeat for each
 	# Jacobian run directory
-        sed -i -e "s|GHGI_v2_Express_Ext    :       true|GHGI_v2_Express_Ext    :       false|g" \
-               -e "s|Scarpelli_Canada       :       true|Scarpelli_Canada       :       false|g" \
-               -e "s|Scarpelli_Mexico       :       true|Scarpelli_Mexico       :       false|g" \
-               -e "s|GFEIv2                 :       true|GFEIv2                 :       false|g" \
-               -e "s|EDGARv7                :       true|EDGARv7                :       false|g" \
-               -e "s|JPL_WETCHARTS          :       true|JPL_WETCHARTS          :       false|g" \
-               -e "s|SEEPS                  :       true|SEEPS                  :       false|g" \
-               -e "s|RESERVOIRS             :       true|RESERVOIRS             :       false|g" \
-               -e "s|FUNG_TERMITES          :       true|FUNG_TERMITES          :       false|g" \
-               -e "s|MeMo_SOIL_ABSORPTION   :       true|MeMo_SOIL_ABSORPTION   :       false|g" \
+        sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
+	       -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
                -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
-
-	# Previous line
-	PrevLine='Cat Hier'
-
-	# New line to add after PrevLine
-	NewLine='\
-\
-0 CH4_Emis_Prior ../../prior_run/OutputDir/HEMCO_sa_diagnostics.$YYYY$MM$DD0000.nc EmisCH4_Total $YYYY/$MM/$DD/0 C xy kg/m2/s CH4 - 1 500'
-
-	# Add new line
-	sed -i -e "/$PrevLine/a $NewLine" ${RunTemplate}/HEMCO_Config.rc
     fi
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
@@ -203,7 +184,9 @@ setup_jacobian() {
 	    GcPrevLine='- CH4'
 	    HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
 	    HcoPrevLine2='CH4 - 1 500'
-
+	    HcoPrevLine3='Perturbations.txt - - - xy count 1'
+	    PertPrevLine='DEFAULT    0     1.0'
+	    
 	    # Loop over element numbers for this run and add as CH4 tracers in
 	    # configuraton files
 	    for i in $(seq $start $end); do
@@ -218,6 +201,10 @@ setup_jacobian() {
 		    istr="${i}"
 		fi
 
+		# Start HEMCO scale factor ID at 2000 to avoid conflicts with
+		# preexisting scale factors/masks
+		SFnum=$((2000 + i))
+
 		# Add lines to geoschem_config.yml
 		# Spacing in GcNewLine is intentional
 		GcNewLine='\
@@ -227,7 +214,7 @@ setup_jacobian() {
 
 		# Add lines to species_database.yml
 		SpcNextLine='CHBr3:'
-		SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\  FullName: Methane'
+		SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
 		sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
 		# Add lines to HEMCO_Config.yml
@@ -237,10 +224,21 @@ setup_jacobian() {
 		HcoPrevLine1='CH4_'$istr' - 1 1'
 
 		HcoNewLine2='\
-0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' - 1 500'
+0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
 		sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-		HcoPrevLine2='CH4_'$istr' - 1 500'
+		HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
 
+		HcoNewLine3='\
+'$SFnum' SCALE_ELEM_'$istr' Perturbations.txt - - - xy count 1'
+		sed -i "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
+		HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations.txt - - - xy count 1'
+
+		# Add lines to Perturbations.txt
+		PertNewLine='\
+ELEM_'$istr'  '$SFnum'  1.5'
+		sed -i "/$PertPrevLine/a $PertNewLine" Perturbations.txt
+		PertPrevLine='ELEM_'$istr'  '$SFnum'  1.5'
+		
 	    done
 
 	fi
@@ -284,11 +282,6 @@ run_jacobian() {
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
 
         cd ${RunDirs}/jacobian_runs
-
-        if ! "$isAWS"; then
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${GEOSChemEnv} 
-        fi
 
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
