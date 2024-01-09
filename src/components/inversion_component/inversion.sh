@@ -93,7 +93,6 @@ run_inversion() {
 # Usage:
 #   run_notebooks
 run_notebooks() {
-    config_path=${InversionPath}/${ConfigFile}
     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
@@ -101,7 +100,7 @@ run_notebooks() {
         cd ${RunDirs}/inversion
     fi
     # replace config file path in viz notebook
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$config_path'|g' visualization_notebook.ipynb
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' visualization_notebook.ipynb
     jupyter nbconvert --execute --to html visualization_notebook.ipynb
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }

@@ -96,7 +96,6 @@ run_preview() {
         ./${RunName}_Preview.run
     fi
     # Run preview script
-    config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
     tropomi_cache=${RunDirs}/data_TROPOMI
@@ -110,9 +109,9 @@ run_preview() {
         -c $SimulationCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
-        -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache; wait;
     else
-        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+        python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
