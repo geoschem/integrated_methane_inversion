@@ -155,14 +155,14 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    nElements=$(ncmax StateVector ${RunDirs}/NativeStateVector_test.nc)
+    nElements=$(ncmax StateVector ${RunDirs}/NativeStateVector.nc)
     if "$OptimizeBCs"; then
 	nElements=$((nElements+4))
     fi
     if "$OptimizeOH";then
 	nElements=$((nElements+1))
     fi
-    printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
+    printf "\nNumber of native state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)

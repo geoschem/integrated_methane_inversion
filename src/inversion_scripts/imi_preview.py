@@ -27,6 +27,7 @@ from src.inversion_scripts.utils import (
     filter_tropomi,
     filter_blended,
     calculate_area_in_km,
+    calculate_superobservation_error,
 )
 from joblib import Parallel, delayed
 from src.inversion_scripts.operators.TROPOMI_operator import (
@@ -125,7 +126,7 @@ def imi_preview(
 
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
-        config, state_vector_path, preview_dir, tropomi_cache, preview=True
+        config, state_vector_path, preview_dir, tropomi_cache, preview=True, kf_index=None
     )
     mask = state_vector_labels <= last_ROI_element
 
@@ -539,9 +540,15 @@ def estimate_averaging_kernel(
     # Estimate information content
     # ----------------------------------
 
+    time_delta = enddate_np64 - startdate_np64
+    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
+    total_obs = np.sum(num_obs)
+    print(f"num days = {num_days}")
+    print(f"total obs = {total_obs}")
+
     # State vector, observations
     emissions = np.array(emissions)
-    m = np.array(num_obs)  # Number of observations per state vector element
+    m = np.array(num_days)  # Number of observations per state vector element (MH change: needs to be observation days)
     L = np.array(L)
 
     # If Kalman filter mode, count observations per inversion period
@@ -569,16 +576,22 @@ def estimate_averaging_kernel(
         L, 2
     )  # kg/m2/s from kg/s, per element
 
-    time_delta = enddate_np64 - startdate_np64
-    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
-
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
     sO = config["ObsError"] * 1e-9
 
+    # Calculate superobservation error to use in averaging kernel sensitivity equation
+    # from total obs = m days * n grid cells * P
+    n = config["NumberOfElements"]
+    P = total_obs / (num_days * n)
+    print(f"P = {P}")
+    s_super = calculate_superobservation_error(sO, P)
+    s_super = s_super * 1e-9 # unit conversion
+    print(f"superobservation error = {s_super}")
+
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (sO / k) ** 2 / m)
+    a = sA**2 / (sA**2 + (s_super / k) ** 2 / m) # MH: m is number of days
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
