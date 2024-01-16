@@ -542,9 +542,6 @@ def estimate_averaging_kernel(
 
     time_delta = enddate_np64 - startdate_np64
     num_days = np.round((time_delta) / np.timedelta64(1, "D"))
-    total_obs = np.sum(num_obs)
-    print(f"num days = {num_days}")
-    print(f"total obs = {total_obs}")
 
     # State vector, observations
     emissions = np.array(emissions)
@@ -558,7 +555,8 @@ def estimate_averaging_kernel(
         n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-        m = n_obs_per_period  # Number of obs per inversion period, per element
+        # m = n_obs_per_period  # Number of obs per inversion period, per element 
+        m = config["UpdateFreqDays"] # MH: change to number of days in inversion period
 
     print("\n" + outstring2)
 
@@ -578,20 +576,19 @@ def estimate_averaging_kernel(
 
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
-    sO = config["ObsError"] * 1e-9
+    sO = config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
-    # from total obs = m days * n grid cells * P
-    n = config["NumberOfElements"]
-    P = total_obs / (num_days * n)
-    print(f"P = {P}")
-    s_super = calculate_superobservation_error(sO, P)
-    s_super = s_super * 1e-9 # unit conversion
-    print(f"superobservation error = {s_super}")
+    # from P observations per grid cell = number of observations per grid cell / m days
+    P = np.array(num_obs) / num_days # number of observations per grid cell (native state vector element)
+    s_superO_1 = calculate_superobservation_error(sO, 1) # for handling cells with 0 observations (avoid divide by 0)
+    s_superO_p = [calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1 
+                    for element in P] # list containing superobservation error per state vector element
+    s_superO = np.array(s_superO_p) * 1e-9 # convert to ppb
 
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (s_super / k) ** 2 / m) # MH: m is number of days
+    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / m) # MH: m is number of days
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
