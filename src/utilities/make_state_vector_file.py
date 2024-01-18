@@ -86,10 +86,12 @@ def make_state_vector_file(
     hd = xr.load_dataset(hemco_diag_pth)
 
     # Require hemco diags on same global grid as land cover map
-    hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
+    if np.abs(lc.lon.values - hd.lon.values).max() != 0: #JDE add a check
+        hd["lon"] = hd["lon"] - 0.03125  # initially offset by 0.03125 degrees
 
-    # Select / group fields together
-    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
+    # Select / group fields together based on land and ice threshold, above threshold is set to NaN
+    lc = (lc["FRLAKE"] + lc["FRLAND"].where(lc["FRLAND"]>0.01,drop=True) + lc["FRLANDIC"].where(lc["FRLANDIC"] < 0.1,drop=True)).drop("time").squeeze()
+    # lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
     # Check compatibility of region of interest
@@ -127,17 +129,20 @@ def make_state_vector_file(
     hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
 
     # Initialize state vector from land cover, replacing all values with NaN (to be filled later)
-    statevector = lc.where(lc == -9999.0)
+   # statevector = lc.where(lc == -9999.0)
+    statevector = lc.copy(deep = True)
+    statevector[:] = np.nan
 
     # Set pixels in buffer areas to 0
-    statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
-    statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
+    if is_regional:
+        statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
+        statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
     # Also set pixels over water to 0, unless there are offshore emissions
-    if land_threshold:
+    if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
         land = lc.where((lc > land_threshold) | (hd > emis_threshold))
-        statevector.values[land.isnull().values] = -9999
+        statevector.values[land.isnull().values] = 0
 
     # Fill in the remaining NaNs with state vector element values
     statevector.values[statevector.isnull().values] = np.arange(
@@ -163,6 +168,7 @@ def make_state_vector_file(
         kmeans = KMeans(n_clusters=k_buffer_clust, random_state=0).fit(X)
 
         # Assign pixels to state vector
+        # ---------------------------------------------------------------------
         highres_statevector_max = np.nanmax(statevector.values)
         n_rows = statevector.shape[0]
         n_cols = statevector.shape[1]
@@ -172,7 +178,7 @@ def make_state_vector_file(
                     statevector[r, c] = (
                         kmeans.predict([[c, r]])[0] + 1 + highres_statevector_max
                     )
-    # -------------------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
     # Make dataset
     da_statevector = statevector.copy()
