@@ -545,7 +545,7 @@ def estimate_averaging_kernel(
 
     # State vector, observations
     emissions = np.array(emissions)
-    m = np.array(num_days)  # Number of observations per state vector element (MH change: needs to be observation days)
+    m = np.array(num_days)  # Number of observation days
     L = np.array(L)
 
     # If Kalman filter mode, count observations per inversion period
@@ -556,7 +556,7 @@ def estimate_averaging_kernel(
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
         # m = n_obs_per_period  # Number of obs per inversion period, per element 
-        m = config["UpdateFreqDays"] # MH: change to number of days in inversion period
+        m = config["UpdateFreqDays"] # change to number of days in inversion period
 
     print("\n" + outstring2)
 
@@ -580,7 +580,7 @@ def estimate_averaging_kernel(
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
     # from P observations per grid cell = number of observations per grid cell / m days
-    P = np.array(num_obs) / num_days # number of observations per grid cell (native state vector element)
+    P = np.array(num_obs) / num_days # number of observations per grid cell (native state vector element) per day
     s_superO_1 = calculate_superobservation_error(sO, 1) # for handling cells with 0 observations (avoid divide by 0)
     s_superO_p = [calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1 
                     for element in P] # list containing superobservation error per state vector element
@@ -588,7 +588,7 @@ def estimate_averaging_kernel(
 
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / m) # MH: m is number of days
+    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / m) # m is number of days
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
