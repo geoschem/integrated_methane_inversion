@@ -22,7 +22,7 @@ setup_imi() {
     SpinupEnd=${StartDate}
 
     # Use global boundary condition files for initial conditions
-    UseBCsForRestart=true
+    UseBCsForRestart=false
 
     printf "\nActivating conda environment: ${CondaEnv}\n"
     eval "$(conda shell.bash hook)"
@@ -165,10 +165,10 @@ setup_imi() {
     printf "\nNumber of native state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
-    LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
-    LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    LonMinInvDomain=$(ncmin lon ${RunDirs}/NativeStateVector.nc)
+    LonMaxInvDomain=$(ncmax lon ${RunDirs}/NativeStateVector.nc)
+    LatMinInvDomain=$(ncmin lat ${RunDirs}/NativeStateVector.nc)
+    LatMaxInvDomain=$(ncmax lat ${RunDirs}/NativeStateVector.nc)
     Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
     Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
