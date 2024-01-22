@@ -251,7 +251,7 @@ run_jacobian() {
         fi
 
         # Get Jacobian scale factors
-        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir; wait
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir $ConfigPath; wait
         printf "Got Jacobian scale factors\n"
     fi
 }

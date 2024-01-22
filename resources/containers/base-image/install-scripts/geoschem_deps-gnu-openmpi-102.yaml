@@ -11,10 +11,11 @@ spack:
       - spec: lustre@2.12
         prefix: /usr
   specs:
-    - cmake@3.22.1
+    - cmake%gcc@10.2.0
     - netcdf-c@4.8.1%gcc@10.2.0
     - netcdf-fortran@4.5.3%gcc@10.2.0
     - nco@5.1.4%gcc@10.2.0
+    - gcc@10.2.0%gcc@10.2.0
     # - openmpi@3.0.5%gcc@10.2.0 +lustre +gpfs fabrics=auto
     # - libfabric@1.14.0 fabrics=sockets,tcp,udp,efa,mlx,shm
     # - esmf@8.3.1%gcc@10.2.0

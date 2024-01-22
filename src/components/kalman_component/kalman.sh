@@ -17,7 +17,7 @@ setup_kf() {
 
     # copy kf notebook to kf_inversions directory
     cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigFile'|g' ${RunDirs}/kf_inversions/kf_notebook.ipynb
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' ${RunDirs}/kf_inversions/kf_notebook.ipynb
 
 
     # Define Kalman filter update periods
@@ -97,7 +97,6 @@ run_period() {
     echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
 
     # Prepare initial (prior) emission scale factors for the current period
-    ConfigPath=${InversionPath}/${ConfigFile}
     echo "python path = $PYTHONPATH"
     python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor; wait
 
