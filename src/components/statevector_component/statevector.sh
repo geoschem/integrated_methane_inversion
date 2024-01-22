@@ -43,51 +43,56 @@ create_statevector() {
 #   reduce_dimension
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
-
-    # First run the Preview if necessary to get prior emissions
-    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-        run_preview
-    fi
-
     # set input variables
     state_vector_path=${RunDirs}/StateVector.nc
+    config_path=${InversionPath}/${ConfigFile}
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
 
-    preview_dir=${RunDirs}/preview_run
-    tropomi_cache=${RunDirs}/data_TROPOMI
-    aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
-
-    if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
-        # copy the original state vector file for subsequent statevector generations
-        printf "\nCopying native state vector file to NativeStateVector.nc \n"
-        cp $state_vector_path $native_state_vector_path
-    else
-        # replace state vector file with clean, native resolution state vector
-        cp $native_state_vector_path $state_vector_path
-    fi
-
-    # conditionally add period_i to python args
-    python_args=($aggregation_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
-    archive_sv=false
-    if ("$KalmanMode" && "$DynamicKFClustering"); then
-        if [ -n "$period_i" ]; then
-            archive_sv=true
-            python_args+=($period_i)
+    # Use archived statevectors if desired
+    if ("$UseArchivedStateVectors" && "$KalmanMode"); then
+        : ${period_i:=1}
+        if [ "$period_i" -eq 1 ]; then
+            cp $state_vector_path $native_state_vector_path
         fi
-    fi
-
-    # if running end to end script with sbatch then use
-    # sbatch to take advantage of multiple cores 
-    if "$UseSlurm"; then
-        chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W "${python_args[@]}"; wait;
+        echo "Using archived sv for period ${period_i}: ${ReferenceStateVectors}/StateVector_${period_i}.nc"
+        cp ${ReferenceStateVectors}/StateVector_${period_i}.nc $state_vector_path
+        archive_sv=true
     else
-        python "${python_args[@]}"
+        preview_dir=${RunDirs}/preview_run
+        tropomi_cache=${RunDirs}/data_TROPOMI
+        aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
+
+        if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
+            # copy the original state vector file for subsequent statevector generations
+            printf "\nCopying native state vector file to NativeStateVector.nc \n"
+            cp $state_vector_path $native_state_vector_path
+        else
+            # replace state vector file with clean, native resolution state vector
+            cp $native_state_vector_path $state_vector_path
+        fi
+
+        # conditionally add period_i to python args
+        python_args=($aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache)
+        archive_sv=false
+        if ("$KalmanMode" && "$DynamicKFClustering"); then
+            if [ -n "$period_i" ]; then
+                archive_sv=true
+                python_args+=($period_i)
+            fi
+        fi
+
+        # if running end to end script with sbatch then use
+        # sbatch to take advantage of multiple cores 
+        if "$UseSlurm"; then
+            chmod +x $aggregation_file
+            sbatch --mem $SimulationMemory \
+            -c $SimulationCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W "${python_args[@]}"; wait;
+        else
+            python "${python_args[@]}"
+        fi
     fi
 
     # archive state vector file if using Kalman filter
