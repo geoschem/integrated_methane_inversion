@@ -216,6 +216,18 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    * - ``DoPosterior``
      - Boolean to run the posterior simulation.
 
+IMI preview
+~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``DoPreview``
+     - Boolean to run the :doc:`IMI preview <imi-preview>` (``true``) or not (``false``).
+   * - ``DOFSThreshold``
+     - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
+       Default value ``0`` prevents exit.
+
 SLURM Resource Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
@@ -237,19 +249,9 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Amount of memory to allocate to each jacobian simulation (in MB).
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
-   
-IMI preview
-~~~~~~~~~~~
-.. list-table::
-   :widths: 30, 70
-   :class: tight-table
-
-   * - ``DoPreview``
-     - Boolean to run the :doc:`IMI preview <imi-preview>` (``true``) or not (``false``).
-   * - ``DOFSThreshold``
-     - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
-       Default value ``0`` prevents exit.
-
+   * - ``MaxSimultaneousRuns``
+     - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
+ 
 Advanced settings: GEOS-Chem options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are intended for advanced users who wish to modify additional GEOS-Chem options.

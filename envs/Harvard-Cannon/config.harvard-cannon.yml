@@ -1,9 +1,8 @@
-
 ## IMI configuration file
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_IMI"
+RunName: "Test_IMI_Permian"
 isAWS: false
 UseSlurm: true
 SafeMode: true
@@ -117,10 +116,10 @@ SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
-SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
+SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: 50
+MaxSimultaneousRuns: -1
 
 ##====================================================================
 ##

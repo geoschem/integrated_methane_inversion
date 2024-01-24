@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Global_IMI"
+RunName: "Test_IMI_Global"
 isAWS: false
 UseSlurm: true
 SafeMode: true
@@ -53,7 +53,7 @@ BufferDeg: 0
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: false
-OptimizeOH: false
+OptimizeOH: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -116,7 +116,7 @@ SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
-SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
+SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: 50
@@ -191,13 +191,13 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
-BCversion: "v2023-06"
+BCversion: "v2023-10"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled

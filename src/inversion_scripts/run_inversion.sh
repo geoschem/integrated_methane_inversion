@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -N 1
-#SBATCH -o run_inversion_OH.out
-#SBATCH -e run_inversion_OH.err
+#SBATCH -o run_inversion_%j.out
+#SBATCH -e run_inversion_%j.err
 #SBATCH -t 0-6:00
 #SBATCH --mem=20000
 #SBATCH -p seas_compute,shared,huce_intel
@@ -13,8 +13,8 @@
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
-invPath=/n/home12/mhe/integrated_methane_inversion
-configFile=config.harvard-cannon.global_inv.yml
+invPath={INVERSION_PATH}
+configFile={CONFIG_FILE}
 
 # Get configuration
 #  This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
@@ -31,18 +31,18 @@ eval $(parse_yaml ${invPath}/${configFile})
 #=======================================================================
 # Configuration (these settings generated on initial setup)
 #=======================================================================
-LonMinInvDomain=-180
-LonMaxInvDomain=177.5
-LatMinInvDomain=-60
-LatMaxInvDomain=88
-nElements=1000
-OutputPath=/n/holyscratch01/jacob_lab/mhe
-Res=2.0x2.5
+LonMinInvDomain={LON_MIN}
+LonMaxInvDomain={LON_MAX}
+LatMinInvDomain={LAT_MIN}
+LatMaxInvDomain={LAT_MAX}
+nElements={STATE_VECTOR_ELEMENTS}
+OutputPath={OUTPUT_PATH}
+Res={RES}
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
-StateVectorFile=../StateVector.nc
+StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
@@ -105,57 +105,48 @@ printf "DONE -- postproc_diags.py\n\n"
 # Calculate GEOS-Chem sensitivities and save to sensitivities directory
 #=======================================================================
 
-# if ! "$PrecomputedJacobian"; then
-#     # add an argument to calc_sensi.py if optimizing BCs and/or OH
-#     if "$OptimizeBCs"; then
-#         pertBCs=$PerturbValueBCs
-#     else
-# 	pertBCs=0.0
-#     fi
-#     if "$OptimizeOH"; then
-#         pertOH=$PerturbValueOH
-#     else
-# 	pertOH=0.0
-#     fi
-#     python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
-#     printf "Calling calc_sensi.py\n"
-#     python "${python_args[@]}"; wait
-#     printf "DONE -- calc_sensi.py\n\n"
-# fi
+if ! "$PrecomputedJacobian"; then
+    # add an argument to calc_sensi.py if optimizing BCs and/or OH
+    if "$OptimizeBCs"; then
+        pertBCs=$PerturbValueBCs
+    else
+	pertBCs=0.0
+    fi
+    if "$OptimizeOH"; then
+        pertOH=$PerturbValueOH
+    else
+	pertOH=0.0
+    fi
+    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
+    printf "Calling calc_sensi.py\n"
+    python "${python_args[@]}"; wait
+    printf "DONE -- calc_sensi.py\n\n"
+fi
 
 #=======================================================================
 # Setup GC data directory in workdir
 #=======================================================================
 
-# GCsourcepth="${PriorRunDir}/OutputDir"
+GCsourcepth="${PriorRunDir}/OutputDir"
 
-# printf "Calling setup_gc_cache.py\n"
-# python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
-# printf "DONE -- setup_gc_cache.py\n\n"
+printf "Calling setup_gc_cache.py\n"
+python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+printf "DONE -- setup_gc_cache.py\n\n"
 
 #=======================================================================
 # Generate Jacobian matrix files 
 #=======================================================================
 
-# printf "Calling jacobian.py\n"
-# isPost="False"
-# if ! "$PrecomputedJacobian"; then
-#    buildJacobian="True"
-# else
-#    buildJacobian="False"
-# fi
+printf "Calling jacobian.py\n"
+isPost="False"
+if ! "$PrecomputedJacobian"; then
+   buildJacobian="True"
+else
+   buildJacobian="False"
+fi
 
-# python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
-# printf " DONE -- jacobian.py\n\n"
-
-# remove all sensitivity netCDF files in the data_sensitivities folder after constructing the Jacobian to save storage
-# if [ "$(ls -A $JacobianDir)" ]; then
-#    # cd $sensiCache
-#    printf "TEST: Removing sensitivities files\n\n"
-#    # find . -type f -delete
-#    printf " DONE removing sensitivities files\n\n"
-#    # cd ..
-# fi
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
 # Do inversion
@@ -184,13 +175,13 @@ printf "Calling invert.py\n"
 python "${python_args[@]}"; wait
 printf "DONE -- invert.py\n\n"
 
-# =======================================================================
+#=======================================================================
 # Create gridded posterior scaling factor netcdf file
-# =======================================================================
-# GriddedPosterior="./gridded_posterior.nc"
+#=======================================================================
+GriddedPosterior="./gridded_posterior.nc"
 
-# printf "Calling make_gridded_posterior.py\n"
-# python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
-# printf "DONE -- make_gridded_posterior.py\n\n"
+printf "Calling make_gridded_posterior.py\n"
+python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+printf "DONE -- make_gridded_posterior.py\n\n"
 
 exit 0

@@ -226,10 +226,10 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     """
     if config["Res"] == "2.0x2.5":
         max_aggregation_level = 16 # Setting background to 8x10 for global
-    elif config["Res"] == "0.25x0.3125":
-        max_aggregation_level = 256
     elif config["Res"] == "0.5x0.625":
         max_aggregation_level = 64
+    elif config["Res"] == "0.25x0.3125":
+        max_aggregation_level = 256
 
     background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level)
     if background_elements_needed > desired_element_num:
