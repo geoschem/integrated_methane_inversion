@@ -1,7 +1,7 @@
 name: imi_env
 channels:
-  - defaults
   - conda-forge
+  - nodefaults
 dependencies:
   - python=3.9.1
   - xarray=0.16.2
