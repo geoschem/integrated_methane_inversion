@@ -7,7 +7,7 @@ import xarray as xr
 from src.inversion_scripts.utils import load_obj, calculate_superobservation_error
 
 
-def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err):
+def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
     """
     Description:
         This function is used to generate the full jacobian matrix (K), observations (y),
@@ -23,10 +23,11 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err):
         and background vector.
 
     Parameters:
-        satdat_dir  [str]: path to directory containing satellite data files
-        lat_bounds [list]: list of latitude bounds to consider each bound is a tuple
-        lon_bounds [list]: list of longitude bounds to consider each bound is a tuple
-        obs_err   [float]: default observational error value
+        satdat_dir    [str]: path to directory containing satellite data files
+        lat_bounds   [list]: list of latitude bounds to consider each bound is a tuple
+        lon_bounds   [list]: list of longitude bounds to consider each bound is a tuple
+        obs_err     [float]: default observational error value
+        precomp_K [boolean]: whether or not to use precomputed jacobian matrices
     """
     # Get observed and GEOS-Chem-simulated TROPOMI columns
     files = [f for f in np.sort(os.listdir(satdat_dir)) if "TROPOMI" in f]
@@ -61,11 +62,23 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err):
         # concatenate full jacobian, obs, so, and prior
         tropomi = np.concatenate((tropomi, obs_GC[:, 0]))
         geos_prior = np.concatenate((geos_prior, obs_GC[:, 1]))
-        # Get same file from bc folder
+
+        # read K from reference dir if precomp_K is true
+        if precomp_K:
+            # Get Jacobian from reference inversion
+            fi_ref = pth.replace("data_converted", "data_converted_reference")
+            dat_ref = load_obj(fi_ref)
+            K = dat_ref["K"][ind[0]]
+        else:
+            K_temp = obj["K"][ind[0]]
+
+        # append partial Ks to build full jacobian
         if i == 0:
             K = obj["K"][ind[0]]
         else:
-            K = np.append(K, obj["K"][ind[0]], axis=0)
+            K = np.append(K, K_temp, axis=0)
+
+        # calculate superobservation error
         s_superO_1 = calculate_superobservation_error(obs_error, 1)
         s_superO_p = np.array(
             [
@@ -91,6 +104,7 @@ if __name__ == "__main__":
     satdat_dir = sys.argv[1]
     state_vector_filepath = sys.argv[2]
     obs_error = float(sys.argv[3])
+    precomputed_jacobian = sys.argv[4] == "true"
 
     # directory containing partial K matrices
     # Get observed and GEOS-Chem-simulated TROPOMI columns
@@ -104,7 +118,7 @@ if __name__ == "__main__":
 
     # Paths to GEOS/satellite data
     gc_ch4_bkgd, obs_tropomi, jacobian_K, so = merge_partial_k(
-        satdat_dir, lat_bounds, lon_bounds, obs_error
+        satdat_dir, lat_bounds, lon_bounds, obs_error, precomputed_jacobian
     )
 
     np.savez("full_jacobian_K.npz", K=jacobian_K)
