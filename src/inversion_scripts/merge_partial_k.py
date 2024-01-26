@@ -74,7 +74,7 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
 
         # append partial Ks to build full jacobian
         if i == 0:
-            K = obj["K"][ind[0]]
+            K = K_temp
         else:
             K = np.append(K, K_temp, axis=0)
 
