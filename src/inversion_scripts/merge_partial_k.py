@@ -68,7 +68,7 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
             # Get Jacobian from reference inversion
             fi_ref = pth.replace("data_converted", "data_converted_reference")
             dat_ref = load_obj(fi_ref)
-            K = dat_ref["K"][ind[0]]
+            K_temp = dat_ref["K"][ind[0]]
         else:
             K_temp = obj["K"][ind[0]]
 
