@@ -95,7 +95,7 @@ setup_template() {
     fi
 
     # ONLY for CONUS inversion -- Use wetland emissions from Hannah, which removes two ensemble members
-	sed -i -e "s|$ROOT/CH4/v2020-09/JPL_WetCharts/HEensemble/JPL_WetCharts_2010-2019.Ensemble_Mean.0.5x0.5.nc|/n/holylfs05/LABS/jacob_lab/Users/lestrada/IMI/CONUS_demo_app/input_data/wetlands/wetlands37.nc|g" HEMCO_Config.rc
+	sed -i -e 's|$ROOT/CH4/v2020-09/JPL_WetCharts/HEensemble/JPL_WetCharts_2010-2019.Ensemble_Mean.0.5x0.5.nc|/n/holylfs05/LABS/jacob_lab/Users/lestrada/IMI/CONUS_demo_app/input_data/wetlands/wetlands37.nc|g' HEMCO_Config.rc
 
     # Determine length of inversion period in days
     InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
