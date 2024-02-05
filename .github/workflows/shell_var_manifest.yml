@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - "dev"
-      - "dev-2.0"
 
 jobs:
   build:
@@ -13,9 +12,14 @@ jobs:
     env:
       CI_COMMIT_MESSAGE: Continuous Integration Manifest Generation
       CI_COMMIT_AUTHOR: ${{ github.event.repository.name }} Continuous Integration
+      GH_PUSH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        if: env.GH_PUSH_TOKEN != ''
+        with:
+          token: ${{ env.GH_PUSH_TOKEN }}
 
       # Set environment variables based on the last commit
       - name: Set environment variable "commit-message"
