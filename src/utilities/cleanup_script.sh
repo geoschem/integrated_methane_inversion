@@ -7,6 +7,8 @@
 #   observation operators, so be careful when deleting files.
 # Usage:
 #   cleanup_script.sh [config.yml]
+#  If no config file is provided, the script will assume the current
+#  directory is the IMI run directory.
 
 printf "\n###########################################"
 printf "\n#            IMI Cleanup Script           #"
@@ -15,14 +17,15 @@ printf "\n###########################################\n\n"
 # check if config file is provided
 if [[ $# == 1 ]] ; then
     ConfigFile=$1
-else
-    printf "\nError no config file provided. Usage: cleanup_script.sh [config.yml]\n"
-    exit 1
-fi
+    # parse config file
+    source parse_yaml.sh
+    eval $(parse_yaml $1)
 
-# parse config file
-source parse_yaml.sh
-eval $(parse_yaml $1)
+else
+    printf "\n No config file provided. Using current directory as IMI run directory: $(pwd)\n"
+    RunName=$(basename "$PWD")
+    OutputPath=../
+fi
 
 # Path for IMI rundir based on config file
 RunDir="${OutputPath}/${RunName}"
