@@ -29,6 +29,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
+    cp ${InversionPath}/src/utilities/cleanup_script.sh .
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
