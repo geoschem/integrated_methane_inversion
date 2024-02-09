@@ -69,7 +69,6 @@ run_inversion() {
     if ! "$isAWS"; then
         # Activate Conda environment
         printf "\nActivating conda environment: ${CondaEnv}\n"
-        eval "$(conda shell.bash hook)"
         conda activate $CondaEnv
     fi
 
