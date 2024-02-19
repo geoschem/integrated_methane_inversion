@@ -25,11 +25,15 @@ setup_jacobian() {
     # Copy run scripts
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
-           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
+           -e "s:{InversionPath}:${InversionPath}:g" \
+           -e "s:{EndDate}:${EndDate}:g" \
+           -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
@@ -154,6 +158,22 @@ setup_jacobian() {
 # Usage:
 #   run_jacobian
 run_jacobian() {
+
+    pushd ${RunDirs}
+
+    # Copy run scripts
+    # need to re-copy since config vars are
+    # hardcoded and redojacobian might have changed
+    echo "JDE1 ${RunName} jacobian.sh"
+    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
+    echo "JDE ${RunName} jacobian.sh"
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" \
+           -e "s:{EndDate}:${EndDate}:g" \
+           -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+
+    popd
+
     if ! "$PrecomputedJacobian"; then
         jacobian_start=$(date +%s)
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
