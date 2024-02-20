@@ -45,7 +45,7 @@ fi
 # Ask user if they want to remove data_sensitivities directory
 printf "\nDo you want to remove the data_sensitivity directories and files (y/n)?\n"
 printf "\nNote: removing these files means you will need to recalculate sensitivities for jacobian perturbations."
-printf " This is recommended if you do not plan on adding additional observation operators.\n"
+printf " This data is generally no longer needed if you do not plan on adding additional observation operators.\n"
 read response
 
 # Remove data_sensitivities directories
