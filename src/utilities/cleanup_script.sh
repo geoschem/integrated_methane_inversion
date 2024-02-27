@@ -55,12 +55,12 @@ if [[ "x${response}" == "xy" ]]; then
     inversion_sensi_dir="${RunDir}/inversion/data_sensitivities"
     # look for KF sensitivities
     if [ -d "${kf_inversion_dirs}" ]; then
-        printf "\nRemoving data_sensitivity directories: ${kf_inversion_dirs}/period*/data_sensitivities\n"
-        find ${kf_inversion_dirs} -type d -path '*period*/data_sensitivities' -exec ${rm_command} -rf {}/* \;
+        printf "\nRemoving data_sensitivity directories: ${kf_inversion_dirs}period*/data_sensitivities\n"
+        find ${kf_inversion_dirs} -type f -path '*period*/data_sensitivities/*' -exec ${rm_command} -r {} \;
     # look for inversion sensitivities
     elif [ -d "${inversion_sensi_dir}" ]; then
         printf "\nRemoving data_sensitivity directories: ${inversion_sensi_dir}\n"
-        ${rm_command} -r ${inversion_sensi_dir}
+        ${rm_command} -rf ${inversion_sensi_dir}
     else
         printf "\nNo data_sensitivities directories found in ${RunDir}\n"
     fi
@@ -79,9 +79,13 @@ read response
 if [[ "x${response}" == "xy" ]]; then
     # Check if directory exists before removing them
     jacobian_dir="${RunDir}/jacobian_runs"
-    if [ -d "${jacobian_dir}/${RunName}_0001/OutputDir" ]; then
+    if [ -d "${jacobian_dir}/${RunName}_0001" ]; then
         printf "\nRemoving jacobian run outputs (except for the prior and background sim): ${jacobian_dir}/{RunName}_****/OutputDir\n"
-        find ${jacobian_dir}/ -type d -name "${RunName}_*" ! -name "${RunName}_background" ! -name "${RunName}_0000" -exec ${rm_command} -rf {}/OutputDir/* \;
+        jacobian_dirs_array=($(find jacobian_runs -type d -maxdepth 2 -name "Test_Permian_1week_14_0_2_*" ! -name "${RunName}_background" ! -name "${RunName}_0000"))
+        for dir in "${jacobian_dirs_array[@]}"; do
+            echo "Removing files from dir: ${dir}/OutputDir/"
+            find ${dir}/OutputDir/ -type f -name "*" -exec ${rm_command} {} \;
+        done
     else
         printf "\nNo jacobian_run OutputDirs found in ${jacobian_dir}\n"
     fi
