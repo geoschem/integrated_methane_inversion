@@ -43,6 +43,11 @@ setup_template() {
 	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
     fi
 
+    # Adjust lat/lon bounds because GEOS-Chem defines the domain 
+    # based on grid cell edges (not centers) for the lat/lon bounds
+    Lons=$(calculate_geoschem_domain lon ${RunDirs}/StateVector.nc ${LonMinInvDomain} ${LonMaxInvDomain})
+    Lats=$(calculate_geoschem_domain lon ${RunDirs}/StateVector.nc ${LatMinInvDomain} ${LatMaxInvDomain})
+
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" \
