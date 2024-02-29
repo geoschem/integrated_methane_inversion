@@ -26,8 +26,6 @@ setup_template() {
     fi
 
     # Commands to feed to createRunDir.sh
-    # Run directories are created for the global domain by default. If needed,
-    # the regional domain specified in config.yml will be adjusted for below.
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
 	metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
@@ -42,9 +40,19 @@ setup_template() {
     elif [ "$Res" == "2.0x2.5" ]; then
 	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
-	cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	if "$isRegional"; then
+	    # Use NA domain by default and adjust lat/lon below
+	    cmd="3\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	else
+	    cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	fi
     elif [ "$Res" == "0.25x0.3125" ]; then
-	cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	if "$isRegional"; then
+	    # Use NA domain by default and adjust lat/lon below
+	    cmd="3\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	else
+	    cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	fi
     else
 	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
 	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
@@ -66,9 +74,10 @@ setup_template() {
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" geoschem_config.yml
+
     if "$isRegional"; then
-        sed -i -e "s:-180.0, 180.0:${Lons}:g" \
-               -e "s:-90.0, 90.0:${Lats}:g" geoschem_config.yml
+        sed -i -e "s:-130.0,  -60.0:${Lons}:g" \
+               -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi
 
     # For CH4 inversions always turn analytical inversion on

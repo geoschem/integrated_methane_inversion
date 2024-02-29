@@ -6,7 +6,7 @@
 #SBATCH -t 0-16:00
 #SBATCH --mem=20000
 #SBATCH -p sapphire,seas_compute,huce_cascade,huce_intel,shared
-
+#SBATCH --mail-type=END
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -201,9 +201,9 @@ if ! "$KalmanMode"; then
     print_stats
 fi 
 
-# copy output log to run directory for storage
+# Move output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then
-    cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
+    mv -v "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
 
 # copy config file to run directory
