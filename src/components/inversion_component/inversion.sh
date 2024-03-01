@@ -22,7 +22,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
-    cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
+    cp ${InversionPath}/src/inversion_scripts/operators/*.py inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/

@@ -170,7 +170,7 @@ if "$OptimizeOH"; then
 else
     ErrorOH=0.0
 fi
-python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf $ErrorBCs $ErrorOH)
+python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf $PerturbValueOH $ErrorBCs $ErrorOH)
 printf "Calling invert.py\n"
 python "${python_args[@]}"; wait
 printf "DONE -- invert.py\n\n"
