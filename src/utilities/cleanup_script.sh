@@ -81,7 +81,7 @@ if [[ "x${response}" == "xy" ]]; then
     jacobian_dir="${RunDir}/jacobian_runs"
     if [ -d "${jacobian_dir}/${RunName}_0001" ]; then
         printf "\nRemoving jacobian run outputs (except for the prior and background sim): ${jacobian_dir}/{RunName}_****/OutputDir\n"
-        jacobian_dirs_array=($(find jacobian_runs -type d -maxdepth 2 -name "Test_Permian_1week_14_0_2_*" ! -name "${RunName}_background" ! -name "${RunName}_0000"))
+        jacobian_dirs_array=($(find jacobian_runs -maxdepth 2 -type d -name "${RunName}_*" ! -name "${RunName}_background" ! -name "${RunName}_0000"))
         for dir in "${jacobian_dirs_array[@]}"; do
             echo "Removing files from dir: ${dir}/OutputDir/"
             find ${dir}/OutputDir/ -type f -name "*" -exec ${rm_command} {} \;
