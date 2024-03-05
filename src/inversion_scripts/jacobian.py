@@ -160,11 +160,11 @@ if __name__ == "__main__":
                     "xlim": xlim,
                     "ylim": ylim,
                     "gc_cache": gc_cache,
-                    "build_jacobian": build_jacobian,
+                    "build_jacobian": False,
                     "sensi_cache": sensi_cache,
                 },
             )
-
+            
             if output == None:
                 continue
 

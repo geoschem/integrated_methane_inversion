@@ -2,7 +2,6 @@
 
 #SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
-#SBATCH -e run_inversion_%j.err
 
 ##=======================================================================
 ## Parse config.yml file
@@ -38,6 +37,7 @@ Res={RES}
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
+BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
@@ -94,7 +94,10 @@ else
 
     # Only postprocess the Prior simulation
     python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
-
+    if "$LognormalErrors"; then
+        # for lognormal errors we need to postprocess the background run too
+        python postproc_diags.py $RunName $BackgroundRunDir $PrevDir $StartDate; wait
+    fi
 fi
 printf "DONE -- postproc_diags.py\n\n"
 
@@ -117,7 +120,13 @@ fi
 # Setup GC data directory in workdir
 #=======================================================================
 
-GCsourcepth="${PriorRunDir}/OutputDir"
+if "$LognormalErrors"; then
+    # for lognormal errors we use the clean background run
+    GCsourcepth="${BackgroundRunDir}/OutputDir"
+else
+    # for normal errors we use the prior run
+    GCsourcepth="${PriorRunDir}/OutputDir"
+fi
 
 printf "Calling setup_gc_cache.py\n"
 python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
@@ -132,10 +141,12 @@ isPost="False"
 if ! "$PrecomputedJacobian"; then
 
     buildJacobian="True"
+    jacobian_sf="None"
 
 else
 
     buildJacobian="False"
+    jacobian_sf=./jacobian_scale_factors.npy
 
 fi
 
@@ -146,34 +157,33 @@ printf " DONE -- jacobian.py\n\n"
 # Do inversion
 #=======================================================================
 
-if ! "$PrecomputedJacobian"; then
 
-    jacobian_sf="None"
+if "$LognormalErrors"; then
+    # for lognormal errors we merge our y, y_bkgd and partial K matrices
+    python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError $PrecomputedJacobian
 
+    # then we run the inversion
+    printf "Calling lognormal_invert.py\n"
+    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
+    printf "DONE -- lognormal_invert.py\n\n"
 else
+    posteriorSF="./inversion_result.nc"
+    python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
+    # add an argument to calc_sensi.py if optimizing BCs
+    if "$OptimizeBCs"; then
+        python_args+=($PriorErrorBCs)
+    fi
+    printf "Calling invert.py\n"
+    python "${python_args[@]}"; wait
+    printf "DONE -- invert.py\n\n"
+    #=======================================================================
+    # Create gridded posterior scaling factor netcdf file
+    #=======================================================================
+    GriddedPosterior="./gridded_posterior.nc"
 
-    jacobian_sf=./jacobian_scale_factors.npy
-
+    printf "Calling make_gridded_posterior.py\n"
+    python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+    printf "DONE -- make_gridded_posterior.py\n\n"
 fi
-
-posteriorSF="./inversion_result.nc"
-
-python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
-# add an argument to calc_sensi.py if optimizing BCs
-if "$OptimizeBCs"; then
-    python_args+=($PriorErrorBCs)
-fi
-printf "Calling invert.py\n"
-python "${python_args[@]}"; wait
-printf "DONE -- invert.py\n\n"
-
-#=======================================================================
-# Create gridded posterior scaling factor netcdf file
-#=======================================================================
-GriddedPosterior="./gridded_posterior.nc"
-
-printf "Calling make_gridded_posterior.py\n"
-python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
-printf "DONE -- make_gridded_posterior.py\n\n"
 
 exit 0

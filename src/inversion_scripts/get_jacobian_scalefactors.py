@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
+import yaml
 import numpy as np
 import xarray as xr
 
 
-def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
+def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, config_path):
     """
     Running sensitivity inversions with pre-constructed Jacobian may require scaling the 
     Jacobian to match updated prior estimates. This is because the Jacobian is defined
@@ -16,8 +17,9 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
 
     Arguments
         period_number  [int]   : Current inversion period, starting from 1
-        inv_directory [str]   : The base directory for the inversion, where e.g., "preview_sim/" resides
+        inv_directory [str]    : The base directory for the inversion, where e.g., "preview_sim/" resides
         ref_directory  [str]   : The base directory for the reference inversion
+        config_path    [str]   : Path to yaml config file
     
     Returns
         sf_K           [float] : Scale factors to be applied to the Jacobian matrix
@@ -35,13 +37,13 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     #   TODO Do we want this feature? See similar comment in prepare_sf.py
     #        If we do, need to update prepare_sf.py and then uncomment lines here:
     #        (untested)
-    # config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    # n_buff = config["nBufferClusters"]
-    # statevector_path = os.path.join(inv_directory, "StateVector.nc")
-    # statevector = xr.load_dataset(statevector_path)["StateVector"]
-    # n_elements = int(np.nanmax(statevector.data))
-    # sf = sf.where(statevector <= n_elements - n_buff) # Replace buffers with nan
-    # sf = sf.fillna(1) # Fill nan with 1
+    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    n_buff = config["nBufferClusters"]
+    statevector_path = os.path.join(inv_directory, "StateVector.nc")
+    statevector = xr.load_dataset(statevector_path)["StateVector"]
+    n_elements = int(np.nanmax(statevector.data))
+    sf = sf.where(statevector <= n_elements - n_buff) # Replace buffers with nan
+    sf = sf.fillna(1) # Fill nan with 1
 
     # Get HEMCO diagnostics for current inversion and reference inversion
     #  The HEMCO diags emissions are needed to calculate Jacobian scale
@@ -89,9 +91,10 @@ if __name__ == "__main__":
     period_number = int(sys.argv[1])
     inv_directory = sys.argv[2]
     ref_directory = sys.argv[3]
+    config_path = sys.argv[4]
 
     # Get the scale factors
-    out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory)
+    out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory, config_path)
 
     # Save them
     save_path_1 = os.path.join(

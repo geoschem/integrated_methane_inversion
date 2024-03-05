@@ -33,9 +33,13 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
                                  output is missing data; e.g., "20180501"
     """
 
-    # List run directories
+    # Get list of run directories
     contents = os.listdir(run_dirs_pth)
-    rundirs = [r for r in contents if run_name in r]
+    rundirs = [
+        r
+        for r in contents
+        if run_name in r and os.path.isdir(os.path.join(run_dirs_pth, r))
+    ]
 
     # Process them
     def process(r):
@@ -54,7 +58,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
             f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0005z.nc4"
         )
         output_data_SC = xr.load_dataset(output_file_SC)
-        if "0000" in r:
+        if "0000" in r or "background" in r:
             output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0005z.nc4"
             output_data_LE = xr.load_dataset(output_file_LE)
 
@@ -69,7 +73,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day):
                 v: {"zlib": True, "complevel": 9} for v in merged_data_SC.data_vars
             },
         )
-        if "0000" in r:
+        if "0000" in r or "background" in r:
             merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
             final_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
             merged_data_LE.to_netcdf(
@@ -130,7 +134,10 @@ if __name__ == "__main__":
     prev_run_pth = sys.argv[3]
     start_day = sys.argv[4]
 
-    if "posterior" in run_dirs_pth or "0000" in run_dirs_pth:
+    # Check if this is a posterior run, background run, or prior run
+    accepted_rundirs = ("posterior_run", f"{run_name}_0000", f"{run_name}_background")
+    
+    if run_dirs_pth.endswith((accepted_rundirs)):
         fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day)
     else:
         fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day)

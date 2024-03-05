@@ -91,6 +91,7 @@ config_required = [
     "SchedulerPartition",
     "KalmanMode",
     "S3Upload",
+    "LognormalErrors"
 ]
 
 # dict of variables that are required if another variable is set to true 
@@ -111,6 +112,7 @@ conditional_dict["S3Upload"] = [
     "S3UploadFiles",
 ]
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
+conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 
 def raise_error_message(var):
     """

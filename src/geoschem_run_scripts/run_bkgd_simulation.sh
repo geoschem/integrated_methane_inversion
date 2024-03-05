@@ -2,11 +2,12 @@
 #SBATCH -J {RunName}
 #SBATCH -N 1
 
+## This sc
 ### Run directory
 RUNDIR=$(pwd -P)
 
 ### Get current task ID
-xstr="0000"
+xstr="background"
 
 output_log_file={InversionPath}/imi_output.log
 

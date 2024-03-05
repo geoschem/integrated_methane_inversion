@@ -2,7 +2,7 @@ import xarray as xr
 import os
 
 
-def multiply_posteriors(period_number, base_directory):
+def multiply_posteriors(period_number, base_directory, lognormal):
     """
     Before running the posterior simulation to update initial conditions for the next period, need to
     apply the latest posterior scale factors to the dynamic ScaleFactors.nc file. The posterior
@@ -17,7 +17,10 @@ def multiply_posteriors(period_number, base_directory):
     # Useful paths
     sf_path = os.path.join(base_directory, "ScaleFactors.nc")
     posterior_dir = os.path.join(base_directory, f"kf_inversions/period{period_number}")
-    gridded_posterior_path = os.path.join(posterior_dir, "gridded_posterior.nc")
+    gridded_posterior_filename = (
+        "gridded_posterior_ln.nc" if lognormal else "gridded_posterior.nc"
+    )
+    gridded_posterior_path = os.path.join(posterior_dir, gridded_posterior_filename)
 
     # Load newest gridded posterior and previous/final gridded posterior
     sf = xr.load_dataset(sf_path)
@@ -53,5 +56,6 @@ if __name__ == "__main__":
 
     period_number = sys.argv[1]
     base_directory = sys.argv[2]
+    lognormal = sys.argv[3] == "true"
 
-    multiply_posteriors(period_number, base_directory)
+    multiply_posteriors(period_number, base_directory, lognormal)

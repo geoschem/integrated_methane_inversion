@@ -21,12 +21,14 @@ setup_inversion() {
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/lognormal_invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
     cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
@@ -90,7 +92,6 @@ run_inversion() {
 # Usage:
 #   run_notebooks
 run_notebooks() {
-    config_path=${InversionPath}/${ConfigFile}
     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
@@ -98,7 +99,7 @@ run_notebooks() {
         cd ${RunDirs}/inversion
     fi
     # replace config file path in viz notebook
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$config_path'|g' visualization_notebook.ipynb
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' visualization_notebook.ipynb
     jupyter nbconvert --execute --to html visualization_notebook.ipynb
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }
