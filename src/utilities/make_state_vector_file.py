@@ -139,8 +139,8 @@ def make_state_vector_file(
     elif config["Res"] == "0.5x0.625":
         hd["lon"] = hd["lon"] - 0.0625
 
-    # Select / group fields together based on land and ice threshold, above threshold is set to NaN
-    lc = (lc["FRLAKE"] + lc["FRLAND"].where(lc["FRLAND"]>0.01,drop=True) + lc["FRLANDIC"].where(lc["FRLANDIC"] < 0.1,drop=True)).drop("time").squeeze()
+    # Select / group fields together
+    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
     # Check compatibility of region of interest
@@ -178,8 +178,7 @@ def make_state_vector_file(
     hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
 
     # Initialize state vector from land cover, replacing all values with NaN (to be filled later)
-    statevector = lc.copy(deep = True)
-    statevector[:] = np.nan
+    statevector = lc.where(lc == -9999.0)
 
     # Set pixels in buffer areas to 0
     if is_regional:
@@ -190,7 +189,7 @@ def make_state_vector_file(
     if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
         land = lc.where((lc > land_threshold) | (hd > emis_threshold))
-        statevector.values[land.isnull().values] = 0
+        statevector.values[land.isnull().values] = -9999
 
     # Fill in the remaining NaNs with state vector element values
     statevector.values[statevector.isnull().values] = np.arange(
