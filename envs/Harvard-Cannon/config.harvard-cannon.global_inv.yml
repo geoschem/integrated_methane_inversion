@@ -53,7 +53,7 @@ BufferDeg: 0
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: false
-OptimizeOH: true
+OptimizeOH: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -72,7 +72,7 @@ StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "None"
 
 ## Inversion
-## Note PriorError and PriorErrorOH are relative percentages
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
 ##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
@@ -137,7 +137,7 @@ MaxSimultaneousRuns: 50
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scalefactors and 
+## Note PerturbValue and PerturbValueOH are relative scale factors and 
 ## PerturbValueBCs is in ppb
 PerturbValue: 1.5
 PerturbValueOH: 1.5

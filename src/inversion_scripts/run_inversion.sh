@@ -3,9 +3,6 @@
 #SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
 #SBATCH -e run_inversion_%j.err
-#SBATCH -t 0-6:00
-#SBATCH --mem=20000
-#SBATCH -p seas_compute,shared,huce_intel
 
 ##=======================================================================
 ## Parse config.yml file
@@ -74,17 +71,17 @@ fi
 
 printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
 if "$FirstSimSwitch"; then
-   if [[ ! -d ${SpinupDir} ]]; then
-   printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-   exit 1
-   fi
-   PrevDir=$SpinupDir
+    if [[ ! -d ${SpinupDir} ]]; then
+	printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
+	exit 1
+    fi
+    PrevDir=$SpinupDir
 else
-   PrevDir=$PosteriorRunDir
-   if [[ ! -d ${PosteriorRunDir} ]]; then
-   printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-   exit 1
-   fi
+    PrevDir=$PosteriorRunDir
+    if [[ ! -d ${PosteriorRunDir} ]]; then
+	printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
+	exit 1
+    fi
 fi
 printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
 

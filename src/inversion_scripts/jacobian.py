@@ -122,7 +122,6 @@ if __name__ == "__main__":
     # Map GEOS-Chem to TROPOMI observation space
     # Also return Jacobian matrix if build_jacobian=True
     def process(filename):
-    # for filename in sat_files:
 
         # Check if TROPOMI file has already been processed
         print("========================")

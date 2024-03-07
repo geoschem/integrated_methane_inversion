@@ -72,7 +72,7 @@ StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError and PriorErrorOH are relative percentages
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
 ##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
@@ -92,18 +92,18 @@ Met: "GEOSFP"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
-SetupJacobianRuns: true
-SetupInversion: true
-SetupPosteriorRun: true
+SetupSpinupRun: false
+SetupJacobianRuns: false
+SetupInversion: false
+SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
-DoSpinup: true
-DoJacobian: true
-DoInversion: true
-DoPosterior: true
+DoSpinup: false
+DoJacobian: false
+DoInversion: false
+DoPosterior: false
 
 ## IMI preview
 ##   NOTE: RunSetup must be true to run preview
@@ -137,7 +137,7 @@ MaxSimultaneousRuns: -1
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scalefactors and 
+## Note PerturbValue and PerturbValueOH are relative scale factors and 
 ## PerturbValueBCs is in ppb
 PerturbValue: 1.5
 PerturbValueOH: 1.5
