@@ -545,7 +545,7 @@ def estimate_averaging_kernel(
 
     # State vector, observations
     emissions = np.array(emissions)
-    m = np.array(num_days)  # Number of observation days)
+    m = np.array(num_days)  # Number of observation days
     L = np.array(L)
 
     # If Kalman filter mode, count observations per inversion period

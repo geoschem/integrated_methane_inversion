@@ -216,39 +216,45 @@ def do_inversion(
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
 
+    # Number of elements to apply scale factor to
+    scale_factor_idx = n_elements
+
     # If optimizing OH, adjust for it in the inversion
-    OH_idx = n_elements
     if prior_err_oh > 0.0:
-        # add prior error for OH as the last element of the diagonal
-        Sa_diag[-1:] = (1/1000)*prior_err_oh**2 # try this
-        OH_idx -= 1
+        # Add prior error for OH as the last element of the diagonal
+        # Following Masakkers et al. (2019, ACP) weight the OH term by the
+        # ratio of the number of elements (n_OH_elements/n_emission_elements)
+        # Currently n_OH_elements=1
+        OH_weight = 1/(n_elements-1)
+        Sa_diag[-1:] = OH_weight*prior_err_oh**2
+        scale_factor_idx -= 1
         
     # If optimizing boundary conditions, adjust for it in the inversion
     if bc_optimization:
+        scale_factor_idx -= 4
+
         # add prior error for BCs as the last 4 elements of the diagonal
         if prior_err_oh > 0.0:
-            Sa_diag[-5:-2] = prior_err_bc**2
-            bc_idx = n_elements - 5
+            Sa_diag[-5:-1] = prior_err_bc**2
         else:
             Sa_diag[-4:] = prior_err_bc**2
-            bc_idx = n_elements - 4
 
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
     
-    # update scale factors by 1 to match what geoschem expects
-    # Note: if optimizing BCs, the last 4 elements are in concentration 
-    # space, so we do not need to add 1
+    # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + ratio
+    # Notes:
+    #  - If optimizing BCs, the last 4 elements are in concentration space,
+    #    so we do not need to add 1
+    #  - If optimizing OH, the last element also needs to be updated by 1
     xhat = ratio.copy()
-    xhat[:OH_idx] += 1
-
-    # update OH scale factor by perturbation
+    xhat[:scale_factor_idx] += 1
     if prior_err_oh > 0.0:
-        xhat[OH_idx] += perturb_oh
-        print(f"xhat[OH] = {xhat[OH_idx]}")
+        xhat[n_elements] += 1
+        print(f"xhat[OH] = {xhat[n_elements]}")
         
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
@@ -257,7 +263,7 @@ def do_inversion(
     A = np.identity(n_elements) - S_post @ inv_Sa
     
     # Print some statistics
-    print("Min:", xhat[:OH_idx].min(), "Mean:", xhat[:OH_idx].mean(), "Max", xhat[:OH_idx].max())
+    print("Min:", xhat[:scale_factor_idx].min(), "Mean:", xhat[:scale_factor_idx].mean(), "Max", xhat[:scale_factor_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 

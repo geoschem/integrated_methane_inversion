@@ -33,6 +33,11 @@ trap 'imi_failed $LINENO' ERR
 start_time=$(date)
 setup_start=$(date +%s)
 
+if [[ -f imi_output.log ]]; then
+    printf "\nRemoving log file from previous inversion\n"
+    rm -f -v imi_output.log
+fi
+
 ##=======================================================================
 ## Parse config.yml file
 ##=======================================================================
@@ -201,9 +206,9 @@ if ! "$KalmanMode"; then
     print_stats
 fi 
 
-# Move output log to run directory for storage
+# Copy output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then
-    mv -v "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
+    cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
 
 # copy config file to run directory
