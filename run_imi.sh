@@ -58,8 +58,8 @@ eval $(parse_yaml ${ConfigFile})
 if ! "$isAWS"; then
     # Activate Conda environment
     printf "\nActivating conda environment: ${CondaEnv}\n"
-    eval "$(conda shell.bash hook)"
-    conda activate $CondaEnv
+    source ~/.bashrc
+    conda activate ${CondaEnv}
 
     # Load environment for compiling and running GEOS-Chem
     if [ ! -f "${GEOSChemEnv}" ]; then
@@ -70,7 +70,6 @@ if ! "$isAWS"; then
 	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
         source ${GEOSChemEnv}
     fi
-
 fi
 
 # Check all necessary config variables are present

@@ -25,7 +25,6 @@ setup_imi() {
     UseBCsForRestart=true
 
     printf "\nActivating conda environment: ${CondaEnv}\n"
-    eval "$(conda shell.bash hook)"
     if "$isAWS"; then
         # Get max process count for spinup, production, and run_inversion scripts
         output=$(echo $(slurmd -C))
