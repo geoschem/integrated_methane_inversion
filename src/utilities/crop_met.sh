@@ -24,7 +24,7 @@ module load cdo/1.9.4-fasrc02
 ##############################################################################
 
 # Create a 2-letter region ID (e.g. NA=North America, EU=Europe, AS=Asia)
-NestedRegion="SA"  # South America
+RegionID="SA"  # South America
 
 # Bounds of the cropped domain
 LonMin=-88.0
@@ -38,7 +38,7 @@ RemoveGlobalMet=false
 GlobalDir="./GEOS_0.25x0.3125/GEOS_FP"
 
 # Directory for storing cropped met fields
-RegionalDir="./GEOS_0.25x0.3125_${NestedRegion}/GEOS_FP"
+RegionalDir="./GEOS_0.25x0.3125_${RegionID}/GEOS_FP"
 
 # Download and crop constant meteorology fields? This file is required
 # by GEOS-Che, but only needs to be processed once per region (i.e. set
@@ -67,7 +67,7 @@ fi
 if "$ProcessConstantFields"; then
     wget -r -nH --cut-dirs=3 -e robots=off -q -P "${GlobalDir}" "http://geoschemdata.wustl.edu/ExtData/GEOS_0.25x0.3125/GEOS_FP/2011/01/GEOSFP.20110101.CN.025x03125.nc"
     mkdir -p -v $RegionalDir/2011/01
-    cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax ${GlobalDir}/2011/01/GEOSFP.20110101.CN.025x03125.nc ${RegionalDir}/2011/01/GEOSFP.20110101.CN.025x03125.${NestedRegion}.nc
+    cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax ${GlobalDir}/2011/01/GEOSFP.20110101.CN.025x03125.nc ${RegionalDir}/2011/01/GEOSFP.20110101.CN.025x03125.${RegionID}.nc
 fi
 
 # Loop over months
@@ -101,7 +101,7 @@ for (( Month=$StartMonth; Month<=$EndMonth; Month++)); do
 	# Output filename
 	fOut=${file##*/}                   # Remove input path
 	fOut=${fOut%.*}                    # Remove file suffix
-	fOut=${fOut}.${NestedRegion}.nc    # Append region ID
+	fOut=${fOut}.${RegionID}.nc        # Append region ID
 	fOut=$RegionalDir/$Year/$mm/$fOut  # Prepend output file path
 
 	echo $fOut

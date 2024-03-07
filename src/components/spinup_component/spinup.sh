@@ -88,11 +88,6 @@ run_spinup() {
 
     cd ${RunDirs}/spinup_run
 
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
     # Submit job to job scheduler
     sbatch --mem $SimulationMemory \
     -c $SimulationCPUs \
