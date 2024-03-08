@@ -22,13 +22,14 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
-    cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
+    cp ${InversionPath}/src/inversion_scripts/operators/*.py inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
+    cp ${InversionPath}/src/utilities/cleanup_script.sh .
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
@@ -69,7 +70,6 @@ run_inversion() {
     if ! "$isAWS"; then
         # Activate Conda environment
         printf "\nActivating conda environment: ${CondaEnv}\n"
-        eval "$(conda shell.bash hook)"
         conda activate $CondaEnv
     fi
 

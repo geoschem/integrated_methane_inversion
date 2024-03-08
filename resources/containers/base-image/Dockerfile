@@ -1,5 +1,5 @@
 # ************************* Base Dockerfile *************************
-# Installs the conda/spack environments and system dependencies
+# Installs the micromamba/spack environments and system dependencies
 # Note: This will take a long time to build due to the spack 
 # installations
 FROM amazonlinux:2
@@ -8,9 +8,9 @@ RUN mkdir /home/al2/
 RUN mkdir /home/al2/install-scripts 
 WORKDIR /home/al2/
 
-# install conda
-ADD install-scripts/install-conda.sh /home/al2/install-scripts/install-conda.sh
-RUN source install-scripts/install-conda.sh
+# install micromamba
+ADD install-scripts/install-micromamba.sh /home/al2/install-scripts/install-micromamba.sh
+RUN source install-scripts/install-micromamba.sh
 
 # install spack
 ADD install-scripts/install-spack.sh /home/al2/install-scripts/install-spack.sh

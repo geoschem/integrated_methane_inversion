@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_IMI"
+RunName: "Test_IMI_Permian"
 isAWS: false
 UseSlurm: true
 SafeMode: true
@@ -53,6 +53,7 @@ BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: false
+OptimizeOH: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -67,14 +68,15 @@ ForcedNativeResolutionElements:
   - [31.5, -104]
 
 ## Custom state vector
-StateVectorFile: "/n/holyscratch01/jacob_lab/$USER/Test_IMI/StateVector.nc"
+StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError is a relative percentage 
-## and PriorErrorBCs is in ppb
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
+##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
+PriorErrorOH: 0.5
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -116,7 +118,7 @@ SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
-SchedulerPartition: "huce_cascade,huce_intel,seas_compute,shared"
+SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
 
 ## Options to speed up the IMI
 UseTotalPriorEmis: true
@@ -142,9 +144,10 @@ MaxSimultaneousRuns: -1
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is a relative scalefactor and 
+## Note PerturbValue and PerturbValueOH are relative scale factors and 
 ## PerturbValueBCs is in ppb
 PerturbValue: 1.5
+PerturbValueOH: 1.5
 PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
@@ -195,13 +198,13 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
-BCversion: "v2023-06"
+BCversion: "v2023-10"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled

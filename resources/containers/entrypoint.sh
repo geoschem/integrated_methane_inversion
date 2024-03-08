@@ -19,7 +19,7 @@ slurmctld
 slurmd
 
 spack env activate compute_env
-conda activate imi_env
+micromamba activate imi_env
 
 # set up environment variables for GEOS-Chem
 export NETCDF_HOME=$(spack location -i netcdf-c)

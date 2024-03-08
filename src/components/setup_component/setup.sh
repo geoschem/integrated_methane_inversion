@@ -25,7 +25,6 @@ setup_imi() {
     UseBCsForRestart=true
 
     printf "\nActivating conda environment: ${CondaEnv}\n"
-    eval "$(conda shell.bash hook)"
     if "$isAWS"; then
         # Get max process count for spinup, production, and run_inversion scripts
         output=$(echo $(slurmd -C))
@@ -126,12 +125,18 @@ setup_imi() {
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout dac5a54 # most recent dev/14.2.1 @ 1 Sep 2023 12:44 PM (update this once 14.2.1 officially released)
+        git checkout 14.2.3
         git submodule update --init --recursive
         cd ..
     else
-        echo "Warning: GCClassic already exists so it won't be cloned."
-        echo "Make sure your version is 14.2.1!"
+        cd GCClassic
+        if grep -Fq "VERSION 14.2.3" CMakeLists.txt; then
+            echo "GCClassic already exists and is the correct version."
+        else
+            echo "ERROR: GCClassic already exists but is not version 14.2.3."
+            exit 1
+        fi
+        cd ..
     fi
     GCClassicPath="${InversionPath}/GCClassic"
     RunFilesPath="${GCClassicPath}/run"
@@ -155,7 +160,13 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc ${OptimizeBCs}) 
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+	nElements=$((nElements+4))
+    fi
+    if "$OptimizeOH";then
+	nElements=$((nElements+1))
+    fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds

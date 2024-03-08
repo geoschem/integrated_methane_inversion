@@ -1,9 +1,9 @@
 ## Date range (inclusive) that you want to generate BCs for
 startDate: "20180401"
-endDate: "20180531"
+endDate: "20231231"
 
 ## A directory with a lot of space where you can write the BCs (and intermediate files)
-workDir: "/n/holylfs05/LABS/jacob_lab/Users/nbalasus/v2023-09-IMI-Blended-BCs"
+workDir: "/n/holylfs05/LABS/jacob_lab/Users/lestrada/IMI/BCs/v2024-01-temp-generation/IMI_BCs_14.2.3_v2024-01-temp"
 
 ## Paths to TROPOMI data and blended TROPOMI+GOSAT data
 tropomiDir: "/n/holylfs05/LABS/jacob_lab/Lab/imi/ch4/tropomi"
@@ -11,12 +11,12 @@ blendedDir: "/n/holylfs05/LABS/jacob_lab/Lab/imi/ch4/blended"
 
 ## Conda environment to use, GEOS-Chem environment to use, GEOS-Chem input data path, and partitions to run on
 condaEnv: imi_env
-geosChemEnv: "/n/home06/nbalasus/envs/gcclassic.rocky+gnu10.minimal.env"
+geosChemEnv: "/n/home03/lestrada/holylfs/IMI/BCs/v2024-01-temp-generation/integrated_methane_inversion/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 geosChemDataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
-partition: huce_cascade
+partition: huce_cascade,seas_compute,huce_ice
 
 ## A restart file for GEOS-Chem for your simulation start date (startdate - 16 days)
 restartFilePath: "/path/to/restart/file"
 
 # Debug or not?
-debug: false
+debug: true

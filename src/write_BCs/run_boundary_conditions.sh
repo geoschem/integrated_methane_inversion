@@ -27,10 +27,10 @@ mkdir -p "${workDir}/tropomi-boundary-conditions"
 mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
 
-# Get GCClassic v14.2.1 and create the run directory
+# Get GCClassic v14.2.3 and create the run directory
 git clone https://github.com/geoschem/GCClassic.git
 cd GCClassic
-git checkout dac5a54 # most recent dev/14.2.1 @ 1 Sep 2023 12:44 PM (update this once 14.2.1 officially released)
+git checkout 14.2.3
 git submodule update --init --recursive
 cd run
 runDir="gc_run"
@@ -98,9 +98,19 @@ if ! ${debug}; then
     rm "${cwd}/debug.log"
 fi
 
+# Modify HEMCO_Config.rc to allow for post-2022 GFED4
+sed -i -e "s|DM_TEMP       1997-2022/1-12/01/0    RF|DM_TEMP       1997-2022/1-12/01/0    C|g" \
+    -e "s|DM_AGRI       1997-2022/1-12/01/0    RF|DM_AGRI       1997-2022/1-12/01/0    C|g" \
+    -e "s|DM_DEFO       1997-2022/1-12/01/0    RF|DM_DEFO       1997-2022/1-12/01/0    C|g" \
+    -e "s|DM_BORF       1997-2022/1-12/01/0    RF|DM_BORF       1997-2022/1-12/01/0    C|g" \
+    -e "s|DM_PEAT       1997-2022/1-12/01/0    RF|DM_PEAT       1997-2022/1-12/01/0    C|g" \
+    -e "s|DM_SAVA       1997-2022/1-12/01/0    RF|DM_SAVA       1997-2022/1-12/01/0    C|g" \
+    -e "s|GFED_FRACDAY 2003-2022/1-12/1-31/0  RF|GFED_FRACDAY 2003-2022/1-12/1-31/0  C|g" \
+    -e "s|GFED_FRAC3HR 2003-2022/1-12/1/0-23  RF|GFED_FRAC3HR 2003-2022/1-12/1/0-23  C|g" HEMCO_Config.rc
+
 # Modify and submit the run script
 cp runScriptSamples/operational_examples/harvard_cannon/geoschem.run .
-sed -i -e "s|huce_intel,seas_compute,shared|huce_cascade|g" \
+sed -i -e "s|huce_intel,seas_compute,shared|${partition}|g" \
     -e "s|--mem=15000|--mem=64000|g" \
     -e "s|-t 0-12:00|-t 07-00:00|g"\
     -e "s|-c 8|-c 24|g" geoschem.run

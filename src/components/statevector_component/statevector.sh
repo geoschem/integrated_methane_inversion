@@ -103,7 +103,13 @@ reduce_dimension() {
         mkdir -p ${RunDirs}/archive_sv
         cp $state_vector_path ${RunDirs}/archive_sv/StateVector_${period_i}.nc
     fi
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc ${OptimizeBCs})
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+	nElements=$((nElements+4))
+    fi
+    if "$OptimizeOH";then
+	nElements=$((nElements+1))
+    fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 }

@@ -125,24 +125,30 @@ setup_jacobian() {
             fi
 	fi
    
-	# Update settings in geoschem_config.yml except for the base run
-	if [ $x -ne 0 ]; then
-	    sed -i -e "s|emission_perturbation: 1.0|emission_perturbation: ${PerturbValue}|g" \
-	           -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
-	fi
-
 	# BC optimization setup
 	if "$OptimizeBCs"; then
-            bcThreshold=$(($nElements - 4))
+	    if "$OptimizeOH"; then
+		bcThreshold=$(($nElements - 5))
+            else
+		bcThreshold=$(($nElements - 4))
+	    fi
             # The last four state vector elements are reserved for BC optimization of NSEW
             # domain edges. If the current state vector element is one of these, then
             # turn on BC optimization for the corresponding edge and revert emission perturbation
             if [ $x -gt $bcThreshold ]; then
 		PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
 		sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
-                       -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
-                       -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
-                       -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
+                       -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+            fi
+	fi
+
+	if "$OptimizeOH"; then
+	    # The last state vector element is reserved for OH optimization.
+            # If this is the current state vector element, then modify the OH
+            # perturb value in HEMCO_Config.rc and revert emission perturbation.
+	    OHthreshold=$(($nElements - 1))
+            if [ $x -gt $OHthreshold ]; then
+		sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
             fi
 	fi
 
@@ -240,7 +246,6 @@ ELEM_'$istr'  '$SFnum'  1.5'
 		PertPrevLine='ELEM_'$istr'  '$SFnum'  1.5'
 		
 	    done
-
 	fi
 
 	# Create run script from template

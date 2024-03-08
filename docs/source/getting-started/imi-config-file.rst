@@ -56,7 +56,7 @@ Region of interest
    :class: tight-table 
 
    * - ``isRegional``
-     - Boolean for using the GEOS-Chem regional simulation. This should be set to ``false`` for global inversions.
+     - Boolean for using the GEOS-Chem regional simulation. This should be set to ``false`` for global inversions. Default value is ``true``.
    * - ``RegionID``
      - Two character region ID for using pre-cropped meteorology fields. Select ``AF`` for Africa, ``AS`` for Asia, ``EU`` for Europe, ``ME`` for the Middle East, ``NA`` for North America, ``OC`` for Oceania, ``RU`` for Russia, or ``SA`` for South America. To use global meteorology fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available regional domains.
    * - ``LonMin``
@@ -75,11 +75,11 @@ Kalman filter options
    :class: tight-table
 
    * - ``KalmanMode``
-     - Boolean for using Kalman filter
+     - Boolean for running the IMI using a Kalman filter for continuous updates (``true``) or using a single inversion (``false``). See more details about Kalman Mode in the `Kalman filter documentation <../advanced/kalman-filter-mode.html>`_.
    * - ``UpdateFreqDays``
-     - Number of days
+     - Number of days in each Kalman filter update cycle eg. ``7`` days. 
    * - ``NudgeFactor``
-     - Nudge factor
+     - Fraction of original prior emissions to use in the prior for each Kalman filter update (eg. ``0.1``). See Kalman mode documentation for more details.
 
 State vector 
 ~~~~~~~~~~~~
@@ -98,7 +98,18 @@ State vector
    * - ``OffshoreEmisThreshold``
      - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
    * - ``OptimizeBCs``
-     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs`` Default value is ``false``.
+     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``false``.
+   * - ``OptimizeOH``
+     - Boolean to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
+
+Point source datasets
+~~~~~~~~~~~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``PointSourceDatasets``
+     - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Only available option is ``["SRON"]``.
 
 Point source datasets
 ~~~~~~~~~~~~~~~~~~~~~
@@ -153,6 +164,8 @@ Inversion
 
    * - ``PriorError``
      - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
+   * - ``PriorErrorOH``
+     - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
    * - ``PriorErrorBCs``
      - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
    * - ``ObsError``
@@ -169,9 +182,10 @@ Grid
    :class: tight-table
 
    * - ``Res``
-     - Resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``.
+     - Resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
    * - ``Met``
-     - Meteorology to use for the inversion. Options are ``"GEOSFP"`` or ``"MERRA2"``.
+     - Meteorology to use for the inversion. Options are ``"GEOSFP"``
+       or ``"MERRA2"``. Default value is ``GEOSFP``.
 
 Setup modules
 ~~~~~~~~~~~~~
@@ -211,6 +225,18 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    * - ``DoPosterior``
      - Boolean to run the posterior simulation.
 
+IMI preview
+~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``DoPreview``
+     - Boolean to run the :doc:`IMI preview <imi-preview>` (``true``) or not (``false``).
+   * - ``DOFSThreshold``
+     - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
+       Default value ``0`` prevents exit.
+
 SLURM Resource Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
@@ -232,19 +258,9 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Amount of memory to allocate to each jacobian simulation (in MB).
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
-   
-IMI preview
-~~~~~~~~~~~
-.. list-table::
-   :widths: 30, 70
-   :class: tight-table
-
-   * - ``DoPreview``
-     - Boolean to run the :doc:`IMI preview <imi-preview>` (``true``) or not (``false``).
-   * - ``DOFSThreshold``
-     - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
-       Default value ``0`` prevents exit.
-
+   * - ``MaxSimultaneousRuns``
+     - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
+ 
 Advanced settings: GEOS-Chem options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are intended for advanced users who wish to modify additional GEOS-Chem options.
@@ -255,8 +271,10 @@ These settings are intended for advanced users who wish to modify additional GEO
 
    * - ``PerturbValue``
      - Value to perturb emissions by in each sensitivity simulation. Default value is ``1.5``.
+   * - ``PerturbValueOH``
+     - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``
-     - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using `OptimizeBCs`. Default value is ``10.0`` ppb.
+     - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
    * - ``UseEmisSF``
      - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
    * - ``UseOHSF``
