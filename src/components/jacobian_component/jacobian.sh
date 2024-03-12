@@ -22,18 +22,20 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    # Copy run scripts
-    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RunName}:g" \
-           -e "s:{InversionPath}:${InversionPath}:g" \
-           -e "s:{EndDate}:${EndDate}:g" \
-           -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
-
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
-
+    if [ $MaxSimultaneousRuns -gt 0 ]; then
+	    # Error check
+	    if [ $MaxSimultaneousRuns -gt $nElements ]; then
+	        printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nElements}. Please modify MaxSimultenaousRuns in config.yml" 
+            exit 9999
+	    fi
+	    sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    else
+	    sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
+    fi
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
@@ -164,11 +166,10 @@ run_jacobian() {
     # Copy run scripts
     # need to re-copy since config vars are
     # hardcoded and redojacobian might have changed
-    echo "JDE1 ${RunName} jacobian.sh"
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
-    echo "JDE ${RunName} jacobian.sh"
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" \
+           -e "s:{KalmanMode}:${KalmanMode}:g" \
            -e "s:{EndDate}:${EndDate}:g" \
            -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
 

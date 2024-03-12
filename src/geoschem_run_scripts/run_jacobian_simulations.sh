@@ -31,13 +31,20 @@ if test -f "$FILE"; then
 fi
 
 if {ReDoJacobian}; then
+
+    cd ${RUNDIR}/{RunName}_${xstr}
+
     # check for last conc file
     # it has only 1 timestep, so we
     # only need check its existence
     # rerun if it is not there
-    LastConcFile=$(date -d {EndDate} +GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4)
-    cd  ${RUNDIR}/{RunName}_${xstr}
+    # get last date from geoschem_config file
+    date_str=$(grep end_date geoschem_config.yml)
+    yyyymmdd=$(python -c "import re; date_str='${date_str}'; print(re.split('\[|,', date_str)[1])")
+    LastConcFile=$(date -d ${yyyymmdd} +GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4)
+        
     cd OutputDir
+
     if test -f "$LastConcFile"; then
         echo "Not re-running jacobian simulation: ${xstr}" >> $output_log_file
         exit 0
