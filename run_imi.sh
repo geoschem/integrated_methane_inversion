@@ -33,11 +33,6 @@ trap 'imi_failed $LINENO' ERR
 start_time=$(date)
 setup_start=$(date +%s)
 
-if [[ -f imi_output.log ]]; then
-    printf "\nRemoving log file from previous inversion\n"
-    rm -f -v imi_output.log
-fi
-
 ##=======================================================================
 ## Parse config.yml file
 ##=======================================================================
