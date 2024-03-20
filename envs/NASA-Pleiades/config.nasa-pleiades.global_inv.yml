@@ -5,7 +5,8 @@
 RunName: "Test_ICI_Global"
 Species: "CO2"
 isAWS: false
-UsePBS: true
+UseScheduler: true
+SchedulerType: "PBS"
 SafeMode: true
 S3Upload: false
 
