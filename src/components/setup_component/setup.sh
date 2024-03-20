@@ -119,25 +119,27 @@ setup_imi() {
         gridDir="${gridDir}_${RegionID}"
     fi
 
-    # Clone version 14.2.1 of GCClassic
-    # Define path to GEOS-Chem run directory files
+    # Clone correct version of GCClassic
+    GCversion='14.3.0'
     cd "${InversionPath}"
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout 14.2.3
+        git checkout $GCversion
         git submodule update --init --recursive
         cd ..
     else
         cd GCClassic
-        if grep -Fq "VERSION 14.2.3" CMakeLists.txt; then
-            echo "GCClassic already exists and is the correct version."
+        if grep -Fq "VERSION ${GCversion}" CMakeLists.txt; then
+            printf "\nGCClassic already exists and is the correct version ${GCversion}.\n"
         else
-            echo "ERROR: GCClassic already exists but is not version 14.2.3."
+            printf "\nERROR: GCClassic already exists but is not version ${GCversion}.\n"
             exit 1
         fi
         cd ..
     fi
+
+    # Define path to GEOS-Chem run directory files
     GCClassicPath="${InversionPath}/GCClassic"
     RunFilesPath="${GCClassicPath}/run"
 
