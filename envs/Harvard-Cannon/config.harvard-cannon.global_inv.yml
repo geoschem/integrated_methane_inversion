@@ -3,7 +3,7 @@
 
 ## General
 RunName: "Test_IMI_Global"
-Species: "CO2"
+Species: "CH4"
 isAWS: false
 UseScheduler: true
 SchedulerType: "slurm"
