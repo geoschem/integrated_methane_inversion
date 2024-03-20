@@ -3,8 +3,10 @@
 
 ## General
 RunName: "Test_IMI_Global"
+Species: "CO2"
 isAWS: false
-UseSlurm: true
+UseScheduler: true
+SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
 
@@ -175,11 +177,12 @@ OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
+DataPathObs: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
-CondaEnv: "imi_env"
+PythonEnvType: "conda"
+PythonEnvPath: "imi_env"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
