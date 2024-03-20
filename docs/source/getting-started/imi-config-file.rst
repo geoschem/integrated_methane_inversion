@@ -294,8 +294,8 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Path for IMI runs and output.
    * - ``DataPath``
      - Path to GEOS-Chem input data.
-   * - ``DataPathTROPOMI``
-     - Path to TROPOMI input data.
+   * - ``DataPathObs``
+     - Path to satellite input data.
    * - ``CondaFile``
      - Path to file containing Conda environment settings.
    * - ``CondaEnv``

@@ -137,7 +137,7 @@ if "$isAWS"; then
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then
-	ln -s $DataPathTROPOMI $tropomiCache
+	ln -s $DataPathObs $tropomiCache
     fi
 fi
 

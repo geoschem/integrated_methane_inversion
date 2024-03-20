@@ -16,13 +16,14 @@ config_required_aws = [
 
 # variables only required by local cluster
 config_required_local_cluster = [
-    "DataPathTROPOMI",
+    "DataPathObs",
     "GEOSChemEnv",
 ]
 
 # variables required on all systems
 config_required = [
     "RunName",
+    "Species",
     "isAWS",
     "UseSlurm",
     "SafeMode",
