@@ -179,11 +179,6 @@ DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 ## Path to TROPOMI Data
 DataPathObs: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
-## Conda environment file
-## See envs/README to create the Conda environment specified below
-PythonEnvType: "conda"
-PythonEnvPath: "imi_env"
-
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
 GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
