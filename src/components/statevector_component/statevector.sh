@@ -87,13 +87,24 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
-    if "$UseSlurm"; then
+    if "$UseScheduler"; then
         chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W "${python_args[@]}"; wait;
+        if [[ "$SchedulerType" = "slurm" ]]; then
+            sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W "${python_args[@]}"; wait;
+        elif [[ "$SchedulerType" = "PBS" ]]; then
+            qsub -l nodes=1 \
+                -l mem="$SimulationMemory"mb \
+                -l ncpus=$SimulationCPUs \
+                -l walltime=$RequestedTime \
+                -l site=needed=$SitesNeeded \ 
+                -sync y ${RunName}_Preview.run; wait;
+        else
+            echo "SchedulerType $SchedulerType is not recognized"
+        fi
     else
         python "${python_args[@]}"
     fi

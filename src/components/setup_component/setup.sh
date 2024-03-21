@@ -34,7 +34,7 @@ setup_imi() {
 
         # With sbatch reduce cpu_count by 1 to account for parent sbatch process 
         # using 1 core 
-        if "$UseSlurm"; then 
+        if "$UseScheduler"; then 
             cpu_count="$((cpu_count-1))"
         fi
 

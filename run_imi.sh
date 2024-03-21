@@ -51,12 +51,8 @@ source src/utilities/parse_yaml.sh
 eval $(parse_yaml ${ConfigFile})
 
 if ! "$isAWS"; then
-    # Activate Conda environment
-    printf "\nActivating conda environment: ${CondaEnv}\n"
-    source ~/.bashrc
-    conda activate ${CondaEnv}
-
-    # Load environment for compiling and running GEOS-Chem
+    # Load environment for compiling and running GEOS-Chem (this now also loads
+    # the python environment)
     if [ ! -f "${GEOSChemEnv}" ]; then
 	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
 	printf "\nIMI $RunName Aborted\n"
@@ -64,6 +60,22 @@ if ! "$isAWS"; then
     else
 	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
         source ${GEOSChemEnv}
+    fi
+
+    # If scheduler is used and is PBS, get the list of needed sites
+    if [ "$UseScheduler" ] && [ "$SchedulerType" = "PBS" ]; then
+        DataPaths=($OutputPath $DataPath $DataPathObs $HOME)
+        declare -a SitesNeeded=()
+        for DP in ${DataPaths[@]}; do
+            SitesNeeded_DP=$( find $DP/ -type l -exec realpath {} \; | cut -d/ -f2 | sort -u )
+            for NS in ${SitesNeeded_DP[*]}; do
+                if ! [[ ${SitesNeeded[@]} =~ $NS ]]; then
+                    SitesNeeded+=("${NS}+")
+                fi
+            done
+        done
+        SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
+        SitesNeeded="/${SitesNeeded::-1}"
     fi
 fi
 
