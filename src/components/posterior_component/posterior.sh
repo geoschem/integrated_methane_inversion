@@ -29,9 +29,8 @@ setup_posterior() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
