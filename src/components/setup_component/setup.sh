@@ -39,12 +39,11 @@ setup_imi() {
         fi
 
         # Source Conda environment file
-        source $CondaFile
-
+        source /home/ubuntu/miniconda/etc/profile.d/conda.sh
+        conda activate geo
+    else
+        source ${PythonEnv}
     fi
-
-    # Activate Conda environment
-    conda activate $CondaEnv
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested
