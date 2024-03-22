@@ -120,10 +120,15 @@ JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
 
-## Options to speed up the IMI
+## Options to speed up the IMI:
+##   UseTotalPriorEmissions - use total CH4 emissions from the prior
+##      HEMCO standalone run rather than reading individual sources
+##   NumJacobianRuns - Specify number of Jacobians runs to
+##      perform. The default is -1 which will create and submit a
+##      jacobian run for each state vector element. Specifying a value
+##      >= 1 will combine state vector elements into fewer runs.
 UseTotalPriorEmis: true
-CombineJacobianRuns: true
-NumJacobianRuns: 4
+NumJacobianRuns: -1
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
