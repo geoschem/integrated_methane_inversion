@@ -57,7 +57,7 @@ OptimizeOH: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
-PointSourceDatasets: ["SRON"]
+PointSourceDatasets: ["SRON", "CarbonMapper"]
 
 ## Clustering Options
 ReducedDimensionStateVector: false
