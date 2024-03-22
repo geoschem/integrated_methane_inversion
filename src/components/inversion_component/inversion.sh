@@ -69,8 +69,8 @@ run_inversion() {
 
     if ! "$isAWS"; then
         # Activate Conda environment
-        printf "\nActivating conda environment: ${CondaEnv}\n"
-        conda activate $CondaEnv
+        printf "\nActivating conda environment\n"
+        source ${PythonEnv}
     fi
 
     # Execute inversion driver script
