@@ -18,6 +18,7 @@ config_required_aws = [
 config_required_local_cluster = [
     "DataPathObs",
     "GEOSChemEnv",
+    "PythonEnv",
 ]
 
 # variables required on all systems
