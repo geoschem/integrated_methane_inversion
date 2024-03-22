@@ -67,12 +67,6 @@ run_inversion() {
         cd ${RunDirs}/inversion
     fi
 
-    if ! "$isAWS"; then
-        # Activate Conda environment
-        printf "\nActivating conda environment: ${CondaEnv}\n"
-        conda activate $CondaEnv
-    fi
-
     # Execute inversion driver script
     sbatch --mem $SimulationMemory \
            -c $SimulationCPUs \
