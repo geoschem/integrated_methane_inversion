@@ -51,15 +51,24 @@ source src/utilities/parse_yaml.sh
 eval $(parse_yaml ${ConfigFile})
 
 if ! "$isAWS"; then
-    # Load environment for compiling and running GEOS-Chem (this now also loads
-    # the python environment)
+    # Load environment for compiling and running GEOS-Chem 
     if [ ! -f "${GEOSChemEnv}" ]; then
-	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
-	printf "\nIMI $RunName Aborted\n"
-	exit 1
+        printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
+        printf "\nIMI $RunName Aborted\n"
+        exit 1
     else
-	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
-        source ${GEOSChemEnv}
+        printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
+            source ${GEOSChemEnv}
+    fi
+
+    # Load the python environment
+    if [ ! -f "${PythonEnv}" ]; then
+        printf "\nPython environment file ${PythonEnv} does not exist!"
+        printf "\nIMI $RunName Aborted\n"
+        exit 1
+    else
+        printf "\nLoading Python environment: ${PythonEnv}\n"
+            source ${PythonEnv}
     fi
 
     # If scheduler is used and is PBS, get the list of needed sites
