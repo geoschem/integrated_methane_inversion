@@ -182,6 +182,9 @@ DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
 GEOSChemEnv: "envs/NASA-Pleiades/gcclassic.pleiades.env"
 
+## Python environment file (this is normally one or two lines)
+PythonEnv: "envs/NASA-Pleiades/python.env"
+
 ## Download initial restart file from AWS S3?
 ##   NOTE: Must have AWS CLI enabled
 RestartDownload: false

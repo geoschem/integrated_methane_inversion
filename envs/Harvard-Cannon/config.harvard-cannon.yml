@@ -183,6 +183,9 @@ DataPathObs: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
 GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 
+## Python environment file (this is normally one or two lines)
+PythonEnv: "envs/Harvard-Cannon/python.env"
+
 ## Download initial restart file from AWS S3?
 ##   NOTE: Must have AWS CLI enabled
 RestartDownload: false
