@@ -32,9 +32,8 @@ run_preview() {
     # Remove old error status file if present
     rm -f .error_status_file.txt
     
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4

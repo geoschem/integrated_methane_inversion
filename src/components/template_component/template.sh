@@ -13,7 +13,7 @@ setup_template() {
 
     # The createRunDir.sh script assumes the file ~/.geoschem/config exists
     # and contains the path to GEOS-Chem input data
-	export GC_USER_REGISTERED=true
+    export GC_USER_REGISTERED=true
     if [[ ! -f ${HOME}/.geoschem/config ]]; then
 	mkdir -p ${HOME}/.geoschem
 	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
@@ -152,7 +152,10 @@ setup_template() {
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
 
-    # Compile GEOS-Chem and store executable in template run directory
+    # Copy input file for applying emissions perturbations via HEMCO
+    cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
+    
+    # Compile GEOS-Chem and store executable in GEOSChem_build directory
     printf "\nCompiling GEOS-Chem...\n"
     cd build
     cmake ${InversionPath}/GCClassic >> build_geoschem.log 2>&1
@@ -161,7 +164,8 @@ setup_template() {
     cd ..
     if [[ -f gcclassic ]]; then
         rm -rf build
-        mv build_info ../GEOSChem_build_info
+        mv build_info ../GEOSChem_build
+        mv -v gcclassic ../GEOSChem_build/
     else
         printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
         exit 999

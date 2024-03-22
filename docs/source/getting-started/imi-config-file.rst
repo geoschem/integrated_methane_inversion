@@ -111,6 +111,15 @@ Point source datasets
    * - ``PointSourceDatasets``
      - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Only available option is ``["SRON"]``.
 
+Point source datasets
+~~~~~~~~~~~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``PointSourceDatasets``
+     - Used for visualization and state vector clustering
+
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
 For more information on using the clustering options take a look at the `clustering options page <../advanced/using-clustering-options.html>`__.

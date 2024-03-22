@@ -91,6 +91,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
@@ -99,7 +100,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 DoInversion: false
@@ -111,12 +112,23 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
+PriorMemory: 50000
 SimulationCPUs: 32
 SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
+
+## Options to speed up the IMI:
+##   UseTotalPriorEmissions - use total CH4 emissions from the prior
+##      HEMCO standalone run rather than reading individual sources
+##   NumJacobianRuns - Specify number of Jacobians runs to
+##      perform. The default is -1 which will create and submit a
+##      jacobian run for each state vector element. Specifying a value
+##      >= 1 will combine state vector elements into fewer runs.
+UseTotalPriorEmis: true
+NumJacobianRuns: -1
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
