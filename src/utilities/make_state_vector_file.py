@@ -4,9 +4,9 @@ from sklearn.cluster import KMeans
 import yaml
 
 
-def get_nested_grid_bounds(land_cover_pth):
+def get_grid_bounds(land_cover_pth):
     """
-    Get the lat/lon bounds of the nested grid window for the inversion.
+    Get the lat/lon bounds of the grid window for the inversion.
     The land cover file path specifies the window.
     """
 
@@ -19,9 +19,9 @@ def get_nested_grid_bounds(land_cover_pth):
     return minLat_allowed, maxLat_allowed, minLon_allowed, maxLon_allowed
 
 
-def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth):
+def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth):
     """
-    Check whether input lat/lon bounds are compatible with (contained within) the nested grid window.
+    Check whether input lat/lon bounds are compatible with (contained within) the regional grid window.
     The land cover file path specifies the window.
     """
 
@@ -30,7 +30,7 @@ def check_nested_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cov
         maxLat_allowed,
         minLon_allowed,
         maxLon_allowed,
-    ) = get_nested_grid_bounds(land_cover_pth)
+    ) = get_grid_bounds(land_cover_pth)
 
     if (
         lat_min < minLat_allowed
@@ -121,6 +121,7 @@ def make_state_vector_file(
     lat_max = config["LatMax"]
     lon_min = config["LonMin"]
     lon_max = config["LonMax"]
+    is_regional=config["isRegional"]
     buffer_deg = config["BufferDeg"]
     land_threshold = config["LandThreshold"]
     emis_threshold = config["OffshoreEmisThreshold"]
@@ -134,22 +135,29 @@ def make_state_vector_file(
     # TODO remove this offset once the HEMCO standalone files 
     # are regenerated with recent bugfix that corrects the offset
     if config["Res"] == "0.25x0.3125":
-             hd["lon"] = hd["lon"] - 0.03125
+        hd["lon"] = hd["lon"] - 0.03125
     elif config["Res"] == "0.5x0.625":
-             hd["lon"] = hd["lon"] - 0.0625
+        hd["lon"] = hd["lon"] - 0.0625
 
     # Select / group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
-    # Check compatibility of region of interest with nesting window
-    compatible = check_nested_grid_compatibility(
-        lat_min, lat_max, lon_min, lon_max, land_cover_pth
-    )
-    if not compatible:
-        raise ValueError(
-            "Region of interest not contained within selected NestedRegion; see config.yml."
-        )
+    # Check compatibility of region of interest
+    if is_regional:
+       compatible = check_grid_compatibility(
+           lat_min, lat_max, lon_min, lon_max, land_cover_pth
+       )
+       if not compatible:
+           raise ValueError(
+               "Region of interest not contained within selected RegionID; see config.yml)."
+           )
+
+    # For global inversions exclude Antarctica and limit max_lat to avoid
+    # HEMCO error when reading netCDF file
+    if not is_regional:
+        lat_max = 88.0
+        lat_min = -60.0
 
     # Define bounds of inversion domain
     (
@@ -157,7 +165,7 @@ def make_state_vector_file(
         maxLat_allowed,
         minLon_allowed,
         maxLon_allowed,
-    ) = get_nested_grid_bounds(land_cover_pth)
+    ) = get_grid_bounds(land_cover_pth)
     lon_min_inv_domain = np.max([lon_min - buffer_deg, minLon_allowed])
     lon_max_inv_domain = np.min([lon_max + buffer_deg, maxLon_allowed])
     lat_min_inv_domain = np.max([lat_min - buffer_deg, minLat_allowed])
@@ -173,8 +181,9 @@ def make_state_vector_file(
     statevector = lc.where(lc == -9999.0)
 
     # Set pixels in buffer areas to 0
-    statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
-    statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
+    if is_regional:
+        statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
+        statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
     # Also set pixels over water to 0, unless there are offshore emissions
     if land_threshold > 0:
@@ -189,8 +198,8 @@ def make_state_vector_file(
 
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
-    statevector = cluster_buffer_elements(statevector, k_buffer_clust, statevector.max().item())
-    # -------------------------------------------------------------------------
+    if is_regional:
+        statevector = cluster_buffer_elements(statevector, k_buffer_clust, statevector.max().item())
 
     # Make dataset
     da_statevector = statevector.copy()
@@ -225,6 +234,7 @@ if __name__ == "__main__":
     land_cover_pth = sys.argv[2]
     hemco_diag_pth = sys.argv[3]
     save_pth = sys.argv[4]
+
     make_state_vector_file(
         config_path,
         land_cover_pth,

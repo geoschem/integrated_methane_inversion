@@ -27,6 +27,7 @@ from src.inversion_scripts.utils import (
     filter_tropomi,
     filter_blended,
     calculate_area_in_km,
+    calculate_superobservation_error,
 )
 from joblib import Parallel, delayed
 from src.inversion_scripts.operators.TROPOMI_operator import (
@@ -125,7 +126,7 @@ def imi_preview(
 
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
-        config, state_vector_path, preview_dir, tropomi_cache, preview=True
+        config, state_vector_path, preview_dir, tropomi_cache, preview=True, kf_index=None
     )
     mask = state_vector_labels <= last_ROI_element
 
@@ -168,6 +169,10 @@ def imi_preview(
         res_factor = 1
     elif config["Res"] == "0.5x0.625":
         res_factor = 0.5
+    elif config["Res"] == "2.0x2.5":
+        res_factor = 0.125
+    elif config["Res"] == "4.0x5.0":
+        res_factor = 0.0625
     additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
     expected_cost = (
         (reference_cost + additional_storage_cost)
@@ -485,15 +490,24 @@ def estimate_averaging_kernel(
     df["swir_albedo"] = albedo
     df["xch4"] = xch4
 
-    # set resolution specific variables
+    # Set resolution specific variables
+    # L_native = Rough length scale of native state vector element [m]
     if config["Res"] == "0.25x0.3125":
-        L_native = 25 * 1000  # Rough length scale of native state vector element [m]
+        L_native = 25 * 1000
         lat_step = 0.25
         lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":
+        L_native = 50 * 1000
         lat_step = 0.5
         lon_step = 0.625
-        L_native = 50 * 1000  # Rough length scale of native state vector element [m]
+    elif config["Res"] == "2.0x2.5":
+        L_native = 200 * 1000
+        lat_step = 2.0
+        lon_step = 2.5
+    elif config["Res"] == "4.0x5.0":
+        L_native = 400 * 1000
+        lat_step = 4.0
+        lon_step = 5.0
 
     # bin observations into gridcells and map onto statevector
     observation_counts = add_observation_counts(df, state_vector, lat_step, lon_step)
@@ -526,9 +540,12 @@ def estimate_averaging_kernel(
     # Estimate information content
     # ----------------------------------
 
+    time_delta = enddate_np64 - startdate_np64
+    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
+
     # State vector, observations
     emissions = np.array(emissions)
-    m = np.array(num_obs)  # Number of observations per state vector element
+    m = np.array(num_days)  # Number of observation days
     L = np.array(L)
 
     # If Kalman filter mode, count observations per inversion period
@@ -538,7 +555,7 @@ def estimate_averaging_kernel(
         n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-        m = n_obs_per_period  # Number of obs per inversion period, per element
+        m = config["UpdateFreqDays"] # number of days in inversion period
 
     print("\n" + outstring2)
 
@@ -556,16 +573,21 @@ def estimate_averaging_kernel(
         L, 2
     )  # kg/m2/s from kg/s, per element
 
-    time_delta = enddate_np64 - startdate_np64
-    num_days = np.round((time_delta) / np.timedelta64(1, "D"))
-
     # Error standard deviations with updated units
     sA = config["PriorError"] * emissions_kgs_per_m2
-    sO = config["ObsError"] * 1e-9
+    sO = config["ObsError"]
+
+    # Calculate superobservation error to use in averaging kernel sensitivity equation
+    # from P observations per grid cell = number of observations per grid cell / m days
+    P = np.array(num_obs) / num_days # number of observations per grid cell (native state vector element)
+    s_superO_1 = calculate_superobservation_error(sO, 1) # for handling cells with 0 observations (avoid divide by 0)
+    s_superO_p = [calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1 
+                    for element in P] # list containing superobservation error per state vector element
+    s_superO = np.array(s_superO_p) * 1e-9 # convert to ppb
 
     # Averaging kernel sensitivity for each grid element
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (sO / k) ** 2 / m)
+    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / m) # m is number of days
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"

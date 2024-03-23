@@ -22,14 +22,20 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    # Copy run scripts
-    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RunName}:g" \
-           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    if [ $MaxSimultaneousRuns -gt 0 ]; then
+	# Error check
+	if [ $MaxSimultaneousRuns -gt $nElements ]; then
+	    printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nElements}. Please modify MaxSimultenaousRuns in config.yml" 
+            exit 9999
+	fi
+	sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+    else
+	sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
+    fi
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
@@ -70,54 +76,70 @@ setup_jacobian() {
 	rm -rf gcclassic
 	ln -s ${RunTemplate}/gcclassic .
 
-    # Link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+	# Link to restart file
+	RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+	if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
+            ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 	else
 	    RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
 	    ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 	    if "$UseBCsForRestart"; then
 		    sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-        fi
+            fi
 	fi
    
 	# Update settings in geoschem_config.yml except for the base run
-    if [ $x -ne 0 ]; then
+	if [ $x -ne 0 ]; then
 	    sed -i -e "s|emission_perturbation_factor: 1.0|emission_perturbation_factor: ${PerturbValue}|g" \
 	           -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
-    fi
+	fi
 
-    # BC optimization setup
-    if "$OptimizeBCs"; then
-        bcThreshold=$(($nElements - 4))
-        # The last four state vector elements are reserved for BC optimization of NSEW
-        # domain edges. If the current state vector element is one of these, then
-        # turn on BC optimization for the corresponding edge and revert emission perturbation
-        if [ $x -gt $bcThreshold ]; then
-            PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
-            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
-                -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
-                -e "s|emission_perturbation_factor: ${PerturbValue}|emission_perturbation_factor: 1.0|g" \
-                -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
-        fi
-    fi 
+	# BC optimization setup
+	if "$OptimizeBCs"; then
+	    if "$OptimizeOH"; then
+		bcThreshold=$(($nElements - 5))
+            else
+		bcThreshold=$(($nElements - 4))
+	    fi
+            # The last four state vector elements are reserved for BC optimization of NSEW
+            # domain edges. If the current state vector element is one of these, then
+            # turn on BC optimization for the corresponding edge and revert emission perturbation
+            if [ $x -gt $bcThreshold ]; then
+		PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
+		sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+                       -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
+                       -e "s|emission_perturbation_factor: ${PerturbValue}|emission_perturbation_factor: 1.0|g" \
+                       -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
+            fi
+	fi
+
+	if "$OptimizeOH"; then
+	    # The last state vector element is reserved for OH optimization.
+            # If this is the current state vector element, then modify the OH
+            # perturb value in HEMCO_Config.rc and revert emission perturbation.
+	    OHthreshold=$(($nElements - 1))
+            if [ $x -gt $OHthreshold ]; then
+		sed -i -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
+                       -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
+		sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+            fi
+	fi
 
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
 	if [ $x -eq 0 ]; then
 	    if "$HourlyCH4"; then
-            sed -i -e 's/'\''Restart/#'\''Restart/g' \
-                   -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                   -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                   -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-                   -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+		sed -i -e 's/'\''Restart/#'\''Restart/g' \
+                       -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                       -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                       -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+                       -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
 	    fi
-    # For all other runs, just disable Restarts
-    else
-        if "$HourlyCH4"; then
-            sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
-        fi
+	    # For all other runs, just disable Restarts
+	else
+            if "$HourlyCH4"; then
+		sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
+            fi
 	fi
 
 	# Create run script from template
@@ -125,19 +147,19 @@ setup_jacobian() {
 	rm -f ch4_run.template
 	chmod 755 ${name}.run
 
-    ### Turn on observation operators if requested, only for base run
-    if [ $x -eq 0 ]; then
-    	activate_observations
-    fi
+	### Turn on observation operators if requested, only for base run
+	if [ $x -eq 0 ]; then
+    	    activate_observations
+	fi
 
-    ### Perform dry run if requested, only for base run
-    if [ $x -eq 0 ]; then
-        if "$ProductionDryRun"; then
-            printf "\nExecuting dry-run for production runs...\n"
-            ./gcclassic --dryrun &> log.dryrun
-            ./download_data.py log.dryrun aws
-        fi
-    fi
+	### Perform dry run if requested, only for base run
+	if [ $x -eq 0 ]; then
+            if "$ProductionDryRun"; then
+		printf "\nExecuting dry-run for production runs...\n"
+		./gcclassic --dryrun &> log.dryrun
+		./download_data.py log.dryrun aws
+            fi
+	fi
 
 	# Navigate back to top-level directory
 	cd ../..
@@ -154,16 +176,26 @@ setup_jacobian() {
 # Usage:
 #   run_jacobian
 run_jacobian() {
+
+    pushd ${RunDirs}
+
+    # Copy run scripts
+    # need to re-copy since config vars are
+    # hardcoded and redojacobian might have changed
+    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" \
+           -e "s:{KalmanMode}:${KalmanMode}:g" \
+           -e "s:{EndDate}:${EndDate}:g" \
+           -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+
+    popd
+
     if ! "$PrecomputedJacobian"; then
         jacobian_start=$(date +%s)
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
 
         cd ${RunDirs}/jacobian_runs
-
-        if ! "$isAWS"; then
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${GEOSChemEnv} 
-        fi
 
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
@@ -187,11 +219,6 @@ run_jacobian() {
 
         # Run the prior simulation
         cd ${JacobianRunsDir}
-            
-        if ! "$isAWS"; then
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${GEOSChemEnv}
-        fi
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"

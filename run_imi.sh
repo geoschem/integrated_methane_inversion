@@ -3,7 +3,10 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -o "imi_output.log"
-
+#SBATCH -t 0-16:00
+#SBATCH --mem=20000
+#SBATCH -p sapphire,seas_compute,huce_cascade,huce_intel,shared
+#SBATCH --mail-type=END
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -51,6 +54,22 @@ if ! "$isAWS"; then
     # Activate Conda environment
     printf "\nActivating conda environment: ${CondaEnv}\n"
     source ~/.bashrc
+    conda activate ${CondaEnv}
+
+    # Load environment for compiling and running GEOS-Chem
+    if [ ! -f "${GEOSChemEnv}" ]; then
+	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
+	printf "\nIMI $RunName Aborted\n"
+	exit 1
+    else
+	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
+        source ${GEOSChemEnv}
+    fi
+else
+    # Source Conda environment file
+    source $CondaFile
+
+    # Activate Conda environment
     conda activate ${CondaEnv}
 fi
 
@@ -187,7 +206,7 @@ if ! "$KalmanMode"; then
     print_stats
 fi 
 
-# copy output log to run directory for storage
+# Copy output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then
     cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
@@ -197,7 +216,6 @@ cd $InversionPath
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
-cd $InversionPath
 if "$S3Upload"; then
     python src/utilities/s3_upload.py $ConfigFile
 fi

@@ -16,19 +16,10 @@ SpinupMonths: 1
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
 BlendedTROPOMI: false
 
-## Region of interest
-##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
-##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -105
-LonMax: -103
-LatMin: 31
-LatMax: 33
+## Is this a regional inversion? Set to false for global inversion
+isRegional: true
 
-## Use nested grid simulation?
-##   Must be "true" for IMI regional inversions
-NestedGrid: true
-
-## Select nested grid region (for using pre-cropped meteorological fields)
+## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AF" : Africa ([-37,40], [-20,53])
 ##     "AS" : Asia ([-11,55],[60,150]) 
@@ -38,9 +29,17 @@ NestedGrid: true
 ##     "OC" : Oceania ([-50,5], [110,180])
 ##     "RU" : Russia ([41,83], [19,180])
 ##     "SA" : South America ([-59,16], [-88,-31])
-##     ""   : Use for global met fields (global simulation/custom nested grids)
+##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-NestedRegion: "NA"
+RegionID: "NA"
+
+## Region of interest
+##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
+##   Otherwise lat/lon bounds are determined from StateVectorFile
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 33
 
 ## Kalman filter options
 KalmanMode: false
@@ -54,6 +53,7 @@ BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: false
+OptimizeOH: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -72,18 +72,22 @@ StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevecto
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError is a relative percentage 
-## and PriorErrorBCs is in ppb
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
+##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
+PriorErrorOH: 0.5
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
-##   Select "0.25x0.3125" and "geosfp", or "0.5x0.625" and "merra2"
+##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
 Res: "0.25x0.3125"
-Met: "geosfp"
+
+## Meteorology
+##   Options are GEOSFP or MERRA2
+Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
@@ -98,20 +102,25 @@ SetupPosteriorRun: false
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
 ## IMI preview
+##   NOTE: RunSetup must be true to run preview
 DoPreview: true
 DOFSThreshold: 0
 
-## resource allocation settings for slurm jobs
+## Resource allocation settings for slurm jobs
 SimulationCPUs: 32
 SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
+
+## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
+MaxSimultaneousRuns: -1
 
 ##====================================================================
 ##
@@ -129,9 +138,10 @@ SchedulerPartition: "debug"
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is a relative scalefactor and 
+## Note PerturbValue and PerturbValueOH are relative scale factors and 
 ## PerturbValueBCs is in ppb
 PerturbValue: 1.5
+PerturbValueOH: 1.5
 PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
@@ -165,7 +175,7 @@ OutputPath: "/home/ubuntu/imi_output_dir"
 ## Path to GEOS-Chem input data
 DataPath: "/home/ubuntu/ExtData"
 
-## Environment files
+## Conda environment file
 CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
 CondaEnv: "geo"
 
@@ -178,8 +188,7 @@ RestartDownload: true
 RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
-## Path to GEOS-Chem boundary condition files (for nested grid simulations)
-## Must put backslash before $ in $YYYY$MM$DD to properly work in sed command
+## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 BCversion: "v2023-06"

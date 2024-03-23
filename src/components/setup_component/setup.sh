@@ -14,17 +14,6 @@ setup_imi() {
 
     cd ${InversionPath}
 
-    if ! "$isAWS"; then
-		if [ ! -f "${GEOSChemEnv}" ]; then
-			printf "\nGEOS-Chem environment file does not exist!"
-			printf "\nIMI $RunName Aborted\n"
-			exit 1
-		else
-	        # Load environment with modules for compiling GEOS-Chem Classic
-    	    source ${GEOSChemEnv}
-    	fi
-    fi
-
     ##=======================================================================
     ## Standard settings
     ##=======================================================================
@@ -33,29 +22,7 @@ setup_imi() {
     SpinupEnd=${StartDate}
 
     # Use global boundary condition files for initial conditions
-    UseBCsForRestart=true
-
-    printf "\nActivating conda environment: ${CondaEnv}\n"
-    if "$isAWS"; then
-        # Get max process count for spinup, production, and run_inversion scripts
-        output=$(echo $(slurmd -C))
-        array=($output)
-        cpu_str=$(echo ${array[1]})
-        cpu_count=$(echo ${cpu_str:5})
-
-        # With sbatch reduce cpu_count by 1 to account for parent sbatch process 
-        # using 1 core 
-        if "$UseSlurm"; then 
-            cpu_count="$((cpu_count-1))"
-        fi
-
-        # Source Conda environment file
-        source $CondaFile
-
-    fi
-
-    # Activate Conda environment
-    conda activate $CondaEnv
+    UseBCsForRestart=true    
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested
@@ -92,38 +59,42 @@ setup_imi() {
     ##=======================================================================
     ## Define met and grid fields for HEMCO_Config.rc
     ##=======================================================================
-    if [ "$Met" == "geosfp" ]; then
-        metUC="GEOSFP"
+    if [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
         metDir="GEOS_FP"
         native="0.25x0.3125"
         constYr="2011"
         LandCoverFileExtension="nc"
-    elif [ "$Met" == "merra2" ]; then
-        metUC="MERRA2"
+    elif [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metDir="MERRA2"
         native="0.5x0.625"
         constYr="2015"
         LandCoverFileExtension="nc4"
-    fi
-
-    if [ "$Res" = "4x5" ]; then
-        gridRes="${Res}"
-        gridResLong="4.0x5.0"
-    elif [ "$Res" == "2x2.5" ]; then
-        gridRes="2x25"
-        gridResLong="2.0x2.5"
-    elif [ "$Res" == "0.5x0.625" ]; then
-        gridRes="05x0625"
-        gridResLong="${Res}"
-    elif [ "$Res" == "0.25x0.3125" ]; then
-        gridRes="025x03125"
-        gridResLong="${Res}"
-    fi
-
-    if [ -z "$NestedRegion" ]; then
-        gridDir="$Res"
     else
-        gridDir="${Res}_${NestedRegion}"
+	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
+	printf "\n Options are GEOSFP or MERRA2.\n"
+	exit 1
+    fi
+
+    if [ "$Res" == "0.25x0.3125" ]; then
+        gridDir="${Res}"
+        gridFile="025x03125"
+    elif [ "$Res" == "0.5x0.625" ]; then
+        gridDir="${Res}" 
+        gridFile="05x0625"
+    elif [ "$Res" == "2.0x2.5" ]; then
+        gridDir="2x2.5"
+        gridFile="2x25"
+    elif [ "$Res" = "4.0x5.0" ]; then
+        gridDir="4x5"
+        gridFile="4x5"
+    else
+	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+	exit 1
+    fi
+    # Use cropped met for regional simulations instead of using global met
+    if "$isRegional"; then
+        gridDir="${gridDir}_${RegionID}"
     fi
 
     # Clone version 14.2.1 of GCClassic
@@ -162,11 +133,18 @@ setup_imi() {
         create_statevector
     else
         # Copy custom state vector to $RunDirs directory for later use
-        cp $StateVectorFile ${RunDirs}/StateVector.nc
+        printf "\nCopying state vector file\n"
+        cp -v $StateVectorFile ${RunDirs}/StateVector.nc
     fi
 
     # Determine number of elements in state vector file
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc ${OptimizeBCs}) 
+    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+	nElements=$((nElements+4))
+    fi
+    if "$OptimizeOH";then
+	nElements=$((nElements+1))
+    fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
@@ -273,4 +251,3 @@ activate_observations() {
     fi
 
 }
-
