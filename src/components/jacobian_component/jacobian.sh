@@ -186,11 +186,6 @@ run_jacobian() {
 
         cd ${RunDirs}/jacobian_runs
 
-        if ! "$isAWS"; then
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${GEOSChemEnv} 
-        fi
-
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
 
@@ -213,11 +208,6 @@ run_jacobian() {
 
         # Run the prior simulation
         cd ${JacobianRunsDir}
-            
-        if ! "$isAWS"; then
-            # Load environment with modules for compiling GEOS-Chem Classic
-            source ${GEOSChemEnv}
-        fi
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"

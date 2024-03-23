@@ -65,6 +65,12 @@ if ! "$isAWS"; then
 	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
         source ${GEOSChemEnv}
     fi
+else
+    # Source Conda environment file
+    source $CondaFile
+
+    # Activate Conda environment
+    conda activate ${CondaEnv}
 fi
 
 # Check all necessary config variables are present
