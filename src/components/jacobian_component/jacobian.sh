@@ -22,10 +22,6 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    # Copy run scripts
-    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RunName}:g" \
-           -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_jacobian_simulations.sh
     cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
     sed -i -e "s:{START}:0:g" \
            -e "s:{END}:${nElements}:g" \
@@ -180,6 +176,21 @@ setup_jacobian() {
 # Usage:
 #   run_jacobian
 run_jacobian() {
+
+    pushd ${RunDirs}
+
+    # Copy run scripts
+    # need to re-copy since config vars are
+    # hardcoded and redojacobian might have changed
+    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+           -e "s:{InversionPath}:${InversionPath}:g" \
+           -e "s:{KalmanMode}:${KalmanMode}:g" \
+           -e "s:{EndDate}:${EndDate}:g" \
+           -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+
+    popd
+
     if ! "$PrecomputedJacobian"; then
         jacobian_start=$(date +%s)
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
