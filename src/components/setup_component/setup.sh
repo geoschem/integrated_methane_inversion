@@ -152,8 +152,6 @@ setup_imi() {
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
-    Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
     ##=======================================================================
     ## Set up template run directory
