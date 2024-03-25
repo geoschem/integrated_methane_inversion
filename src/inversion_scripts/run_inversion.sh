@@ -2,11 +2,23 @@
 
 #SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
-#SBATCH -e run_inversion_%j.err
 
 ##=======================================================================
 ## Parse config.yml file
 ##=======================================================================
+
+send_error() {
+    file=`basename "$0"`
+    printf "\nInversion Error: on line number ${1} of ${file}: IMI exiting."
+    echo "Error Status: 1" > .error_status_file.txt
+    exit 1
+}
+
+# remove error status file if present
+rm -f .error_status_file.txt
+
+# trap and exit on errors
+trap 'send_error $LINENO' ERR
 
 printf "\n=== PARSING CONFIG FILE ===\n"
 
