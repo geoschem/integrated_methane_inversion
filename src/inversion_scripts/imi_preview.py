@@ -110,10 +110,6 @@ def imi_preview(
 
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    # redirect output to log file
-    output_file = open(f"{inversion_path}/imi_output.log", "a")
-    sys.stdout = output_file
-    sys.stderr = output_file
 
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)

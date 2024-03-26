@@ -93,6 +93,8 @@ reduce_dimension() {
         -c $SimulationCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
+        -o ${InversionPath}/imi_output.log \
+        --open-mode=append \
         -W "${python_args[@]}"; wait;
     else
         python "${python_args[@]}"

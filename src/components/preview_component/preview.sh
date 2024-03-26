@@ -109,6 +109,8 @@ run_preview() {
         -c $SimulationCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
+        -o ${InversionPath}/imi_output.log \
+        --open-mode=append \
         -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
     else
         python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
