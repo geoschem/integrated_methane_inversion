@@ -3,6 +3,7 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -o "imi_output.log"
+#SBATCH --open-mode=append
 #SBATCH -t 0-16:00
 #SBATCH --mem=20000
 #SBATCH -p sapphire,seas_compute,huce_cascade,huce_intel,shared
