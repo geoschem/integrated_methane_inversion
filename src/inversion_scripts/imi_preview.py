@@ -189,14 +189,6 @@ def imi_preview(
     # Output
     # ----------------------------------
 
-    # Write preview diagnostics to text file
-    outputtextfile = open(os.path.join(preview_dir, "preview_diagnostics.txt"), "w+")
-    outputtextfile.write("##" + outstring2 + "\n")
-    outputtextfile.write("##" + outstring6 + "\n")
-    outputtextfile.write("##" + outstring7 + "\n")
-    outputtextfile.write(outstrings)
-    outputtextfile.close()
-
     # Prepare plot data for prior
     prior_kgkm2h = prior * (1000**2) * 60 * 60  # Units kg/km2/h
 
