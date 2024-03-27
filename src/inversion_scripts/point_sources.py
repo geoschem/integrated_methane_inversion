@@ -21,6 +21,13 @@ class PointSources:
     will be concatenated. Current options include:
         - SRON plume data
         - CarbonMapper plume data
+    
+    
+    Datasources must have for each point
+    * emissions in kg/hr
+    * number of detections
+    * point geometry on WGS84 crs
+        
 
     Parameters
     ----------
@@ -33,8 +40,14 @@ class PointSources:
     ---
     ps = PointSources(geofilter, datasources)
 
-    To return a list of [[x,y]] coordinates:
+    To return a list of [x,y] coordinates:
     ps.get_coords()
+    
+    To return a list of [x,y] coordinates
+    on the state vector grid (i.e. multiple
+    points in single grid are given as a
+    single coordinate):
+    ps.get_gridded_coords()
 
     '''
     def __init__(self, geofilter, datasources):
@@ -44,6 +57,7 @@ class PointSources:
             datasources = [datasources]
         self.datasources = datasources
         self.points = self._get_points()
+        self.grid_ds = self.grid_all_data()
 
     def _get_points(self):
         # concatenate and return points geometry
@@ -53,12 +67,101 @@ class PointSources:
             # True if point in ROI, else False
             inout = self.geofilter.filter_points(d.gdf)
             if inout is not None:
-                in_points.append(d.gdf[inout].geometry)
+                in_points.append(d.gdf[inout])
         if len(in_points) > 0:
             gdf_combined = pd.concat(in_points)
-            return gdf_combined.geometry
+            # filter out nans emissions
+            gdf_filtered = gdf_combined[~gdf_combined.emission.isna()].copy()
+            return gdf_filtered.geometry
         else:
             return None
+    
+    
+    def grid_datasource(self, datasource):
+        '''
+        put all point source data on the state vector
+        grid. Need:
+         - emissions [kg/hr]
+         - n observations
+         - n detections
+         
+        return a dataset
+        '''
+        
+        # 1. filter points to roi
+        inout = self.geofilter.filter_points(datasource.gdf)
+        
+        if inout.sum() > 0:
+            gdf_inroi = datasource.gdf[inout]
+        else:
+            return None
+        
+        # 2. filter out nans emissions
+        gdf_filtered = gdf_inroi[~gdf_inroi.emission.isna()].copy()
+        
+        # 3. get I,J indices
+        lon_dist = gdf_filtered.geometry.x.values[:,None] - self.geofilter.lons[None,:]
+        lat_dist = gdf_filtered.geometry.y.values[:,None] - self.geofilter.lats[None,:]
+        ilon = np.argmin( np.abs(lon_dist), 1)
+        ilat = np.argmin( np.abs(lat_dist), 1)
+        gdf_filtered['I'] = ilon
+        gdf_filtered['J'] = ilat
+        
+        # 4. average up to grid, sum count, etc
+        dfgb = gdf_filtered.groupby(['I','J'])
+        gdf_grid = dfgb.sum()[['detection_count','observation_count']]
+        gdf_grid['emission'] = dfgb.mean()[['emission']]
+        gdf_grid['persistence'] = gdf_grid.detection_count / gdf_grid.observation_count
+
+        # 5. make it on a grid
+        dalist = []
+        for v in gdf_grid.columns:
+            
+            indat = np.full(
+                (self.geofilter.lats.shape[0],
+                 self.geofilter.lons.shape[0]),
+                np.nan
+            )
+            
+            indat[
+                gdf_grid.reset_index().J,
+                gdf_grid.reset_index().I
+            ] = gdf_grid.reset_index()[v]
+            
+            vda = xr.DataArray(
+                data = indat,
+                coords = {
+                    'lat':self.geofilter.lats,
+                    'lon':self.geofilter.lons
+                },
+                dims = ['lat','lon'],
+                name = v
+            )
+            dalist.append(vda)
+
+        # vars of this are columns of gdf_grid
+        ds = xr.merge(dalist)
+        
+        return ds
+    
+    
+    def grid_all_data(self):
+        d_list = []
+        d_names = []
+        for d in self.datasources:
+            ds_i = self.grid_datasource(d)
+            d_list.append(ds_i)
+            if ds_i is not None:
+                d_names.append(d.myname)
+        if not all([i is None for i in d_list]):
+            ds = xr.concat(d_list, 'observer')
+            ds = ds.assign_coords({'observer': d_names})
+            return ds
+        else:
+            msg = 'No point sources in ROI'
+            warnings.warn(msg)
+            return None
+        
     
     def get_coords(self):
         '''
@@ -75,11 +178,28 @@ class PointSources:
                 self.points.x.values
             )).tolist()
             return coords
-
+        
+    
+    def get_gridded_coords(self):
+        '''
+        Get y,x (lat,lon) coordinates for point sources
+        from all datasets
+         
+        Returns: list of [y,x] coordinates in [lon,lat]
+        '''
+        if self.grid_ds is None:
+            return []
+        else:
+            dftmp = self.grid_ds.emission.to_dataframe().reset_index()
+            coords = (
+                dftmp[~dftmp.emission.isna()][['lat','lon']]
+                .values.tolist()
+            )
+            return coords
 
 class GeoFilter:
     '''
-    Geometry of ROI
+    Geometry of ROI and inversion domain
 
     Parameters
     ----------
@@ -96,9 +216,32 @@ class GeoFilter:
     '''
     def __init__(self, config):
         self.config = config
-        self.geo = self._make_geometry()
+        self.geo = self._make_roi_geometry()
+        self.svds = self._get_state_vector_file()
+        self.lons = self.svds.lon.values
+        self.lats = self.svds.lat.values
 
-    def _make_geometry(self):
+    def _get_state_vector_file(self):
+        
+        # infer lat lons from state vector file
+        # this file should already exist
+        svf = f'{config["OutputPath"]}/{config["RunName"]}/StateVector.nc'
+        
+        try:
+            svds = xr.open_dataset(svf)
+        except FileNotFoundError:
+            msg = (
+                f'State vector file {svf} '
+                'cannot be found. Re-run IMI '
+                'with "RunSetup" True.'
+            )
+            sys.exit(msg)
+        
+        return svds
+
+        
+        
+    def _make_roi_geometry(self):
         
         custom_vectorfile = not self.config["CreateAutomaticRectilinearStateVectorFile"]
         
@@ -158,6 +301,11 @@ class SRONPlumes:
     pass
 
 
+class SRONPlumes:
+    pass
+
+
+
 class CarbonMapper:
     '''
     CarbonMapper point source data retrieved
@@ -175,11 +323,13 @@ class CarbonMapper:
     Access the GeoDataFrame with data:
     
     cmapper.gdf
+    
 
     '''
     def __init__(self, config):
         self.config = config
         self.gdf = self._get_data()
+        self.myname = 'CarbonMapper'
 
     def _get_data(self):
         '''
@@ -217,6 +367,14 @@ class CarbonMapper:
 
         # geodataframe from geojson
         gdf = gpd.GeoDataFrame.from_features(data['features'])
+        
+        # keep only vars we want (subject to change...)
+        keepv = ['detection_count','observation_count','emission','geometry']
+        gdf = gdf.rename({
+            'detection_date_count': 'detection_count',
+            'observation_date_count': 'observation_count',
+            'emission_auto': 'emission'
+        }, axis=1)[keepv]
 
         # is a geodataframe with points as geometry
         return gdf
@@ -280,13 +438,13 @@ def get_point_source_coordinates(config):
             print("Fetching plumes from SRON database...")
             plumes += SRON_plumes(config)
             got_plumes = True
-        if "CarbonMapper" in config.keys():
+        if "CarbonMapper" in config["PointSourceDatasets"]:
             print("Fetching plumes from CarbonMapper database...")
             # append CarbonMapper
             gf = GeoFilter(config)
             cmapper = CarbonMapper(config)
             ps = PointSources(gf, cmapper)
-            plumes += ps.get_coords()
+            plumes += ps.get_gridded_coords()
             got_plumes = True
             inout = gf.filter_points(cmapper.gdf)
             cmapper.gdf[inout].to_csv('/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/carbonmapper_sources_testing.csv')
