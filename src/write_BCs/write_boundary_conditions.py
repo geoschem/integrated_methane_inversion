@@ -141,9 +141,15 @@ def calculate_bias(daily_means):
                         ).mean(skipna=True)
 
     # Smooth temporally
-    bias = bias.rolling(time=15,            # average 15 days back in time (including the time we are centered on)
+    bias_15 = bias.rolling(time=15,            # average 15 days back in time (including the time we are centered on)
                         min_periods=1,      # only one of the time values must have a value to not output NaN
                     ).mean(skipna=True)
+
+    bias_30 = bias.rolling(time=30,            # average 30 days back in time (including the time we are centered on)
+                        min_periods=1,      # only one of the time values must have a value to not output NaN
+                    ).mean(skipna=True)
+    
+    bias = bias_15.fillna(bias_30)          # fill in NaN values with the 30 day average
 
     # Create a dataarray with latitudinal average for each time step
     # We will fill the NaN values in bias with these averages
