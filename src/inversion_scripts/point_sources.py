@@ -2,11 +2,14 @@
 import os
 import datetime
 import requests
+from copy import copy
 import pandas as pd
 import geopandas as gpd
 from bs4 import BeautifulSoup
 from shapely.geometry import Point
 from dateutil.relativedelta import relativedelta
+from src.inversion_scripts.plumes import GeoFilter, PointSources
+import src.inversion_scripts.plumes as imiplumes
 
 
 def read_point_source_csv(path):
@@ -60,17 +63,45 @@ def get_point_source_coordinates(config):
 
     # then we read point sources from external datasources
     plumes = []
+    got_plumes = False
+
     if "PointSourceDatasets" in config.keys():
-        if "SRON" in config["PointSourceDatasets"]:
+
+        # List of datasources
+        ps_datasets = copy(config["PointSourceDatasets"])
+        # Have to treat SRON separately for now
+        if 'SRON' in ps_datasets:
+            ps_datasets.remove('SRON')
+
             print("Fetching plumes from SRON database...")
-            plumes = SRON_plumes(config)
-        else:
+            plumes += SRON_plumes(config)
+            got_plumes = True
+            
+        if len(ps_datasets) > 0:
+
+            observers = []
+            for plume_dataset in ps_datasets:
+                # instantiate plume observer object
+                # using its string name from config file
+                observer = getattr(imiplumes, plume_dataset)
+                observers.append( observer(config, usecached = True) )
+                
+            gf = GeoFilter(config)
+            ps = PointSources(gf, observers)
+            plumes += ps.get_gridded_coords() 
+            got_plumes = True
+
+
+        if not got_plumes:
             print(
-                'No valid external point source datasets specified. Valid values are: "SRON"'
+                'No valid external point source datasets specified. '
+                'Valid values are: "SRON", "CarbonMapper", "IMEO"'
             )
 
-    # append SRON
-    return coords + plumes
+    # append point sources
+    coords = coords + plumes
+
+    return coords
 
 
 def get_plumes(month, year):
