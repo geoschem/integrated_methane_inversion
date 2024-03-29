@@ -50,7 +50,8 @@ setup_posterior() {
     sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
     
     # Update settings in HEMCO_Config.rc
-    sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
+    sed -i -e "s|\.\./\.\.|\.\.|g" \
+           -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
