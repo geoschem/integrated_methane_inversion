@@ -197,7 +197,7 @@ RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
-BCversion: "v2023-10"
+BCversion: "v2024-03"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled
