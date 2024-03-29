@@ -72,14 +72,10 @@ setup_jacobian() {
     fi
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
-    if [ $NumJacobianRuns -gt 0 ]; then
-	x=1
-    else
-	x=0
-    fi
+    x=0
 
     # Create jacobian run directories
-    while [ $x -le $nRuns ]; do
+    while [ $x -lt $nRuns ]; do
 
 	# Current state vector element
 	xUSE=$x
@@ -173,9 +169,9 @@ setup_jacobian() {
 	    if [ $x -eq 0 ]; then
 		start=0
 	    else
-		start=$(( (x-1) * nTracers + (x-1) ))
+		start=$(( x * nTracers + 1 ))
 	    fi
-	    if [ $x -eq $nRuns ]; then
+	    if [[ x -eq 'nRuns - 1' ]]; then
 		end=$nElements
 	    else
 		end=$(( start + nTracers ))
@@ -239,20 +235,20 @@ setup_jacobian() {
 	    HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
 
 	    HcoNewLine3='\
-'$SFnum' SCALE_ELEM_'$istr' Perturbations.txt - - - xy count 1'
+'$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
 	    sed -i "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
-	    HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations.txt - - - xy count 1'
+	    HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
 
 	    HcoNewLine4='\
 * BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
 	    sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
 	    HcoPrevLine4='BC_CH4_'$istr
 
-	    # Add lines to Perturbations.txt
+	    # Add new Perturbations.txt and update
+	    cp Perturbations.txt Perturbations_${istr}.txt
 	    PertNewLine='\
-ELEM_'$istr'  '$i'  '$PerturbValue''
-	    sed -i "/$PertPrevLine/a $PertNewLine" Perturbations.txt
-	    PertPrevLine='ELEM_'$istr'  '$i'  '$PerturbValue''
+ELEM_'$istr'  '$i'     '$PerturbValue''
+	    sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
 
 	done
 
