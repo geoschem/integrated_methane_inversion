@@ -481,9 +481,6 @@ if __name__ == "__main__":
     tropomi_cache = sys.argv[5]
     kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    output_file = open(f"{inversion_path}/imi_output.log", "a")
-    sys.stdout = output_file
-    sys.stderr = output_file
 
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
