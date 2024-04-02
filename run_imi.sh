@@ -72,7 +72,7 @@ if ! "$isAWS"; then
     fi
 
     # If scheduler is used and is PBS, get the list of needed sites
-    if [ "$UseScheduler" ] && [ "$SchedulerType" = "PBS" ]; then
+    if [[ "$SchedulerType" = "PBS" ]]; then
         DataPaths=($OutputPath $DataPath $DataPathObs $HOME)
         declare -a SitesNeeded=()
         for DP in ${DataPaths[@]}; do
@@ -85,6 +85,7 @@ if ! "$isAWS"; then
         done
         SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
         SitesNeeded="/${SitesNeeded::-1}"
+        # TO DO: Make sure this is passed to all other run scripts? 
     fi
 fi
 
