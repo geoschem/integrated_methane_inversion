@@ -4,8 +4,7 @@
 ## General
 RunName: "Test_Permian_1week"
 isAWS: true
-UseScheduler: true
-SchedulerType: "PBS"
+SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
 
@@ -176,8 +175,7 @@ OutputPath: "/home/ubuntu/imi_output_dir"
 DataPath: "/home/ubuntu/ExtData"
 
 ## Conda environment file
-CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
-CondaEnv: "geo"
+PythonEnv: "/home/ubuntu/integrated_methane_inversion/envs/aws/python.env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled

@@ -5,7 +5,6 @@
 RunName: "Test_IMI_Permian"
 Species: "CH4"
 isAWS: false
-UseScheduler: true
 SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
