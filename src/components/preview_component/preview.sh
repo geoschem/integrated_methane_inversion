@@ -82,7 +82,11 @@ run_preview() {
 
     # Submit preview GEOS-Chem job to job scheduler
     printf "\nRunning preview GEOS-Chem simulation... "
-    submit_job $SchedulerType ${RunName}_Preview.run
+    if [[ $SchedulerType = "tmux" ]]; then
+        ./${RunName}_Preview.run
+    else
+        submit_job $SchedulerType ${RunName}_Preview.run
+    fi
 
     # Specify inputs for preview script
     config_path=${InversionPath}/${ConfigFile}
@@ -95,8 +99,12 @@ run_preview() {
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
-    chmod +x $preview_file
-    submit_job $SchedulerType $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+    if [[ $SchedulerType = "tmux" ]]; then
+        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+    else
+        chmod +x $preview_file
+        submit_job $SchedulerType $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+    fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
     # check if sbatch commands exited with non-zero exit code

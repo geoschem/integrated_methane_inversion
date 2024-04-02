@@ -87,8 +87,12 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
-    chmod +x $aggregation_file
-    submit_job $SchedulerType "${python_args[@]}"
+    if [[ $SchedulerType = "tmux" ]]; then
+        python "${python_args[@]}"
+    else
+        chmod +x $aggregation_file
+        submit_job $SchedulerType "${python_args[@]}"
+    fi
 
     # archive state vector file if using Kalman filter
     if "$archive_sv"; then

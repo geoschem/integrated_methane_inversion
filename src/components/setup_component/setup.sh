@@ -34,7 +34,9 @@ setup_imi() {
 
         # With sbatch reduce cpu_count by 1 to account for parent sbatch process 
         # using 1 core 
-        cpu_count="$((cpu_count-1))"
+        if [[ $SchedulerType = "tmux" ]]; then
+            cpu_count="$((cpu_count-1))"
+        fi
 
     # Source python environment
     source ${PythonEnv}

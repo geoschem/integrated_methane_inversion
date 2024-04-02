@@ -15,7 +15,7 @@
 # Usage:
 #   submit_job $SchedulerType $JobArguments
 submit_job() {
-    if [[ $1 = "slurm" ]]; then
+    if [[ $1 = "slurm" | $1 = "tmux" ]]; then
         submit_slurm_job "${@:2}"
     elif [[ $1 = "PBS" ]]; then
         submit_pbs_job "${@:2}"
