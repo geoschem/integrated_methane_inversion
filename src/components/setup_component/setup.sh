@@ -24,7 +24,7 @@ setup_imi() {
     # Use global boundary condition files for initial conditions
     UseBCsForRestart=true
 
-    printf "\nActivating conda environment: ${CondaEnv}\n"
+    printf "\nActivating python environment: ${PythonEnv}\n"
     if "$isAWS"; then
         # Get max process count for spinup, production, and run_inversion scripts
         output=$(echo $(slurmd -C))
@@ -34,16 +34,10 @@ setup_imi() {
 
         # With sbatch reduce cpu_count by 1 to account for parent sbatch process 
         # using 1 core 
-        if "$UseScheduler"; then 
-            cpu_count="$((cpu_count-1))"
-        fi
+        cpu_count="$((cpu_count-1))"
 
-        # Source Conda environment file
-        source /home/ubuntu/miniconda/etc/profile.d/conda.sh
-        conda activate geo
-    else
-        source ${PythonEnv}
-    fi
+    # Source python environment
+    source ${PythonEnv}
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested

@@ -89,11 +89,7 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    sbatch --mem $SimulationMemory \
-    -c $SimulationCPUs \
-    -t $RequestedTime \
-    -p $SchedulerPartition \
-    -W ${RunName}_Spinup.run; wait;
+    submit_job $SchedulerType ${RunName}_Spinup.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

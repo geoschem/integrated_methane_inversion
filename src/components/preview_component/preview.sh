@@ -82,28 +82,7 @@ run_preview() {
 
     # Submit preview GEOS-Chem job to job scheduler
     printf "\nRunning preview GEOS-Chem simulation... "
-    if "$UseScheduler"; then
-        if [[ "$SchedulerType" = "slurm" ]]; then
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W ${RunName}_Preview.run; wait;
-        elif [[ "$SchedulerType" = "PBS" ]]; then
-            # This will not use the SchedulerPartition option, but will create a
-            # list of needed sites
-            qsub -l nodes=1 \
-                -l mem="$SimulationMemory"mb \
-                -l ncpus=$SimulationCPUs \
-                -l walltime=$RequestedTime \
-                -l site=needed=$SitesNeeded \ 
-                -sync y ${RunName}_Preview.run; wait;
-        else
-            echo "SchedulerType $SchedulerType is not recognized"
-        fi
-    else
-        ./${RunName}_Preview.run
-    fi
+    submit_job $SchedulerType ${RunName}_Preview.run
 
     # Specify inputs for preview script
     config_path=${InversionPath}/${ConfigFile}
@@ -116,27 +95,8 @@ run_preview() {
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
-    if "$UseScheduler"; then
-        chmod +x $preview_file
-        if [[ "$SchedulerType" = "slurm" ]]; then
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
-        elif [[ "$SchedulerType" = "PBS" ]]; then
-            qsub -l nodes=1 \
-                -l mem="$SimulationMemory"mb \
-                -l ncpus=$SimulationCPUs \
-                -l walltime=$RequestedTime \
-                -l site=needed=$SitesNeeded \ 
-                -sync y $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
-        else
-            echo "SchedulerType $SchedulerType is not recognized"
-        fi
-    else
-        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
-    fi
+    chmod +x $preview_file
+    submit_job $SchedulerType $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
     # check if sbatch commands exited with non-zero exit code

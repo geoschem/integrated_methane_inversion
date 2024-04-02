@@ -67,18 +67,8 @@ run_inversion() {
         cd ${RunDirs}/inversion
     fi
 
-    if ! "$isAWS"; then
-        # Activate Conda environment
-        printf "\nActivating conda environment\n"
-        source ${PythonEnv}
-    fi
-
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory \
-           -c $SimulationCPUs \
-           -t $RequestedTime \
-           -p $SchedulerPartition \
-           -W run_inversion.sh $FirstSimSwitch; wait;
+    submit_job $SchedulerType run_inversion.sh $FirstSimSwitch
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

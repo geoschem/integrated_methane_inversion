@@ -2,11 +2,53 @@
 
 # Common shell function for the IMI
 # Functions available in this file include:
+#   - submit_job
+#       - submit_slurm_job
+#       - submit_pbs_job
 #   - print_stats
 #   - imi_failed 
 #   - ncmax 
 #   - ncmin 
 
+# Description: 
+#   Submit a job with default ICI settings using either SBATCH or PBS
+# Usage:
+#   submit_job $SchedulerType $JobArguments
+submit_job() {
+    if [[ $1 = "slurm" ]]; then
+        submit_slurm_job "${@:2}"
+    elif [[ $1 = "PBS" ]]; then
+        submit_pbs_job "${@:2}"
+    else
+        echo "Scheduler type $1 not recognized."
+    fi
+}
+
+# Description: 
+#   Submit a job with default ICI settings using SBATCH
+# Usage:
+#   submit_slurm_job $JobArguments
+submit_slurm_job() {
+    sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W ${@}; wait;
+}
+
+# Description: 
+#   Submit a job with default ICI settings using PBS
+# Usage:
+#   submit_pbs_job $JobArguments
+submit_pbs_job() {
+    qsub -l nodes=1 \
+        -l mem="$SimulationMemory" \
+        -l ncpus=$SimulationCPUs \
+        -l walltime=$RequestedTime \
+        -l site=needed=$SitesNeeded \
+        -l model=ivy \
+        -sync y ${@}; wait;
+}
 
 # Description: 
 #   Print runtime stats based on existing variables

@@ -87,27 +87,8 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
-    if "$UseScheduler"; then
-        chmod +x $aggregation_file
-        if [[ "$SchedulerType" = "slurm" ]]; then
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W "${python_args[@]}"; wait;
-        elif [[ "$SchedulerType" = "PBS" ]]; then
-            qsub -l nodes=1 \
-                -l mem="$SimulationMemory"mb \
-                -l ncpus=$SimulationCPUs \
-                -l walltime=$RequestedTime \
-                -l site=needed=$SitesNeeded \ 
-                -sync y ${RunName}_Preview.run; wait;
-        else
-            echo "SchedulerType $SchedulerType is not recognized"
-        fi
-    else
-        python "${python_args[@]}"
-    fi
+    chmod +x $aggregation_file
+    submit_job $SchedulerType "${python_args[@]}"
 
     # archive state vector file if using Kalman filter
     if "$archive_sv"; then
