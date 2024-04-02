@@ -3,6 +3,7 @@
 
 ## General
 RunName: "Test_Permian_1week"
+Species: "CH4"
 isAWS: true
 SchedulerType: "slurm"
 SafeMode: true
