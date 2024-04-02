@@ -120,7 +120,7 @@ setup_imi() {
     fi
 
     # Clone correct version of GCClassic
-    GCversion='14.3.0'
+    GCversion='14.3.1'
     cd "${InversionPath}"
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
