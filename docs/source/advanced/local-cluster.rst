@@ -51,18 +51,19 @@ for AWS and Harvard's Cannon cluster.
 
     $ ls envs/*
     envs/aws:
-    conda_env.yml  slurm/  spack_env.env
+    conda_env.yml  python.env slurm/  spack_env.env
     
     envs/Harvard-Cannon:
-    ch4_inv.yml                gcclassic.rocky+gnu10.minimal.env*  gcclassic.rocky+gnu10.env*
-    config.harvard-cannon.yml  gcclassic.rocky+gnu12.minimal.env*      README
+    ch4_inv.yml                gcclassic.rocky+gnu10.minimal.env*  gcclassic.rocky+gnu10.env*       python.env
+    config.harvard-cannon.yml  gcclassic.rocky+gnu12.minimal.env*  imi_env.yml                      README
 
 We recommend you add a subfolder within ``envs`` for your own system
 to easily access your customized files needed for the IMI. In this
 directory, we recommend storing any environment files needed to load
 the  libraries for GEOS-Chem (e.g. fortran compiler, netcdf, openmpi,
-cmake), a conda environment file, and a copy of the IMI configuration file
-modified for your system. See the files in ``envs/Harvard-Cannon`` for examples. 
+cmake), a Python environment file, a file that activates your Python
+environment, and a copy of the IMI configuration fil emodified for 
+your system. See the files in ``envs/Harvard-Cannon`` for examples. 
 We recommend basing your config file off of ``config.harvard-cannon.yml``.
 
 Within the copied IMI configuration file, you will need to modify the

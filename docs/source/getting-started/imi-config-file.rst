@@ -12,12 +12,8 @@ General
      - Name for this inversion; will be used for directory names and prefixes.
    * - ``isAWS``
      - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
-   * - ``UseScheduler``
-     - Boolean for running the IMI as a batch job instead of interactively.
-       Select ``true`` to run the IMI with ``sbatch run_imi.sh`` or equivalent.
-       Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
    * - ``SchedulerType``
-     - String defining the type of scheduler used to run the IMI as a batch job.
+     - String defining the type of scheduler used to run the IMI.
         Currently supported options are "slurm" or "PBS".
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
@@ -299,10 +295,8 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Path to GEOS-Chem input data.
    * - ``DataPathObs``
      - Path to satellite input data.
-   * - ``CondaFile``
-     - Path to file containing Conda environment settings.
-   * - ``CondaEnv``
-     - Name of conda environment.
+   * - ``PythonEnv``
+     - Path to file that activates the Python environment.
    * - ``RestartDownload``
      - Boolean for downloading an initial restart file from AWS S3. Default value is ``true``.
    * - ``RestartFilePrefix``
