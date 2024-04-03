@@ -4,7 +4,7 @@ echo "running {END} jacobian simulations" >> {InversionPath}/imi_output.log
 # remove error status file if present
 rm -f .error_status_file.txt
 
-if [[ $SchedulerType = "slurm" ]]; then
+if [[ $SchedulerType = "slurm" | $SchedulerType = "tmux" ]]; then
     sbatch --array={START}-{END}{JOBS} --mem $JacobianMemory \
         -c $JacobianCPUs \
         -t $RequestedTime \
@@ -19,6 +19,4 @@ elif [[ $SchedulerType = "PBS" ]]; then
         -l site=needed=$SitesNeeded \
         -l model=ivy \
         -sync y run_jacobian_simulations.sh; wait;
-else
-    echo "Scheduler type $SchedulerType not recognized."
 fi

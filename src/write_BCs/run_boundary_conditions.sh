@@ -124,14 +124,12 @@ fi
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-if [[ $SchedulerType = "slurm" ]]; then
+if [[ $SchedulerType = "slurm" | $SchedulerType = "tmux" ]]; then
     sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py True $blendedDir $gcStartDate $gcEndDate"; wait; # run for Blended TROPOMI+GOSAT
     sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"; wait; # run for TROPOMI data
 elif [[ $SchedulerType = "PBS" ]]; then
     qsub -sync y -N blended -o boundary_conditions_blended.log -l select=mem=96G:ncpus=40:model=ivy,walltime=07:00:00 -- /usr/bin/bash -c "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py True $tropomiDir $gcStartDate $gcEndDate"; wait; # run for Blended TROPOMI+GOSAT
     qsub -sync y -N blended -o boundary_conditions_operational.log -l select=mem=96G:ncpus=40:model=ivy,walltime=07:00:00 -- /usr/bin/bash -c "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"; wait; # run for TROPOMI data
-else
-    echo "Scheduler type $SchedulerType not recognized."
 fi
 
 echo "" >> "${cwd}/boundary_conditions.log"
