@@ -163,7 +163,8 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
             + "\"MaxClusterSize\" allowed for the region of interest."
         )
     print(
-        f"MaxClusterSize set to: {max_cluster_size} elements in a cluster"
+        f"MaxClusterSize set to: {max_cluster_size} elements in a cluster",
+        flush=True
     )
     return max_cluster_size
 
@@ -192,7 +193,8 @@ def force_native_res_pixels(config, clusters, sensitivities):
     if len(coords) == 0:
         # No forced pixels inputted
         print(
-            f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset."
+            f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset.",
+            flush=True
         )
         return sensitivities
 
@@ -263,7 +265,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         # default is to use the avg dofs per element
         dofs_threshold = sum(sensitivities) / desired_num_labels
     
-    print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
+    print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}",flush=True)
 
     # max cluster size based on user preferences
     max_cluster_size = (
@@ -298,7 +300,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     # remaining cluster elements
     fill_grid = False
     
-    print(f"Reducing to {desired_num_labels} elements")
+    print(f"Reducing to {desired_num_labels} elements",flush=True)
 
     # total sensitivities of clusters added to the state vector
     cluster_sensis = []
@@ -360,7 +362,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             n_ind = clusters_left - backfill_num
             n_max_labels = n_max_labels[:n_ind]
 
-        print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
+        print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}",flush=True)
         # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
         label_start = int(labels.max()) + 1
@@ -406,13 +408,13 @@ if __name__ == "__main__":
     sys.stderr = output_file
 
     original_clusters = xr.open_dataset(state_vector_path)
-    print("Starting aggregation")
+    print("Starting aggregation",flush=True)
     sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
 
     # dynamically generate sensitivities with only a
     # subset of the data if kf_index is not None
     if kf_index is not None:
-        print(f"Dynamically generating clusters for period: {kf_index}.")
+        print(f"Dynamically generating clusters for period: {kf_index}.",flush=True)
         sensitivity_args.append(kf_index)
 
     sensitivities = estimate_averaging_kernel(*sensitivity_args)
@@ -425,14 +427,16 @@ if __name__ == "__main__":
         "Creating new clusters based on cluster pairings. "
         + "Run time needed will vary with state vector size."
         + "\nUsing ClusteringMethod: 'mini-batch-kmeans' will "
-        + "perform faster, but may reduce cluster accuracy."
+        + "perform faster, but may reduce cluster accuracy.",
+        flush=True
+    
     )
     # generate multi resolution state vector
     new_sv = update_sv_clusters(config, sensitivities, original_clusters)
     original_clusters.close()
 
     # replace original statevector file
-    print(f"Saving file {state_vector_path}")
+    print(f"Saving file {state_vector_path}",flush=True)
     new_sv.to_netcdf(
         state_vector_path,
         encoding={v: {"zlib": True, "complevel": 9} for v in new_sv.data_vars},

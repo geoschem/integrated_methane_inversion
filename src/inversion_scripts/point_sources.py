@@ -69,13 +69,13 @@ def get_point_source_coordinates(config):
 
         # List of datasources
         ps_datasets = copy(config["PointSourceDatasets"])
-        # Have to treat SRON separately for now
-        if 'SRON' in ps_datasets:
-            ps_datasets.remove('SRON')
+        ## Have to treat SRON separately for now
+        #if 'SRON' in ps_datasets:
+        #    ps_datasets.remove('SRON')
 
-            print("Fetching plumes from SRON database...")
-            plumes += SRON_plumes(config)
-            got_plumes = True
+        #    print("Fetching plumes from SRON database...")
+        #    plumes += SRON_plumes(config)
+        #    got_plumes = True
             
         if len(ps_datasets) > 0:
 
@@ -88,7 +88,10 @@ def get_point_source_coordinates(config):
                 
             gf = GeoFilter(config)
             ps = PointSources(gf, observers)
-            plumes += ps.get_gridded_coords() 
+            plumes += ps.get_gridded_coords(
+                emission_rate_filter = config['EmissionRateFilter'],
+                plume_count_filter = config['PlumeCountFilter']
+            ) 
             got_plumes = True
 
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import warnings
 import requests
 import pandas as pd
@@ -88,30 +89,27 @@ class PointSources:
         inout = self.geofilter.filter_points(datasource.gdf)
         
         if inout.sum() > 0:
-            gdf_inroi = datasource.gdf[inout]
+            gdf_inroi = datasource.gdf[inout].copy()
         else:
             return None
         
-        # 2. filter out nans emissions
-        gdf_filtered = gdf_inroi[~gdf_inroi.emission_rate.isna()].copy()
-        
         # 3. get I,J indices
-        lon_dist = gdf_filtered.geometry.x.values[:,None] - self.geofilter.lons[None,:]
-        lat_dist = gdf_filtered.geometry.y.values[:,None] - self.geofilter.lats[None,:]
+        lon_dist = gdf_inroi.geometry.x.values[:,None] - self.geofilter.lons[None,:]
+        lat_dist = gdf_inroi.geometry.y.values[:,None] - self.geofilter.lats[None,:]
         ilon = np.argmin( np.abs(lon_dist), 1)
         ilat = np.argmin( np.abs(lat_dist), 1)
-        gdf_filtered['I'] = ilon
-        gdf_filtered['J'] = ilat
+        gdf_inroi['I'] = ilon
+        gdf_inroi['J'] = ilat
         
         # 4. average up to grid, sum count, etc
-        dfgb = gdf_filtered.groupby(['I','J'])
-        gdf_grid = (
-            dfgb
-            .count()[['emission_rate']]
-            .rename({'emission_rate': 'plume_count'}, axis=1)
-        )
-        gdf_grid['emission_rate'] = dfgb.mean()[['emission_rate']]
-        #gdf_grid['persistence'] = gdf_grid.detection_count / gdf_grid.observation_count
+        gdf_inroi['non_detect'] = gdf_inroi['emission_rate'].isna()
+        gdf_inroi['plume_count'] = ~gdf_inroi['non_detect']
+
+        dfgb = gdf_inroi.groupby(['I','J'])
+
+        gdf_grid = dfgb.sum()[['plume_count']]
+        gdf_grid['non_detect'] = dfgb.sum()[['non_detect']]
+        gdf_grid['emission_rate'] = dfgb.agg(np.nanmean)[['emission_rate']]
 
         # 5. make it on a grid
         dalist = []
@@ -166,7 +164,7 @@ class PointSources:
     def get_coords(self):
         '''
         Get y,x (lat,lon) coordinates for point sources
-        from all datasets
+        from all datasets. Non-nan points only.
          
         Returns: list of [y,x] coordinates in [lon,lat]
         '''
@@ -180,17 +178,42 @@ class PointSources:
             return coords
         
     
-    def get_gridded_coords(self):
+    def get_gridded_coords(self, emission_rate_filter = 0, plume_count_filter = 0):
         '''
         Get y,x (lat,lon) coordinates for point sources
         from all datasets
+
+        Arguments
+        ---------
+        emission_rate_filter: kg/hr filter, grid cells with
+            mean emission less than this are not included.
+            0 means no filtering applied.
+
+        plume_count_filter: grid cells with plume_count less
+            than this are not included. 0 means no filtering
+            applied.
          
-        Returns: list of [y,x] coordinates in [lon,lat]
+        Returns
+        -------
+        list of [y,x] coordinates in [lon,lat]
+
         '''
         if self.grid_ds is None:
             return []
         else:
-            dftmp = self.grid_ds.emission_rate.to_dataframe().reset_index()
+
+            criteria = lambda x: (
+                (x.emission_rate > emission_rate_filter) | 
+                (x.plume_count > plume_count_filter)
+            )
+
+            dftmp = (
+                self.grid_ds
+                .where(criteria)
+                .emission_rate
+                .to_dataframe()
+                .reset_index()
+            )
             coords = (
                 dftmp[~dftmp['emission_rate'].isna()][['lat','lon']]
                 .values.tolist()
@@ -231,7 +254,7 @@ class GeoFilter:
         svf = f'{self.config["OutputPath"]}/{self.config["RunName"]}/StateVector.nc'
         
         try:
-            svds = xr.open_dataset(svf)
+            svds = xr.load_dataset(svf)
         except FileNotFoundError:
             msg = (
                 f'State vector file {svf} '
@@ -304,21 +327,27 @@ class GeoFilter:
 
 class PlumeObserver:
 
-    def __init__(self, usecached, myname):
+    def __init__(self, myname, usecached, cache=None):
         self.usecached = usecached
         self.myname = myname
+        self.cache = cache
         
         if self.usecached:
             msg = (
                 f'Using cached plume data for {self.myname}'
             )
             print(msg)
-            infile = f'{self.myname}_plumes/plumes.geojson'
+            if self.cache is not None:
+                infile = self.cache
+            else:
+                infile = f'{self.myname}_plumes/plumes.geojson'
             try:
-                self.gdf = gpd.read_file(infile)
+                gdf = gpd.read_file(infile)
+                gdf['time'] = pd.to_datetime(gdf['time'])
+                self.gdf = gdf
             except:
                 msg = (
-                    'No cached file, fetching new data.'
+                    f'Cannot open cached file at {infile}, fetching new data.'
                 )
                 warnings.warn(msg)
                 self.gdf = self._get_data()
@@ -343,6 +372,69 @@ class PlumeObserver:
         )
 
 
+class SRON(PlumeObserver):
+    '''
+    SRON point source data retrieved
+    from the API. Converts data to GeoDataFrame
+    with point geometries.
+
+    Parameters
+    ----------
+    config: dict of IMI config.yml contents
+
+    Use
+    ---
+    sron = SRON(config, cache=cache_file)
+
+    Access the GeoDataFrame with data:
+    
+    sron.gdf
+    
+
+    '''
+    def __init__(self, config, usecached = True, cache = None):
+        #if ((not usecached) | (cache is None)):
+        #    msg = 'Must supply cached file for SRON plumes'
+        #    sys.exit(msg)
+        self.myname = 'SRON'
+        self.config = config
+        self.cache = cache
+        super().__init__(self.myname, usecached, self.cache)
+
+    def _get_data(self):
+        df = pd.read_csv(self.cache, index_col = 0)
+
+        gdf = gpd.GeoDataFrame(
+            data = df,
+            geometry = gpd.points_from_xy(df.lon, df.lat),
+            crs = 'EPSG:4326'
+        ).rename({
+            'source_rate_t/h': 'emission_rate',
+            'uncertainty_t/h': 'emission_rate_std'
+        }, axis=1)
+        
+        gdf['time'] = pd.to_datetime(
+            gdf['date'].astype(str) + 'T' + gdf['time_UTC']
+        )
+        gdf['instrument'] = 'TROPOMI'
+        
+        # t/h to kg/hr
+        gdf.loc[:,'emission_rate'] *= 1000
+        gdf.loc[:,'emission_rate_std'] *= 1000
+        
+        gdf = gdf[['emission_rate', 'emission_rate_std', 'time', 'instrument', 'geometry']]
+
+        # for SRON, subset to time of interest
+        gdf = (
+            gdf
+            .set_index('time')
+            .sort_index()
+            .loc[str(self.config['StartDate']):str(self.config['EndDate'])]
+            .reset_index()
+        )
+
+        return gdf
+    
 
 
 class CarbonMapper(PlumeObserver):
@@ -365,10 +457,11 @@ class CarbonMapper(PlumeObserver):
     
 
     '''
-    def __init__(self, config, usecached = False):
+    def __init__(self, config, usecached = False, cache=None):
         self.myname = 'CarbonMapper'
         self.config = config
-        super().__init__(usecached, self.myname)
+        self.cache = cache
+        super().__init__(self.myname, usecached, self.cache)
 
     def _get_data(self):
         '''
@@ -472,10 +565,11 @@ class IMEO(PlumeObserver):
     
 
     '''
-    def __init__(self, config, usecached = False):
+    def __init__(self, config, usecached = False, cache = None):
         self.myname = 'IMEO'
         self.config = config
-        super().__init__(usecached, self.myname)
+        self.cache = cache
+        super().__init__(self.myname, usecached, self.cache)
 
     def _get_data(self):
         '''
@@ -528,6 +622,3 @@ class IMEO(PlumeObserver):
             warnings.warn(msg)
             
         
-
-class SRON:
-    pass

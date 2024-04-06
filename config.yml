@@ -2,15 +2,15 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "psd"
+RunName: RUN_NAME
 isAWS: false
 UseSlurm: true
 SafeMode: false
 S3Upload: false
 
 ## Period of interest
-StartDate: 20230501
-EndDate: 20230508
+StartDate: 20230101
+EndDate: 20231231
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
@@ -68,9 +68,11 @@ PointSourceDatasets: ["SRON", "CarbonMapper", "IMEO"]
 ReducedDimensionStateVector: true
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: 1500
+NumberOfElements: NUMBER_OF_ELEMENTS
 ForcedNativeResolutionElements: 
-  - [31.5, -104]
+#  - [31.5, -104]
+EmissionRateFilter: EMISSION_RATE_FILTER
+PlumeCountFilter: PLUME_COUNT_FILTER
 
 ## Custom state vector
 StateVectorFile: "/path/to/StateVector.nc"
@@ -110,7 +112,7 @@ DoInversion: false
 DoPosterior: false
 
 ## IMI preview
-DoPreview: false
+DoPreview: true
 DOFSThreshold: 0
 
 ## resource allocation settings for slurm jobs
@@ -157,7 +159,8 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/imi_out"
+#OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/imi_out"
+OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/agg_testing/out"
 
 ## Path to GEOS-Chem input data
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
