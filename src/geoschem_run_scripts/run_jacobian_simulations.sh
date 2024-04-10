@@ -19,14 +19,12 @@ else
     xstr="${x}"
 fi
 
-output_log_file={InversionPath}/imi_output.log
-
 # This checks for the presence of the error status file. If present, this indicates 
 # a prior jacobian exited with an error, so this jacobian will not run
 FILE=.error_status_file.txt
 if test -f "$FILE"; then
     echo "$FILE exists. Exiting."
-    echo "jacobian simulation: ${xstr} exited without running." >> $output_log_file
+    echo "jacobian simulation: ${xstr} exited without running."
     exit 1
 fi
 
@@ -46,11 +44,11 @@ if {ReDoJacobian}; then
     cd OutputDir
 
     if test -f "$LastConcFile"; then
-        echo "Not re-running jacobian simulation: ${xstr}" >> $output_log_file
+        echo "Not re-running jacobian simulation: ${xstr}"
         exit 0
     else
         ### Run GEOS-Chem in the directory corresponding to the cluster Id
-        echo "Re-running jacobian simulation: ${xstr}" >> $output_log_file
+        echo "Re-running jacobian simulation: ${xstr}"
         cd ..
         ./{RunName}_${xstr}.run
         # save the exit code of the jacobian simulation cmd
@@ -72,11 +70,11 @@ fi
 if [ $retVal -ne 0 ]; then
     rm -f .error_status_file.txt
     echo "Error Status: $retVal" > ../.error_status_file.txt
-    echo "jacobian simulation: ${xstr} exited with error code: $retVal" >> $output_log_file
-    echo "Check the log file in the ${RUNDIR}/{RunName}_${xstr} directory for more details." >> $output_log_file
+    echo "jacobian simulation: ${xstr} exited with error code: $retVal"
+    echo "Check the log file in the ${RUNDIR}/{RunName}_${xstr} directory for more details."
     exit $retVal
 fi
 
-echo "finished jacobian simulation: ${xstr}" >> $output_log_file
+echo "finished jacobian simulation: ${xstr}"
 
 exit 0

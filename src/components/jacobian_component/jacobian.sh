@@ -222,7 +222,9 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch -W run_prior_simulation.sh; wait;
+        sbatch -W -o imi_output.tmp run_prior_simulation.sh; wait;
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Get Jacobian scale factors
