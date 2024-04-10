@@ -149,16 +149,19 @@ setup_jacobian() {
 
 	### Turn on observation operators if requested, only for base run
 	if [ $x -eq 0 ]; then
-    	    activate_observations
+    	activate_observations
 	fi
 
 	### Perform dry run if requested, only for base run
 	if [ $x -eq 0 ]; then
-            if "$ProductionDryRun"; then
-		printf "\nExecuting dry-run for production runs...\n"
-		./gcclassic --dryrun &> log.dryrun
-		./download_data.py log.dryrun aws
-            fi
+        if "$ProductionDryRun"; then
+		    printf "\nExecuting dry-run for production runs...\n"
+		    ./gcclassic --dryrun &> log.dryrun
+            # prevent restart file from getting downloaded since 
+            # we don't want to overwrite the one we link to above
+            sed -i '/GEOSChem.Restart/d' log.dryrun 
+		    ./download_data.py log.dryrun aws
+        fi
 	fi
 
 	# Navigate back to top-level directory
