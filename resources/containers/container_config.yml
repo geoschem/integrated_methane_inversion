@@ -175,7 +175,7 @@ OutputPath: "/home/al2/imi_output_dir"
 DataPath: "/home/al2/ExtData"
 
 ## Conda environment files
-CondaFile: "/opt/conda/etc/profile.d/conda.sh"
+CondaFile: "/etc/bashrc"
 CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
