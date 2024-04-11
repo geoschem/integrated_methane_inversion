@@ -55,8 +55,7 @@ if [[ "x${IMI_CONFIG_PATH}" != "x" ]]; then
 else
 	config_file="config.yml"
 	# remove default config file and replace with docker config file
-	rm config.yml
-	mv resources/containers/container_config.yml config.yml
+	cp resources/containers/container_config.yml config.yml
 fi
 
 # override specific config file vars with env variables of 
