@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=boundary_conditions
-#SBATCH --mem=4000
-#SBATCH --time=07-00:00
-#SBATCH --output=debug.log
+#SBATCH -J boundary_conditions
+#SBATCH --mem=4gb
+#SBATCH -t 07-00:00
+#SBATCH -o debug.log
 
 cwd="$(pwd)"
 
