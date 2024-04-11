@@ -139,7 +139,6 @@ setup_template() {
            -e "s:'Metrics:#'Metrics:g" \
            -e "s:'StateMet:#'StateMet:g" \
            -e "s:'SpeciesConcMND:#'SpeciesConcMND:g" \
-           -e "s:'Met_CMFMC:#'Met_CMFMC:g" \
            -e "s:'Met_PEDGEDRY:#'Met_PEDGEDRY:g" \
            -e "s:'Met_PFICU:#'Met_PFICU:g" \
            -e "s:'Met_PFILSAN:#'Met_PFILSAN:g" \

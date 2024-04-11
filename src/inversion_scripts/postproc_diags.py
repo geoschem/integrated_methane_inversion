@@ -60,6 +60,10 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
         prev_data_SC = xr.load_dataset(prev_file_SC)
         prev_data_LE = xr.load_dataset(prev_file_LE)
 
+        # Rename SpeciesConcVV_CH4 for the current state vector element
+        num=r[-4:]
+        prev_data_SC = prev_data_SC.rename({'SpeciesConcVV_CH4':'SpeciesConcVV_CH4_'+num})
+        
         # Load output SpeciesConc and LevelEdgeDiags file
         output_file_SC = (
             f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_{timestamp}z.nc4"

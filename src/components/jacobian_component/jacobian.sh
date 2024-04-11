@@ -23,7 +23,7 @@ setup_jacobian() {
     mkdir -p -v jacobian_runs
 
     if [ $NumJacobianRuns -gt 0 ]; then
-	nRuns=$NumJacobianRuns
+	nRuns=$((NumJacobianRuns-1))
 
 	# Determine approx. number of CH4 tracers per Jacobian run
 	nTracers=$((nElements/NumJacobianRuns))
@@ -44,7 +44,7 @@ setup_jacobian() {
     if [ $MaxSimultaneousRuns -gt 0 ]; then
 	# Error check
 	if [ $MaxSimultaneousRuns -gt $nRuns ]; then
-	    printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nRuns}. Please modify MaxSimultenaousRuns in config.yml" 
+	    printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs. Please modify MaxSimultenaousRuns in config.yml" 
             exit 9999
 	fi
 	sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
@@ -75,7 +75,7 @@ setup_jacobian() {
     x=0
 
     # Create jacobian run directories
-    while [ $x -lt $nRuns ]; do
+    while [ $x -le $nRuns ]; do
 
 	# Current state vector element
 	xUSE=$x
@@ -169,9 +169,9 @@ setup_jacobian() {
 	    if [ $x -eq 0 ]; then
 		start=0
 	    else
-		start=$(( x * nTracers + 1 ))
+		start=$(( end + 1 ))
 	    fi
-	    if [[ x -eq 'nRuns - 1' ]]; then
+	    if [ $x -eq $nRuns ]; then
 		end=$nElements
 	    else
 		end=$(( start + nTracers ))

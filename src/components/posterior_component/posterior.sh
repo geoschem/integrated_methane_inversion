@@ -95,11 +95,6 @@ run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
     
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
-
     if "$OptimizeBCs"; then
         if "$KalmanMode"; then
             inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
