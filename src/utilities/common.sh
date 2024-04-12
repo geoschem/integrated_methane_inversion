@@ -50,6 +50,38 @@ submit_pbs_job() {
         -sync y ${@}; wait;
 }
 
+convert_sbatch_to_pbs() {
+    DataPaths=($OutputPath $DataPath $DataPathObs $HOME)
+    declare -a SitesNeeded=()
+    for DP in ${DataPaths[@]}; do
+        SitesNeeded_DP=$( find $DP/ -type l -exec realpath {} \; | cut -d/ -f2 | sort -u )
+        for NS in ${SitesNeeded_DP[*]}; do
+            if ! [[ ${SitesNeeded[@]} =~ $NS ]]; then
+                SitesNeeded+=("${NS}+")
+            fi
+        done
+    done
+    SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
+    SitesNeeded="/${SitesNeeded::-1}"
+
+    # Get files containing SBATCH
+    sbatch_files=($(grep -rl "SBATCH" . --exclude-dir=GCClassic --exclude-dir=.git))
+    for file in ${sbatch_files[@]}; do
+        # First, insert needed sites at the top of every file
+        awk 'NR==FNR{if (/#SBATCH/) nr=NR; next} {print; if(nr==FNR) print "\nPBS --site-needed=${SitesNeeded}}"}' file file
+
+        # Replace SBATCH options
+        echo sed -i -e "s/SBATCH -J /PBS -N /g" \
+            -e "s/SBATCH -N /PBS -l nodes=/g" \
+            -e "s/SBATCH -c /PBS -l ncpus=/g" \
+            -e "s/SBATCH --mem /PBS -l mem=/g" \
+            -e "s/SBATCH -t /PBS -l walltime=/g" \
+            -e "s/SBATCH -n /PBS -l nodes=1:ppn=/g" \
+            -e "s/SBATCH -p /PBS -q /g" \
+            -e "s/SBATCH --mail-type=END/PBS -m e/g" ${file}
+    done
+}
+
 # Description: 
 #   Print runtime stats based on existing variables
 # Usage:
