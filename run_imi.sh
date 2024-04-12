@@ -86,6 +86,9 @@ if ! "$isAWS"; then
     # If scheduler is PBS, replace the SBATCH headers
     sbatch_files=($(grep -rl "SBATCH" . --exclude-dir=GCClassic --exclude-dir=.git))
     for file in ${sbatch_files[@]}; do
+        # First, insert needed sites
+        awk 'NR==FNR{if (/#SBATCH/) nr=NR; next} {print; if(nr==FNR) print "\nPBS --site-needed=${SitesNeeded}}"}' file file
+
         echo sed -i -e "s/SBATCH -J /PBS -N /g" \
             -e "s/SBATCH -N /PBS -l nodes=/g" \
             -e "s/SBATCH -c /PBS -l ncpus=/g" \
@@ -93,8 +96,7 @@ if ! "$isAWS"; then
             -e "s/SBATCH -t /PBS -l walltime=/g" \
             -e "s/SBATCH -n /PBS -l nodes=1:ppn=/g" \
             -e "s/SBATCH -p /PBS -q /g" \
-            -e "s/SBATCH --mail-type=END/PBS -m e/g" \
-            -e "s/SBATCH/!b;n;i\PBS --sites-needed=${SitesNeeded}/g" ${file}
+            -e "s/SBATCH --mail-type=END/PBS -m e/g" ${file}
         done
     fi
 fi
