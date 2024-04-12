@@ -1,12 +1,7 @@
 #!/bin/bash
 
-#SBATCH -N 1
-#SBATCH -n 1
-#SBATCH -o "imi_output.log"
-#SBATCH -t 0-16:00
-#SBATCH --mem=20000
-#SBATCH -p sapphire,seas_compute,huce_cascade,huce_intel,shared
-#SBATCH --mail-type=END
+#PBS -l nodes=1,ncpus=1
+#PBS -o "imi_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -71,7 +66,7 @@ if ! "$isAWS"; then
             source ${PythonEnv}
     fi
 
-    # If scheduler is used and is PBS, get the list of needed sites
+    # If scheduler is PBS, get the list of needed sites
     if [[ "$SchedulerType" = "PBS" ]]; then
         DataPaths=($OutputPath $DataPath $DataPathObs $HOME)
         declare -a SitesNeeded=()
@@ -86,6 +81,21 @@ if ! "$isAWS"; then
         SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
         SitesNeeded="/${SitesNeeded::-1}"
         # TO DO: Make sure this is passed to all other run scripts? 
+    fi
+
+    # If scheduler is PBS, replace the SBATCH headers
+    sbatch_files=($(grep -rl "SBATCH" . --exclude-dir=GCClassic --exclude-dir=.git))
+    for file in ${sbatch_files[@]}; do
+        echo sed -i -e "s/SBATCH -J /PBS -N /g" \
+            -e "s/SBATCH -N /PBS -l nodes=/g" \
+            -e "s/SBATCH -c /PBS -l ncpus=/g" \
+            -e "s/SBATCH --mem /PBS -l mem=/g" \
+            -e "s/SBATCH -t /PBS -l walltime=/g" \
+            -e "s/SBATCH -n /PBS -l nodes=1:ppn=/g" \
+            -e "s/SBATCH -p /PBS -q /g" \
+            -e "s/SBATCH --mail-type=END/PBS -m e/g" \
+            -e "s/SBATCH/!b;n;i\PBS --sites-needed=${SitesNeeded}/g" ${file}
+        done
     fi
 fi
 
