@@ -11,7 +11,7 @@
 #SBATCH -N 1
 #SBATCH -t 0-6:00
 #SBATCH -p huce_cascade
-#SBATCH --mem=2000
+#SBATCH --mem=2gb
 #SBATCH --mail-type=END
 
 # Load modules for CDO
