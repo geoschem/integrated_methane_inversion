@@ -3,7 +3,7 @@
 #SBATCH -J {RunName}
 #SBATCH -c 8
 #SBATCH -N 1
-#SBATCH --mem 32000
+#SBATCH --mem 32gb
 #SBATCH -t 0-6:00
 
 ### Run directory
