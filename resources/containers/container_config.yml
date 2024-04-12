@@ -175,9 +175,8 @@ OutputPath: "/home/al2/imi_output_dir"
 ## Path to GEOS-Chem input data
 DataPath: "/home/al2/ExtData"
 
-## Conda environment files
-CondaFile: "/opt/conda/etc/profile.d/conda.sh"
-CondaEnv: "imi_env"
+## Conda environment file
+PythonEnv: "/home/ubuntu/integrated_methane_inversion/envs/aws/python.env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
