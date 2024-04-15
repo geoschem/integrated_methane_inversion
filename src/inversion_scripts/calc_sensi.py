@@ -15,8 +15,8 @@ def zero_pad_num(n):
         nstr = "0" + nstr
     return nstr
 
-def test_GC_output_for_BC_perturbations(e, nelements, sensitivities):
 
+def test_GC_output_for_BC_perturbations(e, nelements, sensitivities):
     """
     Ensures that CH4 boundary condition perturbation in GEOS-Chem is working as intended
     sensitivities = (pert-base)/perturbationBC which should equal 1e-9 inside the perturbed borders
@@ -26,18 +26,29 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities):
              sensitivities = (pert-base)/perturbationBC = 1e-9
     """
 
-    if e == (nelements - 4): # North boundary
-        check = np.mean(sensitivities[:,-3:,3:-3])
-    elif e == (nelements - 3): # South boundary
-        check = np.mean(sensitivities[:,0:3,3:-3])
-    elif e == (nelements - 2): # East boundary
-        check = np.mean(sensitivities[:,:,-3:])
-    elif e == (nelements - 1): # West boundary
-        check = np.mean(sensitivities[:,:,0:3])
-    assert abs(check - 1e-9) < 1e-11, f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
+    if e == (nelements - 4):  # North boundary
+        check = np.mean(sensitivities[:, -3:, 3:-3])
+    elif e == (nelements - 3):  # South boundary
+        check = np.mean(sensitivities[:, 0:3, 3:-3])
+    elif e == (nelements - 2):  # East boundary
+        check = np.mean(sensitivities[:, :, -3:])
+    elif e == (nelements - 1):  # West boundary
+        check = np.mean(sensitivities[:, :, 0:3])
+    assert (
+        abs(check - 1e-9) < 1e-11
+    ), f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
+
 
 def calc_sensi(
-        nelements, perturbation, startday, endday, run_dirs_pth, run_name, sensi_save_pth, perturbationBC, perturbationOH
+    nelements,
+    perturbation,
+    startday,
+    endday,
+    run_dirs_pth,
+    run_name,
+    sensi_save_pth,
+    perturbationBC,
+    perturbationOH,
 ):
     """
     Loops over output data from GEOS-Chem perturbation simulations to compute sensitivities
@@ -130,13 +141,21 @@ def calc_sensi(
                 # Get the data for the current hour
                 pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                 # Compute and store the sensitivities
-                if ((perturbationOH > 0.0) and (e >= nelements-1)):
+                if (perturbationOH > 0.0) and (e >= nelements - 1):
                     sensitivities = (pert.values - base.values) / perturbationOH
-                elif (perturbationBC > 0.0):
-                    if ((perturbationOH > 0.0) and (e >= (nelements-5))) or ((perturbationOH <= 0.0) and (e >= (nelements-4))):
+                elif perturbationBC > 0.0:
+                    if ((perturbationOH > 0.0) and (e >= (nelements - 5))) or (
+                        (perturbationOH <= 0.0) and (e >= (nelements - 4))
+                    ):
                         sensitivities = (pert.values - base.values) / perturbationBC
-                        if h != 0: # because we take the first hour on the first day from spinup
-                            test_GC_output_for_BC_perturbations(e, nelements, sensitivities)
+                        if (
+                            h != 0
+                        ):  # because we take the first hour on the first day from spinup
+                            test_GC_output_for_BC_perturbations(
+                                e, nelements, sensitivities
+                            )
+                    else:
+                        sensitivities = (pert.values - base.values) / perturbation
                 else:
                     sensitivities = (pert.values - base.values) / perturbation
                 sensi[e, :, :, :] = sensitivities
@@ -184,5 +203,5 @@ if __name__ == "__main__":
         run_name,
         sensi_save_pth,
         perturbationBC,
-        perturbationOH
+        perturbationOH,
     )
