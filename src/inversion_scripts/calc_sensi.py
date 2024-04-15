@@ -135,6 +135,8 @@ def calc_sensi(
                 # Determine which run directory to look in
                 if nruns > 0:
                     run_number = math.trunc((e+1)/ntracers)
+                    if run_number >= nruns:
+                        run_number = nruns-1
                 else:
                     run_number = e + 1
                 run_num = zero_pad_num(run_number)
