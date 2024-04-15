@@ -55,21 +55,15 @@ setup_jacobian() {
     sed -i -e "s:{RunName}:${RunName}:g" \
            -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
 
-    if "$UseTotalPriorEmis"; then
-	printf "\nTurning on use of total prior emissions in HEMCO_Config.rc. This will ignore all other emission inventories.\n"
-
-	# Modify HEMCO_Config.rc to turn off individual emission inventories
-	# and use total emissions saved out from prior emissions simulation
-	# instead
-	# Do this in template run directory to avoid having to repeat for each
-	# Jacobian run directory
-        sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
-	       -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
-               -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
-    else
-	printf "\nUseTotalPriorEmis is turned off in config.yml. To properly apply emissions perturbations you will need to manually apply scale factors to the necessary fields in tempate_run/HEMCO_Config.rc before setting up the jacobian run directories.\n"
-	exit 9999
-    fi
+    # Modify HEMCO_Config.rc to turn off individual emission inventories
+    # and use total emissions saved out from prior emissions simulation
+    # instead
+    # Do this in template run directory to avoid having to repeat for each
+    # Jacobian run directory
+    printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
+    sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
+           -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
+           -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
