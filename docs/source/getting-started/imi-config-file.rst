@@ -24,8 +24,6 @@ General
      - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
    * - ``S3UploadFiles``
      - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
-   * - ``PointSourceDataset``
-     - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -101,7 +99,7 @@ State vector
      - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``false``.
    * - ``OptimizeOH``
      - Boolean to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
-
+       
 Point source datasets
 ~~~~~~~~~~~~~~~~~~~~~
 .. list-table::
@@ -110,15 +108,6 @@ Point source datasets
 
    * - ``PointSourceDatasets``
      - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Only available option is ``["SRON"]``.
-
-Point source datasets
-~~~~~~~~~~~~~~~~~~~~~
-.. list-table::
-   :widths: 30, 70
-   :class: tight-table
-
-   * - ``PointSourceDatasets``
-     - Used for visualization and state vector clustering
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
@@ -195,6 +184,8 @@ These settings turn on/off (``true`` / ``false``) different steps for setting up
    :widths: 30, 70
    :class: tight-table
 
+   * - ``RunSetup``
+     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules above.
    * - ``SetupTemplateRundir``
      - Boolean to create a GEOS-Chem run directory and modify it with settings from ``config.yml``.
    * - ``SetupSpinupRun``
@@ -214,8 +205,9 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    :widths: 30, 70
    :class: tight-table
 
-   * - ``RunSetup``
-     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules above.
+   * - ``DoPriorEmis``
+     - Boolean to run a HEMCO standalone simulation to generate the
+       prior emissions.
    * - ``DoSpinup``
      - Boolean to run the spin-up simulation.
    * - ``DoJacobian``
@@ -237,7 +229,7 @@ IMI preview
      - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
        Default value ``0`` prevents exit.
 
-SLURM Resource Allocation
+Job Resource Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
 Note: some python scripts are also deployed using slurm and default to using the ``SimulationCPUs`` and ``SimulationMemory`` settings.
@@ -246,8 +238,8 @@ Note: some python scripts are also deployed using slurm and default to using the
    :widths: 30, 70
    :class: tight-table
 
-   * - ``RequestedTime``
-     - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
+   * - ``PriorMemory``
+     - Amount of memory to allocate to prior emissions simulation (in MB).
    * - ``SimulationCPUs``
      - Number of cores to allocate to each in series simulation.
    * - ``SimulationMemory``
@@ -256,11 +248,18 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Number of cores to allocate to each jacobian simulation (run in parallel).
    * - ``JacobianMemory``
      - Amount of memory to allocate to each jacobian simulation (in MB).
+   * - ``RequestedTime``
+     - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
- 
+   * - ``NumJacobianRuns``
+     - The number of Jacobian runs to perform. The default value is -1
+       which will create and submit a jacobian run for each state
+       vector element. Specifying a value greater than or equal to 1
+       will combine state vector elements into fewer runs.
+       
 Advanced settings: GEOS-Chem options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are intended for advanced users who wish to modify additional GEOS-Chem options.

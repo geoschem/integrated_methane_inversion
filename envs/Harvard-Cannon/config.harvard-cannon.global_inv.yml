@@ -120,14 +120,14 @@ JacobianMemory: 2000
 RequestedTime: "0-24:00"
 SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
 
+## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
+MaxSimultaneousRuns: -1
+
 ## Specify number of Jacobians runs to perform
 ##   The default is -1 which will create and submit a jacobian run
 ##   for each state vector element. Specifying a value >= 1 will
 ##   combine state vector elements into fewer runs.
 NumJacobianRuns: -1
-
-## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: -1
 
 ##====================================================================
 ##
