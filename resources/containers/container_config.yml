@@ -102,6 +102,7 @@ SetupPosteriorRun: false
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
+ReDoJacobian: true
 DoInversion: false
 DoPosterior: false
 

@@ -57,6 +57,7 @@ config_required = [
     "SetupPosteriorRun",
     "RunSetup",
     "DoSpinup",
+    "ReDoJacobian",
     "DoJacobian",
     "DoInversion",
     "DoPosterior",
