@@ -89,9 +89,14 @@ def get_point_source_coordinates(config):
             gf = GeoFilter(config)
             ps = PointSources(gf, observers)
             plumes += ps.get_gridded_coords(
-                emission_rate_filter = config['EmissionRateFilter'],
-                plume_count_filter = config['PlumeCountFilter']
+                emission_rate_filter = int(config['EmissionRateFilter']),
+                plume_count_filter = int(config['PlumeCountFilter'])
             ) 
+            msg = (
+                f'Found {len(plumes)} grid cells with plumes '
+                f'using {[ob.myname for ob in observers]}'
+            )
+            print(msg, flush=True)
             got_plumes = True
 
 

@@ -264,6 +264,14 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     else:
         # default is to use the avg dofs per element
         dofs_threshold = sum(sensitivities) / desired_num_labels
+
+        if dofs_threshold > 1:
+            msg = (
+                f'Estimated dofs per element too high ({dofs_threshold}), '
+                'resetting ClusteringThreshold to 1'
+            )
+            print(msg, flush=True)
+            dofs_threshold = 1
     
     print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}",flush=True)
 

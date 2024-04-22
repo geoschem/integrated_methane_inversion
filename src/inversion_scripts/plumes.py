@@ -8,7 +8,9 @@ import numpy as np
 import xarray as xr
 from shapely.geometry import Point
 from shapely.geometry import Polygon
+from functools import partial
 
+print = partial(print, flush=True)
 
 class PointSources:
     '''
@@ -187,11 +189,11 @@ class PointSources:
         ---------
         emission_rate_filter: kg/hr filter, grid cells with
             mean emission less than this are not included.
-            0 means no filtering applied.
+            0 means all plumes included.
 
         plume_count_filter: grid cells with plume_count less
             than this are not included. 0 means no filtering
-            applied.
+            applied and only emission_rate_filter included.
          
         Returns
         -------
@@ -200,17 +202,31 @@ class PointSources:
         '''
         if self.grid_ds is None:
             return []
+
         else:
 
-            criteria = lambda x: (
-                (x.emission_rate > emission_rate_filter) | 
-                (x.plume_count > plume_count_filter)
-            )
+            if plume_count_filter > 0:
+
+                print(f'Point sources: {emission_rate_filter = }')
+                print(f'Point sources: {plume_count_filter = }')
+
+                criteria = lambda x: (
+                    (x.emission_rate > emission_rate_filter) | 
+                    (x.plume_count > plume_count_filter)
+                )
+
+            else:
+
+                print(f'Point sources: {emission_rate_filter = }')
+                print(f'Point sources: No plume count filter applied')
+
+                criteria = lambda x: x.emission_rate > emission_rate_filter
 
             dftmp = (
                 self.grid_ds
                 .where(criteria)
                 .emission_rate
+                .mean('observer')
                 .to_dataframe()
                 .reset_index()
             )
@@ -327,10 +343,11 @@ class GeoFilter:
 
 class PlumeObserver:
 
-    def __init__(self, myname, usecached, cache=None):
+    def __init__(self, myname, config, usecached, cache=None):
         self.usecached = usecached
         self.myname = myname
         self.cache = cache
+        self.config = config
         
         if self.usecached:
             msg = (
@@ -340,7 +357,8 @@ class PlumeObserver:
             if self.cache is not None:
                 infile = self.cache
             else:
-                infile = f'{self.myname}_plumes/plumes.geojson'
+                basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+                infile = f'{basedir}/{self.myname}_plumes/plumes.geojson'
             try:
                 gdf = gpd.read_file(infile)
                 gdf['time'] = pd.to_datetime(gdf['time'])
@@ -355,14 +373,23 @@ class PlumeObserver:
         else:
             self.gdf = self._get_data()
         
+        # cache all data
         self._cache_data()
+        
+        # filter data according to 
+        # options from subclass
+        self._filter_data()
+        
+    def _filter_data(self):
+        raise NotImplementedError
         
     def _get_data(self):
         raise NotImplementedError
         
     def _cache_data(self):
         # dir for saving file
-        write_dir = f'{self.myname}_plumes'
+        basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+        write_dir = f'{basedir}/{self.myname}_plumes'
         if not os.path.exists(write_dir):
             os.makedirs(write_dir)
         # write file to geojson
@@ -381,6 +408,10 @@ class SRON(PlumeObserver):
     Parameters
     ----------
     config: dict of IMI config.yml contents
+    usecached: bool, whether to use saved data
+    cache: None or path to existing file. Will search 
+        for saved data in IMI output dir if no
+        cache given.
 
     Use
     ---
@@ -397,9 +428,12 @@ class SRON(PlumeObserver):
         #    msg = 'Must supply cached file for SRON plumes'
         #    sys.exit(msg)
         self.myname = 'SRON'
-        self.config = config
+        #self.config = config
         self.cache = cache
-        super().__init__(self.myname, usecached, self.cache)
+        super().__init__(self.myname, config, usecached, self.cache)
+        
+    def _filter_data(self):
+        pass
 
     def _get_data(self):
         df = pd.read_csv(self.cache, index_col = 0)
@@ -432,6 +466,7 @@ class SRON(PlumeObserver):
             .loc[str(self.config['StartDate']):str(self.config['EndDate'])]
             .reset_index()
         )
+        
 
         return gdf
     
@@ -446,6 +481,12 @@ class CarbonMapper(PlumeObserver):
     Parameters
     ----------
     config: dict of IMI config.yml contents
+    usecached: bool, whether to use saved data
+    cache: None or path to existing file. Will search 
+        for saved data in IMI output dir if no
+        cache given.
+    sat_only: bool, whether to filter out aircraft
+        data. Option for CarbonMapper only.
 
     Use
     ---
@@ -457,11 +498,20 @@ class CarbonMapper(PlumeObserver):
     
 
     '''
-    def __init__(self, config, usecached = False, cache=None):
+    def __init__(self, config, usecached = False, cache=None, sat_only = False):
         self.myname = 'CarbonMapper'
-        self.config = config
+        #self.config = config
         self.cache = cache
-        super().__init__(self.myname, usecached, self.cache)
+        self.sat_only = sat_only
+        super().__init__(self.myname, config, usecached, self.cache)
+        
+    def _filter_data(self):
+        # optionally filter out aircraft data
+        if self.sat_only:
+            print('Dropping aircraft data from CarbonMapper dataset')
+            aircraft_instruments = ['GAO', 'ang']
+            self.gdf = self.gdf[~self.gdf.instrument.isin(aircraft_instruments)].copy()
+        
 
     def _get_data(self):
         '''
@@ -512,7 +562,7 @@ class CarbonMapper(PlumeObserver):
             url = base_url + endpoint + q_params
             response = requests.get(url)
             # Raise an exception if the API call returns an HTTP error status
-            response.raise_for_status()  
+            response.raise_for_status() 
             # Process the API response
             data = response.json()
             rawdat += data['items']
@@ -540,7 +590,7 @@ class CarbonMapper(PlumeObserver):
         }, axis=1)[keepv]
         
         gdf['time'] = pd.to_datetime(gdf['time'])
-
+        
         # is a geodataframe with points as geometry
         return gdf
 
@@ -554,6 +604,10 @@ class IMEO(PlumeObserver):
     Parameters
     ----------
     config: dict of IMI config.yml contents
+    usecached: bool, whether to use saved data
+    cache: None or path to existing file. Will search 
+        for saved data in IMI output dir if no
+        cache given.
 
     Use
     ---
@@ -567,9 +621,12 @@ class IMEO(PlumeObserver):
     '''
     def __init__(self, config, usecached = False, cache = None):
         self.myname = 'IMEO'
-        self.config = config
+        #self.config = config
         self.cache = cache
-        super().__init__(self.myname, usecached, self.cache)
+        super().__init__(self.myname, config, usecached, self.cache)
+        
+    def _filter_data(self):
+        pass
 
     def _get_data(self):
         '''
