@@ -99,6 +99,11 @@ run_prior() {
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+
+    # Remove soil absorption uptake from total emissions
+    mv HEMCO_sa_diagnostics.${StartDate}0000.nc HEMCO_sa_diagnostics.${StartDate}0000.orig.nc
+    cdo expr,'EmisCH4_Total_ExclSoilAbs=EmisCH4_Total-EmisCH4_SoilAbsorb;' HEMCO_sa_diagnostics.${StartDate}0000.orig.nc tmp.nc HEMCO_sa_diagnostics.${StartDate}0000.nc
+    rm tmp.nc
     
     printf "\nDone prior emissions simulation\n\n"
     

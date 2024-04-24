@@ -66,6 +66,13 @@ setup_jacobian() {
            -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
            -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
 
+    # Apply perturbations to total emissions with soil absorption removed
+    # In this case, we still need to read soil absorption for overall CH4 flux
+    #  so remove from the UseTotalPriorEmis brackets
+    sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+           -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
+           -e "/)))MeMo_SOIL_ABSORPTION/a (((seTotalPriorEmis" HEMCO_Config.rc
+    
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
 
