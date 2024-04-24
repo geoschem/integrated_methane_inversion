@@ -131,16 +131,20 @@ def make_state_vector_file(
     lc = xr.load_dataset(land_cover_pth)
     hd = xr.load_dataset(hemco_diag_pth)
 
-    # Require hemco diags on same global grid as land cover map
-    # TODO remove this offset once the HEMCO standalone files 
-    # are regenerated with recent bugfix that corrects the offset
-    if config["Res"] == "0.25x0.3125":
-        hd["lon"] = hd["lon"] - 0.03125
-    elif config["Res"] == "0.5x0.625":
-        hd["lon"] = hd["lon"] - 0.0625
+    # Group together
+    if config['Res'] == '0.125x0.15625':
+        lc = lc["landseamask"] #100% = all water and 0% = all land
+        lc = np.round( -(lc/100.-1), decimals=5)
+    else:
+        # Require hemco diags on same global grid as land cover map
+        # TODO remove this offset once the HEMCO standalone files 
+        # are regenerated with recent bugfix that corrects the offset
+        if config["Res"] == "0.25x0.3125":
+            hd["lon"] = hd["lon"] - 0.03125
+        elif config["Res"] == "0.5x0.625":
+            hd["lon"] = hd["lon"] - 0.0625
+            lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
 
-    # Select / group fields together
-    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop("time").squeeze()
 
     # Check compatibility of region of interest
