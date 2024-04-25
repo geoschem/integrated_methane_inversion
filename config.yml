@@ -53,11 +53,11 @@ NudgeFactor: 0.1
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 8
+nBufferClusters: 0
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -69,6 +69,7 @@ ReducedDimensionStateVector: true
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: NUMBER_OF_ELEMENTS
+ClusteringThreshold: 27
 ForcedNativeResolutionElements: 
 #  - [31.5, -104]
 EmissionRateFilter: EMISSION_RATE_FILTER
@@ -116,7 +117,7 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## resource allocation settings for slurm jobs
-SimulationCPUs: 32
+SimulationCPUs: 8
 SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
@@ -171,7 +172,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 ## Environment files
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
-GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
+GEOSChemEnv: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/code/psdev/integrated_methane_inversion/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
