@@ -57,6 +57,7 @@ class PointSources:
         self.datasources = datasources
         self.points = self._get_points()
         self.grid_ds = self._grid_all_data()
+        self.gdf = self._merge_dataframes()
 
     def _get_points(self):
         # concatenate and return points geometry
@@ -75,6 +76,10 @@ class PointSources:
         else:
             return None
     
+    def _merge_dataframes(self):
+        merged_df = pd.concat([s.gdf.copy() for s in self.datasources])
+        merged_df['time'] = pd.to_datetime(merged_df['time'], utc=True)
+        return merged_df
     
     def _grid_datasource(self, datasource):
         '''
@@ -466,6 +471,7 @@ class SRON(PlumeObserver):
             .loc[str(self.config['StartDate']):str(self.config['EndDate'])]
             .reset_index()
         )
+        gdf['datasource'] = self.myname
         
 
         return gdf
@@ -525,6 +531,15 @@ class CarbonMapper(PlumeObserver):
             self.config['LonMax'],
             self.config['LatMax'],
         ]
+        if None in bbox:
+            # then use statevector file bounds
+            ds = xr.load_dataset(self.config['StateVectorFile'])
+            bbox = [
+                int(ds.lon.min().values),
+                int(ds.lat.min().values),
+                int(ds.lon.max().values),
+                int(ds.lat.max().values)
+            ]
         q_opts = lambda dlimit, offset: [
             'bbox='+'&bbox='.join([str(i) for i in bbox]),
             'plume_gas=CH4',
@@ -590,6 +605,7 @@ class CarbonMapper(PlumeObserver):
         }, axis=1)[keepv]
         
         gdf['time'] = pd.to_datetime(gdf['time'])
+        gdf['datasource'] = self.myname
         
         # is a geodataframe with points as geometry
         return gdf
@@ -634,7 +650,8 @@ class IMEO(PlumeObserver):
         '''
        
         # dir for saving file
-        write_dir = "IMEO_plumes"
+        basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+        write_dir = f'{basedir}/{self.myname}_plumes'
         if not os.path.exists(write_dir):
             os.makedirs(write_dir)
     
@@ -660,13 +677,15 @@ class IMEO(PlumeObserver):
             
             # data are in kg/hr
             # keep only vars we want (subject to change...)
-            keepv = ['emission_rate','emission_rate_std','satellite','time','geometry']
+            keepv = ['emission_rate','emission_rate_std','instrument','time','geometry']
             gdf = gdf.rename({
                 'ch4_fluxrate': 'emission_rate',
                 'ch4_fluxrate_std': 'emission_rate_std',
-                'tile_date': 'time'
+                'tile_date': 'time',
+                'satellite': 'instrument'
             }, axis=1)[keepv]
             gdf['time'] = pd.to_datetime(gdf['time'])
+            gdf['datasource'] = self.myname
             
             return gdf
         
