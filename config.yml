@@ -153,8 +153,8 @@ RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2023-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for nested grid simulations)
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
