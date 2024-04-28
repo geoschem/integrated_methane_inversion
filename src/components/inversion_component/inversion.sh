@@ -23,7 +23,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/lognormal_invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
-    cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
+    cp ${InversionPath}/src/inversion_scripts/operators/*.py inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
@@ -31,6 +31,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
+    cp ${InversionPath}/src/utilities/cleanup_script.sh .
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
@@ -40,7 +41,7 @@ setup_inversion() {
            -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
            -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-           -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
+           -e "s:{RES}:${Res}:g" inversion/run_inversion.sh
 
     if "$KalmanMode"; then
         # Rename inversion directory as template directory
@@ -66,13 +67,6 @@ run_inversion() {
         fi
     else
         cd ${RunDirs}/inversion
-    fi
-
-    if ! "$isAWS"; then
-        # Activate Conda environment
-        printf "\nActivating conda environment: ${CondaEnv}\n"
-        eval "$(conda shell.bash hook)"
-        conda activate $CondaEnv
     fi
 
     # Execute inversion driver script

@@ -152,7 +152,14 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else 64
+    if config["Res"] == "2.0x2.5":
+        default_max_aggregation_level = 16 # Setting background to 8x10 for global
+    elif config["Res"] == "0.5x0.625":
+        default_max_aggregation_level = 32
+    elif config["Res"] == "0.25x0.3125":
+        default_max_aggregation_level = 64
+
+    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else default_max_aggregation_level
     
     background_elements_needed = np.ceil(len(sensitivities) / max_cluster_size)
     if background_elements_needed > desired_element_num:
@@ -202,6 +209,12 @@ def force_native_res_pixels(config, clusters, sensitivities):
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
+    elif config["Res"] == "2.0x2.5":
+        lat_step = 2.0
+        lon_step = 2.5
+    elif config["Res"] == "4.0x5.0":
+        lat_step = 4.0
+        lon_step = 5.0
 
     for lat, lon in coords:
         lon = np.floor(lon / lon_step) * lon_step
@@ -401,9 +414,6 @@ if __name__ == "__main__":
     tropomi_cache = sys.argv[5]
     kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    output_file = open(f"{inversion_path}/imi_output.log", "a")
-    sys.stdout = output_file
-    sys.stderr = output_file
 
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")

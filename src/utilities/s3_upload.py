@@ -81,7 +81,7 @@ if __name__ == "__main__":
     config_path = sys.argv[1]
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-    
+
     bucket = extract_s3_part(config["S3UploadPath"], "bucket")
     key = extract_s3_part(config["S3UploadPath"], "key")
 
