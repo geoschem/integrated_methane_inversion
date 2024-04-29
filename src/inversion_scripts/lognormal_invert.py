@@ -65,9 +65,18 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         scaling_matrix = np.tile(scale_factors, (reps, 1))
         K_temp *= scaling_matrix
 
+    # The levenberg-marquardt method assumes that the prior emissions is 
+    # the median prior emissions, but typically priors are the mean emission.
+    # To account for this we convert xa to a median. This can be done by 
+    # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
+    # Here, we calculate this scaling factor
+    prior_scale = 1/np.exp((np.log(float(config["PriorError"]))**2)/2)
+    
     # split K based on whether we are solving for lognormal or normal elements
     # K_ROI is the matrix for the lognormal elements (the region of interest)
+    # the lognormal part of K gets scaled by prior_scale to convert to median
     K_ROI = K_temp[:, :-num_normal_elems]
+    K_ROI = prior_scale * K_ROI
     K_normal = K_temp[:, -num_normal_elems:]
     K_full = np.concatenate((K_ROI, K_normal), axis=1)
 
@@ -208,7 +217,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
         xnmean = np.concatenate(
             (
-                xn[:-num_normal_elems] * np.expand_dims(np.exp(dlns * (0.5)), axis=1),
+                xn[:-num_normal_elems] * np.expand_dims(np.exp(dlns * (0.5)) * prior_scale, axis=1),
                 xn[-num_normal_elems:],
             )
         )
