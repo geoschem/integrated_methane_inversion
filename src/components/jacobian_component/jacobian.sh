@@ -157,18 +157,18 @@ setup_jacobian() {
 
 	# Determine start and end element numbers for this run directory
 	if [ $NumJacobianRuns -lt 0 ]; then
-	    start=$x
-	    end=$x
+	    start_element=$x
+	    end_element=$x
 	else
 	    if [ $x -eq 0 ]; then
-		start=0
+		start_element=0
 	    else
-		start=$(( end + 1 ))
+		start_element=$(( end_element + 1 ))
 	    fi
 	    if [ $x -eq $nRuns ]; then
-		end=$nElements
+		end_element=$nElements
 	    else
-		end=$(( start + nTracers ))
+		end_element=$(( start_element + nTracers ))
 	    fi
 	fi
 
@@ -188,7 +188,7 @@ setup_jacobian() {
 		
 	# Loop over element numbers for this run and add as CH4 tracers in
 	# configuraton files
-	for i in $(seq $start $end); do
+	for i in $(seq $start_element $end_element); do
 
 	    if [ $i -lt 10 ]; then
 		istr="000${i}"

@@ -233,7 +233,7 @@ def get_max_aggregation_level(config, sensitivities, desired_element_num):
     elif config["Res"] == "4.0x5.0":
         max_aggregation_level = 4
 
-    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level) # 1-month: 10800/4 = 2700 > 600
+    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level)
     if background_elements_needed > desired_element_num:
         print(
             "Warning: too few clusters to create a background of 4x5 degree state vector elements."
