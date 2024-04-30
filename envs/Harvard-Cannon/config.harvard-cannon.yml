@@ -112,11 +112,8 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-PriorMemory: 50000
-SimulationCPUs: 32
-SimulationMemory: 32000
-JacobianCPUs: 1
-JacobianMemory: 2000
+RequestedCPUs: 32
+RequestedMemory: 32000
 RequestedTime: "0-24:00"
 SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
 

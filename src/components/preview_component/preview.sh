@@ -82,8 +82,8 @@ run_preview() {
     # Submit preview GEOS-Chem job to job scheduler
     printf "\nRunning preview GEOS-Chem simulation... "
     if "$UseSlurm"; then
-        sbatch --mem $SimulationMemory \
-               -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+               -c $RequestedCPUs \
                -t $RequestedTime \
                -p $SchedulerPartition \
                -W ${RunName}_Preview.run; wait;
@@ -104,8 +104,8 @@ run_preview() {
     printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
         chmod +x $preview_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;

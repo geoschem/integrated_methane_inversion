@@ -91,8 +91,8 @@ run_prior() {
     printf "\nSubmitting prior emissions simulation\n\n"
 
     # Submit job to job scheduler
-    sbatch --mem $PriorMemory \
-    -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+    -c $RequestedCPUs \
     -t $RequestedTime \
     -p $SchedulerPartition \
     -W ${PriorName}.run; wait;

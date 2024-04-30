@@ -125,8 +125,8 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $SimulationMemory \
-           -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+           -c $RequestedCPUs \
            -t $RequestedTime \
            -p $SchedulerPartition \
            -W ${RunName}_Posterior.run; wait;

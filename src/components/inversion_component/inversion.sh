@@ -75,8 +75,8 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory \
-           -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+           -c $RequestedCPUs \
            -t $RequestedTime \
            -p $SchedulerPartition \
            -W run_inversion.sh $FirstSimSwitch; wait;
