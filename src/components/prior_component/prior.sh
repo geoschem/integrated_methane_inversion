@@ -58,7 +58,7 @@ run_prior() {
 
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "s:2019-07-01:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2}:g" \
-           -e "s:2019-08-01 00:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2} 01:g" HEMCO_sa_Time.rc
+           -e "s:2019-08-01:${EndDate:0:4}-${EndDate:4:2}-${EndDate:6:2}:g" HEMCO_sa_Time.rc
 
     sed -i -e "s:_NA::g" -e "s:.NA.:.:g" HEMCO_Config.rc.gmao_metfields
 
