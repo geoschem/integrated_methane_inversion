@@ -121,9 +121,9 @@ export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 ##  Download the TROPOMI data
 ##=======================================================================
 
-# Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
+# Download TROPOMI or blended dataset from AWS
 mkdir -p -v ${RunDirs}
-tropomiCache=${RunDirs}/data_TROPOMI
+tropomiCache=${RunDirs}/satellite_data
 if "$isAWS"; then
     { # test if instance has access to TROPOMI bucket
         stdout=`aws s3 ls s3://meeo-s5p`
@@ -133,9 +133,19 @@ if "$isAWS"; then
         exit 1
     }
     mkdir -p -v $tropomiCache
-    printf "Downloading TROPOMI data from S3\n"
-    python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    printf "\nFinished TROPOMI download\n"
+
+    if "$BlendedTROPOMI"; then
+        sbatch --mem $SimulationMemory \
+               -c $SimulationCPUs \
+               -t $RequestedTime \
+               -p $SchedulerPartition \
+               -o imi_output.tmp \
+               -W src/utilities/download_blended_TROPOMI.py $StartDate $EndDate $tropomiCache; wait;
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
+    else
+        python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
+    fi
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then

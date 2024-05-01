@@ -55,7 +55,7 @@ StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
-tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
+tropomiCache="${OutputPath}/${RunName}/satellite_data"
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
 # Switch is flipped to false automatically if (( period_i > 1 ))
