@@ -282,9 +282,8 @@ if __name__ == "__main__":
     gamma = float(sys.argv[10])
     res = sys.argv[11]
     jacobian_sf = sys.argv[12]
-    perturb_oh = float(sys.argv[13])
-    prior_err_BC = float(sys.argv[14])
-    prior_err_OH = float(sys.argv[15])
+    prior_err_BC = float(sys.argv[13])
+    prior_err_OH = float(sys.argv[14])
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -303,7 +302,6 @@ if __name__ == "__main__":
         gamma,
         res,
         jacobian_sf,
-        perturb_oh,
         prior_err_BC,
         prior_err_OH,
     )
