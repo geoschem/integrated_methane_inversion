@@ -139,6 +139,7 @@ if "$isAWS"; then
                -c $SimulationCPUs \
                -t $RequestedTime \
                -p $SchedulerPartition \
+               -o imi_output.tmp \
                -W src/utilities/download_blended_TROPOMI.py $StartDate $EndDate $tropomiCache; wait;
         cat imi_output.tmp >> ${InversionPath}/imi_output.log
         rm imi_output.tmp
