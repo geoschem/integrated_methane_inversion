@@ -135,7 +135,13 @@ if "$isAWS"; then
     mkdir -p -v $tropomiCache
 
     if "$BlendedTROPOMI"; then
-        python src/utilities/download_blended_TROPOMI.py $StartDate $EndDate $tropomiCache
+        sbatch --mem $SimulationMemory \
+               -c $SimulationCPUs \
+               -t $RequestedTime \
+               -p $SchedulerPartition \
+               -W src/utilities/download_blended_TROPOMI.py $StartDate $EndDate $tropomiCache; wait;
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
     else
         python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
     fi
