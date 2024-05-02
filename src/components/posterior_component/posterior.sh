@@ -212,11 +212,11 @@ run_posterior() {
 generate_optimized_BC_values() {
     if $OptimizeOH; then
        python -c "import sys; import xarray;\
-       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-5:-1];\
+       xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-5:-1];\
        print(xhat.tolist())" $1
     else
        python -c "import sys; import xarray;\
-       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-4:];\
+       xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-4:];\
        print(xhat.tolist())" $1
     fi
 }
@@ -226,6 +226,6 @@ generate_optimized_BC_values() {
 #   generate_optimized_OH_values <path-to-inversion-result> <oh-pert-value>
 generate_optimized_OH_value() {
     python -c "import sys; import xarray;\
-    xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-1:];\
-    print(xhat.tolist())" $1
+    xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-1:];\
+    print(xhat.tolist()[0])" $1
 }
