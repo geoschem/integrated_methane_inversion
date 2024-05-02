@@ -51,6 +51,7 @@ setup_posterior() {
     sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
     if "${OptimizeOH}"; then
         sed -i "s/use_oh_scale_factor: false/use_oh_scale_factor: true/g" geoschem_config.yml
+    fi
     
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
