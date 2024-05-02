@@ -252,8 +252,8 @@ def do_inversion(
     xhat = ratio.copy()
     xhat[:scale_factor_idx] += 1
     if oh_optimization:
-        xhat[n_elements] += 1
-        print(f"xhat[OH] = {xhat[n_elements]}")
+        xhat[-1] += 1
+        print(f"xhat[OH] = {xhat[-1]}")
         
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
