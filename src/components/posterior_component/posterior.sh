@@ -49,6 +49,8 @@ setup_posterior() {
     # Update settings in geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
     sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
+    if "${OptimizeOH}"; then
+        sed -i "s/use_oh_scale_factor: false/use_oh_scale_factor: true/g" geoschem_config.yml
     
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
@@ -209,7 +211,7 @@ run_posterior() {
 generate_optimized_BC_values() {
     if $OptimizeOH; then
        python -c "import sys; import xarray;\
-       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-5:];\
+       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-5:-1];\
        print(xhat.tolist())" $1
     else
        python -c "import sys; import xarray;\
