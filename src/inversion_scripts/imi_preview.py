@@ -122,7 +122,12 @@ def imi_preview(
 
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
-        config, state_vector_path, preview_dir, tropomi_cache, preview=True, kf_index=None
+        config,
+        state_vector_path,
+        preview_dir,
+        tropomi_cache,
+        preview=True,
+        kf_index=None,
     )
     mask = state_vector_labels <= last_ROI_element
 
@@ -396,7 +401,7 @@ def estimate_averaging_kernel(
     ][0]
     prior_pth = os.path.join(preview_cache, hemco_diags_file)
     prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
-    
+
     # Start and end dates of the inversion
     startday = str(config["StartDate"])
     endday = str(config["EndDate"])
@@ -404,15 +409,14 @@ def estimate_averaging_kernel(
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
         # use different date range for KF inversion if kf_index is not None
-        rundir_path = preview_dir.split('preview_run')[0]
+        rundir_path = preview_dir.split("preview_run")[0]
         periods = pd.read_csv(f"{rundir_path}periods.csv")
         startday = str(periods.iloc[kf_index - 1]["Starts"])
         endday = str(periods.iloc[kf_index - 1]["Ends"])
-        
+
         # use the nudged (prior) emissions for generating averaging kernel estimate
         sf = xr.load_dataset(f"{rundir_path}archive_sf/prior_sf_period{kf_index}.nc")
         prior = sf["ScaleFactor"] * prior
-        
 
     # Compute total emissions in the region of interest
     areas = xr.load_dataset(prior_pth)["AREA"]
@@ -513,11 +517,13 @@ def estimate_averaging_kernel(
         mask = state_vector_labels == i
         # prior emissions for each element (in Tg/y)
         emissions_temp = sum_total_emissions(prior, areas, mask)
+        # number of native state vector elements in each element
+        size_temp = state_vector_labels.where(mask).count().item()
         # append the calculated length scale of element
-        L_temp = L_native * state_vector_labels.where(mask).count().item()
+        L_temp = L_native * size_temp
         # append the number of obs in each element
         num_obs_temp = np.nansum(observation_counts["count"].where(mask).values)
-        return emissions_temp, L_temp, num_obs_temp
+        return emissions_temp, L_temp, size_temp, num_obs_temp
 
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
@@ -526,7 +532,7 @@ def estimate_averaging_kernel(
     )
 
     # unpack list of tuples into individual lists
-    emissions, L, num_obs = [list(item) for item in zip(*result)]
+    emissions, L, num_native_elements, num_obs = [list(item) for item in zip(*result)]
 
     if np.sum(num_obs) < 1:
         sys.exit("Error: No observations found in region of interest")
@@ -543,6 +549,7 @@ def estimate_averaging_kernel(
     emissions = np.array(emissions)
     m = np.array(num_days)  # Number of observation days
     L = np.array(L)
+    num_native_elements = np.array(num_native_elements)
 
     # If Kalman filter mode, count observations per inversion period
     if config["KalmanMode"]:
@@ -551,7 +558,7 @@ def estimate_averaging_kernel(
         n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-        m = config["UpdateFreqDays"] # number of days in inversion period
+        m = config["UpdateFreqDays"]  # number of days in inversion period
 
     print("\n" + outstring2)
 
@@ -575,15 +582,25 @@ def estimate_averaging_kernel(
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
     # from P observations per grid cell = number of observations per grid cell / m days
-    P = np.array(num_obs) / num_days # number of observations per grid cell (native state vector element)
-    s_superO_1 = calculate_superobservation_error(sO, 1) # for handling cells with 0 observations (avoid divide by 0)
-    s_superO_p = [calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1 
-                    for element in P] # list containing superobservation error per state vector element
-    s_superO = np.array(s_superO_p) * 1e-9 # convert to ppb
+    # P is number of observations per grid cell (native state vector element)
+    # Note: to account for clustering we do num_obs / num_native_elements / num_days
+    P = np.array(num_obs) / num_native_elements / num_days
+    s_superO_1 = calculate_superobservation_error(
+        sO, 1
+    )  # for handling cells with 0 observations (avoid divide by 0)
+
+    # list containing superobservation error per state vector element
+    s_superO_p = [
+        calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1
+        for element in P
+    ]
+    s_superO = np.array(s_superO_p) * 1e-9  # convert to ppb
 
     # Averaging kernel sensitivity for each grid element
+    # Note: m is the number of superobservations (just days if native),
+    # but if clustered it is days * num_native_elements
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / m) # m is number of days
+    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m * num_native_elements))
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
