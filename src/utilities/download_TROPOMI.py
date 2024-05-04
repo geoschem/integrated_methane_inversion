@@ -97,8 +97,10 @@ def download_TROPOMI(startdate, enddate, Sat_datadir):
     # Run the data download script
     # Remove the file afterwards
     os.chmod(DATA_DOWNLOAD_SCRIPT, 0o755)
+    print("=============Downloading TROPOMI Operational Data=============")
     status = subprocess.call(DATA_DOWNLOAD_SCRIPT)
     os.remove(DATA_DOWNLOAD_SCRIPT)
+    print("==================Finished TROPOMI Download ==================")
 
 
 if __name__ == "__main__":

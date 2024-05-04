@@ -99,7 +99,7 @@ run_preview() {
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
-    tropomi_cache=${RunDirs}/data_TROPOMI
+    tropomi_cache=${RunDirs}/satellite_data
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # Run preview script

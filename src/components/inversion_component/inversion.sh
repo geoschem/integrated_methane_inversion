@@ -61,7 +61,7 @@ run_inversion() {
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
         # Modify inversion driver script to reflect current inversion period
-        sed -i "s|data_TROPOMI\"|data_TROPOMI\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
+        sed -i "s|satellite_data\"|satellite_data\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
         if (( period_i > 1 )); then
             FirstSimSwitch=false
         fi

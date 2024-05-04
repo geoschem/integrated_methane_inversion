@@ -59,7 +59,7 @@ reduce_dimension() {
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
 
     preview_dir=${RunDirs}/preview_run
-    tropomi_cache=${RunDirs}/data_TROPOMI
+    tropomi_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
     if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
