@@ -163,8 +163,8 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
     
     background_elements_needed = np.ceil(len(sensitivities) / max_cluster_size)
     if background_elements_needed > desired_element_num:
-        raise (
-            "Warning: too few clusters to have background state vector elements\n"
+        raise Exception(
+            "Error: too few clusters to have background state vector elements\n"
             + f"aggregating {max_cluster_size} native resolution elements.\n"
             + "More state vector elements recommended. Alternatively, raise the\n"
             + "\"MaxClusterSize\" allowed for the region of interest."
