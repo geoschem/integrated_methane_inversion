@@ -76,14 +76,15 @@ def get_highest_labels_threshold(labels, sensitivities, threshold):
         labels          [][]  ndarray : state vector labels
         sensitivities   [][]dataarray : xarrray sensitivity data
         threshold               float : number between 0 and 1
-    Returns: ([], int, []) : tuple with highest sensitivity labels, 
-                             number of labels(n), and list of sensitivity 
-                             values
+    Returns: ([], int, [], []) : tuple with highest sensitivity labels, 
+                                  number of labels(n), number of elements 
+                                  contained in labels, and list of 
+                                  sensitivity values
     """
     sensitivity_dict = {}
     max_label = int(np.nanmax(labels))
     n = 0
-
+    number_of_elements = []
     total_sensis = []
     # calculate avg dofs per gridcell for each cluster
     for i in range(1, max_label + 1):
@@ -95,6 +96,7 @@ def get_highest_labels_threshold(labels, sensitivities, threshold):
         sensitivity_dict[i] = total_sensi
         total_sensis.append(np.round(total_sensi, 2))
         if total_sensi >= threshold:
+            number_of_elements.append(len(indices[0]))
             n += 1
 
     n_clusters = sorted(sensitivity_dict, key=sensitivity_dict.get, reverse=True)
@@ -102,7 +104,7 @@ def get_highest_labels_threshold(labels, sensitivities, threshold):
     n_sensis = np.array(total_sensis)[inds]
     # sort by maximum sensitivity and then return
     # the corresponding n highest labels
-    return (n_clusters[:n], n, n_sensis[:n])
+    return (n_clusters[:n], n, number_of_elements, n_sensis[:n])
 
 
 def zero_buffer_elements(clusters, num_buffer_elems):
@@ -340,6 +342,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
+            print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0), clusters_left, mini_batch
             )
@@ -360,8 +363,8 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             dofs_threshold = -1
 
         # get the n_highes labels with sensitivities above the 
-        # dofs threshold
-        n_max_labels, n_highest, _ = get_highest_labels_threshold(
+        # dofs threshold and how many elements these labels contain
+        n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
             out_labels, sensi["Sensitivities"], dofs_threshold
         )
         
@@ -372,7 +375,20 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             fill_grid = True
             n_ind = clusters_left - backfill_num
             n_max_labels = n_max_labels[:n_ind]
+            num_elements = num_elements[:n_ind]
 
+        # protects against possibility of too few elements left to 
+        # achieve desired number of clusters
+        total_elements = 0
+        print(np.array(num_elements).sum())
+        for i, n in enumerate(num_elements):
+            total_elements += n
+            if elements_left - total_elements < clusters_left:
+                n_ind = i
+                n_max_labels = n_max_labels[:n_ind]
+                num_elements = num_elements[:n_ind]
+                break
+                
         print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
         # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
