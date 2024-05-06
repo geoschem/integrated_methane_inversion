@@ -178,7 +178,11 @@ def make_state_vector_file(
     hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
 
     # Initialize state vector from land cover, replacing all values with NaN (to be filled later)
-    statevector = lc.where(lc == -9999.0)
+    if is_regional:
+        statevector = lc.where(lc == -9999.0)
+    else:
+        # if global, use hemco file 
+        statevector = hd.where(hd == -9999.0)
 
     # Set pixels in buffer areas to 0
     if is_regional:
