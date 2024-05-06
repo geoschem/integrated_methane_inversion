@@ -76,7 +76,7 @@ ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/Permi
 ##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
-PriorErrorOH: 0.5
+PriorErrorOH: 0.1
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
