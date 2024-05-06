@@ -188,7 +188,20 @@ def make_state_vector_file(
     # Also set pixels over water to 0, unless there are offshore emissions
     if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
-        land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+        if is_regional:
+            land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+        else:
+            # handle half-width polar grid boxes for global,
+            # global files are same shape but different lat
+            # at poles in that case
+            if (
+                np.not_equal(hd.lat.values, lc.lat.values).any() &
+                np.equal(hd.lat.shape, lc.lat.shape).all()
+            ):
+                land = lc.where((lc.values > land_threshold) | (hd.values > emis_threshold))
+            else:
+                land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+
         statevector.values[land.isnull().values] = -9999
 
     # Fill in the remaining NaNs with state vector element values
