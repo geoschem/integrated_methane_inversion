@@ -77,9 +77,9 @@ ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianB
 ## PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
 PriorError: 0.5
-PriorErrorOH: 0.5
 PriorErrorBCs: 10.0
 PriorErrorBufferElements: 0.5
+PriorErrorOH: 0.1
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
