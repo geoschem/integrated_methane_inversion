@@ -76,7 +76,7 @@ ShapeFile: "None"
 ##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
-PriorErrorOH: 0.5
+PriorErrorOH: 0.1
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
