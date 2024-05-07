@@ -3,7 +3,7 @@ import os
 import sys
 import numpy as np
 import yaml
-from src.inversion_scripts.utils import sum_total_emissions
+from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 
 
 
@@ -48,11 +48,12 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     mask = state_vector_labels <= last_ROI_element
 
     # Get original emissions from preview, for first inversion period
-    original_emis = xr.load_dataset(diags_path)
-    original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
+    original_emis_ds = xr.load_dataset(diags_path)
+    original_emis = original_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
 
     # Initialize unit scale factors
     sf = xr.load_dataset(unit_sf_path)
+    posterior_scale_ds = sf.copy()
 
     # If we are past the first inversion period, need to use previous inversion results to construct
     # the initial scale factors for the current period.
@@ -71,8 +72,8 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
             # Get the original HEMCO emissions for period p
             hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
-            original_emis = xr.load_dataset(hemco_emis_path)
-            original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
+            original_emis_ds = xr.load_dataset(hemco_emis_path)
+            original_emis = original_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
 
             # Get the gridded posterior for period p
             gridded_posterior_path = os.path.join(
@@ -81,9 +82,11 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             posterior_p = xr.load_dataset(gridded_posterior_path)
 
             # Get posterior emissions multiplied up to current period p, and apply nudging
-            current_posterior_emis = (
-                posterior_p["ScaleFactor"] * sf["ScaleFactor"] * original_emis
-            )
+            # Account for non-optimized soil sink by calling get_posterior_emissions()
+            posterior_scale_ds["ScaleFactor"] = posterior_p["ScaleFactor"] * sf["ScaleFactor"]
+            posterior_emis_ds = get_posterior_emissions(original_emis_ds, posterior_scale_ds)
+            current_posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+            
             nudged_posterior_emis = (
                 nudge_factor * original_emis
                 + (1 - nudge_factor) * current_posterior_emis
@@ -115,7 +118,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         )
 
     # Print the current total emissions in the region of interest
-    emis = sf["ScaleFactor"] * original_emis
+    emis = get_posterior_emissions(original_emis_ds, sf)["EmisCH4_Total"].isel(time=0, drop=True)
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
 
