@@ -54,6 +54,7 @@ BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
+GCVizDir="./data_geoschem_prior"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
 tropomiCache="${OutputPath}/${RunName}/satellite_data"
@@ -140,15 +141,18 @@ fi
 # Setup GC data directory in workdir
 #=======================================================================
 
+printf "Calling setup_gc_cache.py\n"
 if "$LognormalErrors"; then
     # for lognormal errors we use the clean background run
     GCsourcepth="${BackgroundRunDir}/OutputDir"
+    PriorOutputDir="${PriorRunDir}/OutputDir"
+    # also need the prior cache so that we can visualize the prior simulation
+    python setup_gc_cache.py $StartDate $EndDate $PriorOutputDir $GCVizDir; wait
 else
     # for normal errors we use the prior run
     GCsourcepth="${PriorRunDir}/OutputDir"
 fi
 
-printf "Calling setup_gc_cache.py\n"
 python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
 
@@ -170,7 +174,12 @@ else
 
 fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian False; wait
+if "$LognormalErrors"; then
+    # for lognormal error visualization of the prior we sample the prior run
+    # without constructing the jacobian matrix
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost False True; wait
+fi
 printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
