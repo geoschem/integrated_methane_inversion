@@ -52,7 +52,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 OptimizeOH: false
 
 ## Point source datasets
@@ -73,6 +73,8 @@ ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
 ## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
+## if lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
+## PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
 ## and PriorErrorBCs is in ppb
 ## PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
@@ -105,7 +107,7 @@ SetupPosteriorRun: false
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: false
+ReDoJacobian: true
 DoInversion: false
 DoPosterior: false
 
