@@ -22,7 +22,7 @@ S3_PATH="s3://${S3_BUCKET}/${RESOLUTION}/${MET}/${YEAR}/"
 #   dest: path files will be downloaded to
 download_aws_files() {
     echo "starting aws download"
-    aws s3 cp $1 $2 --request-payer --recursive
+    aws s3 cp $1 $2 --no-sign-request --recursive
     echo "finished aws download"
 }
 
