@@ -121,6 +121,7 @@ def download_blended(start_date, end_date, storage_dir):
     os.makedirs(storage_dir, exist_ok=True)
 
     print("=============Downloading Blended TROPOMI+GOSAT Data=============")
+    print(f"Downloading {len(s3_paths)} files - ({start_date},{end_date}].")
     # Download the files using multiple cores
     with multiprocessing.Pool(112) as pool:
         pool.map(
