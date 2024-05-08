@@ -113,11 +113,11 @@ run_preview() {
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \
-        -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache; wait;
         cat imi_output.tmp >> ${InversionPath}/imi_output.log
         rm imi_output.tmp
     else
-        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+        python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 

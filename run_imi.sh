@@ -114,6 +114,7 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
+ConfigPath=${InversionPath}/${ConfigFile}
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
