@@ -18,6 +18,11 @@ setup_inversion() {
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
+    if "$LognormalErrors"; then
+        mkdir -p inversion/data_converted_prior
+        mkdir -p inversion/data_geoschem_prior
+        mkdir -p inversion/data_visualization_prior
+    fi
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
