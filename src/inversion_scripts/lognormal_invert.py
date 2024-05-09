@@ -5,12 +5,6 @@
 #       path_to_state_vector_file: path to state vector netcdf file
 #       jacobian_sf: (optional) path to numpy array of scale factors for jacobian
 
-
-# TODO: merge this script with invert.py to avoid redundancy
-# This script performs the inversion but using lognormal
-# errors instead of normal errors. As an alternative to
-# the invert.py script.
-
 import sys
 import yaml
 from itertools import product
@@ -45,33 +39,44 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     ybkg = np.array(ds["gc_ch4_bkgd"])
 
     # We only solve using lognormal errors for state vector elements
-    # within the domain of interest, not the buffer elements, or the
-    # BC elements. So, to do this we split K into two matrices, one
-    # for the lognormal elements, and one for the normal elements.
+    # within the domain of interest, not the buffer elements, the
+    # BC elements, or OH optimization. So, to do this we split K into 
+    # two matrices, one for the lognormal elements, and one for the 
+    # normal elements.
     optimize_bcs = config["OptimizeBCs"]
+    optimize_oh = config["OptimizeOH"]
+    OH_element_num = 1 if optimize_oh else 0
+    BC_element_num = 4 if optimize_bcs else 0
     num_sv_elems = (
-        int(state_vector_labels.max().item()) + 4
-        if optimize_bcs
-        else state_vector_labels.max().item()
+        int(state_vector_labels.max().item()) + OH_element_num + BC_element_num
     )
     num_buffer_elems = int(config["nBufferClusters"])
-    num_normal_elems = num_buffer_elems + 4 if optimize_bcs else num_buffer_elems
+    num_normal_elems = num_buffer_elems + OH_element_num + BC_element_num
     ds = np.load("full_jacobian_K.npz")
     K_temp = np.array(ds["K"]) * 1e9
 
     # Apply scaling matrix if using precomputed Jacobian
     if jacobian_sf is not None:
         scale_factors = np.load(jacobian_sf)
-        # apply unit scaling for BC elements if optimizing BCs
-        if optimize_bcs:
-            scale_factors = np.append(scale_factors, np.ones(4))
+        # apply unit scaling for BC elements and OH elements if using
+        if optimize_bcs or optimize_oh:
+            scale_factors = np.append(scale_factors, np.ones(BC_element_num + OH_element_num))
         reps = K_temp.shape[0]
         scaling_matrix = np.tile(scale_factors, (reps, 1))
         K_temp *= scaling_matrix
 
+    # The levenberg-marquardt method assumes that the prior emissions is 
+    # the median prior emissions, but typically priors are the mean emission.
+    # To account for this we convert xa to a median. This can be done by 
+    # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
+    # Here, we calculate this scaling factor
+    prior_scale = 1/np.exp((np.log(float(config["PriorError"]))**2)/2)
+    
     # split K based on whether we are solving for lognormal or normal elements
     # K_ROI is the matrix for the lognormal elements (the region of interest)
+    # the lognormal part of K gets scaled by prior_scale to convert to median
     K_ROI = K_temp[:, :-num_normal_elems]
+    K_ROI = prior_scale * K_ROI
     K_normal = K_temp[:, -num_normal_elems:]
     K_full = np.concatenate((K_ROI, K_normal), axis=1)
 
@@ -107,13 +112,14 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     prior_errors = [float(config["PriorError"])]
     sa_buffer_elems = [float(config["PriorErrorBufferElements"])]
     sa_bc_vals = [float(config["PriorErrorBCs"])] if optimize_bcs else [None]
+    sa_oh_vals = [float(config["PriorErrorOH"])] if optimize_oh else [None]
     gamma_vals = [float(config["Gamma"])]
 
     # iterate through different combination of gamma, lnsa, and sa_bc
     # TODO: for now we will only allow one value for each of these
     # TODO: parallelize this once we allow vectorization of these values
-    combinations = list(product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems))
-    for gamma, sa, sa_bc, sa_buffer in combinations:
+    combinations = list(product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems, sa_oh_vals))
+    for gamma, sa, sa_bc, sa_buffer, sa_oh in combinations:
         lnsa_val = np.log(sa)
         results_save_path = f"inversion_result_ln.nc"
 
@@ -121,13 +127,19 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # lnsa = lnsa_val**2 * np.ones((n, 1))
         lnsa = lnsa_val**2 * np.ones((n, 1))
 
-        # For the buffer elems and BCs we apply a different Sa value
+        
+        # For the buffer elems, BCs, and OH elements
+        # we apply a different Sa value
+        # In the most basic we only generate Sa for buffer elements
+        sa_normal = sa_buffer**2 * np.ones((num_normal_elems - (BC_element_num + OH_element_num), 1))
+        
+        # conditionally add BC and OH elements
         if optimize_bcs:
-            bc_errors = sa_bc**2 * np.ones((4, 1))
-            buffer_errors = sa_buffer**2 * np.ones((num_normal_elems - 4, 1))
-            sa_normal = np.concatenate((buffer_errors, bc_errors), axis=0)
-        else:
-            sa_normal = sa_buffer**2 * np.ones((num_normal_elems, 1))
+            bc_errors = sa_bc**2 * np.ones((BC_element_num, 1))
+            sa_normal = np.concatenate((sa_normal, bc_errors), axis=0)   
+        if optimize_oh:
+            oh_errors = sa_oh**2 * np.ones((OH_element_num, 1))
+            sa_normal = np.concatenate((sa_normal, oh_errors), axis=0)
 
         # concatenate lognormal prior errors with normal prior errors
         lnsa_arr = np.concatenate((lnsa, sa_normal), axis=0)
@@ -205,7 +217,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
         xnmean = np.concatenate(
             (
-                xn[:-num_normal_elems] * np.expand_dims(np.exp(dlns * (0.5)), axis=1),
+                xn[:-num_normal_elems] * np.expand_dims(np.exp(dlns * (0.5)) * prior_scale, axis=1),
                 xn[-num_normal_elems:],
             )
         )
@@ -220,7 +232,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         print(
             f"Diagnostics:\n  (Ja: {Ja}, gamma: {gamma}, "
-            + f"sa: {sa}, sa_bc: {sa_bc}, sa_buffer: {sa_buffer})"
+            + f"sa: {sa}, sa_bc: {sa_bc}, sa_oh: {sa_oh_vals} sa_buffer: {sa_buffer})"
         )
 
         # Create gridded datarrays of S_post, xhat, and A

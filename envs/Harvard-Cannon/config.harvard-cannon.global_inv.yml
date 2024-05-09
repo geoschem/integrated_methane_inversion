@@ -2,23 +2,22 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "CONUS_example_application100"
+RunName: "Test_IMI_Global"
 isAWS: false
 UseSlurm: true
-SafeMode: false
+SafeMode: true
 S3Upload: false
 
 ## Period of interest
-StartDate: 20230101
-EndDate: 20230201
-# EndDate: 20230702
+StartDate: 20180501
+EndDate: 20180502
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: true
+BlendedTROPOMI: false
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: true
+isRegional: false
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -32,28 +31,28 @@ isRegional: true
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-RegionID: "NA"
+RegionID: ""
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -105
-LonMax: -103
-LatMin: 31
-LatMax: 33
+LonMin: -180
+LonMax: 180
+LatMin: -90
+LatMax: 90
 
 ## Kalman filter options
-KalmanMode: true
+KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
 
 ## State vector
-CreateAutomaticRectilinearStateVectorFile: false
-nBufferClusters: 16
-BufferDeg: 5
-LandThreshold: .25
+CreateAutomaticRectilinearStateVectorFile: true
+nBufferClusters: 0
+BufferDeg: 0
+LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: true
+OptimizeBCs: false
 OptimizeOH: false
 
 ## Point source datasets
@@ -61,22 +60,22 @@ OptimizeOH: false
 PointSourceDatasets: ["SRON"]
 
 ## Clustering Options
-ReducedDimensionStateVector: true
-DynamicKFClustering: true
+ReducedDimensionStateVector: false
+DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: 116
+NumberOfElements: 45
+ForcedNativeResolutionElements: 
+  - [31.5, -104]
 
 ## Custom state vector
-StateVectorFile: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_application/integrated_methane_inversion/resources/statevectors/StateVector.nc"
-ShapeFile: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_application/integrated_methane_inversion/resources/shapefiles/conus.shp"
+StateVectorFile: "/path/to/StateVector.nc"
+ShapeFile: "None"
 
 ## Inversion
-## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
 ## if lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
 ## PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-## and PriorErrorBCs is in ppb
-## PriorErrorBufferElements is only used if LognormalErrors is true
-LognormalErrors: false
+##  and PriorErrorBCs is in ppb (not used for global)
 PriorError: 0.5
 PriorErrorBCs: 10.0
 PriorErrorBufferElements: 0.5
@@ -87,7 +86,7 @@ PrecomputedJacobian: false
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "0.25x0.3125"
+Res: "2.0x2.5"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
@@ -111,17 +110,31 @@ DoInversion: false
 DoPosterior: false
 
 ## IMI preview
-DoPreview: false
+##   NOTE: RunSetup must be true to run preview
+DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
 SimulationCPUs: 32
 SimulationMemory: 32000
 JacobianCPUs: 1
-JacobianMemory: 5000
-RequestedTime: "0-10:00"
-SchedulerPartition: "seas_compute,huce_cascade,huce_intel"
-JacobianSchedulerPartition: "serial_requeue"
+JacobianMemory: 2000
+RequestedTime: "0-24:00"
+SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
+
+## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
+MaxSimultaneousRuns: 50
+
+##====================================================================
+##
+## Advanced Settings (optional)
+##
+##====================================================================
+
+## These settings are intended for advanced users who wish to:
+##   a. modify additional GEOS-Chem options, or
+##   b. run the IMI on a local cluster.
+## They can be ignored for any standard cloud application of the IMI.
 
 ##--------------------------------------------------------------------
 ## Additional settings for GEOS-Chem simulations
@@ -160,35 +173,38 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_application/imi_output"
+OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 
 ## Path to GEOS-Chem input data
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
-## Environment files
+## Conda environment file
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
-GEOSChemEnv: "/n/holyscratch01/jacob_lab/lestrada/IMI/CONUS_example_application/integrated_methane_inversion/envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
+
+## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
+##   NOTE: Copy your own file in the envs/ directory within the IMI
+GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
-##  NOTE: Must have AWS CLI enabled
+##   NOTE: Must have AWS CLI enabled
 RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2023-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions"
-BCversion: "v2023-06"
+BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
+BCversion: "v2024-03"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##  NOTE: Must have AWS CLI enabled
+##   NOTE: Must have AWS CLI enabled
 PreviewDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false

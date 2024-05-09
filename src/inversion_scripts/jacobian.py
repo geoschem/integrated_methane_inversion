@@ -12,6 +12,7 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     apply_average_tropomi_operator,
     apply_tropomi_operator,
 )
+from joblib import Parallel, delayed
 
 
 def apply_operator(operator, params):
@@ -74,6 +75,7 @@ if __name__ == "__main__":
     BlendedTROPOMI = sys.argv[9] == "true"
     isPost = sys.argv[10]
     build_jacobian = sys.argv[11]
+    viz_prior = sys.argv[12]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -90,6 +92,14 @@ if __name__ == "__main__":
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
         vizdir = f"{workdir}/data_visualization"
+        
+        # for lognormal, we also sample the prior simulation in a 
+        # separate call to jacobian.py solely for visualization purposes
+        if viz_prior.lower() == "true":
+            gc_cache = f"{gc_cache}_prior"
+            outputdir = f"{outputdir}_prior"
+            vizdir = f"{vizdir}_prior"
+             
     else:  # if sampling posterior simulation
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
@@ -120,7 +130,7 @@ if __name__ == "__main__":
 
     # Map GEOS-Chem to TROPOMI observation space
     # Also return Jacobian matrix if build_jacobian=True
-    for filename in sat_files:
+    def process(filename):
 
         # Check if TROPOMI file has already been processed
         print("========================")
@@ -166,11 +176,15 @@ if __name__ == "__main__":
             )
             
             if output == None:
-                continue
+                return 0
+        else:
+            return 0
 
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
             save_obj(viz_output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
+        return 0
 
+    results = Parallel(n_jobs=-1)(delayed(process)(filename) for filename in sat_files)
     print(f"Wrote files to {outputdir}")

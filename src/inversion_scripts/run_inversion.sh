@@ -7,6 +7,19 @@
 ## Parse config.yml file
 ##=======================================================================
 
+send_error() {
+    file=`basename "$0"`
+    printf "\nInversion Error: on line number ${1} of ${file}: IMI exiting."
+    echo "Error Status: 1" > .error_status_file.txt
+    exit 1
+}
+
+# remove error status file if present
+rm -f .error_status_file.txt
+
+# trap and exit on errors
+trap 'send_error $LINENO' ERR
+
 printf "\n=== PARSING CONFIG FILE ===\n"
 
 invPath={INVERSION_PATH}
@@ -41,9 +54,10 @@ BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
+GCVizDir="./data_geoschem_prior"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
-tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
+tropomiCache="${OutputPath}/${RunName}/satellite_data"
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
 # Switch is flipped to false automatically if (( period_i > 1 ))
@@ -72,15 +86,15 @@ fi
 printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
 if "$FirstSimSwitch"; then
     if [[ ! -d ${SpinupDir} ]]; then
-    printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-    exit 1
+	printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
+	exit 1
     fi
     PrevDir=$SpinupDir
 else
     PrevDir=$PosteriorRunDir
     if [[ ! -d ${PosteriorRunDir} ]]; then
-    printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-    exit 1
+	printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
+	exit 1
     fi
 fi
 printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
@@ -88,15 +102,15 @@ printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
 if ! "$PrecomputedJacobian"; then
 
     # Postprocess all the Jacobian simulations
-    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate; wait
+    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate $Res; wait
 
 else
 
     # Only postprocess the Prior simulation
-    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate; wait
+    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate $Res; wait
     if "$LognormalErrors"; then
         # for lognormal errors we need to postprocess the background run too
-        python postproc_diags.py $RunName $BackgroundRunDir $PrevDir $StartDate; wait
+        python postproc_diags.py $RunName $BackgroundRunDir $PrevDir $StartDate $Res; wait
     fi
 fi
 printf "DONE -- postproc_diags.py\n\n"
@@ -106,11 +120,18 @@ printf "DONE -- postproc_diags.py\n\n"
 #=======================================================================
 
 if ! "$PrecomputedJacobian"; then
-    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache)
-    # add an argument to calc_sensi.py if optimizing BCs
+    # add an argument to calc_sensi.py if optimizing BCs and/or OH
     if "$OptimizeBCs"; then
-        python_args+=($PerturbValueBCs)
+        pertBCs=$PerturbValueBCs
+    else
+	pertBCs=0.0
     fi
+    if "$OptimizeOH"; then
+        pertOH=$PerturbValueOH
+    else
+	pertOH=0.0
+    fi
+    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
     printf "Calling calc_sensi.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- calc_sensi.py\n\n"
@@ -120,15 +141,18 @@ fi
 # Setup GC data directory in workdir
 #=======================================================================
 
+printf "Calling setup_gc_cache.py\n"
 if "$LognormalErrors"; then
     # for lognormal errors we use the clean background run
     GCsourcepth="${BackgroundRunDir}/OutputDir"
+    PriorOutputDir="${PriorRunDir}/OutputDir"
+    # also need the prior cache so that we can visualize the prior simulation
+    python setup_gc_cache.py $StartDate $EndDate $PriorOutputDir $GCVizDir; wait
 else
     # for normal errors we use the prior run
     GCsourcepth="${PriorRunDir}/OutputDir"
 fi
 
-printf "Calling setup_gc_cache.py\n"
 python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
 
@@ -150,13 +174,27 @@ else
 
 fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian False; wait
+if "$LognormalErrors"; then
+    # for lognormal error visualization of the prior we sample the prior run
+    # without constructing the jacobian matrix
+    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost False True; wait
+fi
 printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
 # Do inversion
 #=======================================================================
-
+if "$OptimizeBCs"; then
+    ErrorBCs=$PriorErrorBCs
+else
+    ErrorBCs=0.0
+fi
+if "$OptimizeOH"; then
+    ErrorOH=$PriorErrorOH
+else
+    ErrorOH=0.0
+fi
 
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
@@ -168,11 +206,8 @@ if "$LognormalErrors"; then
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
-    python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf)
-    # add an argument to calc_sensi.py if optimizing BCs
-    if "$OptimizeBCs"; then
-        python_args+=($PriorErrorBCs)
-    fi
+    python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf $ErrorBCs $ErrorOH)
+
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- invert.py\n\n"

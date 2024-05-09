@@ -38,9 +38,6 @@ echo '===> Run ended at' `date` >> $log
 # Move restart files to clean up run directory
 #mv GEOSChem_restart.* ./Restarts/
 
-# These files are not used in CH4 simulations
-rm HEMCO_restart.*
-
 # Exit normally
 exit 0
 #EOC

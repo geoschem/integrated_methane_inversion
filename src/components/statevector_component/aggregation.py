@@ -67,30 +67,44 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False):
     return cluster_labels
 
 
-def get_highest_labels(labels, sensitivities, n):
+def get_highest_labels_threshold(labels, sensitivities, threshold):
     """
     Description:
-        Get the n labels that have the highest avg sensitivity
-        per grid cell. Returned in descending order.
+        Get labels with sensitivity above the threshold. 
+        Returned in descending order.
     arguments:
-        labels            [][]ndarray : state vector labels
+        labels          [][]  ndarray : state vector labels
         sensitivities   [][]dataarray : xarrray sensitivity data
-        n                         int : number of labels to return
-    Returns:      [] : list of n labels with highest sensitivities
+        threshold               float : number between 0 and 1
+    Returns: ([], int, [], []) : tuple with highest sensitivity labels, 
+                                  number of labels(n), number of elements 
+                                  contained in labels, and list of 
+                                  sensitivity values
     """
     sensitivity_dict = {}
     max_label = int(np.nanmax(labels))
-
+    n = 0
+    number_of_elements = []
+    total_sensis = []
     # calculate avg dofs per gridcell for each cluster
     for i in range(1, max_label + 1):
         indices = np.where(labels == i)
         cluster_sensitivities = sensitivities[indices]
         num_ind = cluster_sensitivities.size
-        sensitivity_dict[i] = np.sum(cluster_sensitivities) / num_ind
+        total_sensi = np.sum(cluster_sensitivities)
+        # avg_sensi = total_sensi / num_ind
+        sensitivity_dict[i] = total_sensi
+        total_sensis.append(np.round(total_sensi, 2))
+        if total_sensi >= threshold:
+            number_of_elements.append(len(indices[0]))
+            n += 1
 
+    n_clusters = sorted(sensitivity_dict, key=sensitivity_dict.get, reverse=True)
+    inds = np.array(n_clusters) - 1
+    n_sensis = np.array(total_sensis)[inds]
     # sort by maximum sensitivity and then return
     # the corresponding n highest labels
-    return sorted(sensitivity_dict, key=sensitivity_dict.get, reverse=True)[:n]
+    return (n_clusters[:n], n, number_of_elements, n_sensis[:n])
 
 
 def zero_buffer_elements(clusters, num_buffer_elems):
@@ -127,178 +141,40 @@ def scale_buffer_elements(scale_number, buffer):
 
     return buffer
 
-
-def find_cluster_pairs(
-    sorted_sensitivities,
-    max_dofs,
-    desired_elements,
-    max_aggregation_level,
-    cluster_pairs=None,
-):
+def get_max_cluster_size(config, sensitivities, desired_element_num):
     """
     Description:
-        Recursively generate best-guess at information content distributed
-        clustering pairs based on the maximum dofs allowed per cluster and
-        the desired number of state vector elements.
-    arguments:
-        sorted_sensitivities     [] : ndarray of sensitivities sorted in descending order
-        max_dofs              float : maximum dofs per state vector element
-        desired_elements        int : number of desired elements in state vector
-        max_aggregation_level   int : maximum number of elements to aggregate per cluster
-        cluster_pairs          dict : clustering pairs
-    Returns:                   dict : information content informed clustering pairs
-    """
-    # Handle initial call
-    if cluster_pairs is None:
-        cluster_pairs = {}
-
-    # the number of elements that would be needed to create a background of 4x5 degree elements
-    background_elements_needed = np.ceil(
-        len(sorted_sensitivities) / max_aggregation_level
-    )
-
-    # determine the number of elements that should be aggregated
-    # based on the number of elements left to be distributed
-    # and the maximum dofs per cluster
-    # we save enough elements to create a background of 4x5
-    # degree state vector elements
-    elements_left = desired_elements - sum(cluster_pairs.values())
-    if elements_left == 1:
-        # aggregate remaining grid cells into a single element
-        subset = np.arange(len(sorted_sensitivities))
-    elif elements_left == background_elements_needed:
-        # start aggregating remainder of elements into clusters
-        # of size max_aggregation_level
-        subset = np.arange(0, max_aggregation_level)
-    elif elements_left < background_elements_needed:
-        # allow aggregation of greater than max_aggregation_level
-        # This may occur due to rounding
-        excess = len(sorted_sensitivities) % max_aggregation_level
-        subset = np.arange(max_aggregation_level + excess)
-    else:
-        # aggregate the number of cells that have a cumulative sum
-        # below the dofs threshold
-        # assert a minimum of 1 cell per cluster
-        cumsum_sensitivities = np.cumsum(sorted_sensitivities)
-        subset = np.where(cumsum_sensitivities < max_dofs)[0]
-        subset = subset if len(subset) > 0 else [0]
-        if len(subset) > max_aggregation_level:
-            subset = np.arange(0, max_aggregation_level)
-
-    # handle cases where too few clusters would be created by
-    # adding additional native resolution clusters
-    if (elements_left - 1) > (len(sorted_sensitivities) - len(subset)):
-        subset = [0]
-
-    # update dictionary with the new cluster pairing
-    native_cells = len(subset)
-    if native_cells in cluster_pairs.keys():
-        cluster_pairs[native_cells] = cluster_pairs[native_cells] + 1
-    else:
-        cluster_pairs[native_cells] = 1
-    # delete the sensitivities that have been assigned a pairing
-    sorted_sensitivities = np.delete(sorted_sensitivities, subset)
-    # recursively find the next pairing
-    if len(sorted_sensitivities) == 0:
-        return cluster_pairs
-    else:
-        return find_cluster_pairs(
-            sorted_sensitivities,
-            max_dofs,
-            desired_elements,
-            max_aggregation_level,
-            cluster_pairs,
-        )
-
-
-def get_max_aggregation_level(config, sensitivities, desired_element_num):
-    """
-    Description:
-        Returns the maximum aggregation level based on the number of desired
-        elements and the resolution. By default, if there are enough elements
-        we default to using a max aggregation level corresponding to a 4x5
-        grid cell.
+        Returns the maximum number of elements allowed in a single cluster
+        based on the number of desired elements and the resolution. 
+        By default, if there are enough elements we default to using a max 
+        cluster size of 64 elements.
     arguments:
         config             {dict} : imi config file
         sensitivities    [double] : list of avging kernel senstivities
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    if config["Res"] == "0.25x0.3125":
-        max_aggregation_level = 256
+    if config["Res"] == "2.0x2.5":
+        default_max_aggregation_level = 16 # Setting background to 8x10 for global
     elif config["Res"] == "0.5x0.625":
-        max_aggregation_level = 64
+        default_max_aggregation_level = 32
+    elif config["Res"] == "0.25x0.3125":
+        default_max_aggregation_level = 64
 
-    background_elements_needed = np.ceil(len(sensitivities) / max_aggregation_level)
+    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else default_max_aggregation_level
+    
+    background_elements_needed = np.ceil(len(sensitivities) / max_cluster_size)
     if background_elements_needed > desired_element_num:
-        print(
-            "Warning: too few clusters to create a background of 4x5 degree state vector elements."
-            + " More state vector elements recommended. Increasing aggregation level threshold."
-        )
-        # if there are too few clusters then we set the max aggregation level
-        # to either total_native_elements/8 or total_native_elements
-        denominator = 8 if desired_element_num > 8 else 1
-        max_aggregation_level = np.ceil(len(sensitivities) / denominator)
-        print(
-            f"Max aggregation level set to: {max_aggregation_level} elements in a cluster"
+        raise Exception(
+            "Error: too few clusters to have background state vector elements\n"
+            + f"aggregating {max_cluster_size} native resolution elements.\n"
+            + "More state vector elements recommended. Alternatively, raise the\n"
+            + "\"MaxClusterSize\" allowed for the region of interest."
         )
     print(
-        f"Max aggregation level set to: {max_aggregation_level} elements in a cluster"
+        f"MaxClusterSize set to: {max_cluster_size} elements in a cluster"
     )
-    return max_aggregation_level
-
-
-def generate_cluster_pairs(config, sensitivities):
-    """
-    Description:
-        Generate information content informed clustering pairs
-    arguments:
-        config           {dict} : imi config file
-        sensitivities        [] : averaging kernel sensitivities
-    Returns:          [(tuple)] : information content informed clustering pairs
-    """
-    desired_element_num = config["NumberOfElements"] - config["nBufferClusters"]
-    # Error handling
-    if desired_element_num < 0:
-        raise Exception(
-            "Error in clustering algorithm: too few clusters requested."
-            + f"requested {desired_element_num} clusters."
-            + "Remember to take into account the number of buffer elements."
-        )
-    if desired_element_num > len(sensitivities):
-        raise Exception(
-            "Error in clustering algorithm: too many clusters requested."
-            + f" {len(sensitivities)} native resolution elements and "
-            + f"requested {desired_element_num} elements."
-            + "Remember to take into account the number of buffer elements."
-        )
-    # sort sensitivities in descending order
-    sensitivities = np.sort(sensitivities)[::-1]
-
-    # maximum number of native elements per cluster
-    max_aggregation_level = get_max_aggregation_level(
-        config, sensitivities, desired_element_num
-    )
-
-    # temporarily set the upper bound limit to prevent recursion error
-    # for large domains. python has a default recursion limit of 1000
-    limit = sys.getrecursionlimit()
-    sys.setrecursionlimit(len(sensitivities))
-
-    # determine dofs threshold for each cluster and create cluster pairings
-    target_dofs_per_cluster = sum(sensitivities) / desired_element_num
-    cluster_pairs = find_cluster_pairs(
-        sensitivities,
-        target_dofs_per_cluster,
-        desired_element_num,
-        max_aggregation_level,
-    )
-    sys.setrecursionlimit(limit)
-
-    # put cluster pairs into format expected by clustering algorithm
-    cluster_pairs = list(cluster_pairs.items())
-    print(f"Generated cluster pairings: {cluster_pairs}")
-    return sorted(cluster_pairs, key=lambda x: x[0])
+    return max_cluster_size
 
 
 def force_native_res_pixels(config, clusters, sensitivities):
@@ -314,7 +190,14 @@ def force_native_res_pixels(config, clusters, sensitivities):
     Returns:             [double] : updated sensitivities
     """
     coords = get_point_source_coordinates(config)
-
+    
+    # make sure elements are native res by asserting higher sensitivity
+    # than clustering threshold
+    if "ClusteringThreshold" in config.keys():
+        dofs_max = float(config["ClusteringThreshold"]) + 0.1
+    else:
+        dofs_max = 1.1
+        
     if len(coords) == 0:
         # No forced pixels inputted
         print(
@@ -328,6 +211,12 @@ def force_native_res_pixels(config, clusters, sensitivities):
     elif config["Res"] == "0.5x0.625":
         lat_step = 0.5
         lon_step = 0.625
+    elif config["Res"] == "2.0x2.5":
+        lat_step = 2.0
+        lon_step = 2.5
+    elif config["Res"] == "4.0x5.0":
+        lat_step = 4.0
+        lon_step = 5.0
 
     for lat, lon in coords:
         lon = np.floor(lon / lon_step) * lon_step
@@ -349,7 +238,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
                 clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
             )
             # assign higher than 1 to ensure first assignment
-            sensitivities[cluster_index - 1] = 1.1
+            sensitivities[cluster_index - 1] = dofs_max
         except:
             print(
                 f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
@@ -358,7 +247,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
     return sensitivities
 
 
-def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
+def update_sv_clusters(config, flat_sensi, orig_sv):
     """
     Description:
         Reduce a given statevector based on the averaging kernel sensitivities and inputted
@@ -367,9 +256,6 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
         config                 dict : dict constructed from yaml config file
         flat_sensi        []ndarray : 1D array of sensitivity values for each grid cell
         orig_sv       dataarray[][] : original state vector in native resolution
-        cluster_pairs     [[tuple]] : list of tuples representing the desired
-                                      aggregation scheme eg. [[1,15], [2,23]] would result in
-                                      15 native resolution elements and 23 2-cell elements
     Returns:           [][]datarray : reduced dimension state vector
     """
     # check clustering method
@@ -384,6 +270,21 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
 
     desired_num_labels = config["NumberOfElements"] - config["nBufferClusters"]
     last_ROI_element = int(orig_sv["StateVector"].max() - config["nBufferClusters"])
+
+    # set dofs threshold based on user preferences
+    if "ClusteringThreshold" in config.keys():
+        dofs_threshold = float(config["ClusteringThreshold"])
+    else:
+        # default is to use the avg dofs per element
+        dofs_threshold = sum(sensitivities) / desired_num_labels
+    
+    print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
+
+    # max cluster size based on user preferences
+    max_cluster_size = (
+        config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else 64
+    )
+    max_cluster_size = get_max_cluster_size(config, sensitivities, desired_num_labels)
 
     # copy original sv for updating at end
     new_sv = orig_sv.copy()
@@ -403,34 +304,92 @@ def update_sv_clusters(config, flat_sensi, orig_sv, cluster_pairs):
     # labels are NaN outside of ROI
     labels = xr.where(buffer_labels == 0, buffer_labels, np.nan)
 
+    # get list of different aggregateion levels
+    # where an aggregation level is (roughly) the number of 
+    # elements in a cluster
+    cluster_pairs = np.arange(1, max_cluster_size + 1)
+    
+    # boolean for whether to evenly fill the grid with the 
+    # remaining cluster elements
+    fill_grid = False
+    
+    print(f"Reducing to {desired_num_labels} elements")
+
+    # total sensitivities of clusters added to the state vector
+    cluster_sensis = []
     # for each agg_level, cluster the data and assign the n_labels
     # with highest total sensitivity to the new label dataset
-    for agg_level, n_labels in cluster_pairs:
+    for agg_level in cluster_pairs:
+        # fill grid if we are on the final round of clusters
+        if agg_level == max_cluster_size:
+            fill_grid = True
+            
         # number of unassigned native resolution elements
         elements_left = np.count_nonzero(labels.values == 0)
+        
+        # check if no more clustering to do, exit the loop
+        if elements_left == 0:
+            break
 
         # number of clusters yet to be assigned
         clusters_left = desired_num_labels - int(labels.max())
 
-        if clusters_left < n_labels:
+        # approximate number labels needed to fill the grid
+        # with max_cluster_size clusters
+        backfill_num = int(elements_left / max_cluster_size)
+
+        if fill_grid or clusters_left <= backfill_num:
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
+            print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0), clusters_left, mini_batch
             )
-            n_labels = clusters_left
         # clustering for agg_level 1 is just the state vector
         elif agg_level == 1:
             out_labels = sv.values
         else:
+            # generate clusters that are approximately agg_level in size
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0),
                 int(np.round(elements_left / agg_level)),
                 mini_batch,
             )
-        n_max_labels = get_highest_labels(out_labels, sensi["Sensitivities"], n_labels)
+            
+        # assign all remaining clusters if filling the grid
+        # by assigning dofs_threshold to artificially low value
+        if fill_grid:
+            dofs_threshold = -1
 
+        # get the n_highes labels with sensitivities above the 
+        # dofs threshold and how many elements these labels contain
+        n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
+            out_labels, sensi["Sensitivities"], dofs_threshold
+        )
+        
+        # if too many labels to assign, then we need to assign
+        # only some of them and leave enough labels to fill
+        # the grid with the max_cluster_size clusters
+        if (clusters_left - backfill_num) < n_highest and not fill_grid:
+            fill_grid = True
+            n_ind = clusters_left - backfill_num
+            n_max_labels = n_max_labels[:n_ind]
+            num_elements = num_elements[:n_ind]
+
+        # protects against possibility of too few elements left to 
+        # achieve desired number of clusters
+        total_elements = 0
+        print(np.array(num_elements).sum())
+        for i, n in enumerate(num_elements):
+            total_elements += n
+            if elements_left - total_elements < clusters_left:
+                n_ind = i
+                n_max_labels = n_max_labels[:n_ind]
+                num_elements = num_elements[:n_ind]
+                break
+                
+        print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
         # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
         label_start = int(labels.max()) + 1
@@ -471,9 +430,6 @@ if __name__ == "__main__":
     tropomi_cache = sys.argv[5]
     kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    output_file = open(f"{inversion_path}/imi_output.log", "a")
-    sys.stdout = output_file
-    sys.stderr = output_file
 
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
@@ -491,16 +447,14 @@ if __name__ == "__main__":
     sensitivities = force_native_res_pixels(
         config, original_clusters["StateVector"], sensitivities
     )
-    cluster_pairs = generate_cluster_pairs(config, sensitivities)
-
     print(
         "Creating new clusters based on cluster pairings. "
         + "Run time needed will vary with state vector size."
         + "\nUsing ClusteringMethod: 'mini-batch-kmeans' will "
         + "perform faster, but may reduce cluster accuracy."
     )
-
-    new_sv = update_sv_clusters(config, sensitivities, original_clusters, cluster_pairs)
+    # generate multi resolution state vector
+    new_sv = update_sv_clusters(config, sensitivities, original_clusters)
     original_clusters.close()
 
     # replace original statevector file

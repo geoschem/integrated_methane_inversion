@@ -16,4 +16,4 @@ echo "export MAMBA_ROOT_PREFIX=/opt/micromamba" >> /etc/bashrc
 echo 'eval "$(/opt/micromamba/bin/micromamba shell hook -s posix)"' >> /etc/bashrc
 
 # set alias to use conda and micromamba interchangeably
-echo "alias conda='micromamba'" >> /etc/bashrc
+echo $'conda() {\n    micromamba "$@"\n}' >> /etc/bashrc

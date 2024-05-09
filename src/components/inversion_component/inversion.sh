@@ -18,12 +18,17 @@ setup_inversion() {
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
+    if "$LognormalErrors"; then
+        mkdir -p inversion/data_converted_prior
+        mkdir -p inversion/data_geoschem_prior
+        mkdir -p inversion/data_visualization_prior
+    fi
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/lognormal_invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
-    cp ${InversionPath}/src/inversion_scripts/operators/* inversion/operators/
+    cp ${InversionPath}/src/inversion_scripts/operators/*.py inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
@@ -31,6 +36,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
+    cp ${InversionPath}/src/utilities/cleanup_script.sh .
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
@@ -40,7 +46,7 @@ setup_inversion() {
            -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
            -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-           -e "s:{RES}:${gridResLong}:g" inversion/run_inversion.sh
+           -e "s:{RES}:${Res}:g" inversion/run_inversion.sh
 
     if "$KalmanMode"; then
         # Rename inversion directory as template directory
@@ -60,19 +66,12 @@ run_inversion() {
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
         # Modify inversion driver script to reflect current inversion period
-        sed -i "s|data_TROPOMI\"|data_TROPOMI\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
+        sed -i "s|satellite_data\"|satellite_data\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
         if (( period_i > 1 )); then
             FirstSimSwitch=false
         fi
     else
         cd ${RunDirs}/inversion
-    fi
-
-    if ! "$isAWS"; then
-        # Activate Conda environment
-        printf "\nActivating conda environment: ${CondaEnv}\n"
-        eval "$(conda shell.bash hook)"
-        conda activate $CondaEnv
     fi
 
     # Execute inversion driver script
