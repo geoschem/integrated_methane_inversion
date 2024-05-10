@@ -68,6 +68,9 @@ run_preview() {
     if "$PreviewDryRun"; then
         printf "\nExecuting dry-run for preview run...\n"
         ./gcclassic --dryrun &> log.dryrun
+        # prevent restart file from getting downloaded since
+        # we don't want to overwrite the one we link to above
+        sed -i '/GEOSChem.Restart/d' log.dryrun
         ./download_data.py log.dryrun aws
     fi
 
@@ -95,7 +98,7 @@ run_preview() {
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
-    tropomi_cache=${RunDirs}/data_TROPOMI
+    tropomi_cache=${RunDirs}/satellite_data
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # Run preview script
@@ -108,9 +111,12 @@ run_preview() {
         -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
-        -W $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache; wait;
+        -o imi_output.tmp \
+        -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache; wait;
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
     else
-        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+        python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 

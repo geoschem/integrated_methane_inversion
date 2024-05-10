@@ -68,14 +68,19 @@ setup_template() {
 
     if "$isAWS"; then
 	# Update GC data download to silence output from aws commands
-	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
+	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
     fi
+
 
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" geoschem_config.yml
 
     if "$isRegional"; then
+        # Adjust lat/lon bounds because GEOS-Chem defines the domain 
+        # based on grid cell edges (not centers) for the lat/lon bounds
+        Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
+        Lats=$(calculate_geoschem_domain lat ${RunDirs}/StateVector.nc ${LatMinInvDomain} ${LatMaxInvDomain})
         sed -i -e "s:-130.0,  -60.0:${Lons}:g" \
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi

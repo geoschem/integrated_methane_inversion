@@ -52,7 +52,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 OptimizeOH: false
 
 ## Point source datasets
@@ -72,11 +72,17 @@ StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
-##  and PriorErrorBCs is in ppb
+## Notes:
+## - PriorError is a relative fraction (e.g. 0.5 = 50%)
+## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
+## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
+## - PriorErrorBCs is in ppb
+## - PriorErrorBufferElements is only used if LognormalErrors is true
+LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
-PriorErrorOH: 0.5
+PriorErrorBufferElements: 0.5
+PriorErrorOH: 0.1
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -103,6 +109,7 @@ SetupPosteriorRun: false
 DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
@@ -202,7 +209,7 @@ RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
-BCversion: "v2023-10"
+BCversion: "v2024-03"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled

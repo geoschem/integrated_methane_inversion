@@ -10,7 +10,7 @@ S3Upload: false
 
 ## Period of interest
 StartDate: 20180501
-EndDate: 20180504
+EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
@@ -52,7 +52,7 @@ nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
+OptimizeBCs: true
 OptimizeOH: false
 
 ## Point source datasets
@@ -72,11 +72,16 @@ StateVectorFile: "/home/al2/integrated_methane_inversion/resources/statevectors/
 ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError and PriorErrorOH are relative percentages
-##  and PriorErrorBCs is in ppb
+## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
+## if lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
+## PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
+## and PriorErrorBCs is in ppb
+## PriorErrorBufferElements is only used if LognormalErrors is true
+LognormalErrors: false
 PriorError: 0.5
-PriorErrorOH: 0.5
 PriorErrorBCs: 10.0
+PriorErrorBufferElements: 0.5
+PriorErrorOH: 0.1
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
@@ -102,6 +107,7 @@ SetupPosteriorRun: false
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
+ReDoJacobian: true
 DoInversion: false
 DoPosterior: false
 
@@ -137,7 +143,7 @@ MaxSimultaneousRuns: -1
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scalefactors and 
+## Note PerturbValue and PerturbValueOH are relative scale factors and 
 ## PerturbValueBCs is in ppb
 PerturbValue: 1.5
 PerturbValueOH: 1.5
@@ -175,7 +181,7 @@ OutputPath: "/home/al2/imi_output_dir"
 DataPath: "/home/al2/ExtData"
 
 ## Conda environment files
-CondaFile: "/opt/conda/etc/profile.d/conda.sh"
+CondaFile: "/etc/bashrc"
 CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?

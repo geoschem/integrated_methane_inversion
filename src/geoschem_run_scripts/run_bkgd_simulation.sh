@@ -2,18 +2,21 @@
 #SBATCH -J {RunName}
 #SBATCH -N 1
 
+## This sc
 ### Run directory
 RUNDIR=$(pwd -P)
 
 ### Get current task ID
-xstr="0000"
+xstr="background"
+
+output_log_file={InversionPath}/imi_output.log
 
 # This checks for the presence of the error status file. If present, this indicates 
 # a previous prior sim exited with an error, so this prior will not run
 FILE=.error_status_file.txt
 if test -f "$FILE"; then
     echo "$FILE exists. Exiting."
-    echo "prior simulation: ${xstr} exited without running."
+    echo "prior simulation: ${xstr} exited without running." >> $output_log_file
     exit 1
 fi
 
@@ -31,11 +34,11 @@ retVal=$?
 if [ $retVal -ne 0 ]; then
     rm -f .error_status_file.txt
     echo "Error Status: $retVal" > ../.error_status_file.txt
-    echo "prior simulation: ${xstr} exited with error code: $retVal"
-    echo "Check the log file in the ${RUNDIR}/{RunName}_${xstr} directory for more details."
+    echo "prior simulation: ${xstr} exited with error code: $retVal" >> $output_log_file
+    echo "Check the log file in the ${RUNDIR}/{RunName}_${xstr} directory for more details." >> $output_log_file
     exit $retVal
 fi
 
-echo "finished prior simulation: ${xstr}"
+echo "finished prior simulation: ${xstr}" >> $output_log_file
 
 exit 0

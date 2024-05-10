@@ -22,29 +22,7 @@ setup_imi() {
     SpinupEnd=${StartDate}
 
     # Use global boundary condition files for initial conditions
-    UseBCsForRestart=true
-
-    printf "\nActivating conda environment: ${CondaEnv}\n"
-    if "$isAWS"; then
-        # Get max process count for spinup, production, and run_inversion scripts
-        output=$(echo $(slurmd -C))
-        array=($output)
-        cpu_str=$(echo ${array[1]})
-        cpu_count=$(echo ${cpu_str:5})
-
-        # With sbatch reduce cpu_count by 1 to account for parent sbatch process 
-        # using 1 core 
-        if "$UseSlurm"; then 
-            cpu_count="$((cpu_count-1))"
-        fi
-
-        # Source Conda environment file
-        source $CondaFile
-
-    fi
-
-    # Activate Conda environment
-    conda activate $CondaEnv
+    UseBCsForRestart=true    
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested
@@ -70,11 +48,11 @@ setup_imi() {
     if "$RestartDownload"; then
         RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
         if [ ! -f "$RestartFile" ]; then
-            aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+            aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
         fi
         RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
         if [ ! -f "$RestartFilePreview" ]; then
-            aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
+            aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
         fi
     fi
 
@@ -176,8 +154,6 @@ setup_imi() {
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
-    Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
     ##=======================================================================
     ## Set up template run directory

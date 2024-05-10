@@ -37,7 +37,7 @@ def download_landcover_files(config):
         s3_lc_path = f"s3://gcgrid/GEOS_{gridDir}/{metDir}/{constYr}/01/{config['Met']}.{constYr}0101.CN.{gridFile}.{LandCoverFileExtension}"
 
     # run the aws command to download the files
-    command = f"aws s3 cp --request-payer=requester {s3_lc_path} {LandCoverFile}"
+    command = f"aws s3 cp --no-sign-request {s3_lc_path} {LandCoverFile}"
     results = subprocess.run(command.split(), capture_output=True, text=True)
 
     output = (
@@ -67,7 +67,7 @@ def download_hemcodiags_files(config):
     s3_hd_path = f"s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.20190101.nc"
 
     # run the aws command to download the files
-    command = f"aws s3 cp --request-payer=requester {s3_hd_path} {HemcoDiagFile}"
+    command = f"aws s3 cp --no-sign-request {s3_hd_path} {HemcoDiagFile}"
     results = subprocess.run(command.split(), capture_output=True, text=True)
 
     output = (

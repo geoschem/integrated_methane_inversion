@@ -3,10 +3,6 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -o "imi_output.log"
-#SBATCH -t 0-16:00
-#SBATCH --mem=20000
-#SBATCH -p sapphire,seas_compute,huce_cascade,huce_intel,shared
-#SBATCH --mail-type=END
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -66,6 +62,12 @@ if ! "$isAWS"; then
 	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
         source ${GEOSChemEnv}
     fi
+else
+    # Source Conda environment file
+    source $CondaFile
+
+    # Activate Conda environment
+    conda activate ${CondaEnv}
 fi
 
 # Check all necessary config variables are present
@@ -113,6 +115,7 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
+ConfigPath=${InversionPath}/${ConfigFile}
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
@@ -120,9 +123,9 @@ export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 ##  Download the TROPOMI data
 ##=======================================================================
 
-# Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
+# Download TROPOMI or blended dataset from AWS
 mkdir -p -v ${RunDirs}
-tropomiCache=${RunDirs}/data_TROPOMI
+tropomiCache=${RunDirs}/satellite_data
 if "$isAWS"; then
     { # test if instance has access to TROPOMI bucket
         stdout=`aws s3 ls s3://meeo-s5p`
@@ -132,9 +135,21 @@ if "$isAWS"; then
         exit 1
     }
     mkdir -p -v $tropomiCache
-    printf "Downloading TROPOMI data from S3\n"
-    python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    printf "\nFinished TROPOMI download\n"
+
+    if "$BlendedTROPOMI"; then
+        downloadScript=src/utilities/download_blended_TROPOMI.py
+    else
+        downloadScript=src/utilities/download_TROPOMI.py
+    fi
+    sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -o imi_output.tmp \
+        -W $downloadScript $StartDate $EndDate $tropomiCache; wait;
+    cat imi_output.tmp >> ${InversionPath}/imi_output.log
+    rm imi_output.tmp
+
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then
