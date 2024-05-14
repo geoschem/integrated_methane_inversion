@@ -62,8 +62,13 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, confi
     ref_hemco_list.sort()
     pth = os.path.join(prior_sim, hemco_list[period_number - 1])
     ref_pth = os.path.join(ref_prior_sim, ref_hemco_list[period_number - 1])
-    hemco_emis = xr.load_dataset(pth)["EmisCH4_Total"].isel(time=0, drop=True)
-    ref_hemco_emis = xr.load_dataset(ref_pth)["EmisCH4_Total"].isel(time=0, drop=True)
+    
+    hemco_emis_ds = xr.load_dataset(pth)
+    ref_hemco_emis_ds = xr.load_dataset(ref_pth)
+    # remove soil sink from this calculation since 
+    # it is not optimized in the inversion
+    hemco_emis = (hemco_emis_ds["EmisCH4_Total"] - hemco_emis_ds["EmisCH4_SoilAbsorb"]).isel(time=0, drop=True)
+    ref_hemco_emis = (ref_hemco_emis_ds["EmisCH4_Total"] - ref_hemco_emis_ds["EmisCH4_SoilAbsorb"]).isel(time=0, drop=True)
 
     # Get scale factors to apply to the Jacobian matrix K
     statevector_path = os.path.join(inv_directory, "StateVector.nc")
