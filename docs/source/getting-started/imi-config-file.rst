@@ -125,6 +125,10 @@ For more information on using the clustering options take a look at the `cluster
      - Boolean for whether to update the statevector clustering with each Kalman Filter update. Note: ``KalmanMode`` must be set to true.
    * - ``ClusteringMethod``
      - Clustering method to use for state vector reduction. (eg. "kmeans" or "mini-batch-kmeans")
+   * - ``MaxClusterSize``
+     - Maximum number of native resolution elements in a cluster. Default value is ``64`` (~2x2.5 degrees when using a .25 degree native grid).
+   * - ``ClusteringThreshold``
+     - Aggregate DOFS that a cluster must have before being added to the grid. Making this value higher will smooth out the clustering. Default value is ``Estimated_DOFS / NumberOfElements``.
    * - ``NumberOfElements``
      - Number of elements in the reduced dimension state vector. This is only used if ``ReducedDimensionStateVector`` is ``true``.
    * - ``ForcedNativeResolutionElements``
@@ -153,12 +157,16 @@ Inversion
    :widths: 30, 70
    :class: tight-table
 
+   * - ``LognormalErrors``
+     - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
      - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
    * - ``PriorErrorOH``
      - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
    * - ``PriorErrorBCs``
      - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
+   * - ``PriorErrorBufferElements``
+     - Error in the prior estimates for buffer elements (1-sigma; relative). Default is ``0.5`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
    * - ``ObsError``
      - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
    * - ``Gamma``

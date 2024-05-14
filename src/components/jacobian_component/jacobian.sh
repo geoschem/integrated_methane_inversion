@@ -3,6 +3,7 @@
 # Functions available in this file include:
 #   - setup_jacobian
 #   - run_jacobian
+#   - create_simulation_dir
 #   - generate_BC_perturb_values
 
 # Description: Setup jacobian run directory
@@ -39,6 +40,9 @@ setup_jacobian() {
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
+    cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh jacobian_runs/
+    sed -i -e "s:{RunName}:${RunName}:g" \
+        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_bkgd_simulation.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
@@ -61,118 +65,136 @@ setup_jacobian() {
             xstr="${x}"
         fi
 
-        # Define the run directory name
-        name="${RunName}_${xstr}"
-
-        # Make the directory
-        runDir="./jacobian_runs/${name}"
-        mkdir -p -v ${runDir}
-
-        # Copy run directory files
-        cp -r ${RunTemplate}/* ${runDir}
-        cd $runDir
-
-        # Link to GEOS-Chem executable instead of having a copy in each rundir
-        rm -rf gcclassic
-        ln -s ${RunTemplate}/gcclassic .
-
-        # Link to restart file
-        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-        if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-            ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-        else
-            RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-            ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-            if "$UseBCsForRestart"; then
-                sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-            fi
-        fi
-
-        # Update settings in geoschem_config.yml except for the base run
-        if [ $x -ne 0 ]; then
-            sed -i -e "s|emission_perturbation_factor: 1.0|emission_perturbation_factor: ${PerturbValue}|g" \
-                -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
-        fi
-
-        # BC optimization setup
-        if "$OptimizeBCs"; then
-            if "$OptimizeOH"; then
-                bcThreshold=$(($nElements - 5))
-            else
-                bcThreshold=$(($nElements - 4))
-            fi
-            # The last four state vector elements are reserved for BC optimization of NSEW
-            # domain edges. If the current state vector element is one of these, then
-            # turn on BC optimization for the corresponding edge and revert emission perturbation
-            if [ $x -gt $bcThreshold ]; then
-                PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
-                sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
-                    -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
-                    -e "s|emission_perturbation_factor: ${PerturbValue}|emission_perturbation_factor: 1.0|g" \
-                    -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
-            fi
-        fi
-
-        if "$OptimizeOH"; then
-            # The last state vector element is reserved for OH optimization.
-            # If this is the current state vector element, then modify the OH
-            # perturb value in HEMCO_Config.rc and revert emission perturbation.
-            OHthreshold=$(($nElements - 1))
-            if [ $x -gt $OHthreshold ]; then
-                sed -i -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
-                    -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
-                sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
-            fi
-        fi
-
-        # Update settings in HISTORY.rc
-        # Only save out hourly pressure fields to daily files for base run
-        if [ $x -eq 0 ]; then
-            if "$HourlyCH4"; then
-                sed -i -e 's/'\''Restart/#'\''Restart/g' \
-                    -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                    -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                    -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-                    -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
-            fi
-            # For all other runs, just disable Restarts
-        else
-            if "$HourlyCH4"; then
-                sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
-            fi
-        fi
-
-        # Create run script from template
-        sed -e "s:namename:${name}:g" ch4_run.template >${name}.run
-        rm -f ch4_run.template
-        chmod 755 ${name}.run
-
-        ### Turn on observation operators if requested, only for base run
-        if [ $x -eq 0 ]; then
-            activate_observations
-        fi
-
-        ### Perform dry run if requested, only for base run
-        if [ $x -eq 0 ]; then
-            if "$ProductionDryRun"; then
-                printf "\nExecuting dry-run for production runs...\n"
-                ./gcclassic --dryrun &>log.dryrun
-                # prevent restart file from getting downloaded since
-                # we don't want to overwrite the one we link to above
-                sed -i '/GEOSChem.Restart/d' log.dryrun
-                ./download_data.py log.dryrun aws
-            fi
-        fi
-
-        # Navigate back to top-level directory
-        cd ../..
+        create_simulation_dir
 
         # Increment
         x=$(($x + 1))
-
     done
 
+    if "$LognormalErrors"; then
+        x="background"
+        xstr=$x
+        create_simulation_dir
+    fi
+
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
+}
+
+# Description: Create simulation directory for defined xstr
+# Usage:
+#   create_simulation_dir
+create_simulation_dir() {
+    # Define the run directory name
+    name="${RunName}_${xstr}"
+
+    # Make the directory
+    runDir="./jacobian_runs/${name}"
+    mkdir -p -v ${runDir}
+
+    # Copy run directory files
+    cp -r ${RunTemplate}/* ${runDir}
+    cd $runDir
+
+    # Link to GEOS-Chem executable instead of having a copy in each rundir
+    rm -rf gcclassic
+    ln -s ${RunTemplate}/gcclassic .
+
+    # Link to restart file
+    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
+        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+    else
+        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+        ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        if "$UseBCsForRestart"; then
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+        fi
+    fi
+
+    # Update settings in geoschem_config.yml except for the base run
+    if [[ $x -ne 0 ]] && [[ "$x" != "background" ]]; then
+        sed -i -e "s|emission_perturbation_factor: 1.0|emission_perturbation_factor: ${PerturbValue}|g" \
+            -e "s|state_vector_element_number: 0|state_vector_element_number: ${xUSE}|g" geoschem_config.yml
+    fi
+
+    # Update settings in HISTORY.rc
+    # Only save out hourly pressure fields to daily files for base run
+    if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
+        if "$HourlyCH4"; then
+            sed -i -e 's/'\''Restart/#'\''Restart/g' \
+                -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+        fi
+    # For all other runs, just disable Restarts
+    else
+        if "$HourlyCH4"; then
+            sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
+        fi
+    fi
+
+    # for background simulation, disable the emissions
+    # needed for lognormal error inversion
+    if [ "$x" = "background" ]; then
+        sed -i -e 's/EMISSIONS              :       true/EMISSIONS              :       false/g' \
+            -e 's/GFED                   : on    CH4/GFED                   : off    CH4/g' HEMCO_Config.rc
+    fi
+
+    # Create run script from template
+    sed -e "s:namename:${name}:g" ch4_run.template >${name}.run
+    rm -f ch4_run.template
+    chmod 755 ${name}.run
+
+    ### Turn on observation operators if requested, only for base run
+    if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
+        activate_observations
+    fi
+
+    ### Perform dry run if requested, only for base run
+    if [[ $x -eq 0 ]]; then
+        if "$ProductionDryRun"; then
+            printf "\nExecuting dry-run for production runs...\n"
+            ./gcclassic --dryrun &>log.dryrun
+            # prevent restart file from getting downloaded since
+            # we don't want to overwrite the one we link to above
+            sed -i '/GEOSChem.Restart/d' log.dryrun
+            ./download_data.py log.dryrun aws
+        fi
+    fi
+
+    # BC optimization setup
+    if "$OptimizeBCs"; then
+        if "$OptimizeOH"; then
+            bcThreshold=$(($nElements - 5))
+        else
+            bcThreshold=$(($nElements - 4))
+        fi
+        # The last four state vector elements are reserved for BC optimization of NSEW
+        # domain edges. If the current state vector element is one of these, then
+        # turn on BC optimization for the corresponding edge and revert emission perturbation
+        if [[ $x -gt $bcThreshold ]]; then
+            PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
+            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+                -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" \
+                -e "s|emission_perturbation_factor: ${PerturbValue}|emission_perturbation_factor: 1.0|g" \
+                -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
+        fi
+    fi
+
+    if "$OptimizeOH"; then
+        # The last state vector element is reserved for OH optimization.
+        # If this is the current state vector element, then modify the OH
+        # perturb value in HEMCO_Config.rc and revert emission perturbation.
+        OHthreshold=$(($nElements - 1))
+        if [ $x -gt $OHthreshold ]; then
+            sed -i -e "s|emission_perturbation: ${PerturbValue}|emission_perturbation: 1.0|g" \
+                -e "s|state_vector_element_number: ${xUSE}|state_vector_element_number: 0|g" geoschem_config.yml
+            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+        fi
+    fi
+    # Navigate back to top-level directory
+    cd ../..
 }
 
 # Description: Run jacobian simulations
@@ -203,6 +225,15 @@ run_jacobian() {
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
 
+        if "$LognormalErrors"; then
+            sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W run_bkgd_simulation.sh
+            wait
+        fi
+
         # check if any jacobians exited with non-zero exit code
         [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
@@ -213,11 +244,13 @@ run_jacobian() {
         # inversion w/ precomputed Jacobian
         if "$KalmanMode"; then
             cd ${RunDirs}/kf_inversions/period${period_i}
-            precomputedJacobianCache=${ReferenceRunDir}/kf_inversions/period${period_i}/data_converted
+            precomputedJacobianCachePrefix=${ReferenceRunDir}/kf_inversions/period${period_i}
         else
             cd ${RunDirs}/inversion
-            precomputedJacobianCache=${ReferenceRunDir}/inversion/data_converted
+            precomputedJacobianCachePrefix=${ReferenceRunDir}/inversion
         fi
+
+        precomputedJacobianCache=${precomputedJacobianCachePrefix}/data_converted
         ln -s $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
@@ -225,13 +258,30 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch -W -o imi_output.tmp run_prior_simulation.sh; wait;
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        sbatch --mem $SimulationMemory \
+            -c $SimulationCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W run_prior_simulation.sh
+        wait
+        cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         printf "=== DONE PRIOR SIMULATION ===\n"
 
+        # Run the background simulation if lognormal errors enabled
+        if "$LognormalErrors"; then
+            printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
+            sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W run_bkgd_simulation.sh
+            wait
+            printf "=== DONE BACKGROUND SIMULATION ===\n"
+        fi
+
         # Get Jacobian scale factors
-        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir $ConfigPath
         wait
         printf "Got Jacobian scale factors\n"
     fi

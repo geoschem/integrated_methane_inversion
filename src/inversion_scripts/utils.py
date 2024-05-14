@@ -121,6 +121,7 @@ def plot_field(
     only_ROI=False,
     state_vector_labels=None,
     last_ROI_element=None,
+    is_regional=True
 ):
     """
     Function to plot inversion results.
@@ -143,15 +144,18 @@ def plot_field(
     """
 
     # Select map features
-    oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
-    lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
-    states_provinces_50m = cartopy.feature.NaturalEarthFeature(
-        "cultural", "admin_1_states_provinces_lines", "50m"
-    )
-    ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
-    ax.add_feature(oceans_50m, facecolor=[1, 1, 1], edgecolor="black")
-    ax.add_feature(lakes_50m, facecolor=[1, 1, 1], edgecolor="black")
-    ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
+    if is_regional:
+        oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
+        lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
+        states_provinces_50m = cartopy.feature.NaturalEarthFeature(
+            "cultural", "admin_1_states_provinces_lines", "50m"
+        )
+        ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
+        ax.add_feature(oceans_50m, facecolor=[1, 1, 1], edgecolor="black")
+        ax.add_feature(lakes_50m, facecolor=[1, 1, 1], edgecolor="black")
+        ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
+    else:
+        ax.coastlines(resolution='110m')
 
     # Show only ROI values?
     if only_ROI:

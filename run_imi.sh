@@ -114,6 +114,7 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
+ConfigPath=${InversionPath}/${ConfigFile}
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
@@ -135,17 +136,19 @@ if "$isAWS"; then
     mkdir -p -v $tropomiCache
 
     if "$BlendedTROPOMI"; then
-        sbatch --mem $SimulationMemory \
-               -c $SimulationCPUs \
-               -t $RequestedTime \
-               -p $SchedulerPartition \
-               -o imi_output.tmp \
-               -W src/utilities/download_blended_TROPOMI.py $StartDate $EndDate $tropomiCache; wait;
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
-        rm imi_output.tmp
+        downloadScript=src/utilities/download_blended_TROPOMI.py
     else
-        python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
+        downloadScript=src/utilities/download_TROPOMI.py
     fi
+    sbatch --mem $SimulationMemory \
+        -c $SimulationCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -o imi_output.tmp \
+        -W $downloadScript $StartDate $EndDate $tropomiCache; wait;
+    cat imi_output.tmp >> ${InversionPath}/imi_output.log
+    rm imi_output.tmp
+
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then
