@@ -5,7 +5,19 @@ import numpy as np
 import yaml
 from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 
-
+def remove_soil_absorb_from_total(emis):
+    """
+    Remove soil absorption from total emissions and return the new total.
+    
+    Arguments
+        emis [xr.Dataset] : HEMCO emissions dataset
+    Returns
+        [xr.DataArray] : Total emission from all sources except soil absorption
+    """
+    ds = emis.copy()
+    ds["EmisCH4_Total"] = ds["EmisCH4_Total"] - ds["EmisCH4_Soil"]
+    
+    return ds["EmisCH4_Total"].isel(time=0, drop=True)
 
 def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     """
@@ -49,7 +61,6 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
     # Get original emissions from preview, for first inversion period
     original_emis_ds = xr.load_dataset(diags_path)
-    original_emis = original_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
 
     # Initialize unit scale factors
     sf = xr.load_dataset(unit_sf_path)
@@ -71,9 +82,11 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             p = p + 1
 
             # Get the original HEMCO emissions for period p
+            # Note: we remove soil absorption from the prior for our nudging operations
+            # since it is not optimized in the inversion.
             hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
             original_emis_ds = xr.load_dataset(hemco_emis_path)
-            original_emis = original_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+            original_emis = remove_soil_absorb_from_total(original_emis_ds)
 
             # Get the gridded posterior for period p
             gridded_posterior_path = os.path.join(
@@ -82,10 +95,8 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             posterior_p = xr.load_dataset(gridded_posterior_path)
 
             # Get posterior emissions multiplied up to current period p, and apply nudging
-            # Account for non-optimized soil sink by calling get_posterior_emissions()
             posterior_scale_ds["ScaleFactor"] = posterior_p["ScaleFactor"] * sf["ScaleFactor"]
-            posterior_emis_ds = get_posterior_emissions(original_emis_ds, posterior_scale_ds)
-            current_posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+            current_posterior_emis = original_emis * posterior_scale_ds["ScaleFactor"]
             
             nudged_posterior_emis = (
                 nudge_factor * original_emis
