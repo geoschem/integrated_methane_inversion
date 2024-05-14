@@ -15,7 +15,7 @@ def remove_soil_absorb_from_total(emis):
         [xr.DataArray] : Total emission from all sources except soil absorption
     """
     ds = emis.copy()
-    ds["EmisCH4_Total"] = ds["EmisCH4_Total"] - ds["EmisCH4_Soil"]
+    ds["EmisCH4_Total"] = ds["EmisCH4_Total"] - ds["EmisCH4_SoilAbsorb"]
     
     return ds["EmisCH4_Total"].isel(time=0, drop=True)
 
