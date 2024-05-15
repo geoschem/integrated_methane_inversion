@@ -9,7 +9,7 @@ The Dockerfiles contain a list of instructions to build an image with the necess
 
 ## Building the Docker image 
 To build the docker image, cd into the resources/containers/base-image directory and run
-`$ docker build -t imi-base-image . --platform=linux/amd64`
+`$ docker build -t imi-ubuntu-base-image . --platform=linux/amd64`
 The `--platform=linux/amd64` flag specifies the architecture to mimic while building and ensures consistent builds regardless of whether the build is done on an arm system (apple silicon) or amd system (intel).
 
 Building all of the spack dependencies can take hours. Grab a cup of coffee and let it run in the background.
@@ -17,18 +17,18 @@ When finished you can tag it and push it to the relevant remote repository (exam
 ```
 # login to ecr repository
 $ aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/w1q7j9l2
-$ docker tag imi-base-image:latest public.ecr.aws/w1q7j9l2/imi-base-image:ubuntu-latest
-$ docker push public.ecr.aws/w1q7j9l2/imi-base-image:ubuntu-latest
+$ docker tag imi-ubuntu-base-image:latest public.ecr.aws/w1q7j9l2/imi-ubuntu-base-image:latest
+$ docker push public.ecr.aws/w1q7j9l2/imi-ubuntu-base-image:latest
 ```
 ## Running the image
 This runs the built image using the default `entrypoint.sh` command:
 
-`docker run --platform=linux/amd64 imi-base-repository:ubuntu-latest`
+`docker run --platform=linux/amd64 imi-ubuntu-base-repository:latest`
 
 ## Pulling an existing image
 A fully built base image is stored on aws and can be accessed by running:
 ```
-$ docker pull public.ecr.aws/w1q7j9l2/imi-base-image:ubuntu-latest
+$ docker pull public.ecr.aws/w1q7j9l2/imi-ubuntu-base-image:latest
 ```
 # Conda environments
 The python dependencies are built using the default imi conda imi_env.yml file.

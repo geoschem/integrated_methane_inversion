@@ -11,7 +11,7 @@ You must give the docker container enough resources to run GEOS-Chem simulations
 
 ## pulling the image
 To run the image you will first need to pull the image from our cloud repository
-`$ docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:ubuntu-latest`
+`$ docker pull public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest`
 
 ## Setting up the compose.yml file
 The IMI needs access to both input data and personalized configuration variables for running the inversion for your desired region and period of interest. In order to supply these settings we use a docker [compose.yml](https://docs.docker.com/compose/compose-file/03-compose-file/) file. The compose file allows you to input environment variables and mount files/directories from your local system into the container.
@@ -33,7 +33,7 @@ If you already have the necessary input data available locally, then you can mou
 
 ```
 volumes:
-  - /local/input/data:/home/al2/ExtData # mount input data directory
+  - /local/input/data:/home/ubuntu/ExtData # mount input data directory
 ```
 
 ### Storing the output data
@@ -41,7 +41,7 @@ In order to access the files from the inversion it is best to mount a volume fro
 
 ```
 volumes:
-  - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
+  - /local/output/dir/imi_output:/home/ubuntu/imi_output_dir # mount output directory
 ```
 ### Updating the config.yml file
 
@@ -64,9 +64,9 @@ To apply a config.yml file from your local system to the docker container, speci
 
 ```
 volumes:
-  - /local/path/to/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
+  - /local/path/to/config.yml:/home/ubuntu/integrated_methane_inversion/config.yml # mount desired config file
 environment:
-  - IMI_CONFIG_PATH=/home/al2/integrated_methane_inversion/config.yml # should point to the path in the container
+  - IMI_CONFIG_PATH=/home/ubuntu/integrated_methane_inversion/config.yml # should point to the path in the container
 ```
 
 Note: any env variables matching the pattern specified in option 1 will overwrite the corresponding config vars in `IMI_CONFIG_PATH`.
@@ -85,12 +85,12 @@ Some users may wish to modify the IMI source code and build their own version of
 ### Building and running the image
 Important: Make sure you are in the top-level directory of the IMI source code.
 ```
-$ docker build -f resources/containers/Dockerfile -t imi-docker-image . --platform=linux/amd64
+$ docker build -f resources/containers/Dockerfile -t imi-ubuntu-docker-image . --platform=linux/amd64
 ```
 ### Pushing the image to remote repository
 Update these as you see fit for your desired aws or docker repository
 ```
 $ aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/w1q7j9l2
-$ docker tag imi-docker-image:latest public.ecr.aws/w1q7j9l2/imi-docker-image:ubuntu-latest
-$ docker push public.ecr.aws/w1q7j9l2/imi-docker-image:ubuntu-latest
+$ docker tag imi-docker-image:latest public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
+$ docker push public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
 ```

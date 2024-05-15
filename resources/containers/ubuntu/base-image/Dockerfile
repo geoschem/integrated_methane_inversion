@@ -33,7 +33,7 @@ libcurl4-openssl-dev \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy sudoers file to grant passwordless sudo
-COPY slurm/sudoers /etc/sudoers.d/
+COPY install-scripts/slurm/sudoers /etc/sudoers.d/
 
 # Switch to ubuntu user
 USER ubuntu

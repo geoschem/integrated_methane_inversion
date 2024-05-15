@@ -33,8 +33,8 @@ jobs:
       env:
         REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
         REGISTRY_ALIAS: w1q7j9l2
-        REPOSITORY: imi-docker-image
-        IMAGE_TAG: al2-latest
+        REPOSITORY: imi-al2-docker-image
+        IMAGE_TAG: latest
       run: |
         docker build -f resources/containers/al2/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
@@ -43,8 +43,8 @@ jobs:
       env:
         REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
         REGISTRY_ALIAS: w1q7j9l2
-        REPOSITORY: imi-docker-image
-        IMAGE_TAG: ubuntu-latest
+        REPOSITORY: imi-ubuntu-docker-image
+        IMAGE_TAG: latest
       run: |
         docker build -f resources/containers/ubuntu/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG

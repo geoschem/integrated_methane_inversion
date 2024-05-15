@@ -9,10 +9,10 @@ The containers are available in the IMI ECR public repository. To pull the conta
 
 For ubuntu operational image:
 ```bash
-docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:ubuntu-latest
+docker pull public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
 ```
 
 For amazon linux 2 operational image:
 ```bash 
-docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:al2-latest
+docker pull public.ecr.aws/w1q7j9l2/imi-al2-docker-image:latest
 ```
