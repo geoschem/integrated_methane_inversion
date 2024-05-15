@@ -91,6 +91,6 @@ $ docker build -f resources/containers/ubuntu/Dockerfile -t imi-ubuntu-docker-im
 Update these as you see fit for your desired aws or docker repository
 ```
 $ aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/w1q7j9l2
-$ docker tag imi-docker-image:latest public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
+$ docker tag imi-ubuntu-docker-image:latest public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
 $ docker push public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
 ```
