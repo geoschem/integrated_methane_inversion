@@ -21,8 +21,19 @@ service slurmd start
 
 # run test script
 cd /home/ubuntu/integrated_methane_inversion
-mkdir ~/ExtData
-mkdir ~/imi_output_dir
+mkdir -p ~/ExtData
+mkdir -p ~/imi_output_dir
+
+# load micromamba
+source ~/.bashrc
+micromamba activate imi_env
+
+# Test if using a non-default config file
+if [[ "x${IMI_CONFIG_PATH}" != "x" ]]; then
+	config_file=$IMI_CONFIG_PATH
+else
+	config_file="config.yml"
+fi
 
 # override specific config file vars with env variables of 
 # the syntax IMI_<config-variable>
