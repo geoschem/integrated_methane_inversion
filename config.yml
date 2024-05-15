@@ -66,7 +66,6 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
-  - [32, -100]
 
 ## Custom state vector
 StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
@@ -183,7 +182,7 @@ DataPath: "/home/ubuntu/ExtData"
 
 ## Conda environment file
 CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
-CondaEnv: "geo" #name
+CondaEnv: "geo"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled

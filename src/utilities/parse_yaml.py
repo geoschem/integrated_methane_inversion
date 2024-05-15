@@ -8,7 +8,7 @@ import sys
 # Example Usage as a script:
 #   $ python parse_yaml.py config.yml
 # To actually export returned shell variables:
-#   $ source <(python parse_yaml.py config.yml)
+#   $ eval $(python parse_yaml.py config.yml)
 
 
 def parse_yaml(file_path, prefix=''):
