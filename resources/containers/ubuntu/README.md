@@ -85,7 +85,7 @@ Some users may wish to modify the IMI source code and build their own version of
 ### Building and running the image
 Important: Make sure you are in the top-level directory of the IMI source code.
 ```
-$ docker build -f resources/containers/Dockerfile -t imi-ubuntu-docker-image . --platform=linux/amd64
+$ docker build -f resources/containers/ubuntu/Dockerfile -t imi-ubuntu-docker-image . --platform=linux/amd64
 ```
 ### Pushing the image to remote repository
 Update these as you see fit for your desired aws or docker repository
