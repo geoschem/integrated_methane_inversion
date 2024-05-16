@@ -441,7 +441,62 @@ class SRON(PlumeObserver):
         pass
 
     def _get_data(self):
-        df = pd.read_csv(self.cache, index_col = 0)
+        
+        # get data
+        print(f"Fetching plumes from {self.myname}...")
+        
+        # URL of the SRON database for weekly methane plumes
+        sron_url = 'https://ftp.sron.nl/pub/memo/CSVs/'
+        
+        response = requests.get(sron_url)
+        if not response.status_code == 200:
+            msg = (
+                f"Couldn't access SRON site {sron_url}.  "
+                f"failed with error {response.status_code}: "
+                f"{response.reason}.\n"
+                "SRON plumes not retrieved.  "
+                "Check SRON website or remove SRON from "
+                "point source list in config file."
+            )
+            raise Exception(msg)
+        
+        parser = BeautifulSoup(response.content, "html.parser")
+        
+        dfplume = pd.DataFrame()
+        
+        # retrieve csvs, read into dataframe
+        dfplume = pd.DataFrame()
+        for link in parser.find_all("a"):
+            file_stem = link.get('href')
+            if file_stem.endswith('.csv'):
+                try:
+                    # read the raw text, make it a dataframe
+                    sron_file = '/'.join([sron_url, file_stem])
+                    rcsv = requests.get(sron_file, allow_redirects=True)
+                    df = pd.read_csv(io.StringIO(rcsv.text), dtype = {'date':str})
+                    dfplume = pd.concat([dfplume, df], ignore_index=True)
+                except Exception as err:
+                    print(
+                        f"Warning: Unable to access data for csv file at {sron_file}. "
+                        + "The file may not exist or there may be a connection problem."
+                        + f"\nError message: {err}"
+                    )
+
+        
+        df = dfplume.copy()
+        
+        # drop nan times
+        # drops when there is tropomi error and
+        # therefore no data reported
+        df = df.loc[~df['time_UTC'].isna(),:]
+        
+        # SRON changed naming convention for uncertainty
+        # columns, so need to capture both
+        df['emission_rate_std'] = np.where(
+            np.isnan(df['uncertainty_t/h']),
+            df['uncertainty'],
+            df['uncertainty_t/h']
+        )
 
         gdf = gpd.GeoDataFrame(
             data = df,
@@ -449,11 +504,10 @@ class SRON(PlumeObserver):
             crs = 'EPSG:4326'
         ).rename({
             'source_rate_t/h': 'emission_rate',
-            'uncertainty_t/h': 'emission_rate_std'
         }, axis=1)
         
         gdf['time'] = pd.to_datetime(
-            gdf['date'].astype(str) + 'T' + gdf['time_UTC']
+            gdf['date'] + 'T' + gdf['time_UTC']
         )
         gdf['instrument'] = 'TROPOMI'
         
@@ -472,7 +526,6 @@ class SRON(PlumeObserver):
             .reset_index()
         )
         gdf['datasource'] = self.myname
-        
 
         return gdf
     
