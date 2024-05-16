@@ -70,6 +70,9 @@ setup_spinup() {
     if "$SpinupDryrun"; then
         printf "\nExecuting dry-run for spinup run...\n"
         ./gcclassic --dryrun &> log.dryrun
+        # prevent restart file from getting downloaded since
+        # we don't want to overwrite the one we link to above
+        sed -i '/GEOSChem.Restart/d' log.dryrun
         ./download_data.py log.dryrun aws
     fi
     
@@ -87,11 +90,6 @@ run_spinup() {
     printf "\n=== SUBMITTING SPINUP SIMULATION ===\n"
 
     cd ${RunDirs}/spinup_run
-
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
-    fi
 
     # Submit job to job scheduler
     sbatch --mem $SimulationMemory \

@@ -2,22 +2,22 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: RUN_NAME
+RunName: "Test_IMI_Global"
 isAWS: false
 UseSlurm: true
-SafeMode: false
+SafeMode: true
 S3Upload: false
 
 ## Period of interest
-StartDate: 20230101
-EndDate: 20231231
+StartDate: 20180501
+EndDate: 20180502
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: true
+BlendedTROPOMI: false
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: true
+isRegional: false
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -31,15 +31,15 @@ isRegional: true
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-RegionID: "NA"
+RegionID: ""
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -105
-LonMax: -103
-LatMin: 31
-LatMax: 33
+LonMin: -180
+LonMax: 180
+LatMin: -90
+LatMax: 90
 
 ## Kalman filter options
 KalmanMode: false
@@ -49,39 +49,33 @@ NudgeFactor: 0.1
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 0
-BufferDeg: 5
+BufferDeg: 0
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: true
+OptimizeBCs: false
 OptimizeOH: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
-#PointSourceDatasets: ["SRON"]
-PointSourceDatasets: ["SRON", "CarbonMapper", "IMEO"]
+PointSourceDatasets: ["SRON"]
 
 ## Clustering Options
-ReducedDimensionStateVector: true
+ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: NUMBER_OF_ELEMENTS
-ClusteringThreshold: 27
+NumberOfElements: 45
 ForcedNativeResolutionElements: 
-#  - [31.5, -104]
-EmissionRateFilter: EMISSION_RATE_FILTER
-PlumeCountFilter: PLUME_COUNT_FILTER
+  - [31.5, -104]
 
 ## Custom state vector
 StateVectorFile: "/path/to/StateVector.nc"
-ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
+ShapeFile: "None"
 
 ## Inversion
-## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
 ## if lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
 ## PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-## and PriorErrorBCs is in ppb
-## PriorErrorBufferElements is only used if LognormalErrors is true
-LognormalErrors: false
+##  and PriorErrorBCs is in ppb (not used for global)
 PriorError: 0.5
 PriorErrorBCs: 10.0
 PriorErrorBufferElements: 0.5
@@ -92,7 +86,7 @@ PrecomputedJacobian: false
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "0.25x0.3125"
+Res: "2.0x2.5"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
@@ -100,7 +94,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
-SetupTemplateRundir: false
+SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
@@ -126,10 +120,10 @@ SimulationMemory: 32000
 JacobianCPUs: 1
 JacobianMemory: 2000
 RequestedTime: "0-24:00"
-SchedulerPartition: "debug"
+SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: -1
+MaxSimultaneousRuns: 50
 
 ##====================================================================
 ##
@@ -179,38 +173,40 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-#OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/imi_out"
-OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/agg_testing/out"
+OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 
 ## Path to GEOS-Chem input data
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
 ## Conda environment file
-CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
-CondaEnv: "geo"
+## See envs/README to create the Conda environment specified below
+CondaEnv: "imi_env"
+
+## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
+##   NOTE: Copy your own file in the envs/ directory within the IMI
+GEOSChemEnv: "envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
-##  NOTE: Must have AWS CLI enabled
+##   NOTE: Must have AWS CLI enabled
 RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2024-03/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2024-03/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2023-10/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
+BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
 BCversion: "v2024-03"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: You will be charged if your ec2 instance is not in the
-##         us-east-1 region.
-PreviewDryRun: true
-SpinupDryrun: true
-ProductionDryRun: true
-PosteriorDryRun: true
-BCdryrun: true
+##   NOTE: Must have AWS CLI enabled
+PreviewDryRun: false
+SpinupDryrun: false
+ProductionDryRun: false
+PosteriorDryRun: false
+BCdryrun: false

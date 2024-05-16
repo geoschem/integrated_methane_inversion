@@ -34,8 +34,8 @@ config_required = [
     "LonMax",
     "LatMin",
     "LatMax",
-    "NestedGrid",
-    "NestedRegion",
+    "isRegional",
+    "RegionID",
     "CreateAutomaticRectilinearStateVectorFile",
     "nBufferClusters",
     "BufferDeg",
@@ -57,6 +57,7 @@ config_required = [
     "SetupPosteriorRun",
     "RunSetup",
     "DoSpinup",
+    "ReDoJacobian",
     "DoJacobian",
     "DoInversion",
     "DoPosterior",
@@ -113,6 +114,7 @@ conditional_dict["S3Upload"] = [
 ]
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
 conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
+conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
 
 def raise_error_message(var):
     """

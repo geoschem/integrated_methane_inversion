@@ -121,6 +121,7 @@ def plot_field(
     only_ROI=False,
     state_vector_labels=None,
     last_ROI_element=None,
+    is_regional=True
 ):
     """
     Function to plot inversion results.
@@ -143,15 +144,18 @@ def plot_field(
     """
 
     # Select map features
-    oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
-    lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
-    states_provinces_50m = cartopy.feature.NaturalEarthFeature(
-        "cultural", "admin_1_states_provinces_lines", "50m"
-    )
-    ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
-    ax.add_feature(oceans_50m, facecolor=[1, 1, 1], edgecolor="black")
-    ax.add_feature(lakes_50m, facecolor=[1, 1, 1], edgecolor="black")
-    ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
+    if is_regional:
+        oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
+        lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
+        states_provinces_50m = cartopy.feature.NaturalEarthFeature(
+            "cultural", "admin_1_states_provinces_lines", "50m"
+        )
+        ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
+        ax.add_feature(oceans_50m, facecolor=[1, 1, 1], edgecolor="black")
+        ax.add_feature(lakes_50m, facecolor=[1, 1, 1], edgecolor="black")
+        ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
+    else:
+        ax.coastlines(resolution='110m')
 
     # Show only ROI values?
     if only_ROI:
@@ -363,3 +367,37 @@ def calculate_superobservation_error(sO, p):
         sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
     )
     return s_super
+
+def get_posterior_emissions(prior, scale):
+    """
+    Function to calculate the posterior emissions from the prior 
+    and the scale factors. Properly accounting for no optimization 
+    of the soil sink.
+    Args:
+        prior  : xarray dataset
+            prior emissions
+        scales : xarray dataset scale factors
+    Returns:
+        posterior : xarray dataset
+            posterior emissions
+    """
+    # we do not optimize soil absorbtion in the inversion. This 
+    # means that we need to keep the soil sink constant and properly 
+    # account for it in the posterior emissions calculation.
+    # To do this, we:
+    
+    # make a copy of the original soil sink
+    prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
+    
+    # remove the soil sink from the prior total before applying scale factors
+    prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
+    
+    # scale the prior emissions for all sectors using the scale factors
+    posterior = prior * scale["ScaleFactor"]
+    
+    # But reset the soil sink to the original value
+    posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
+    
+    # Add the original soil sink back to the total emissions
+    posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
+    return posterior
