@@ -186,6 +186,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
+CondaFile: "${HOME}/.bashrc"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI

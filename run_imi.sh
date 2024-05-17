@@ -37,37 +37,44 @@ setup_start=$(date +%s)
 printf "\n=== PARSING CONFIG FILE (run_imi.sh) ===\n"
 
 # Check if user has specified a configuration file
-if [[ $# == 1 ]] ; then
+if [[ $# == 1 ]]; then
     ConfigFile=$1
 else
     ConfigFile="config.yml"
 fi
 
-# Get configuration
-source src/utilities/parse_yaml.sh
-eval $(parse_yaml ${ConfigFile})
+# Get the conda environment name and source file
+# These variables are sourced manually because
+# we need the python environment to parse the yaml file
+CondaEnv=$(grep '^CondaEnv:' ${ConfigFile} |
+    sed 's/CondaEnv://' |
+    sed 's/#.*//' |
+    sed 's/^[[:space:]]*//')
+CondaFile=$(grep '^CondaFile:' ${ConfigFile} |
+    sed 's/CondaFile://' |
+    sed 's/#.*//' |
+    sed 's/^[[:space:]]*//')
+
+# Load conda/mamba/micromamba e.g. ~/.bashrc
+source $CondaFile
+
+# Parsing the config file
+eval $(python src/utilities/parse_yaml.py ${ConfigFile})
+
+# Activate Conda environment
+printf "\nActivating conda environment: ${CondaEnv}\n"
+conda activate ${CondaEnv}
 
 if ! "$isAWS"; then
-    # Activate Conda environment
-    printf "\nActivating conda environment: ${CondaEnv}\n"
-    source ~/.bashrc
-    conda activate ${CondaEnv}
-
     # Load environment for compiling and running GEOS-Chem
     if [ ! -f "${GEOSChemEnv}" ]; then
-	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
-	printf "\nIMI $RunName Aborted\n"
-	exit 1
+        printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
+        printf "\nIMI $RunName Aborted\n"
+        exit 1
     else
-	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
+        printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
         source ${GEOSChemEnv}
     fi
-else
-    # Source Conda environment file
-    source $CondaFile
-
-    # Activate Conda environment
-    conda activate ${CondaEnv}
 fi
 
 # Check all necessary config variables are present
@@ -84,32 +91,32 @@ RunDirs="${OutputPath}/${RunName}"
 if "$SafeMode"; then
 
     # Check if directories exist before creating them
-    if ([ -d "${RunDirs}/spinup_run" ] && "$SetupSpinupRun") || \
-       ([ -d "${RunDirs}/jacobian_runs" ] && "$SetupJacobianRuns") || \
-       ([ -d "${RunDirs}/inversion" ] && "$SetupInversion") || \
-       ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
-        
+    if ([ -d "${RunDirs}/spinup_run" ] && "$SetupSpinupRun") ||
+        ([ -d "${RunDirs}/jacobian_runs" ] && "$SetupJacobianRuns") ||
+        ([ -d "${RunDirs}/inversion" ] && "$SetupInversion") ||
+        ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
+
         printf "\nERROR: Run directories in ${RunDirs}/"
         printf "\n   already exist. Please change RunName or change the"
         printf "\n   Setup* options to false in the IMI config file.\n"
         printf "\n  To proceed, and overwrite existing run directories, set"
-        printf "\n  SafeMode in the config file to false.\n" 
+        printf "\n  SafeMode in the config file to false.\n"
         printf "\nIMI $RunName Aborted\n"
-        exit 1 
+        exit 1
     fi
 
     # Check if output from previous runs exists
-    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") || \
-       ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") || \
-       ([ -d "${RunDirs}/inversion" ] && "$DoInversion") || \
-       ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
-        printf "\nWARNING: Output files in ${RunDirs}/" 
+    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") ||
+        ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") ||
+        ([ -d "${RunDirs}/inversion" ] && "$DoInversion") ||
+        ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
+        printf "\nWARNING: Output files in ${RunDirs}/"
         printf "\n  may be overwritten. Please change RunName in the IMI"
         printf "\n  config file to avoid overwriting files.\n"
         printf "\n  To proceed, and overwrite existing output files, set"
-        printf "\n  SafeMode in the config file to false.\n" 
+        printf "\n  SafeMode in the config file to false.\n"
         printf "\nIMI $RunName Aborted\n"
-        exit 1 
+        exit 1
     fi
 fi
 
@@ -139,14 +146,15 @@ if "$isAWS"; then
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \
-        -W $downloadScript $StartDate $EndDate $tropomiCache; wait;
-    cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        -W $downloadScript $StartDate $EndDate $tropomiCache
+    wait
+    cat imi_output.tmp >>${InversionPath}/imi_output.log
     rm imi_output.tmp
 
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then
-	ln -s $DataPathTROPOMI $tropomiCache
+        ln -s $DataPathTROPOMI $tropomiCache
     fi
 fi
 
@@ -164,7 +172,7 @@ setup_end=$(date +%s)
 ##=======================================================================
 ##  Submit spinup simulation
 ##=======================================================================
-if  "$DoSpinup"; then
+if "$DoSpinup"; then
     run_spinup
 fi
 
@@ -207,7 +215,7 @@ printf "\n"
 
 if ! "$KalmanMode"; then
     print_stats
-fi 
+fi
 
 # Copy output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then
