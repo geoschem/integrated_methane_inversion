@@ -40,9 +40,17 @@ the section on `Using Singularity instead of Docker <#using-singularity-instead-
 -----------------
 Pulling the image
 -----------------
-To run the container you will first need to pull the image from our cloud repository::
+To run the container you will first need to pull the image from our cloud repository. There are two flavors of the
+IMI docker container using a base operating system of ubuntu or amazon linux 2
 
-    $ docker pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest
+For Amazon Linux 2::
+
+    $ docker pull public.ecr.aws/w1q7j9l2/imi-al2-docker-image:latest
+
+
+For Ubuntu::
+
+    $ docker pull public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
 
 -------------------------------
 Setting up the compose.yml file
@@ -57,17 +65,7 @@ allows you to more easily configure the IMI and save the output directory to you
 IMI input data
 --------------
 The IMI needs input data in order to run the inversion. If you do not have the necessary input data available 
-locally then you will need to give the IMI container access to S3 on AWS, where the input data is available. This 
-can be done by specifying your 
-`aws credentials <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set>`__ in 
-the ``environment`` section of the compose.yml file. Eg:::
-
-    environment:
-        - AWS_ACCESS_KEY_ID=your_access_key_id
-        - AWS_SECRET_ACCESS_KEY=your_secret_access_key
-        - AWS_DEFAULT_REGION=us-east-1
-
-Note: these credentials are sensitive, so do not post them publicly in any repository.
+locally then it will be automatically downloaded from AWS, where the input data is publicly available.
 
 If you already have the necessary input data available locally, then you can mount it to the IMI container in the 
 `volumes` section of the compose.yml file without setting your aws credentials. Eg:::
@@ -82,6 +80,7 @@ In order to access the files from the inversion it is best to mount a volume fro
 container. This allows the results of the inversion to persist after the container exits. We recommend making a 
 dedicated IMI output directory using `mkdir`.::
 
+    # Note replace /home/al2 with /home/ubuntu if using ubuntu flavor
     volumes:
         - /local/output/dir/imi_output:/home/al2/imi_output_dir # mount output directory
         - /local/container/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
@@ -108,6 +107,7 @@ will replace the ``StartDate`` and ``EndDate`` in the IMI config.yml file.
 To apply a config.yml file from your local system to the docker container, specify it in your compose.yml file as a 
 volume. Then set the ``IMI_CONFIG_PATH`` environment variable to point to that path. Eg:::
 
+    # Note replace /home/al2 with /home/ubuntu if using ubuntu flavor
     volumes:
         - /local/path/to/config.yml:/home/al2/integrated_methane_inversion/config.yml # mount desired config file
     environment:
@@ -135,10 +135,6 @@ This is an example of what a fully filled out compose.yml file looks like:::
         environment:
         # comment out any environment vars you do not need for your system
           - IMI_CONFIG_PATH=config.yml # path starts from /home/al2/integrated_methane_inversions
-          ## ***** DO NOT push aws credentials to any public repositories *****
-          - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-          - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-          - AWS_DEFAULT_REGION=us-east-1
 
 
 Running the IMI
@@ -157,16 +153,16 @@ all env variables and volumes via flags.
 
 Using Singularity instead of Docker
 ===================================
-We use Docker `Docker <https://docs.docker.com/get-started/overview/>`__ to containerize the IMI, but the docker 
-containers can also be run using `Singularity <https://docs.sylabs.io/guides/3.5/user-guide/introduction.html>`__. 
+We use Docker `Docker <https://docs.docker.com/get-started/overview/>`__ to containerize the IMI, but it may also 
+be possible to use other container engines, like `Singularity <https://docs.sylabs.io/guides/3.5/user-guide/introduction.html>`__. 
 Singularity is a container engine designed to run on HPC systems and local clusters, as some clusters do not allow 
 Docker to be installed.
 Note: using Singularity to run the IMI is untested and may not work as expected.
 
 First pull the image:::
 
-    $ singularity pull public.ecr.aws/w1q7j9l2/imi-docker-image:latest
+    $ singularity pull public.ecr.aws/w1q7j9l2/imi-ubuntu-docker-image:latest
 
 Then run the image:::
 
-    $ singularity run imi-docker-repository_latest.sif
+    $ singularity run imi-ubuntu-docker-image_latest.sif

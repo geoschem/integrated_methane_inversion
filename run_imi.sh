@@ -1,7 +1,8 @@
 #!/bin/bash
 
 #SBATCH -N 1
-#SBATCH -n 1
+#SBATCH -c 1
+#SBATCH --mem=2000
 #SBATCH -o "imi_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
@@ -126,13 +127,6 @@ export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 mkdir -p -v ${RunDirs}
 tropomiCache=${RunDirs}/satellite_data
 if "$isAWS"; then
-    { # test if instance has access to TROPOMI bucket
-        stdout=`aws s3 ls s3://meeo-s5p`
-    } || { # catch 
-        printf "\nError: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions.\n"
-        printf "IMI $RunName Aborted.\n"
-        exit 1
-    }
     mkdir -p -v $tropomiCache
 
     if "$BlendedTROPOMI"; then
