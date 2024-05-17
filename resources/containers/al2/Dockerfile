@@ -1,7 +1,7 @@
 # ************************* Operational Dockerfile *************************
 # Starts from base image and adds automation scripts to it
 # Dockerfile for base image is located in base-image directory
-FROM public.ecr.aws/w1q7j9l2/imi-base-image:latest
+FROM public.ecr.aws/w1q7j9l2/imi-al2-base-image:latest
 
 # # add spack environment
 # ENV SPACK_ROOT="/opt/spack"
