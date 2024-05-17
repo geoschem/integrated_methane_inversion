@@ -54,19 +54,14 @@ CondaFile=$(grep '^CondaFile:' ${ConfigFile} |
     sed 's/#.*//' |
     sed 's/^[[:space:]]*//')
 
-if ! "$isAWS"; then
-    # Activate Conda environment
-    printf "\nActivating conda environment: ${CondaEnv}\n"
-    source ~/.bashrc
-else
-    # Source Conda environment file
-    source $CondaFile
-fi
+# Load conda/mamba/micromamba e.g. ~/.bashrc
+source $CondaFile
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
 
 # Activate Conda environment
+printf "\nActivating conda environment: ${CondaEnv}\n"
 conda activate ${CondaEnv}
 
 if ! "$isAWS"; then
