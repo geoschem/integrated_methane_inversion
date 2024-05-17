@@ -18,7 +18,7 @@ python3 /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/configure_slurm
 
 # put newly generated slurm.conf in correct locations
 cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf /etc/slurm/slurm.conf
-rm /home/ubuntu/install-scripts/new_slurm.conf
+rm /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
 
 # also add a cgroup.conf file
 cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/cgroup.conf /etc/slurm/cgroup.conf
