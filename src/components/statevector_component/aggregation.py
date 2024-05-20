@@ -294,26 +294,20 @@ def get_country_centroids(grid_data, valid_indices):
     # make geodataframe of the state vector elements
     dlon = np.median(np.diff(dssv.lon.values))
     dlat = np.median(np.diff(dssv.lat.values))
-    lonb = np.hstack((dssv.lon.values[0]-(dlon/2), dssv.lon.values+(dlon/2)))
-    latb = np.hstack((dssv.lat.values[0]-(dlat/2), dssv.lat.values+(dlat/2)))
     lon = dssv.lon.values
     lat = dssv.lat.values
 
     # grid cell corners lat/lon, only valid elements
     X,Y = np.meshgrid(lon, lat)
-    xc = np.full((X.flatten()[valid_indices].shape[0], 4), np.nan)
-    yc = np.full((Y.flatten()[valid_indices].shape[0], 4), np.nan)
-    coords = np.stack((xc,yc),axis=-1)
+    valid_lon = X.flatten()[valid_indices]
+    valid_lat = Y.flatten()[valid_indices]
 
-    coords[:,0,0] = X.flatten()[valid_indices] - (dlon/2)
-    coords[:,1,0] = X.flatten()[valid_indices] + (dlon/2)
-    coords[:,2,0] = X.flatten()[valid_indices] + (dlon/2)
-    coords[:,3,0] = X.flatten()[valid_indices] - (dlon/2)
-    
-    coords[:,0,1] = Y.flatten()[valid_indices] + (dlat/2)
-    coords[:,1,1] = Y.flatten()[valid_indices] + (dlat/2)
-    coords[:,2,1] = Y.flatten()[valid_indices] - (dlat/2)
-    coords[:,3,1] = Y.flatten()[valid_indices] - (dlat/2)
+    coords = np.stack([
+        np.column_stack([valid_lon - dlon / 2, valid_lat + dlat / 2]),  # top-left
+        np.column_stack([valid_lon + dlon / 2, valid_lat + dlat / 2]),  # top-right
+        np.column_stack([valid_lon + dlon / 2, valid_lat - dlat / 2]),  # bottom-right
+        np.column_stack([valid_lon - dlon / 2, valid_lat - dlat / 2])   # bottom-left
+    ], axis=1)
 
     # grid cell geometry on lat/lon coordinate system
     gdf_grid = gpd.GeoDataFrame(geometry = [Polygon(coord) for coord in coords], crs = 'EPSG:4326')

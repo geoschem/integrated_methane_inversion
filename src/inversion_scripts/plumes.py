@@ -32,7 +32,7 @@ class PointSources:
     ----------
     geofilter: GeoFilter 
     datasources: list of point source data. Can
-        include CarbonMapper, SRON. Others
+        include CarbonMapper, SRON, IMEO. Others
         not yet implemented.
 
     Use
@@ -151,6 +151,16 @@ class PointSources:
     
     
     def _grid_all_data(self):
+        '''
+        For all data source (e.g. IMEO, CarbonMapper, SRON)
+        provided, grid point source information to the GEOS-Chem
+        grid by calling _grid_datasource for each datasource.
+        
+        returns: xarray.dataset of gridded point source
+                 information if it exists, else none. Dataset
+                 has coordinate dimension "observer" which
+                 is the name of the datasource (e.g. "IMEO")
+        '''
         d_list = []
         d_names = []
         for d in self.datasources:
@@ -429,11 +439,7 @@ class SRON(PlumeObserver):
 
     '''
     def __init__(self, config, usecached = True, cache = None):
-        #if ((not usecached) | (cache is None)):
-        #    msg = 'Must supply cached file for SRON plumes'
-        #    sys.exit(msg)
         self.myname = 'SRON'
-        #self.config = config
         self.cache = cache
         super().__init__(self.myname, config, usecached, self.cache)
         
@@ -559,7 +565,6 @@ class CarbonMapper(PlumeObserver):
     '''
     def __init__(self, config, usecached = False, cache=None, sat_only = False):
         self.myname = 'CarbonMapper'
-        #self.config = config
         self.cache = cache
         self.sat_only = sat_only
         super().__init__(self.myname, config, usecached, self.cache)
@@ -690,7 +695,6 @@ class IMEO(PlumeObserver):
     '''
     def __init__(self, config, usecached = False, cache = None):
         self.myname = 'IMEO'
-        #self.config = config
         self.cache = cache
         super().__init__(self.myname, config, usecached, self.cache)
         

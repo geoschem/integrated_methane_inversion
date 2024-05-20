@@ -66,6 +66,9 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
 
 ## Custom state vector
 StateVectorFile: "/path/to/StateVector.nc"
@@ -97,17 +100,17 @@ Met: "GEOSFP"
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
-SetupJacobianRuns: true
-SetupInversion: true
-SetupPosteriorRun: true
+SetupSpinupRun: false
+SetupJacobianRuns: false
+SetupInversion: false
+SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: true
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 

@@ -2,19 +2,19 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: RUN_NAME
-isAWS: false
+RunName: "Test_Permian_1week"
+isAWS: true
 UseSlurm: true
-SafeMode: false
+SafeMode: true
 S3Upload: false
 
 ## Period of interest
-StartDate: 20230101
-EndDate: 20231231
+StartDate: 20180501
+EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: true
+BlendedTROPOMI: false
 
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
@@ -48,7 +48,7 @@ NudgeFactor: 0.1
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 0
+nBufferClusters: 8
 BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
@@ -57,23 +57,22 @@ OptimizeOH: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
-#PointSourceDatasets: ["SRON"]
-PointSourceDatasets: ["SRON", "CarbonMapper", "IMEO"]
+PointSourceDatasets: ["SRON"]
 
 ## Clustering Options
-ReducedDimensionStateVector: true
+ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: NUMBER_OF_ELEMENTS
-ClusteringThreshold: 27
+NumberOfElements: 45
 ForcedNativeResolutionElements: 
-#  - [31.5, -104]
-EmissionRateFilter: EMISSION_RATE_FILTER
-PlumeCountFilter: PLUME_COUNT_FILTER
+  - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
 
 ## Custom state vector
-StateVectorFile: "/path/to/StateVector.nc"
-ShapeFile: "resources/shapefiles/PermianBasin_Extent_201712.shp"
+StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
+ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
 ## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
@@ -100,7 +99,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
-SetupTemplateRundir: false
+SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
 SetupInversion: false
@@ -111,7 +110,7 @@ SetupPosteriorRun: false
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: true
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
@@ -179,14 +178,10 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-#OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/imi_out"
-OutputPath: "/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/point_source_sv/agg_testing/out"
+OutputPath: "/home/ubuntu/imi_output_dir"
 
 ## Path to GEOS-Chem input data
-DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
-
-## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
+DataPath: "/home/ubuntu/ExtData"
 
 ## Conda environment file
 CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
@@ -194,7 +189,7 @@ CondaEnv: "geo"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled
-RestartDownload: false
+RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)

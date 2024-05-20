@@ -111,12 +111,6 @@ run_posterior() {
         inversion_result_filename="inversion_result.nc"
     fi
 
-    if $LognormalErrors; then
-        inversion_result_filename="inversion_result_ln.nc"
-    else
-        inversion_result_filename="inversion_result.nc"
-    fi
-
     if "$OptimizeBCs"; then
         if "$KalmanMode"; then
             inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
