@@ -184,8 +184,8 @@ OutputPath: "/home/ubuntu/imi_output_dir"
 DataPath: "/home/ubuntu/ExtData"
 
 ## Conda environment file
-CondaFile: "/home/ubuntu/miniconda/etc/profile.d/conda.sh"
-CondaEnv: "geo"
+CondaFile: "/home/ubuntu/.bashrc"
+CondaEnv: "imi_env"
 
 ## Download initial restart file from AWS S3?
 ##  NOTE: Must have AWS CLI enabled

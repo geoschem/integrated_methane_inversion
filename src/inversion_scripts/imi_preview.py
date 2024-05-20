@@ -317,7 +317,7 @@ def imi_preview(
     
     # plot state vector
     num_colors = state_vector_labels.where(mask).max().item()
-    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(num_colors,3))
+    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors),3))
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(

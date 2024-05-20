@@ -1,0 +1,16 @@
+# This is a spack environment manifest file for GCClassic dependencies using GNU compilers 
+# Preconditions: spack install gcc@12.2.0
+
+spack:
+  packages:
+    all:
+      target: [x86_64]
+  specs:
+    - gcc@12.2.0
+    - cmake@3.27.9
+    - netcdf-c@4.9.2
+    - netcdf-fortran@4.6.1
+    - nco@5.1.9
+    - openmpi@5.0.3
+  concretizer:
+    unify: true

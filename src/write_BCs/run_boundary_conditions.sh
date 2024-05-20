@@ -7,8 +7,7 @@
 cwd="$(pwd)"
 
 # Read in the config file and source the environment file
-source ../utilities/parse_yaml.sh
-eval $(parse_yaml config_boundary_conditions.yml)
+eval $(python ../utilities/parse_yaml.py config_boundary_conditions.yml)
 source ${geosChemEnv}
 echo "Environment file  --> ${geosChemEnv}" >> "${cwd}/boundary_conditions.log"
 

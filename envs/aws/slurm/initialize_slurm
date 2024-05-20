@@ -11,12 +11,22 @@
 # (4) edit it as you see fit (eg. @reboot /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/initialize_slurm)
 # (5) save and overwrite the existing file eg. /var/spool/cron/crontabs/root
 # (6) $ exit # to exit root user access
+
+# configure slurm
 cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/base_slurm.conf /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
-/home/ubuntu/miniconda/bin/python /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/configure_slurm.py
-cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf /etc/slurm-llnl/slurm.conf
+python3 /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/configure_slurm.py
+
+# put newly generated slurm.conf in correct locations
+cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf /etc/slurm/slurm.conf
 rm /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
-/usr/sbin/service slurmd restart
-/usr/sbin/service slurmctld restart
+
+# also add a cgroup.conf file
+cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/cgroup.conf /etc/slurm/cgroup.conf
+
+# start munge and slurm services
+service munge restart
+service slurmctld restart
+service slurmd restart
 
 # Fix issue when switching instance types where node claims to be drained
 scontrol update nodename=$HOSTNAME state=idle
