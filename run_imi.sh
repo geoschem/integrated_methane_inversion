@@ -49,21 +49,23 @@ fi
 CondaEnv=$(grep '^CondaEnv:' ${ConfigFile} |
     sed 's/CondaEnv://' |
     sed 's/#.*//' |
-    sed 's/^[[:space:]]*//')
+    sed 's/^[[:space:]]*//' |
+    tr -d '"')
 CondaFile=$(grep '^CondaFile:' ${ConfigFile} |
     sed 's/CondaFile://' |
     sed 's/#.*//' |
-    sed 's/^[[:space:]]*//')
+    sed 's/^[[:space:]]*//' |
+    tr -d '"')
 
 # Load conda/mamba/micromamba e.g. ~/.bashrc
 source $CondaFile
 
-# Parsing the config file
-eval $(python src/utilities/parse_yaml.py ${ConfigFile})
-
 # Activate Conda environment
 printf "\nActivating conda environment: ${CondaEnv}\n"
 conda activate ${CondaEnv}
+
+# Parsing the config file
+eval $(python src/utilities/parse_yaml.py ${ConfigFile})
 
 if ! "$isAWS"; then
     # Load environment for compiling and running GEOS-Chem
