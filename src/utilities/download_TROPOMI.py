@@ -17,6 +17,8 @@ from botocore.client import Config
 #     $ python download_TROPOMI.py 20190101 20190214 TROPOMI_data
 
 s3 = None
+VALID_TROPOMI_PROCESSOR_VERSIONS = ["020400", "020500", "020600"]
+
 def initialize_boto3():
     """
     Initialize s3 service with boto3
@@ -91,9 +93,7 @@ def get_s3_paths(start_date, end_date, bucket):
 
     # We only want files that are v02.04.00, v02.05.00, or v02.06.00.
     # Also make sure the collection number is 03 to account for some duplicates.
-    df = df.loc[((df["ProcessorVersion"] == "020400") |
-                 (df["ProcessorVersion"] == "020500") |
-                 (df["ProcessorVersion"] == "020600"))]
+    df.loc[df["ProcessorVersion"].isin(VALID_TROPOMI_PROCESSOR_VERSIONS)]
     df = df.drop_duplicates(subset=["Name","ModificationDate"])
     df = df.loc[df["CollectionNumber"] == "03"].reset_index(drop=True)
 

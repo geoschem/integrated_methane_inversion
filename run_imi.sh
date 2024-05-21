@@ -128,12 +128,29 @@ ConfigPath=${InversionPath}/${ConfigFile}
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
+# Make run directory
+mkdir -p -v ${RunDirs}
+
+# Set/Collect information about the GEOS-Chem version, IMI version,
+# and TROPOMI processor version
+GEOSCHEM_VERSION=14.2.3
+IMI_VERSION=$(git describe --tags)
+TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
+    sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |
+    tr -d '"')
+
+# copy config file to run directory and add some run information to it for reference
+cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
+echo "## ================= IMI run information =================" >>"${RunDirs}/config_${RunName}.yml"
+echo "# Run with IMI version: ${IMI_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
+echo "# GEOS-Chem version: ${GEOSCHEM_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
+echo "# TROPOMI/blended processor version(s): ${TROPOMI_PROCESSOR_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
+
 ##=======================================================================
 ##  Download the TROPOMI data
 ##=======================================================================
 
 # Download TROPOMI or blended dataset from AWS
-mkdir -p -v ${RunDirs}
 tropomiCache=${RunDirs}/satellite_data
 if "$isAWS"; then
     mkdir -p -v $tropomiCache
