@@ -103,7 +103,7 @@ setup_imi() {
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout 14.2.3
+        git checkout ${GEOSCHEM_VERSION}
         git submodule update --init --recursive
         cd ..
     else
