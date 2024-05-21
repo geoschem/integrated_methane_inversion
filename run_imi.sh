@@ -141,7 +141,7 @@ TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilit
 
 # copy config file to run directory and add some run information to it for reference
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
-echo "## ================= IMI run information =================" >>"${RunDirs}/config_${RunName}.yml"
+echo "## ================== IMI run information ==================" >>"${RunDirs}/config_${RunName}.yml"
 echo "# Run with IMI version: ${IMI_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
 echo "# GEOS-Chem version: ${GEOSCHEM_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
 echo "# TROPOMI/blended processor version(s): ${TROPOMI_PROCESSOR_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
