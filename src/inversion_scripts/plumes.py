@@ -6,6 +6,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 import xarray as xr
+from bs4 import BeautifulSoup
 from shapely.geometry import Point
 from shapely.geometry import Polygon
 from functools import partial
