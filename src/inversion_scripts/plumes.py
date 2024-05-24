@@ -1,4 +1,5 @@
 import os
+import io
 import sys
 import warnings
 import requests
@@ -10,6 +11,7 @@ from bs4 import BeautifulSoup
 from shapely.geometry import Point
 from shapely.geometry import Polygon
 from functools import partial
+
 
 print = partial(print, flush=True)
 
@@ -742,7 +744,7 @@ class IMEO(PlumeObserver):
                 'tile_date': 'time',
                 'satellite': 'instrument'
             }, axis=1)[keepv]
-            gdf['time'] = pd.to_datetime(gdf['time'])
+            gdf['time'] = pd.to_datetime(gdf['time'], format='ISO8601')
             gdf['datasource'] = self.myname
             
             return gdf
