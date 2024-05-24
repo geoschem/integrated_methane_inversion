@@ -256,7 +256,7 @@ Note: some python scripts are also deployed using slurm and default to using the
    * - ``JacobianMemory``
      - Amount of memory to allocate to each jacobian simulation (in MB).
    * - ``SchedulerPartition``
-     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
+     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
  
