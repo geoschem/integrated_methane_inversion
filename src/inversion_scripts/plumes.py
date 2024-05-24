@@ -115,7 +115,8 @@ class PointSources:
         gdf_inroi['non_detect'] = gdf_inroi['emission_rate'].isna()
         gdf_inroi['plume_count'] = ~gdf_inroi['non_detect']
 
-        dfgb = gdf_inroi.groupby(['I','J'])
+        keepv = ['plume_count','emission_rate', 'non_detect', 'I', 'J']
+        dfgb = gdf_inroi[keepv].groupby(['I','J'])
 
         gdf_grid = dfgb.sum()[['plume_count']]
         gdf_grid['non_detect'] = dfgb.sum()[['non_detect']]
