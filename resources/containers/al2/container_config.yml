@@ -66,6 +66,9 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
 
 ## Custom state vector
 StateVectorFile: "/home/al2/integrated_methane_inversion/resources/statevectors/StateVector.nc"

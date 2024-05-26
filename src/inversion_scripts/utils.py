@@ -401,5 +401,3 @@ def get_posterior_emissions(prior, scale):
     # Add the original soil sink back to the total emissions
     posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
     return posterior
-    
-        

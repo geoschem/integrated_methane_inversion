@@ -66,6 +66,9 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
 
 ## Custom state vector
 StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
@@ -107,7 +110,7 @@ SetupPosteriorRun: false
 RunSetup: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: true
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 

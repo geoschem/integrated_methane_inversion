@@ -105,6 +105,9 @@ conditional_dict["KalmanMode"] = [
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
+    "EmissionRateFilter",
+    "PlumeCountFilter",
+    "GroupByCountry"
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 conditional_dict["S3Upload"] = [
