@@ -1,7 +1,6 @@
 # This file contains functions related to accessing point source data
 import os
 import datetime
-import ngrequests
 from copy import copy
 import pandas as pd
 import geopandas as gpd
