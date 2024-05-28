@@ -16,6 +16,9 @@ SpinupMonths: 1
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
 BlendedTROPOMI: false
 
+## Use observations over water? Set to false to filter out water observations 
+UseWaterObs: false
+
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: false
 

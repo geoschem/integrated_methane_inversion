@@ -44,6 +44,7 @@ def apply_operator(operator, params):
             params["gc_cache"],
             params["build_jacobian"],
             params["sensi_cache"],
+            params["use_water_obs"],
         )
     elif operator == "TROPOMI":
         return apply_tropomi_operator(
@@ -57,6 +58,7 @@ def apply_operator(operator, params):
             params["gc_cache"],
             params["build_jacobian"],
             params["sensi_cache"],
+            params["use_water_obs"],
         )
     else:
         raise ValueError("Error: invalid operator selected.")
@@ -72,10 +74,11 @@ if __name__ == "__main__":
     latmax = float(sys.argv[6])
     n_elements = int(sys.argv[7])
     tropomi_cache = sys.argv[8]
-    BlendedTROPOMI = sys.argv[9] == "true"
-    isPost = sys.argv[10]
-    build_jacobian = sys.argv[11]
-    viz_prior = sys.argv[12]
+    BlendedTROPOMI = sys.argv[9].lower() == "true"
+    use_water_obs = sys.argv[10].lower() == "true"
+    isPost = sys.argv[11]
+    build_jacobian = sys.argv[12]
+    viz_prior = sys.argv[13]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -155,6 +158,7 @@ if __name__ == "__main__":
                     "gc_cache": gc_cache,
                     "build_jacobian": build_jacobian,
                     "sensi_cache": sensi_cache,
+                    "use_water_obs": use_water_obs,
                 },
             )
 
@@ -172,6 +176,7 @@ if __name__ == "__main__":
                     "gc_cache": gc_cache,
                     "build_jacobian": False,
                     "sensi_cache": sensi_cache,
+                    "use_water_obs": use_water_obs,
                 },
             )
             

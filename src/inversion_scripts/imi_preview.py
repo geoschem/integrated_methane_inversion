@@ -39,7 +39,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def get_TROPOMI_data(
-    file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64
+    file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
 ):
     """
     Returns a dict with the lat, lon, xch4, and albedo_swir observations
@@ -58,6 +58,8 @@ def get_TROPOMI_data(
             start date for time period of interest
         enddate_np64: datetime64
             end date for time period of interest
+        use_water_obs: bool
+            if True, use observations over water
     Returns:
          tropomi_data: dict
             dictionary of the extracted values
@@ -77,10 +79,10 @@ def get_TROPOMI_data(
 
     if BlendedTROPOMI:
         # Only going to consider data within lat/lon/time bounds and without problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs)
     else:
         # Only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs)
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
@@ -314,10 +316,10 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    
+
     # plot state vector
     num_colors = state_vector_labels.where(mask).max().item()
-    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors),3))
+    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors), 3))
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
@@ -337,7 +339,7 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    
+
     # plot estimated averaging kernel sensitivities
     sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
@@ -359,7 +361,7 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    
+
     # calculate expected DOFS
     expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
@@ -410,6 +412,13 @@ def estimate_averaging_kernel(
     # Identify the last element of the region of interest
     last_ROI_element = int(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
+    )
+
+    # Whether to use observations over water?
+    use_water_obs = (
+        config["UseWaterObservations"] == "true"
+        if "UseWaterObservations" in config
+        else False
     )
 
     # Define mask for ROI, to be used below
