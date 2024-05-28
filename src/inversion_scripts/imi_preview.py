@@ -503,7 +503,7 @@ def estimate_averaging_kernel(
     # Read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(
-            file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64
+            file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
         )
         for file_path in tropomi_paths
     )
