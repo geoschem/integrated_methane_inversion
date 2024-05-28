@@ -56,6 +56,11 @@ CondaFile=$(grep '^CondaFile:' ${ConfigFile} |
     sed 's/#.*//' |
     sed 's/^[[:space:]]*//' |
     tr -d '"')
+CondaFile=$(eval echo $(grep '^CondaFile:' ${ConfigFile} |
+    sed 's/CondaFile://' |
+    sed 's/#.*//' |
+    sed 's/^[[:space:]]*//' |
+    tr -d '"'))
 
 # Load conda/mamba/micromamba e.g. ~/.bashrc
 source $CondaFile
