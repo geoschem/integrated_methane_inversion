@@ -286,7 +286,9 @@ class GeoFilter:
         
         # infer lat lons from state vector file
         # this file should already exist
+        # expand any environment variables
         svf = f'{self.config["OutputPath"]}/{self.config["RunName"]}/StateVector.nc'
+        svf = os.path.expandvars(svf)
         
         try:
             svds = xr.load_dataset(svf)
