@@ -71,7 +71,7 @@ setup_jacobian() {
     #  so remove from the UseTotalPriorEmis brackets
     sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
            -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
-           -e "/)))MeMo_SOIL_ABSORPTION/a (((seTotalPriorEmis" HEMCO_Config.rc
+           -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
     
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
