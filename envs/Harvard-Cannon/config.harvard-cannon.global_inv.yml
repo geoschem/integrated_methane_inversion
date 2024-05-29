@@ -66,6 +66,9 @@ ClusteringMethod: "kmeans"
 NumberOfElements: 1000
 ForcedNativeResolutionElements: 
   - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
 
 ## Custom state vector
 StateVectorFile: "/path/to/StateVector.nc"
@@ -122,7 +125,7 @@ DOFSThreshold: 0
 RequestedCPUs: 32
 RequestedMemory: 32000
 RequestedTime: "0-24:00"
-SchedulerPartition: "sapphire,huce_cascade,huce_intel,seas_compute,shared"
+SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
@@ -192,6 +195,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
 CondaEnv: "imi_env"
+CondaFile: "${HOME}/.bashrc"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI

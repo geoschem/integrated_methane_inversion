@@ -34,8 +34,7 @@ configFile={CONFIG_FILE}
 #  Make sure $PrecomputedJacobian is true, and then re-run this script
 #   (or run_imi.sh with only the $DoInversion module switched on in config.yml).
 
-source ${invPath}/src/utilities/parse_yaml.sh
-eval $(parse_yaml ${invPath}/${configFile})
+eval $(python ${invPath}/src/utilities/parse_yaml.py ${invPath}/${configFile})
 
 #=======================================================================
 # Configuration (these settings generated on initial setup)

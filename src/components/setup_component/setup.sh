@@ -98,20 +98,19 @@ setup_imi() {
     fi
 
     # Clone correct version of GCClassic
-    GCversion='14.3.1'
     cd "${InversionPath}"
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout $GCversion
+        git checkout ${GEOSCHEM_VERSION}
         git submodule update --init --recursive
         cd ..
     else
         cd GCClassic
-        if grep -Fq "VERSION ${GCversion}" CMakeLists.txt; then
-            printf "\nGCClassic already exists and is the correct version ${GCversion}.\n"
+        if grep -Fq "VERSION ${GEOSCHEM_VERSION}" CMakeLists.txt; then
+            printf "\nGCClassic already exists and is the correct version ${GEOSCHEM_VERSION}.\n"
         else
-            printf "\nERROR: GCClassic already exists but is not version ${GCversion}.\n"
+            printf "\nERROR: GCClassic already exists but is not version ${GEOSCHEM_VERSION}.\n"
             exit 1
         fi
         cd ..

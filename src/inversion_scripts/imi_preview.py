@@ -314,9 +314,32 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-
+    
+    # plot state vector
+    num_colors = state_vector_labels.where(mask).max().item()
+    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors),3))
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    plot_field(
+        ax,
+        state_vector_labels,
+        cmap=sv_cmap,
+        lon_bounds=None,
+        lat_bounds=None,
+        title="State Vector Elements",
+        cbar_label="Element ID",
+        only_ROI=True,
+        state_vector_labels=state_vector_labels,
+        last_ROI_element=last_ROI_element,
+    )
+    plt.savefig(
+        os.path.join(preview_dir, "preview_state_vector.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
+    
+    # plot estimated averaging kernel sensitivities
     sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
-
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
@@ -336,6 +359,8 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    
+    # calculate expected DOFS
     expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
         print(

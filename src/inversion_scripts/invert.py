@@ -261,7 +261,15 @@ def do_inversion(
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
     
+    # Calculate J_A, where ratio = xhat - xA
+    # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
+    ratioT = ratio.transpose()
+    J_A = ratioT @ inv_Sa @ ratio
+    J_A_normalized = J_A / n_elements
+    
     # Print some statistics
+    print(f'gamma: {gamma}')
+    print(f'Normalized J_A: {J_A_normalized}') # ideal gamma is where this is close to 1
     print("Min:", xhat[:scale_factor_idx].min(), "Mean:", xhat[:scale_factor_idx].mean(), "Max", xhat[:scale_factor_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A

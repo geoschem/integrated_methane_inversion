@@ -68,7 +68,7 @@ setup_template() {
 
     if "$isAWS"; then
 	# Update GC data download to silence output from aws commands
-	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
+	sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
     fi
 
 

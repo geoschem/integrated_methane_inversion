@@ -10,9 +10,7 @@ Arguments
 # ************ Add required config variables to the corresponding list **************
 
 # variables only required by AWS
-config_required_aws = [
-    "CondaFile",
-]
+config_required_aws = []
 
 # variables only required by local cluster
 config_required_local_cluster = [
@@ -84,6 +82,7 @@ config_required = [
     "OutputPath",
     "DataPath",
     "CondaEnv",
+    "CondaFile",
     "RestartDownload",
     "RestartFilePrefix",
     "RestartFilePreviewPrefix",
@@ -108,6 +107,9 @@ conditional_dict["KalmanMode"] = [
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
+    "EmissionRateFilter",
+    "PlumeCountFilter",
+    "GroupByCountry"
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 conditional_dict["S3Upload"] = [

@@ -42,7 +42,7 @@ third_line = (
 )
 
 with open(
-    "/home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf", "a+"
+    "/home/ubuntu/install-scripts/new_slurm.conf", "a+"
 ) as f:
     f.write("\n")
     f.write(first_line)
