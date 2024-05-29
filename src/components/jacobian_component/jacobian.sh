@@ -211,6 +211,11 @@ create_simulation_dir() {
         fi
     fi
 
+    # Turn off sectoral emissions diagnostics since total emissions are
+    # read in for jacobian runs
+    sed -i -e "s:EmisCH4:#EmisCH4:g" HEMCO_Diagn.rc
+    sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
+    
     # Determine start and end element numbers for this run directory
     if [ $NumJacobianRuns -lt 0 ]; then
 	start_element=$x
