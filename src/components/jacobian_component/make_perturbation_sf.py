@@ -97,7 +97,7 @@ def make_perturbation_sf(config, period_number):
     Write out an archive of the flat scale factors for later use in sensitivity calculations.
     """
     # make base directory if not already present
-    base_directory = os.path.expandvars(config["OutputPath"], config["RunName"])
+    base_directory = os.path.expandvars(os.path.join(config["OutputPath"], config["RunName"]))
 
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
