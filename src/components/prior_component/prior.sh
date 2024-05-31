@@ -70,6 +70,23 @@ run_prior() {
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
     sed -i -e "/#SBATCH --mem=15000/d" runHEMCO.sh
+
+    sa_XMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile XMIN)
+    sa_XMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile XMAX)
+    sa_YMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YMIN)
+    sa_YMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YMAX)
+    sa_NX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile NX)
+    sa_NY=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile NY)
+    sa_YEDGE=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YEDGE)
+    sa_YMID=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YMID)
+    sed -i -e "s/XMIN.*/XMIN: ${sa_XMIN}/" \
+            -e "s/XMAX.*/XMAX: ${sa_XMAX}/" \
+            -e "s/YMIN.*/YMIN: ${sa_YMIN}/" \
+            -e "s/YMAX.*/YMAX: ${sa_YMAX}/" \
+            -e "s/NX.*/NX: ${sa_NX}/" \
+            -e "s/NY.*/NY: ${sa_NY}/" \
+            -e "s/YEDGE.*/YEDGE: ${sa_YEDGE}/" \
+            -e "s/YMID.*/YMID: ${sa_YMID}/" HEMCO_sa_Grid.${gridFile}.rc
     mv runHEMCO.sh ${PriorName}.run
 
     # Compile HEMCO and store executable in template run directory
