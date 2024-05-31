@@ -5,7 +5,7 @@ import numpy as np
 def calc_edges(da):
     diff = (da[1].item()-da[0].item())/2
     edges = list(da.values - diff)
-    # edges.append(da[-1].item() + diff)
+    edges.append(da[-1].item() + diff)
     return edges
 
 def get_hemco_grid_vars(sv):
@@ -16,7 +16,7 @@ def get_hemco_grid_vars(sv):
     if option == "YMID":
         print(" ".join([f"{num:.2f}" for num in YMID]))
     elif option == "YEDGE":
-        print(" ".join([f"{YEDGE:.3f}" for num in YEDGE]))
+        print(" ".join([f"{num:.3f}" for num in YEDGE]))
     elif option == "XMIN":
         XMIN = XEDGE[0]
         print(XMIN)

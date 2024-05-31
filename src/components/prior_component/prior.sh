@@ -70,15 +70,16 @@ run_prior() {
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
     sed -i -e "/#SBATCH --mem=15000/d" runHEMCO.sh
-
-    sa_XMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile XMIN)
-    sa_XMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile XMAX)
-    sa_YMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YMIN)
-    sa_YMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YMAX)
-    sa_NX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile NX)
-    sa_NY=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile NY)
-    sa_YEDGE=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YEDGE)
-    sa_YMID=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py $StateVectorFile YMID)
+    set -e
+    sa_XMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMIN)
+    sa_XMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMAX)
+    sa_YMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMIN)
+    sa_YMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMAX)
+    sa_NX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc NX)
+    sa_NY=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc NY)
+    sa_YEDGE=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YEDGE)
+    sa_YMID=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMID)
+    set -x
     sed -i -e "s/XMIN.*/XMIN: ${sa_XMIN}/" \
             -e "s/XMAX.*/XMAX: ${sa_XMAX}/" \
             -e "s/YMIN.*/YMIN: ${sa_YMIN}/" \
@@ -119,9 +120,10 @@ run_prior() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     # Remove soil absorption uptake from total emissions
+    pushd OutputDir
     mv HEMCO_sa_diagnostics.${StartDate}0000.nc HEMCO_sa_diagnostics.${StartDate}0000.orig.nc
     exclude_soil_sink HEMCO_sa_diagnostics.${StartDate}0000.orig.nc HEMCO_sa_diagnostics.${StartDate}0000.nc
-    
+    popd
     printf "\nDone prior emissions simulation\n\n"
     
     printf "\n=== DONE GENERATING PRIOR EMISSIONS ===\n"
