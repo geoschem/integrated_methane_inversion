@@ -2,6 +2,7 @@
 
 # Functions available in this file include:
 #   - run_prior
+#   - exclude_soil_sink
 
 # Description: Run a HEMCO standalone simulation to generate prior emissions
 #
@@ -102,11 +103,21 @@ run_prior() {
 
     # Remove soil absorption uptake from total emissions
     mv HEMCO_sa_diagnostics.${StartDate}0000.nc HEMCO_sa_diagnostics.${StartDate}0000.orig.nc
-    cdo expr,'EmisCH4_Total_ExclSoilAbs=EmisCH4_Total-EmisCH4_SoilAbsorb;' HEMCO_sa_diagnostics.${StartDate}0000.orig.nc tmp.nc HEMCO_sa_diagnostics.${StartDate}0000.nc
-    rm tmp.nc
+    exclude_soil_sink HEMCO_sa_diagnostics.${StartDate}0000.orig.nc HEMCO_sa_diagnostics.${StartDate}0000.nc
     
     printf "\nDone prior emissions simulation\n\n"
     
     printf "\n=== DONE GENERATING PRIOR EMISSIONS ===\n"
     prior_end=$(date +%s)
+}
+
+# Description: Create new netCDF file with EmisCH4_Total_ExclSoilAbs
+#   which removes the soil sink from the total emissions
+# Usage:
+#   exclude_soil_sink <src-file> <target-file>
+exclude_soil_sink() {
+    python -c "import sys; import xarray; import numpy as np; \
+    emis = xarray.load_dataset(sys.argv[1]); \
+    emis['EmisCH4_Total_ExclSoilAbs'] = emis['EmisCH4_Total'] - emis['EmisCH4_SoilAbsorb']; \
+    emis.to_netcdf(sys.argv[2])" $1 $2
 }

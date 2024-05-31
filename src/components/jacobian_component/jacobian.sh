@@ -244,7 +244,12 @@ create_simulation_dir() {
     HcoPrevLine2='CH4 - 1 500'
     HcoPrevLine3='Perturbations.txt - - - xy count 1'
     HcoPrevLine4='SpeciesBC_CH4'
-    PertPrevLine='DEFAULT    0     1.0'
+    PertPrevLine='DEFAULT    0     0.0'
+
+    # TODO: figure out what to do about the prior simulation
+    # by default remove all emissions
+    sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
+
 		
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
@@ -300,7 +305,7 @@ create_simulation_dir() {
 	# Add new Perturbations.txt and update
 	cp Perturbations.txt Perturbations_${istr}.txt
 	PertNewLine='\
-ELEM_'$istr'  '$i'     '$PerturbValue''
+ELEM_'$istr'  '$i'     '1.5''
 	sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
 
     done
@@ -331,6 +336,14 @@ run_jacobian() {
     if ! "$PrecomputedJacobian"; then
         jacobian_start=$(date +%s)
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
+        if "$KalmanMode"; then
+            jacobian_period=${period_i}
+        else
+            jacobian_period=1
+        fi
+        
+        # update perturbation values before running jacobian simulations
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
 
         cd ${RunDirs}/jacobian_runs
 
