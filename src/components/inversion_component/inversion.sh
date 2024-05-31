@@ -37,6 +37,13 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
+
+    # set inversion period to 1 if not in Kalman mode
+    if "$KalmanMode"; then
+        INVERSION_PERIOD=${period_i}
+    else
+        INVERSION_PERIOD=1
+    fi
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
@@ -47,6 +54,7 @@ setup_inversion() {
            -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
            -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
            -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
+           -e "s:{PERIOD}:${INVERSION_PERIOD}:g" \
            -e "s:{RES}:${Res}:g" inversion/run_inversion.sh
 
     if "$KalmanMode"; then

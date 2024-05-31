@@ -29,7 +29,7 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
         perturbation_file = os.path.join(
             jacobian_rundir, f"Perturbations_{dir_suffix}.txt"
         )
-        for i in range(state_vector_labels.max().item()):
+        for i in range(int(state_vector_labels.max().item())):
             # element to adjust pertubation for
             sv_element = int(i + 1)
             sv_label = str(sv_element).zfill(4)
@@ -48,10 +48,10 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
 
             # write out new perturbation file
             with open(perturbation_file, "w") as file:
-                file.write(lines)
+                file.writelines(lines)
 
 
-def calculate_sfs(base_directory, period_number, state_vector, target_emission=10e-8):
+def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     """
     Calculate the scale factors to perturb each state vector 
     element by based on the target_emission. Return a flat 
@@ -61,9 +61,7 @@ def calculate_sfs(base_directory, period_number, state_vector, target_emission=1
     # TODO: set target_emission in configfile
     # load the prior emissions dataset
     # TODO: check if emis_prior already has the soil sink removed
-    emis_prior = xr.open_dataset(
-        os.path.join(base_directory, f"prior_sf_period{period_number}.nc")
-    )
+    emis_prior = xr.open_dataset(hemco_emis_path)
 
     # create a sf dataset with the same structure as the state vector
     sf = state_vector.copy()
@@ -98,15 +96,28 @@ def make_perturbation_sf(config, period_number):
     """
     # make base directory if not already present
     base_directory = os.path.expandvars(os.path.join(config["OutputPath"], config["RunName"]))
+    
+    # jacobian rundir path
+    jacobian_dir = os.path.join(base_directory, "jacobian_runs")
+    
+    # find the hemco emissions file for the period
+    if period_number > 1:
+        prior_sim = [r for r in os.listdir(jacobian_dir) if "0000" in r][0]
+        prior_cache = os.path.join(jacobian_dir, f"{prior_sim}/OutputDir")
+        hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
+        hemco_list.sort()
+        hemco_emis_path = os.path.join(prior_cache, hemco_list[period_number - 1])
+    else:
+        prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
+        hemco_file = [f for f in os.listdir(prior_cache) if "HEMCO" in f][0]
+        hemco_emis_path = os.path.join(prior_cache, hemco_file)
 
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
 
     # calculate the scale factors to perturb each state vector element by
-    flat_sf = calculate_sfs(base_directory, period_number, state_vector)
+    flat_sf = calculate_sfs(state_vector, hemco_emis_path)
 
-    # jacobian rundir path
-    jacobian_dir = os.path.join(base_directory, "jacobian_runs")
 
     # update jacobian perturbation files with new scale factors 
     # before we run the jacobian simulations
@@ -155,7 +166,7 @@ def make_perturbation_sf(config, period_number):
 
 if __name__ == "__main__":
     config_path = sys.argv[1]
-    period_number = sys.argv[2]
+    period_number = int(sys.argv[2])
 
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     make_perturbation_sf(config, period_number)

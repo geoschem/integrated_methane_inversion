@@ -113,7 +113,7 @@ def calc_sensi(
                 save sensi as netcdf with appropriate coordinate variables
     """
     # subtract by 1 because here we assume .5 is a +50% perturbation
-    perturbation = perturbation - 1
+    # perturbation = perturbation - 1
 
     # Make date range
     days = []
@@ -161,6 +161,7 @@ def calc_sensi(
             for e in elements:
                 # State vector elements are numbered 1..nelements
                 elem = zero_pad_num(e + 1)
+                
 
                 # Determine which run directory to look in
                 if nruns > 0:
@@ -200,10 +201,10 @@ def calc_sensi(
                             )
                             
                     else:
-                        sensitivities = (pert.values - base.values) / perturbation
+                        sensitivities = (pert.values - base.values) / perturbation[e]
                         
                 else:
-                    sensitivities = (pert.values - base.values) / perturbation
+                    sensitivities = (pert.values - base.values) / perturbation[e]
                     
                 sensi[e, :, :, :] = sensitivities
                 
@@ -243,6 +244,7 @@ if __name__ == "__main__":
     perturbationBC = float(sys.argv[9])
     perturbationOH = float(sys.argv[10])
 
+    perturbation = np.load(perturbation)
     calc_sensi(
         nelements,
         nruns,
