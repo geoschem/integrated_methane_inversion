@@ -56,23 +56,6 @@ setup_jacobian() {
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_bkgd_simulation.sh
 
-    # Modify HEMCO_Config.rc to turn off individual emission inventories
-    # and use total emissions saved out from prior emissions simulation
-    # instead
-    # Do this in template run directory to avoid having to repeat for each
-    # Jacobian run directory
-    printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
-    sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
-           -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
-           -e "s|GFED                   : on|GFED                   : off|g" ${RunTemplate}/HEMCO_Config.rc
-
-    # Apply perturbations to total emissions with soil absorption removed
-    # In this case, we still need to read soil absorption for overall CH4 flux
-    #  so remove from the UseTotalPriorEmis brackets
-    sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-           -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
-           -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
-    
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
 
@@ -137,6 +120,21 @@ create_simulation_dir() {
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
         fi
     fi
+
+    # Modify HEMCO_Config.rc to turn off individual emission inventories
+    # and use total emissions saved out from prior emissions simulation
+    # instead
+    printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
+    sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
+           -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
+           -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
+
+    # Apply perturbations to total emissions with soil absorption removed
+    # In this case, we still need to read soil absorption for overall CH4 flux
+    #  so remove from the UseTotalPriorEmis brackets
+    sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+           -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
+           -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
 
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
@@ -343,7 +341,11 @@ run_jacobian() {
         fi
         
         # update perturbation values before running jacobian simulations
-        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
+        sbatch --mem $SimulationMemory \
+                -c $SimulationCPUs \
+                -t $RequestedTime \
+                -p $SchedulerPartition \
+                -W python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
 
         cd ${RunDirs}/jacobian_runs
 
