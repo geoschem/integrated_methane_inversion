@@ -37,9 +37,12 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
             # element to adjust pertubation for
             sv_element = int(i + 1)
             sv_label = str(sv_element).zfill(4)
-
+            
+            # add the right amount of padding
+            padding = "".ljust(4-len(str(sv_element)))
+            
             # construct new perturbation line
-            new_pert_line = f"ELEM_{sv_label}  {sv_element}     {flat_sf[i]}"
+            new_pert_line = f"ELEM_{sv_label}  {sv_element}  {padding}{flat_sf[i]}"
 
             # search through perturbations file for element
             # and replace with new perturbation line
