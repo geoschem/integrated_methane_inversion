@@ -69,7 +69,7 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
 
     # Calculate scale factors such that applying them to the original emissions
     # will result in a target_emission kg/m2/s2 emission.
-    sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total"]
+    sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
 
     # Extract state vector labels
     state_vector_labels = state_vector["StateVector"]
@@ -109,8 +109,9 @@ def make_perturbation_sf(config, period_number):
         hemco_emis_path = os.path.join(prior_cache, hemco_list[period_number - 1])
     else:
         prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
-        hemco_file = [f for f in os.listdir(prior_cache) if "HEMCO" in f][0]
-        hemco_emis_path = os.path.join(prior_cache, hemco_file)
+        hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
+        hemco_list.sort()
+        hemco_emis_path = os.path.join(prior_cache, hemco_list[0])
 
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
