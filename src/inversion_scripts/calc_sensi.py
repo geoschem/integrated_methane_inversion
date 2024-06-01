@@ -32,7 +32,7 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities, opt_OH):
         e_pad = 1
     else:
         e_pad = 0
-
+        
     if e == (nelements - e_pad - 4):  # North boundary
         check = np.mean(sensitivities[:, -3:, 3:-3])
     elif e == (nelements - e_pad - 3):  # South boundary
@@ -43,16 +43,16 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities, opt_OH):
         check = np.mean(sensitivities[:, :, 0:3])
     else:
         msg = (
-            "GC CH4 perturb not working... "
-            "Check OH and BC optimization options. "
-            "Ensure perturbations are >0 if optimizing "
-            "BCs and/or OH."
+            'GC CH4 perturb not working... '
+            'Check OH and BC optimization options. '
+            'Ensure perturbations are >0 if optimizing '
+            'BCs and/or OH.' 
         )
         raise RuntimeError(msg)
     assert (
         abs(check - 1e-9) < 1e-11
     ), f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
-
+    
 
 def calc_sensi(
     nelements,
@@ -130,11 +130,11 @@ def calc_sensi(
         ntracers = nelements / nruns
     else:
         ntracers = nelements
-
+        
     # Loop over model data to get sensitivities
     hours = range(24)
     elements = range(nelements)
-
+    
     # whether we have OH and BC perturbations
     opt_OH = True if (perturbationOH > 0.0) else False
     opt_BC = True if (perturbationBC > 0.0) else False
@@ -161,23 +161,13 @@ def calc_sensi(
             for e in elements:
                 # State vector elements are numbered 1..nelements
                 elem = zero_pad_num(e + 1)
-
-                # booleans for whether this element is a BC element or OH element
-                is_OH_element = opt_OH and (e >= nelements - 1)
-                is_BC_element = (
-                    not is_OH_element
-                    and opt_BC
-                    and (
-                        (opt_OH and (e >= (nelements - 5)))
-                        or ((not opt_OH) and (e >= (nelements - 4)))
-                    )
-                )
+                
 
                 # Determine which run directory to look in
                 if nruns > 0:
-                    run_number = math.trunc((e + 1) / ntracers)
+                    run_number = math.trunc((e+1)/ntracers)
                     if run_number >= nruns:
-                        run_number = nruns - 1
+                        run_number = nruns-1
                 else:
                     run_number = e + 1
                 run_num = zero_pad_num(run_number)
@@ -187,33 +177,37 @@ def calc_sensi(
                     f"{run_dirs_pth}/{run_name}_{run_num}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
                 )
                 # Get the data for the current hour
-                key = (
-                    "SpeciesConcVV_CH4"
-                    if is_OH_element or is_BC_element
-                    else f"SpeciesConcVV_CH4_{elem}"
-                )
-                pert = pert_data[key][h, :, :, :]
-
+                var = f"SpeciesConcVV_CH4_{elem}"
+                pert = pert_data[var][h, :, :, :]
                 # Compute and store the sensitivities
-                if is_OH_element:
-                    # TODO OH element must be compared against different base simulation
+                
+                if opt_OH and (e >= nelements - 1):
                     # calculate OH sensitivities
                     sensitivities = (pert.values - base.values) / perturbationOH
-                elif is_BC_element:
-                    # calculate BC sensitivities
-                    sensitivities = (pert.values - base.values) / perturbationBC
-
-                    # because we take the first hour on the first day from spinup
-                    if h != 0:
-                        test_GC_output_for_BC_perturbations(
-                            e, nelements, sensitivities, opt_OH
-                        )
+                    
+                elif opt_BC:
+                    if (
+                        (opt_OH and (e >= (nelements - 5))) or 
+                        ((not opt_OH) and (e >= (nelements - 4)))
+                    ):
+                        # calculate BC sensitivities
+                        sensitivities = (pert.values - base.values) / perturbationBC
+                        
+                        if (
+                            h != 0
+                        ):  # because we take the first hour on the first day from spinup
+                            test_GC_output_for_BC_perturbations(
+                                e, nelements, sensitivities, opt_OH
+                            )
+                            
+                    else:
+                        sensitivities = (pert.values - base.values) / perturbation[e]
+                        
                 else:
-                    # Calculate emission perturbations
                     sensitivities = (pert.values - base.values) / perturbation[e]
-
+                    
                 sensi[e, :, :, :] = sensitivities
-
+                
             # Save sensi as netcdf with appropriate coordinate variables
             sensi = xr.DataArray(
                 sensi,
@@ -231,7 +225,7 @@ def calc_sensi(
                 f"{sensi_save_pth}/sensi_{d}_{zero_pad_num_hour(h)}.nc",
                 encoding={v: {"zlib": True, "complevel": 9} for v in sensi.data_vars},
             )
-
+        
         results = Parallel(n_jobs=-1)(delayed(process)(hour) for hour in hours)
     print(f"Saved GEOS-Chem sensitivity files to {sensi_save_pth}")
 

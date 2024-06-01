@@ -57,18 +57,9 @@ run_prior() {
 
     cd ${RunPrior}
 
-    # TODO: calculate a more robust time step
-    time_diff=$(($StartDate - $EndDate))
-    # check if time_diff is greater than 7
-    if [ $result -gt 14 ]; then
-        time_step=604800 # 1 week 
-    else
-        time_step=86400 # 1 day
-    fi
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "s:2019-07-01:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2}:g" \
-           -e "s:2019-08-01 00:${StartDate:0:4}-${StartDate:4:2}-${EndDate:6:2} 01:g" \
-           -e "s/TS_EMIS: 3600/TS_EMIS: ${time_step}/g" HEMCO_sa_Time.rc
+           -e "s:2019-08-01 00:${StartDate:0:4}-${StartDate:4:2}-${EndDate:6:2} 01:g" HEMCO_sa_Time.rc
 
     sed -i -e "s:_NA::g" -e "s:.NA.:.:g" HEMCO_Config.rc.gmao_metfields
 

@@ -42,12 +42,6 @@ setup_imi() {
 
     fi
 
-    # create BCs for 1 ppb CH4
-    mkdir -p "${BCpath}/BC_1ppb"
-    target_BC="GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
-    python src/components/jacobian_component/make_jacobian_icbc.py ${fullBCpath}/${target_BC} ${BCpath}/BC_1ppb/${target_BC}
-
-
     ##=======================================================================
     ## Download initial restart file if requested
     ##=======================================================================
