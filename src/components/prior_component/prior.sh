@@ -136,5 +136,6 @@ exclude_soil_sink() {
     python -c "import sys; import xarray; import numpy as np; \
     emis = xarray.load_dataset(sys.argv[1]); \
     emis['EmisCH4_Total_ExclSoilAbs'] = emis['EmisCH4_Total'] - emis['EmisCH4_SoilAbsorb']; \
+    emis['EmisCH4_Total_ExclSoilAbs'].attrs = emis['EmisCH4_Total'].attrs; \
     emis.to_netcdf(sys.argv[2])" $1 $2
 }
