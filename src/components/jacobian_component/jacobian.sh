@@ -307,7 +307,7 @@ create_simulation_dir() {
 	# Add new Perturbations.txt and update
 	cp Perturbations.txt Perturbations_${istr}.txt
 	PertNewLine='\
-ELEM_'$istr'  '$i'     '1.5''
+ELEM_'$istr'  '$i'     '1.0''
 	sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
 
     done
