@@ -335,7 +335,6 @@ run_jacobian() {
 
     if ! "$PrecomputedJacobian"; then
         jacobian_start=$(date +%s)
-        printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
         if "$KalmanMode"; then
             jacobian_period=${period_i}
         else
@@ -343,14 +342,12 @@ run_jacobian() {
         fi
         
         # update perturbation values before running jacobian simulations
-        sbatch --mem $RequestedMemory \
-                -c $RequestedCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
+        printf "\n=== UPDATING PERTURBATION SFs ===\n"
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
 
         cd ${RunDirs}/jacobian_runs
 
+        printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
 
