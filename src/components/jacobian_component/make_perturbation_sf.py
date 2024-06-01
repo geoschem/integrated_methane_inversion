@@ -4,6 +4,7 @@ Usage: python make_perturbation_sf.py <config.yml> <period_number>
 Note: period_number is the kalman filter period number for which to calculate the perturbations.
       If not using a kalman filter, set period_number to 1.
 """
+
 import os
 import sys
 import yaml
@@ -31,16 +32,16 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
         )
         with open(perturbation_file, "r") as file:
             lines = file.readlines()
-        
+
         # check file for every state vector element perturbation
         for i in range(int(state_vector_labels.max().item())):
             # element to adjust pertubation for
             sv_element = int(i + 1)
             sv_label = str(sv_element).zfill(4)
-            
+
             # add the right amount of padding
-            padding = "".ljust(4-len(str(sv_element)))
-            
+            padding = "".ljust(4 - len(str(sv_element)))
+
             # construct new perturbation line
             new_pert_line = f"ELEM_{sv_label}  {sv_element}  {padding}{flat_sf[i]}"
 
@@ -58,9 +59,9 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
 
 def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     """
-    Calculate the scale factors to perturb each state vector 
-    element by based on the target_emission. Return a flat 
-    numpy array of the scale factors indexed by state vector 
+    Calculate the scale factors to perturb each state vector
+    element by based on the target_emission. Return a flat
+    numpy array of the scale factors indexed by state vector
     element.
     """
     # TODO: set target_emission in configfile
@@ -100,11 +101,13 @@ def make_perturbation_sf(config, period_number):
     Write out an archive of the flat scale factors for later use in sensitivity calculations.
     """
     # make base directory if not already present
-    base_directory = os.path.expandvars(os.path.join(config["OutputPath"], config["RunName"]))
-    
+    base_directory = os.path.expandvars(
+        os.path.join(config["OutputPath"], config["RunName"])
+    )
+
     # jacobian rundir path
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
-    
+
     # find the hemco emissions file for the period
     if period_number > 1:
         prior_sim = [r for r in os.listdir(jacobian_dir) if "0000" in r][0]
@@ -124,33 +127,11 @@ def make_perturbation_sf(config, period_number):
     # calculate the scale factors to perturb each state vector element by
     flat_sf = calculate_sfs(state_vector, hemco_emis_path)
 
-
-    # update jacobian perturbation files with new scale factors 
+    # update jacobian perturbation files with new scale factors
     # before we run the jacobian simulations
-    update_jacobian_perturbation_files(jacobian_dir, state_vector["StateVector"], flat_sf)
-
-    ########################################
-    # TODO: cleanup the following code
-    # # Calculate scale factors such that applying them to the original emissions
-    # # will result in a 20 kg/m2/s2 emission.
-    # sf["ScaleFactor"] = 20 / emis_original["EmisCH4_Total"]
-
-    # # loop through the range of state vector labels and set the scale factors
-    # state_vector_labels = state_vector["StateVector"].values
-    # sf_vals = sf["ScaleFactor"].values
-    # flat_sf = []
-    # for i in range(state_vector_labels.max().item()):
-    #     # find the maximum scale factor for each state vector label
-    #     idx = np.where(state_vector_labels == float(i + 1))
-
-    #     # set all scale factors for that state vector label to the maximum
-    #     max_sf = sf_vals[idx].max()
-    #     sf_vals[idx] = max_sf
-    #     # keep track of the maximum scale factor for each state vector label
-    #     flat_sf.append(max_sf)
-
-    # # update dataset with new scale factors
-    # sf["ScaleFactor"].values = sf_vals
+    update_jacobian_perturbation_files(
+        jacobian_dir, state_vector["StateVector"], flat_sf
+    )
 
     # archive npy file of flat scale factors for later calculation of sensitivity
     archive_dir = os.path.join(base_directory, "archive_perturbation_sfs")
@@ -159,15 +140,6 @@ def make_perturbation_sf(config, period_number):
         os.path.join(archive_dir, f"flat_pert_sf_{period_number}.npy"),
         np.array(flat_sf),
     )
-
-    # archive gridded scale factor dataset for use in jacobian simulations
-    # archive_path = os.path.join(
-    #     archive_dir, f"gridded_pert_sf_{period_number}.nc"
-    # )
-    # sf.to_netcdf(
-    #     archive_path,
-    #     encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
-    # )
 
 
 if __name__ == "__main__":

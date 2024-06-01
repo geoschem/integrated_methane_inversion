@@ -134,9 +134,11 @@ create_simulation_dir() {
     # Apply perturbations to total emissions with soil absorption removed
     # In this case, we still need to read soil absorption for overall CH4 flux
     #  so remove from the UseTotalPriorEmis brackets
-    sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-           -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
-           -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
+    sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
+
+    # TODO -- ask melissa what to do about soil absorption -- do we need this?
+    # sed -i -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
+    #        -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
 
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
