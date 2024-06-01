@@ -29,6 +29,10 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
         perturbation_file = os.path.join(
             jacobian_rundir, f"Perturbations_{dir_suffix}.txt"
         )
+        with open(perturbation_file, "r") as file:
+            lines = file.readlines()
+        
+        # check file for every state vector element perturbation
         for i in range(int(state_vector_labels.max().item())):
             # element to adjust pertubation for
             sv_element = int(i + 1)
@@ -39,16 +43,14 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
 
             # search through perturbations file for element
             # and replace with new perturbation line
-            with open(perturbation_file, "r") as file:
-                lines = file.readlines()
             for idx, line in enumerate(lines):
                 if line.startswith(f"ELEM_{sv_label}"):
                     lines[idx] = new_pert_line + "\n"
                     break
 
-            # write out new perturbation file
-            with open(perturbation_file, "w") as file:
-                file.writelines(lines)
+        # write out new perturbation file
+        with open(perturbation_file, "w") as file:
+            file.writelines(lines)
 
 
 def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
