@@ -73,7 +73,7 @@ def calc_sensi(
     Arguments
         nelements      [int]   : Number of state vector elements
         nruns          [int]   : Number of Jacobian run directories
-        perturbation   [float] : Size of emissions perturbation (e.g., 1.5)
+        perturbation   [str]   : Path to perturbation array file
         startday       [str]   : First day of inversion period; formatted YYYYMMDD
         endday         [str]   : Last day of inversion period; formatted YYYYMMDD
         run_dirs_pth   [str]   : Path to directory containing GC Jacobian run directories
@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
     nelements = int(sys.argv[1])
     nruns = int(sys.argv[2])
-    perturbation = float(sys.argv[3])
+    perturbation = sys.argv[3]
     startday = sys.argv[4]
     endday = sys.argv[5]
     run_dirs_pth = sys.argv[6]
