@@ -58,7 +58,18 @@ setup_jacobian() {
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
-
+    # Link to restart file
+    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
+        RestartFile=$RestartFileFromSpinup
+    else
+        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+        if "$UseBCsForRestart"; then
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+        fi
+    fi
+    PertRestartFile=${RunTemplate}/${RestartFilePrefix}${StartDate}_0000z.nc4
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $RestartFile $PertRestartFile
     # Create jacobian run directories
     while [ $x -le $nRuns ]; do
 
@@ -109,17 +120,9 @@ create_simulation_dir() {
     # Link to GEOS-Chem executable instead of having a copy in each rundir
     ln -s ../../GEOSChem_build/gcclassic .
 
-    # Link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-    else
-        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-        if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-        fi
-    fi
+    # TODO change to $PertRestartFile
+    # link to restart file
+    ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 
     # Modify HEMCO_Config.rc to turn off individual emission inventories
     # and use total emissions saved out from prior emissions simulation
@@ -341,8 +344,8 @@ run_jacobian() {
         fi
         
         # update perturbation values before running jacobian simulations
-        sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+                -c $RequestedCPUs \
                 -t $RequestedTime \
                 -p $SchedulerPartition \
                 -W python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
@@ -353,8 +356,8 @@ run_jacobian() {
         source submit_jacobian_simulations_array.sh
 
         if "$LognormalErrors"; then
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
+            sbatch --mem $RequestedMemory \
+                -c $RequestedCPUs \
                 -t $RequestedTime \
                 -p $SchedulerPartition \
                 -W run_bkgd_simulation.sh
@@ -385,8 +388,8 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch --mem $SimulationMemory \
-            -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
             -t $RequestedTime \
             -p $SchedulerPartition \
             -W run_prior_simulation.sh
@@ -398,8 +401,8 @@ run_jacobian() {
         # Run the background simulation if lognormal errors enabled
         if "$LognormalErrors"; then
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
+            sbatch --mem $RequestedMemory \
+                -c $RequestedCPUs \
                 -t $RequestedTime \
                 -p $SchedulerPartition \
                 -W run_bkgd_simulation.sh

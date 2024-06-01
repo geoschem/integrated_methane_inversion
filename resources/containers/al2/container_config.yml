@@ -120,10 +120,8 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-SimulationCPUs: 16
-SimulationMemory: 16000
-JacobianCPUs: 1
-JacobianMemory: 2000
+RequestedCPUs: 16
+RequestedMemory: 16000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
 

@@ -161,8 +161,8 @@ if "$isAWS"; then
     else
         downloadScript=src/utilities/download_TROPOMI.py
     fi
-    sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \
