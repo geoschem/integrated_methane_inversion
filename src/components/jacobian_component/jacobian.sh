@@ -68,8 +68,7 @@ setup_jacobian() {
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
         fi
     fi
-    PertRestartFile=${RunTemplate}/${RestartFilePrefix}${StartDate}_0000z.nc4
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $RestartFile $PertRestartFile
+    PertRestartFile=$(python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $RestartFile ${RunTemplate}/Restarts $StartDate)
     # Create jacobian run directories
     while [ $x -le $nRuns ]; do
 
