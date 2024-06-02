@@ -33,6 +33,9 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
         original_file_path [str]  : original restart/bc file path
         new_file_path      [str]  : new restart/bc file path
     """
+    # keep attributes of data variable when arithmetic operations applied
+    xr.set_options(keep_attrs=True)
+    
     # read in the original restart/bc file
     orig = xr.load_dataset(original_file_path)
     new_restart = orig.copy()
@@ -41,10 +44,10 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
     data_vars = list(orig.data_vars)
     if "SpeciesBC_CH4" in data_vars:
         key = "SpeciesBC_CH4"
-        file_prefix = "GEOSChem.BoundaryConditions."
+        file_prefix = "GEOSChem.BoundaryConditions.1ppb."
     elif "SpeciesRst_CH4" in data_vars:
         key = "SpeciesRst_CH4"
-        file_prefix = "GEOSChem.Restart."
+        file_prefix = "GEOSChem.Restart.1ppb."
     else:
         raise ValueError("No recognized CH4 species found in the file.") 
     
@@ -52,10 +55,7 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
     new_restart[key] *= 0.0
     new_restart[key] += 1e-9
         
-    write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}.1ppb.nc4")
-    
-    # print out path for reading into variable
-    print(write_path)
+    write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.nc4")
     
     # write to new file path
     new_restart.to_netcdf(write_path)

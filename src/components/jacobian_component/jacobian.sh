@@ -20,6 +20,12 @@ setup_jacobian() {
 
     cd ${RunDirs}
 
+    # make dir for jacobian ics/bcs
+    mkdir -p jacobian_1ppb_ics_bcs/Restarts
+    mkdir -p jacobian_1ppb_ics_bcs/BCs
+    OrigBCFile=${fullBCpath}/${BCversion}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
+
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
@@ -119,9 +125,9 @@ create_simulation_dir() {
     # Link to GEOS-Chem executable instead of having a copy in each rundir
     ln -s ../../GEOSChem_build/gcclassic .
 
-    # create 1ppb restart file
-    if [[ $x -eq 1 ]]; then
-        PertRestartFile=$(python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $RestartFile ${RunTemplate}/Restarts $StartDate)
+    # set restart file location for perturbed runs
+    if [[ $x -gt 0 ]]; then
+        RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
     fi
     # TODO change to $PertRestartFile
     # link to restart file
@@ -356,12 +362,17 @@ run_jacobian() {
         else
             jacobian_period=1
         fi
-        
+
+
         # update perturbation values before running jacobian simulations
         printf "\n=== UPDATING PERTURBATION SFs ===\n"
         python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
 
         cd ${RunDirs}/jacobian_runs
+
+        # create 1ppb restart file
+        OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
 
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
         # Submit job to job scheduler
