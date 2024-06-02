@@ -14,6 +14,9 @@ def get_posterior_emissions(prior, scale):
         posterior : xarray dataset
             posterior emissions
     """
+    # keep attributes of data even when arithmetic operations applied
+    xr.set_options(keep_attrs=True)
+    
     # we do not optimize soil absorbtion in the inversion. This 
     # means that we need to keep the soil sink constant and properly 
     # account for it in the posterior emissions calculation.

@@ -68,7 +68,7 @@ setup_posterior() {
     sed -i -e "s|\.\./\.\.|\.\.|g" \
            -e "s|--> AnalyticalInversion    :       false|--> AnalyticalInversion    :       true|g" \
            -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
-           -e "s|../../prior_run/OutputDir/HEMCO_sa_diagnostics|HEMCO_sa_diagnostics.posterior|g" \
+           -e "s|\.\./prior_run/OutputDir/HEMCO_sa_diagnostics|HEMCO_sa_diagnostics.posterior|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
