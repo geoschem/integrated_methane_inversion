@@ -47,7 +47,9 @@ setup_posterior() {
     
     # Update settings in geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
+    # TODO: does this still work? if not remove?
     sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
+    # TODO: does this still work? If not, modify to use
     if "${OptimizeOH}"; then
         sed -i "s/use_oh_scale_factor: false/use_oh_scale_factor: true/g" geoschem_config.yml
     fi
@@ -59,6 +61,7 @@ setup_posterior() {
         gridded_posterior_filename="gridded_posterior.nc"
     fi
     sed -i -e "s|\.\./\.\.|\.\.|g" \
+           -e "s|--> AnalyticalInversion    :       false|--> AnalyticalInversion    :       true|g" \
            -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 

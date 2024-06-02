@@ -138,9 +138,10 @@ create_simulation_dir() {
     # Apply perturbations to total emissions with soil absorption removed
     # In this case, we still need to read soil absorption for overall CH4 flux
     #  so remove from the UseTotalPriorEmis brackets
-    # TODO: should we remove soil sink from the prior? I think so.
-    sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
-
+    # TODO: should we remove soil sink from the prior? Because then the posterior vs prior comparisons are wrong
+    if [[ $x -gt 0 ]]; then
+        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
+    fi 
     # TODO -- ask melissa what to do about soil absorption -- do we need this?
     # sed -i -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
     #        -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
