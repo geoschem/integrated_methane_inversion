@@ -62,7 +62,7 @@ setup_posterior() {
     fi
 
     # TODO: change this later -- update posterior emissions by brute force
-    python ${InversionPath}/src/components/posterior_component/update_prior_emis.py ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate}0000.nc ${RunDirs}/inversion/${gridded_posterior_filename} HEMCO_sa_diagnostics.posterior.${StartDate}0000.nc
+    python ${InversionPath}/src/components/posterior_component/update_prior_emis.py ${OutputPath}/${RunName}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate}0000.nc ${OutputPath}/${RunName}/inversion/${gridded_posterior_filename} HEMCO_sa_diagnostics.posterior.${StartDate}0000.nc
     # TODO: ask melissa how to properly apply scale factors to posterior (without applying to soil sink)
         #    -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
     sed -i -e "s|\.\./\.\.|\.\.|g" \

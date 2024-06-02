@@ -38,6 +38,6 @@ def get_posterior_emissions(prior, scale):
 if __name__ == "__main__":
     prior = xr.load_dataset(sys.argv[1])
     scale = xr.load_dataset(sys.argv[2])
-    target_file = xr.load_dataset(sys.argv[3])
+    target_file = sys.argv[3]
     updated_emis = get_posterior_emissions(prior, scale)
     updated_emis.to_netcdf(target_file)
