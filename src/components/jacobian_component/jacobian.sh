@@ -68,7 +68,7 @@ setup_jacobian() {
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
         fi
     fi
-    PertRestartFile=$(python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $RestartFile ${RunTemplate}/Restarts $StartDate)
+
     # Create jacobian run directories
     while [ $x -le $nRuns ]; do
 
@@ -119,6 +119,10 @@ create_simulation_dir() {
     # Link to GEOS-Chem executable instead of having a copy in each rundir
     ln -s ../../GEOSChem_build/gcclassic .
 
+    # create 1ppb restart file
+    if [[ $x -eq 1 ]]; then
+        PertRestartFile=$(python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $RestartFile ${RunTemplate}/Restarts $StartDate)
+    fi
     # TODO change to $PertRestartFile
     # link to restart file
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
@@ -254,8 +258,9 @@ create_simulation_dir() {
 
     # TODO: figure out what to do about the prior simulation
     # by default remove all emissions
-    sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
-
+    if [ $start_element -gt 0 ]; then
+        sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
+    fi
 		
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files

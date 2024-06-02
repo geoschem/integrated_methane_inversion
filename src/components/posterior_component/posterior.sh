@@ -59,7 +59,7 @@ setup_posterior() {
         gridded_posterior_filename="gridded_posterior.nc"
     fi
     sed -i -e "s|\.\./\.\.|\.\.|g" \
-           -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
+           -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output

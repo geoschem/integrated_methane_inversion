@@ -108,7 +108,8 @@ run_notebooks() {
         cd ${RunDirs}/inversion
     fi
     # replace config file path in viz notebook
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' visualization_notebook.ipynb
+    copied_config=${RunDirs}/config_${RunName}.yml
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$copied_config'|g' visualization_notebook.ipynb
     jupyter nbconvert --execute --to html visualization_notebook.ipynb
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }
