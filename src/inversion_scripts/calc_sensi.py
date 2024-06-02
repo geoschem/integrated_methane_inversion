@@ -200,8 +200,10 @@ def calc_sensi(
                     # calculate OH sensitivities
                     sensitivities = (pert.values - base.values) / perturbationOH
                 elif is_BC_element:
+                    # TODO: check if this is right. Is this technically the base simulation?
+                    pert_base = pert_data[f"SpeciesConcVV_CH4_{elem}"][h, :, :, :]
                     # calculate BC sensitivities
-                    sensitivities = (pert.values - base.values) / perturbationBC
+                    sensitivities = (pert.values - pert_base.values) / perturbationBC
 
                     # because we take the first hour on the first day from spinup
                     if h != 0:
@@ -209,8 +211,9 @@ def calc_sensi(
                             e, nelements, sensitivities, opt_OH
                         )
                 else:
+                    pert_base = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
                     # Calculate emission perturbations
-                    sensitivities = (pert.values - base.values) / perturbation[e]
+                    sensitivities = (pert.values - pert_base.values) / perturbation[e]
 
                 sensi[e, :, :, :] = sensitivities
 

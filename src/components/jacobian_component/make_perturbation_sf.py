@@ -66,7 +66,6 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     """
     # TODO: set target_emission in configfile
     # load the prior emissions dataset
-    # TODO: check if emis_prior already has the soil sink removed
     emis_prior = xr.open_dataset(hemco_emis_path)
 
     # create a sf dataset with the same structure as the state vector

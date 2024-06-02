@@ -134,6 +134,7 @@ create_simulation_dir() {
     # Apply perturbations to total emissions with soil absorption removed
     # In this case, we still need to read soil absorption for overall CH4 flux
     #  so remove from the UseTotalPriorEmis brackets
+    # TODO: should we remove soil sink from the prior? I think so.
     sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
 
     # TODO -- ask melissa what to do about soil absorption -- do we need this?
@@ -228,7 +229,10 @@ create_simulation_dir() {
 	else
 	    start_element=$(( end_element + 1 ))
 	fi
-	if [ $x -eq $nRuns ]; then
+	if [ $start_element -eq 0 ]; then
+        # prior simulation is run by itself
+	    end_element=0
+	elif [ $x -eq $nRuns ]; then
 	    end_element=$nElements
 	else
 	    end_element=$(( start_element + nTracers ))
@@ -304,11 +308,15 @@ create_simulation_dir() {
 	sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
 	HcoPrevLine4='BC_CH4_'$istr
 
-	# Add new Perturbations.txt and update
+	# Add new Perturbations.txt and update for non prior runs
 	cp Perturbations.txt Perturbations_${istr}.txt
+    if [ $i -gt 0 ]; then
 	PertNewLine='\
-ELEM_'$istr'  '$i'     '1.0''
+ELEM_'$istr'  '$i'     '0.0''
 	sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
+    # remove loss from OH if not prior or OH sv element
+    sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+    fi
 
     done
    
