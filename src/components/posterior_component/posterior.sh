@@ -60,9 +60,12 @@ setup_posterior() {
     else
         gridded_posterior_filename="gridded_posterior.nc"
     fi
+    # TODO: ask melissa how to properly apply scale factors to posterior (without applying to soil sink)
     sed -i -e "s|\.\./\.\.|\.\.|g" \
            -e "s|--> AnalyticalInversion    :       false|--> AnalyticalInversion    :       true|g" \
            -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
+           -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
+           -e "s|../../prior_run/OutputDir/HEMCO_sa_diagnostics|../prior_run/OutputDir/HEMCO_sa_diagnostics|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
