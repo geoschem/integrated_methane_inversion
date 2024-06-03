@@ -171,8 +171,8 @@ create_simulation_dir() {
     else
         # Use MeMo soil absorption for the prior simulation
         sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-               -e "/(((MeMo_SOIL_ABSORPTION/i (((UseTotalPriorEmis" \
-               -e "/)))MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" HEMCO_Config.rc
+               -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+               -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
         if "$KalmanMode"; then
             # TODO: figure out kalman mode later
             sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \

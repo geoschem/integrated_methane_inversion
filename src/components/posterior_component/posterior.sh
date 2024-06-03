@@ -62,8 +62,8 @@ setup_posterior() {
            -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
            -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
            -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
-           -e "/(((MeMo_SOIL_ABSORPTION/i (((UseTotalPriorEmis" \
-           -e "/)))MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
+           -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+           -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
