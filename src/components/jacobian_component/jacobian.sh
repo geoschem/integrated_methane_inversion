@@ -144,16 +144,34 @@ create_simulation_dir() {
            -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
            -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
-    # Apply perturbations to total emissions with soil absorption removed
+    # Apply perturbations to total emissions with loss from 
+    # soil absorption, OH, Cl, and CH4loss removed -- TODO: what is CH4loss?
     # In this case, we still need to read soil absorption for overall CH4 flux
     #  so remove from the UseTotalPriorEmis brackets
-    # TODO: should we remove soil sink from the prior? Because then the posterior vs prior comparisons are wrong
     if [[ $x -gt 0 ]]; then
-        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
-    fi 
-    # TODO -- ask melissa what to do about soil absorption -- do we need this?
+        OH_elem=false
+
+        # set whether this is the OH sv element
+        if "$OptimizeOH"; then
+            OHthreshold=$(($nElements - 1))
+            if [ $x -gt $OHthreshold ]; then
+                OH_elem=true
+                # if true set OH perturbation value
+                sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+            fi
+        fi
+
+        # if OH_elem false, remove loss processes from HEMCO_Config.rc
+        if [ "$OH_elem" = false ]; then
+            sed -i -e "s|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* - 1 1|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* 1 1 1|g" \
+                   -e "s|CH4loss  1985/1-12/1/0 C xyz s-1 \* - 1 1|CH4loss  1985/1-12/1/0 C xyz s-1 \* 1 1 1|g" \
+                   -e "s|OH_pert_factor  1.0|OH_pert_factor  0.0|g" \
+                   -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
+    # TODO -- ask melissa what this line does?
     # sed -i -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
     #        -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
+        fi
+    fi 
 
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
@@ -215,16 +233,6 @@ create_simulation_dir() {
             PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
             sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
                 -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
-        fi
-    fi
-
-    if "$OptimizeOH"; then
-        # The last state vector element is reserved for OH optimization.
-        # If this is the current state vector element, then modify the OH
-        # perturb value in HEMCO_Config.rc and revert emission perturbation.
-        OHthreshold=$(($nElements - 1))
-        if [ $x -gt $OHthreshold ]; then
-            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
         fi
     fi
 
@@ -329,8 +337,6 @@ create_simulation_dir() {
 	PertNewLine='\
 ELEM_'$istr'  '$i'     '0.0''
 	sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
-    # remove loss from OH if not prior or OH sv element
-    sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
     fi
 
     done
