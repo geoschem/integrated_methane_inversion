@@ -271,7 +271,7 @@ These settings are intended for advanced users who wish to modify additional GEO
    :class: tight-table
 
    * - ``PerturbValue``
-     - Value to perturb emissions by in each sensitivity simulation. Default value is ``1.5``.
+     - Target perturbation amount on the emissions in each sensitivity simulation. Default value is ``10.0``. Corresponding to a 10e-8 kg/m2/s perturbation.
    * - ``PerturbValueOH``
      - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``

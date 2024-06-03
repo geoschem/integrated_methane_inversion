@@ -151,9 +151,10 @@ NumJacobianRuns: -1
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scale factors and 
-## PerturbValueBCs is in ppb
-PerturbValue: 1.5
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 10 means the 
+## perturbation will be 10e-8 kg/m2/s 
+## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
+PerturbValue: 10.0
 PerturbValueOH: 1.5
 PerturbValueBCs: 10.0
 

@@ -385,7 +385,7 @@ run_jacobian() {
 
         # update perturbation values before running jacobian simulations
         printf "\n=== UPDATING PERTURBATION SFs ===\n"
-        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period 
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
 
         cd ${RunDirs}/jacobian_runs
 

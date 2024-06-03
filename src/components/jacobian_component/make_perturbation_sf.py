@@ -94,7 +94,7 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     return flat_sf
 
 
-def make_perturbation_sf(config, period_number):
+def make_perturbation_sf(config, period_number, perturb_value=10e-8):
     """
     Calculate the perturbations for each state vector element and update the perturbation files.
     Write out an archive of the flat scale factors for later use in sensitivity calculations.
@@ -124,7 +124,7 @@ def make_perturbation_sf(config, period_number):
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
 
     # calculate the scale factors to perturb each state vector element by
-    flat_sf = calculate_sfs(state_vector, hemco_emis_path)
+    flat_sf = calculate_sfs(state_vector, hemco_emis_path, perturb_value)
 
     # update jacobian perturbation files with new scale factors
     # before we run the jacobian simulations
@@ -144,6 +144,10 @@ def make_perturbation_sf(config, period_number):
 if __name__ == "__main__":
     config_path = sys.argv[1]
     period_number = int(sys.argv[2])
+    perturb_value = float(sys.argv[3])
+    
+    # use appropriate units for perturbation value
+    perturb_value = perturb_value * 1e-8
 
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    make_perturbation_sf(config, period_number)
+    make_perturbation_sf(config, period_number, perturb_value)
