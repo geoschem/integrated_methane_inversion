@@ -23,7 +23,7 @@ setup_jacobian() {
     # make dir for jacobian ics/bcs
     mkdir -p jacobian_1ppb_ics_bcs/Restarts
     mkdir -p jacobian_1ppb_ics_bcs/BCs
-    OrigBCFile=${fullBCpath}/${BCversion}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+    OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
     python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
 
     # Create directory that will contain all Jacobian run directories
