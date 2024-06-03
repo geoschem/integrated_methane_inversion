@@ -125,11 +125,14 @@ create_simulation_dir() {
     # Link to GEOS-Chem executable instead of having a copy in each rundir
     ln -s ../../GEOSChem_build/gcclassic .
 
-    # set restart file location for perturbed runs
+    # set 1ppb restart file and BC paths for perturbed runs
     if [[ $x -gt 0 ]]; then
         RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
+        BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
+        BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
+        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
     fi
-    # TODO change to $PertRestartFile
+
     # link to restart file
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 
