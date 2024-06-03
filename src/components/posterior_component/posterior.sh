@@ -47,12 +47,6 @@ setup_posterior() {
     
     # Update settings in geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-    # TODO: does this still work? if not remove?
-    sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
-    # TODO: does this still work? If not, modify to use
-    if "${OptimizeOH}"; then
-        sed -i "s/use_oh_scale_factor: false/use_oh_scale_factor: true/g" geoschem_config.yml
-    fi
     
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
@@ -61,12 +55,15 @@ setup_posterior() {
         gridded_posterior_filename="gridded_posterior.nc"
     fi
 
-    # TODO: ask melissa how to properly apply scale factors to posterior (without applying to soil sink)
-        #    -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
+    # Apply posterior scale factors to emissions
+    # But exclude soil absorption from the application of the scale factors
+    # Read in soil absorption separately with MeMo_SOIL_ABSORPTION
     sed -i -e "s|\.\./\.\.|\.\.|g" \
-           -e "s|--> AnalyticalInversion    :       false|--> AnalyticalInversion    :       true|g" \
+           -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+           -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
            -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
-           -e "s|\.\./prior_run/OutputDir/HEMCO_sa_diagnostics|HEMCO_sa_diagnostics.posterior|g" \
+           -e "/(((MeMo_SOIL_ABSORPTION/i (((UseTotalPriorEmis" \
+           -e "/)))MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output

@@ -167,9 +167,17 @@ create_simulation_dir() {
                    -e "s|CH4loss  1985/1-12/1/0 C xyz s-1 \* - 1 1|CH4loss  1985/1-12/1/0 C xyz s-1 \* 1 1 1|g" \
                    -e "s|OH_pert_factor  1.0|OH_pert_factor  0.0|g" \
                    -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
-    # TODO -- ask melissa what this line does?
-    # sed -i -e "/(((MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" \
-    #        -e "/)))MeMo_SOIL_ABSORPTION/a (((UseTotalPriorEmis" HEMCO_Config.rc
+        fi
+    else
+        # Use MeMo soil absorption for the prior simulation
+        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+               -e "/(((MeMo_SOIL_ABSORPTION/i (((UseTotalPriorEmis" \
+               -e "/)))MeMo_SOIL_ABSORPTION/a )))UseTotalPriorEmis" HEMCO_Config.rc
+        if "$KalmanMode"; then
+            # TODO: figure out kalman mode later
+            sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
+                   -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
+                   -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
         fi
     fi 
 
@@ -274,10 +282,12 @@ create_simulation_dir() {
     HcoPrevLine4='SpeciesBC_CH4'
     PertPrevLine='DEFAULT    0     0.0'
 
-    # TODO: figure out what to do about the prior simulation
-    # by default remove all emissions
+    # by default remove all emissions except for in the prior simulation
+    # and the OH perturbation simulation
     if [ $start_element -gt 0 ]; then
-        sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
+        if [ "$OH_elem" = false ]; then
+            sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
+        fi
     fi
 		
     # Loop over state vector element numbers for this run and add each element
