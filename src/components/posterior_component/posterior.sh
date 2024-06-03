@@ -110,9 +110,6 @@ run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
     
-    # TODO: change this later -- update posterior emissions by brute force
-    python ${InversionPath}/src/components/posterior_component/update_prior_emis.py ${OutputPath}/${RunName}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate}0000.nc ${OutputPath}/${RunName}/inversion/${gridded_posterior_filename} HEMCO_sa_diagnostics.posterior.${StartDate}0000.nc
-
     if $LognormalErrors; then
         inversion_result_filename="inversion_result_ln.nc"
     else
