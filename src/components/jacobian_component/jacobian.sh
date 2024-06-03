@@ -145,9 +145,7 @@ create_simulation_dir() {
            -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
     # Apply perturbations to total emissions with loss from 
-    # soil absorption, OH, Cl, and CH4loss removed -- TODO: what is CH4loss?
-    # In this case, we still need to read soil absorption for overall CH4 flux
-    #  so remove from the UseTotalPriorEmis brackets
+    # soil absorption, OH, Cl, and stratospheric CH4loss removed
     if [[ $x -gt 0 ]]; then
         OH_elem=false
 
@@ -163,8 +161,10 @@ create_simulation_dir() {
 
         # if OH_elem false, remove loss processes from HEMCO_Config.rc
         if [ "$OH_elem" = false ]; then
-            sed -i -e "s|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* - 1 1|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* 1 1 1|g" \
-                   -e "s|CH4loss  1985/1-12/1/0 C xyz s-1 \* - 1 1|CH4loss  1985/1-12/1/0 C xyz s-1 \* 1 1 1|g" \
+            # add new scale factor with id 5 to remove loss processes from CH4loss (stratospher) and Cl
+            sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xyz 1 1" HEMCO_Config.rc
+            sed -i -e "s|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* - 1 1|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* 5 1 1|g" \
+                   -e "s|CH4loss  1985/1-12/1/0 C xyz s-1 \* - 1 1|CH4loss  1985/1-12/1/0 C xyz s-1 \* 5 1 1|g" \
                    -e "s|OH_pert_factor  1.0|OH_pert_factor  0.0|g" \
                    -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
         fi
