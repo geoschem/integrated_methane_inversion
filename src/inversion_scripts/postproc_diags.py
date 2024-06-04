@@ -89,10 +89,10 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
         # For some perturbation simulation we need to scale down the CH4 concentration to 1 ppb
         # Check if this is one of those simulations by checking if HEMCO_Config.rc 
         # reads a 1ppb restart or BC file
-        scale_to_1ppb = search_file(f"{prev_run_pth}/HEMCO_Config.rc", "jacobian_1ppb_ics_bcs")
+        scale_to_1ppb = search_file(f"{run_dirs_pth}/{r}/HEMCO_Config.rc", "jacobian_1ppb_ics_bcs")
         if scale_to_1ppb:
-            prev_file_SC["SpeciesConcVV_CH4"] *= 0.0
-            prev_file_SC["SpeciesConcVV_CH4"] += 1e-9
+            prev_data_SC["SpeciesConcVV_CH4"] *= 0.0
+            prev_data_SC["SpeciesConcVV_CH4"] += 1e-9
             
         prev_data_SC = prev_data_SC.rename({'SpeciesConcVV_CH4':'SpeciesConcVV_CH4_'+num})
         
