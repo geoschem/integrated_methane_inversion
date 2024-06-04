@@ -104,9 +104,6 @@ setup_imi() {
         cd GCClassic
         git checkout ${GEOSCHEM_VERSION}
         git submodule update --init --recursive
-        # TODO: this is a hack to prevent faulty perturbations of CH4 boundary conditions
-        # remove when fixed in GEOS-Chem
-        sed -i -e "s|Input_Opt%DoPerturbCH4BoundaryConditions|Input_Opt%DoPerturbCH4BoundaryConditions .AND. State_Chm%SpcData(N)%Info%Name == \"CH4\"|g" src/GEOS-Chem/GeosCore/hco_utilities_gc_mod.F90
         cd ..
     else
         cd GCClassic
