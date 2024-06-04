@@ -137,41 +137,31 @@ create_simulation_dir() {
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 
     # Modify HEMCO_Config.rc to turn off individual emission inventories
-    # and use total emissions saved out from prior emissions simulation
-    # instead
+    # and use total emissions (without soil absorption) saved out from prior 
+    # emissions simulation instead. For the prior and OH sims we add soil 
+    # absorption back in below
     printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
     sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
            -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
+           -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
            -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
-    # Apply perturbations to total emissions with loss from 
-    # soil absorption, OH, Cl, and stratospheric CH4loss removed
-    if [[ $x -gt 0 ]]; then
-        OH_elem=false
-
-        # set whether this is the OH sv element
-        if "$OptimizeOH"; then
-            OHthreshold=$(($nElements - 1))
-            if [ $x -gt $OHthreshold ]; then
-                OH_elem=true
-                # if true set OH perturbation value
-                sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
-            fi
+    # Perturb OH if this is the OH perturbations simulation
+    OH_elem=false
+    if "$OptimizeOH"; then
+        OHthreshold=$(($nElements - 1))
+        if [ $x -gt $OHthreshold ]; then
+            OH_elem=true
+            # if true set OH perturbation value
+            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
         fi
+    fi
 
-        # if OH_elem false, remove loss processes from HEMCO_Config.rc
-        if [ "$OH_elem" = false ]; then
-            # add new scale factor with id 5 to remove loss processes from CH4loss (stratospher) and Cl
-            sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xyz 1 1" HEMCO_Config.rc
-            sed -i -e "s|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* - 1 1|SpeciesConc_Cl    2010-2019/1-12/1/0 C xyz 1        \* 5 1 1|g" \
-                   -e "s|CH4loss  1985/1-12/1/0 C xyz s-1 \* - 1 1|CH4loss  1985/1-12/1/0 C xyz s-1 \* 5 1 1|g" \
-                   -e "s|OH_pert_factor  1.0|OH_pert_factor  0.0|g" \
-                   -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" HEMCO_Config.rc
-        fi
-    else
+    # the prior, OH perturbation, and background simulations need to have soil absorption
+    # and, in the case, of kalman mode the prior is scaled by the nudged scale factors
+    if [[ $x -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
         # Use MeMo soil absorption for the prior simulation
-        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-               -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+        sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
                -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
         if "$KalmanMode"; then
             # TODO: figure out kalman mode later
@@ -179,7 +169,7 @@ create_simulation_dir() {
                    -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
                    -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
         fi
-    fi 
+    fi
 
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
