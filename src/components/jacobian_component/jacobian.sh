@@ -273,7 +273,7 @@ create_simulation_dir() {
     # Initialize previous lines to search
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
-    HcoPrevLine2='CH4 - 1 500'
+    HcoPrevLine2='CH4 5 1 500'
     HcoPrevLine3='Perturbations.txt - - - xy count 1'
     HcoPrevLine4='SpeciesBC_CH4'
     PertPrevLine='DEFAULT    0     0.0'
