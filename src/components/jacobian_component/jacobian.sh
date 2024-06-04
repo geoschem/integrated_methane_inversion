@@ -169,6 +169,12 @@ create_simulation_dir() {
                    -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
                    -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
         fi
+
+    else
+        # for all other perturbation simulations set emissions to 
+        # zero for default CH4 tracer by applying new 0 scale factor
+        sed -i -e "/1 NEGATIVE -1.0 - - - xy 1 1/a 5 ZERO 0.0 - - - xyz 1 1" \
+               -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
     # Update settings in HISTORY.rc
