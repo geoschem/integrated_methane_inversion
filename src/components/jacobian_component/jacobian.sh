@@ -173,7 +173,7 @@ create_simulation_dir() {
     else
         # for all other perturbation simulations set emissions to 
         # zero for default CH4 tracer by applying new 0 scale factor
-        sed -i -e "/1 NEGATIVE -1.0 - - - xy 1 1/a 5 ZERO 0.0 - - - xyz 1 1" \
+        sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO           0.0 - - - xyz 1 1" \
                -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
