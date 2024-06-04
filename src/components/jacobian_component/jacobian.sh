@@ -224,6 +224,7 @@ create_simulation_dir() {
     fi
 
     # BC optimization setup
+    BC_elem=false
     if "$OptimizeBCs"; then
         if "$OptimizeOH"; then
             bcThreshold=$(($nElements - 5))
@@ -234,6 +235,7 @@ create_simulation_dir() {
         # domain edges. If the current state vector element is one of these, then
         # turn on BC optimization for the corresponding edge and revert emission perturbation
         if [[ $x -gt $bcThreshold ]]; then
+            BC_elem=true
             PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
             sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
                 -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
@@ -288,6 +290,8 @@ create_simulation_dir() {
 		
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
+    if [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+
     for i in $(seq $start_element $end_element); do
 
 	if [ $i -lt 10 ]; then
@@ -346,6 +350,7 @@ ELEM_'$istr'  '$i'     '0.0''
     fi
 
     done
+    fi
    
     # Navigate back to top-level directory
     cd ../..

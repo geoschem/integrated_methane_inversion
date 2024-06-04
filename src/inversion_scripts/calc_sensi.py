@@ -145,6 +145,9 @@ def calc_sensi(
         base_data = xr.load_dataset(
             f"{run_dirs_pth}/{run_name}_0000/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
         )
+        bc_base = xr.load_dataset(
+            f"{run_dirs_pth}/{run_name}_0001/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
+        )
         # Count nlat, nlon, nlev
         nlon = len(base_data["lon"])  # 52
         nlat = len(base_data["lat"])  # 61
@@ -201,7 +204,7 @@ def calc_sensi(
                     sensitivities = (pert.values - base.values) / perturbationOH
                 elif is_BC_element:
                     # TODO: check if this is right. Is this technically the base simulation?
-                    pert_base = pert_data[f"SpeciesConcVV_CH4_{elem}"][h, :, :, :]
+                    pert_base = bc_base[f"SpeciesConcVV_CH4"][h, :, :, :]
                     # calculate BC sensitivities
                     sensitivities = (pert.values - pert_base.values) / perturbationBC
 
