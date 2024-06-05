@@ -7,6 +7,7 @@ Note: period_number is the kalman filter period number for which to calculate th
 
 import os
 import sys
+import glob
 import yaml
 import xarray as xr
 import numpy as np
@@ -27,36 +28,37 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
     # with the new scale factors
     for jacobian_rundir in jacobian_rundirs:
         dir_suffix = jacobian_rundir.split("/")[-1].split("_")[-1]
-        perturbation_file = os.path.join(
-            jacobian_rundir, f"Perturbations_{dir_suffix}.txt"
-        )
-        # check if perturbation file exists
-        if os.path.exists(perturbation_file):
-            with open(perturbation_file, "r") as file:
-                lines = file.readlines()
+        perturbation_files = glob.glob(f"{jacobian_rundir}/Perturbations_*.txt")
+        for perturbation_file in perturbation_files:
+                
+            # check if perturbation file exists
+            if os.path.exists(perturbation_file):
+                with open(perturbation_file, "r") as file:
+                    lines = file.readlines()
+                
+                # infer element number based on the file name
+                sv_label = perturbation_file[-8:-4]
+                sv_element = int(sv_label)
+                sv_idx = sv_element - 1
+                
+                # make sure we only apply scale factors to emission elements
+                if sv_element <= int(state_vector_labels.max().item()):
+                    # add the right amount of padding
+                    padding = "".ljust(4 - len(str(sv_element)))
+                    
+                    # construct new perturbation line
+                    new_pert_line = f"ELEM_{sv_label}  {sv_element}  {padding}{flat_sf[sv_idx]}"
 
-            # check file for every state vector element perturbation
-            for i in range(int(state_vector_labels.max().item())):
-                # element to adjust pertubation for
-                sv_element = int(i + 1)
-                sv_label = str(sv_element).zfill(4)
+                    # search through perturbations file for element
+                    # and replace with new perturbation line
+                    for idx, line in enumerate(lines):
+                        if line.startswith(f"ELEM_{sv_label}"):
+                            lines[idx] = new_pert_line + "\n"
+                            break
 
-                # add the right amount of padding
-                padding = "".ljust(4 - len(str(sv_element)))
-
-                # construct new perturbation line
-                new_pert_line = f"ELEM_{sv_label}  {sv_element}  {padding}{flat_sf[i]}"
-
-                # search through perturbations file for element
-                # and replace with new perturbation line
-                for idx, line in enumerate(lines):
-                    if line.startswith(f"ELEM_{sv_label}"):
-                        lines[idx] = new_pert_line + "\n"
-                        break
-
-            # write out new perturbation file
-            with open(perturbation_file, "w") as file:
-                file.writelines(lines)
+                    # write out new perturbation file
+                    with open(perturbation_file, "w") as file:
+                        file.writelines(lines)
 
 
 def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
