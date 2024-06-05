@@ -125,14 +125,6 @@ create_simulation_dir() {
     # Link to GEOS-Chem executable instead of having a copy in each rundir
     ln -s ../../GEOSChem_build/gcclassic .
 
-    # set 1ppb restart file and BC paths for perturbed runs
-    if [[ $x -gt 0 ]]; then
-        RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
-        BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
-        BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
-        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
-    fi
-
     # link to restart file
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 
@@ -146,36 +138,22 @@ create_simulation_dir() {
         -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
-    # Perturb OH if this is the OH perturbations simulation
+    # Determine which elements are BC perturbations
+    BC_elem=false
+    bcThreshold=$nElements
+    if "$OptimizeBCs"; then
+        if "$OptimizeOH"; then
+            bcThreshold=$(($nElements - 5))
+        else
+            bcThreshold=$(($nElements - 4))
+        fi
+    fi
+
+    # Determine which element (if any) is an OH perturbation
     OH_elem=false
     ohThreshold=$nElements
     if "$OptimizeOH"; then
         ohThreshold=$(($nElements - 1))
-        if [ $x -gt $ohThreshold ]; then
-            OH_elem=true
-            # if true set OH perturbation value
-            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
-        fi
-    fi
-
-    # the prior, OH perturbation, and background simulations need to have soil absorption
-    # and, in the case, of kalman mode the prior is scaled by the nudged scale factors
-    if [[ $x -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
-        # Use MeMo soil absorption for the prior simulation
-        sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
-            -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
-        if "$KalmanMode"; then
-            # TODO: figure out kalman mode later
-            sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
-                -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
-                -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
-        fi
-
-    else
-        # for all other perturbation simulations set emissions to
-        # zero for default CH4 tracer by applying new 0 scale factor
-        sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
-            -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
     # Update settings in HISTORY.rc
@@ -224,26 +202,6 @@ create_simulation_dir() {
         fi
     fi
 
-    # BC optimization setup
-    BC_elem=false
-    bcThreshold=$nElements
-    if "$OptimizeBCs"; then
-        if "$OptimizeOH"; then
-            bcThreshold=$(($nElements - 5))
-        else
-            bcThreshold=$(($nElements - 4))
-        fi
-        # The last four state vector elements are reserved for BC optimization of NSEW
-        # domain edges. If the current state vector element is one of these, then
-        # turn on BC optimization for the corresponding edge and revert emission perturbation
-        if [[ $x -gt $bcThreshold ]]; then
-            BC_elem=true
-            PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
-            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
-                -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
-        fi
-    fi
-
     # Turn off sectoral emissions diagnostics since total emissions are
     # read in for jacobian runs
     sed -i -e "s:EmisCH4:#EmisCH4:g" HEMCO_Diagn.rc
@@ -251,6 +209,7 @@ create_simulation_dir() {
 
     # Determine start and end element numbers for this run directory
     if [[ $NumJacobianRuns -lt 0 ]] || [[ $x -eq 0 ]]; then
+        # if using 1 tracer per simulation. Or is the prior simulation.
         start_element=$x
         end_element=$x
     else
@@ -258,10 +217,51 @@ create_simulation_dir() {
         if [ $x -eq $nRuns ]; then
             end_element=$nElements
         else
-            end_element=$((start_element + nTracers))
             # calculate tracer end based on bc and oh thresholds
+            # Note: the prior simulation, BC simulations, and OH simulation get their 
+            # own dedicated simulation, so end_element is the same as start_element
             end_element=$(calculate_tracer_end $start_element $nTracers $bcThreshold $ohThreshold)
         fi
+    fi
+
+    # Perturb OH if this is the OH perturbations simulation
+    if [ $start_element -gt $ohThreshold ]; then
+        OH_elem=true
+        sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+    fi
+
+    # If the current state vector element is one of the BC state vector elements, then
+    # turn on BC optimization for the corresponding edge
+    if [[ $start_element -gt $bcThreshold ]] && [[ "$OH_elem" = false ]]; then
+        BC_elem=true
+        PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
+        sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+            -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+    fi
+
+    # the prior, OH perturbation, and background simulations need to have soil absorption
+    # and, in the case, of kalman mode the prior is scaled by the nudged scale factors
+    if [[ $i -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
+        # Use MeMo soil absorption for the prior simulation
+        sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+            -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+        if "$KalmanMode"; then
+            # TODO: figure out kalman mode later
+            sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
+                -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
+                -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+        fi
+
+    else
+        # set 1ppb CH4 boundary conditions and initial conditions for all other perturbation simulations
+        RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
+        BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
+        BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
+        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
+
+        # Also, set emissions to zero for default CH4 tracer by applying new ZERO scale factor
+        sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
+            -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
     # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
@@ -277,80 +277,84 @@ create_simulation_dir() {
     HcoPrevLine4='SpeciesBC_CH4'
     PertPrevLine='DEFAULT    0     0.0'
 
-    # by default remove all emissions except for in the prior simulation
-    # and the OH perturbation simulation
-    if [ $start_element -gt 0 ]; then
-        if [ "$OH_elem" = false ]; then
-            sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
-        fi
-    fi
-
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
     if [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
-
         for i in $(seq $start_element $end_element); do
-
-            if [ $i -lt 10 ]; then
-                istr="000${i}"
-            elif [ $x -lt 100 ]; then
-                istr="00${i}"
-            elif [ $x -lt 1000 ]; then
-                istr="0${i}"
-            else
-                istr="${i}"
-            fi
-
-            # Start HEMCO scale factor ID at 2000 to avoid conflicts with
-            # preexisting scale factors/masks
-            SFnum=$((2000 + i))
-
-            # Add lines to geoschem_config.yml
-            # Spacing in GcNewLine is intentional
-            GcNewLine='\
-      - CH4_'$istr
-            sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
-            GcPrevLine='- CH4_'$istr
-
-            # Add lines to species_database.yml
-            SpcNextLine='CHBr3:'
-            SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
-            sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
-
-            # Add lines to HEMCO_Config.yml
-            HcoNewLine1='\
-* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
-            sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-            HcoPrevLine1='SPC_CH4_'$istr
-
-            HcoNewLine2='\
-0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
-            sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-            HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
-
-            HcoNewLine3='\
-'$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
-            sed -i "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
-            HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
-
-            HcoNewLine4='\
-* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
-            sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-            HcoPrevLine4='BC_CH4_'$istr
-
-            # Add new Perturbations.txt and update for non prior runs
-            cp Perturbations.txt Perturbations_${istr}.txt
-            if [ $i -gt 0 ]; then
-                PertNewLine='\
-ELEM_'$istr'  '$i'     '0.0''
-                sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
-            fi
-
+            add_new_tracer
         done
     fi
 
     # Navigate back to top-level directory
     cd ../..
+}
+
+# Description: Add new tracers to a simulation
+# Usage: add_new_tracer
+add_new_tracer() {
+    if [ $i -lt 10 ]; then
+        istr="000${i}"
+    elif [ $x -lt 100 ]; then
+        istr="00${i}"
+    elif [ $x -lt 1000 ]; then
+        istr="0${i}"
+    else
+        istr="${i}"
+    fi
+
+    # by default remove all emissions except for in the prior simulation
+    # and the OH perturbation simulation
+    if [ $i -gt 0 ]; then
+        if [ "$OH_elem" = false ]; then
+            sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
+        fi
+    fi
+
+    # Start HEMCO scale factor ID at 2000 to avoid conflicts with
+    # preexisting scale factors/masks
+    SFnum=$((2000 + i))
+
+    # Add lines to geoschem_config.yml
+    # Spacing in GcNewLine is intentional
+    GcNewLine='\
+      - CH4_'$istr
+    sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
+    GcPrevLine='- CH4_'$istr
+
+    # Add lines to species_database.yml
+    SpcNextLine='CHBr3:'
+    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
+    sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
+
+    # Add lines to HEMCO_Config.yml
+    HcoNewLine1='\
+* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+    sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
+    HcoPrevLine1='SPC_CH4_'$istr
+
+    HcoNewLine2='\
+0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
+    sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
+    HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
+
+    HcoNewLine3='\
+'$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
+    sed -i "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
+    HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
+
+    HcoNewLine4='\
+* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+    sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
+    HcoPrevLine4='BC_CH4_'$istr
+
+    # Add new Perturbations.txt and update for non prior runs
+    cp Perturbations.txt Perturbations_${istr}.txt
+    if [ $i -gt 0 ]; then
+        PertNewLine='\
+ELEM_'$istr'  '$i'     '0.0''
+        sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
+    fi
+
 }
 
 # Description: Run jacobian simulations
@@ -484,7 +488,10 @@ calculate_tracer_end() {
     bcThreshold = int(sys.argv[3]);\
     ohThreshold = int(sys.argv[4]);\
     end_elem = start_elem + nTracers;\
-    while end_elem > bcThreshold or end_elem > ohThreshold:
-        end_elem -= 1;\
+    if start_elem > bcThreshold or start_elem > ohThreshold:\
+        end_elem = start_elem;\
+    else:\
+        while end_elem > bcThreshold or end_elem > ohThreshold:\
+            end_elem -= 1;\
     print(end_elem)" $1 $2 $3 $4
 }
