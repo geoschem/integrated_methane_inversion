@@ -66,7 +66,6 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     numpy array of the scale factors indexed by state vector
     element.
     """
-    # TODO: set target_emission in configfile
     # load the prior emissions dataset
     emis_prior = xr.open_dataset(hemco_emis_path)
 

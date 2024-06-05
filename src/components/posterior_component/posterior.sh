@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - setup_posterior 
-#   - run_posterior 
+#   - setup_posterior
+#   - run_posterior
 
 # Description: Setup posterior GCClassic run directory
 # Usage:
@@ -10,14 +10,14 @@
 setup_posterior() {
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
-        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml" 
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml"
         exit 9999
     fi
 
     printf "\n=== CREATING POSTERIOR RUN DIRECTORY ===\n"
-    
+
     cd ${RunDirs}
-    
+
     # Define the run directory name
     PosteriorName="${RunName}_Posterior"
 
@@ -26,7 +26,7 @@ setup_posterior() {
     mkdir -p -v ${runDir}
 
     # Copy run directory files
-    cp -r ${RunTemplate}/*  ${runDir}
+    cp -r ${RunTemplate}/* ${runDir}
     cd $runDir
 
     # Link to GEOS-Chem executable
@@ -41,13 +41,13 @@ setup_posterior() {
         ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
         fi
     fi
-    
+
     # Update settings in geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-    
+
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
         gridded_posterior_filename="gridded_posterior_ln.nc"
@@ -59,22 +59,22 @@ setup_posterior() {
     # But exclude soil absorption from the application of the scale factors
     # Read in soil absorption separately with MeMo_SOIL_ABSORPTION
     sed -i -e "s|\.\./\.\.|\.\.|g" \
-           -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-           -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
-           -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
-           -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
-           -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
-           -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
+        -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+        -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
+        -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
+        -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+        -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
+        -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
 
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-               -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-               -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-               -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
-               -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
-               -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
+            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
+            -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
+            -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi
 
     ### Turn on observation operators if requested, for posterior run
@@ -82,26 +82,25 @@ setup_posterior() {
 
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
-	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
+        -e "s:##:#:g" ch4_run.template >${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
     rm -f ch4_run.template
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
         printf "\nExecuting dry-run for posterior run...\n"
-        ./gcclassic --dryrun &> log.dryrun
+        ./gcclassic --dryrun &>log.dryrun
         # prevent restart file from getting downloaded since
         # we don't want to overwrite the one we link to above
         sed -i '/GEOSChem.Restart/d' log.dryrun
         ./download_data.py log.dryrun aws
     fi
-    
+
     # Navigate back to top-level directory
     cd ..
 
     printf "\n=== DONE CREATING POSTERIOR RUN DIRECTORY ===\n"
 }
-
 
 # Description: Run posterior simulation and process output
 # Usage:
@@ -109,7 +108,7 @@ setup_posterior() {
 run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
-    
+
     if $LognormalErrors; then
         inversion_result_filename="inversion_result_ln.nc"
     else
@@ -142,23 +141,24 @@ run_posterior() {
         # add OH optimization delta to boundary condition edges
         sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbOHValue}|g" HEMCO_Config.rc
         printf "\n=== OH OPTIMIZATION: OH optimized perturbation value set to: ${PerturbOHValue} ===\n"
-    fi 
+    fi
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
     sbatch --mem $RequestedMemory \
-           -c $RequestedCPUs \
-           -t $RequestedTime \
-           -p $SchedulerPartition \
-           -W ${RunName}_Posterior.run; wait;
-    
+        -c $RequestedCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W ${RunName}_Posterior.run
+    wait
+
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
-    
+
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
-        if (( period_i == 1 )); then
+        if ((period_i == 1)); then
             PrevDir="${RunDirs}/spinup_run"
         else
             PrevDir="${RunDirs}/posterior_run"
@@ -168,12 +168,13 @@ run_posterior() {
         EndDate_i=$EndDate
         cd ${RunDirs}/inversion
         PrevDir="${RunDirs}/spinup_run"
-    fi  
+    fi
 
     # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
     printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res; wait
+    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res
+    wait
     printf "\n=== DONE -- postproc_diags.py ===\n"
 
     # Build directory for hourly posterior GEOS-Chem output data
@@ -183,7 +184,8 @@ run_posterior() {
     GCsourcepth="${PosteriorRunDir}/OutputDir"
     GCDir="./data_geoschem_posterior"
     printf "\n=== Calling setup_gc_cache.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate_i $EndDate_i $GCsourcepth $GCDir; wait
+    python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate_i $EndDate_i $GCsourcepth $GCDir
+    wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
@@ -193,17 +195,18 @@ run_posterior() {
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     if "$OptimizeBCs"; then
-	nElements=$((nElements+4))
+        nElements=$((nElements + 4))
     fi
-    if "$OptimizeOH";then
-	nElements=$((nElements+1))
+    if "$OptimizeOH"; then
+        nElements=$((nElements + 1))
     fi
     FetchTROPOMI="False"
     isPost="True"
     buildJacobian="False"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian False; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian False
+    wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 
@@ -216,11 +219,11 @@ run_posterior() {
 #   generate_optimized_BC_values <path-to-inversion-result> <bc-pert-value>
 generate_optimized_BC_values() {
     if $OptimizeOH; then
-       python -c "import sys; import xarray;\
+        python -c "import sys; import xarray;\
        xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-5:-1];\
        print(xhat.tolist())" $1
     else
-       python -c "import sys; import xarray;\
+        python -c "import sys; import xarray;\
        xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-4:];\
        print(xhat.tolist())" $1
     fi
