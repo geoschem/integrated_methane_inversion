@@ -15,8 +15,6 @@ setup_jacobian() {
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml"
         exit 9999
     fi
-    set -e
-    set -x
     printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
 
     cd ${RunDirs}
@@ -34,7 +32,7 @@ setup_jacobian() {
         nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH)
 
         # Determine approx. number of CH4 tracers per Jacobian run
-        printf "\nCombining Jacobian runs: Generating $NumJacobianRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
+        printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
     else
         nRuns=$nElements
     fi
@@ -80,7 +78,7 @@ setup_jacobian() {
         else
             xstr="${x}"
         fi
-
+        echo "creating simulation: ${xstr}"
         create_simulation_dir
 
         # Increment
@@ -206,20 +204,16 @@ create_simulation_dir() {
     sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
 
     # Determine start and end element numbers for this run directory
-    if [[ $NumJacobianRuns -lt 0 ]] || [[ $x -eq 0 ]]; then
+    if [[ $x -eq 0 ]]; then
         # if using 1 tracer per simulation. Or is the prior simulation.
         start_element=$x
         end_element=$x
     else
         start_element=$((end_element + 1))
-        if [ $x -eq $nRuns ]; then
-            end_element=$nElements
-        else
-            # calculate tracer end based on the number of tracers and bc/oh thresholds
-            # Note: the prior simulation, BC simulations, and OH simulation get their 
-            # own dedicated simulation, so end_element is the same as start_element
-            end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
-        fi
+        # calculate tracer end based on the number of tracers and bc/oh thresholds
+        # Note: the prior simulation, BC simulations, and OH simulation get their 
+        # own dedicated simulation, so end_element is the same as start_element
+        end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
     fi
     echo "start elem: ${start_element}. end elem: ${end_element}"
 
@@ -233,14 +227,14 @@ create_simulation_dir() {
     # turn on BC optimization for the corresponding edge
     if [[ $start_element -gt $bcThreshold ]] && [[ "$OH_elem" = false ]]; then
         BC_elem=true
-        PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $x $PerturbValueBCs)
+        PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $start_element $PerturbValueBCs)
         sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
             -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
     fi
 
     # the prior, OH perturbation, and background simulations need to have soil absorption
     # and, in the case, of kalman mode the prior is scaled by the nudged scale factors
-    if [[ $i -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
+    if [[ $x -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
         # Use MeMo soil absorption for the prior simulation
         sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
             -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
@@ -273,12 +267,12 @@ create_simulation_dir() {
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
     HcoPrevLine2='CH4 5 1 500'
     HcoPrevLine3='Perturbations.txt - - - xy count 1'
-    HcoPrevLine4='SpeciesBC_CH4'
+    HcoPrevLine4='\* BC_CH4'
     PertPrevLine='DEFAULT    0     0.0'
 
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
-    if [ $i -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+    if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
         for i in $(seq $start_element $end_element); do
             add_new_tracer
         done
@@ -303,10 +297,8 @@ add_new_tracer() {
 
     # by default remove all emissions except for in the prior simulation
     # and the OH perturbation simulation
-    if [ $i -gt 0 ]; then
-        if [ "$OH_elem" = false ]; then
-            sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
-        fi
+    if [ $x -gt 0 ]; then
+        sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
     fi
 
     # Start HEMCO scale factor ID at 2000 to avoid conflicts with
@@ -348,7 +340,7 @@ add_new_tracer() {
 
     # Add new Perturbations.txt and update for non prior runs
     cp Perturbations.txt Perturbations_${istr}.txt
-    if [ $i -gt 0 ]; then
+    if [ $x -gt 0 ]; then
         PertNewLine='\
 ELEM_'$istr'  '$i'     '0.0''
         sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
@@ -488,7 +480,7 @@ n_elems = int(sys.argv[2])
 nTracers = int(sys.argv[3])
 bcThreshold = int(sys.argv[4])
 ohThreshold = int(sys.argv[5])
-end_elem = start_elem + nTracers
+end_elem = start_elem + nTracers - 1
 # Ensure end element is within bounds
 if end_elem > n_elems:
     end_elem = n_elems
@@ -499,7 +491,7 @@ else:
     while end_elem > bcThreshold or end_elem > ohThreshold:
         end_elem -= 1
 print(end_elem)
-" $1 $2 $3 $4
+" $1 $2 $3 $4 $5
 }
 
 # Description: Print number of jacobian runs for multitracer perturbation runs

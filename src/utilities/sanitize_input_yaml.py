@@ -70,7 +70,7 @@ config_required = [
     "RequestedTime",
     "SchedulerPartition",
     "MaxSimultaneousRuns",
-    "NumJacobianRuns",
+    "NumJacobianTracers",
     "PerturbValue",
     "UseEmisSF",
     "UseOHSF",
