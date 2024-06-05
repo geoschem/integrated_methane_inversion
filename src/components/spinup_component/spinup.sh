@@ -45,11 +45,6 @@ setup_spinup() {
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
 
-    # Update for Kalman filter option
-    if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
-    fi
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then

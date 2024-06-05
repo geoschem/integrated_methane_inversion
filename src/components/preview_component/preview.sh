@@ -52,11 +52,6 @@ run_preview() {
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
-    # Update for Kalman filter option
-    if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
-    fi
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \

@@ -101,13 +101,6 @@ setup_template() {
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
-    # Modify HEMCO_Config.rc if running Kalman filter
-    if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: false|use_emission_scale_factor: true|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-               -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
-    fi
-
     # Turn other options on/off according to settings above
     if "$UseEmisSF"; then
 	OLD="use_emission_scale_factor: false"
