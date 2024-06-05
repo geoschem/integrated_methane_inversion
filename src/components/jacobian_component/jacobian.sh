@@ -78,7 +78,6 @@ setup_jacobian() {
         else
             xstr="${x}"
         fi
-        echo "creating simulation: ${xstr}"
         create_simulation_dir
 
         # Increment
@@ -215,7 +214,6 @@ create_simulation_dir() {
         # own dedicated simulation, so end_element is the same as start_element
         end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
     fi
-    echo "start elem: ${start_element}. end elem: ${end_element}"
 
     # Perturb OH if this is the OH perturbations simulation
     if [ $start_element -gt $ohThreshold ]; then
