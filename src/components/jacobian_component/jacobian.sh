@@ -30,15 +30,13 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    if [ $NumJacobianRuns -gt 0 ]; then
-        nRuns=$((NumJacobianRuns - 1))
+    if [ $NumJacobianTracers -gt 1 ]; then
+        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH)
 
         # Determine approx. number of CH4 tracers per Jacobian run
-        nTracers=$((nElements / NumJacobianRuns))
-        printf "\nCombining Jacbian runs: Generating $NumJacobianRuns run directories with approx. $nTracers CH4 tracers (representing state vector elements) per run\n"
+        printf "\nCombining Jacobian runs: Generating $NumJacobianRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
     else
         nRuns=$nElements
-        nTracers=1
     fi
 
     # Copy run scripts
@@ -217,10 +215,10 @@ create_simulation_dir() {
         if [ $x -eq $nRuns ]; then
             end_element=$nElements
         else
-            # calculate tracer end based on bc and oh thresholds
+            # calculate tracer end based on the number of tracers and bc/oh thresholds
             # Note: the prior simulation, BC simulations, and OH simulation get their 
             # own dedicated simulation, so end_element is the same as start_element
-            end_element=$(calculate_tracer_end $start_element $nTracers $bcThreshold $ohThreshold)
+            end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
         fi
     fi
     echo "start elem: ${start_element}. end elem: ${end_element}"
@@ -481,20 +479,49 @@ generate_BC_perturb_values() {
 #   it is an OH or BC perturbation run
 #   Returns int
 # Usage:
-#   calculate_tracer_end <start-element> <number-tracers> <bcThreshold> <ohThreshold>
+#   calculate_tracer_end <start-element> <n-elements> <number-tracers> <bcThreshold> <ohThreshold>
 calculate_tracer_end() {
     python -c "
 import sys
 start_elem = int(sys.argv[1])
-nTracers = int(sys.argv[2])
-bcThreshold = int(sys.argv[3])
-ohThreshold = int(sys.argv[4])
+n_elems = int(sys.argv[2])
+nTracers = int(sys.argv[3])
+bcThreshold = int(sys.argv[4])
+ohThreshold = int(sys.argv[5])
 end_elem = start_elem + nTracers
+# Ensure end element is within bounds
+if end_elem > n_elems:
+    end_elem = n_elems
+# If this is a BC or OH perturbation run, only perturb the current element
 if start_elem > bcThreshold or start_elem > ohThreshold:
     end_elem = start_elem
 else:
     while end_elem > bcThreshold or end_elem > ohThreshold:
         end_elem -= 1
 print(end_elem)
+" $1 $2 $3 $4
+}
+
+# Description: Print number of jacobian runs for multitracer perturbation runs
+#   based on the number of targeted tracers per simulation, number of state 
+#   vector elements, and whether OH and BC are optimized. Returns an int.
+# Usage:
+#   calculate_num_jacobian_runs <num-tracers> <number-elements> <bc-optimized> <oh-optimized>
+calculate_num_jacobian_runs() {
+    python -c "
+import sys
+import math
+nTracers = int(sys.argv[1])
+nElements = int(sys.argv[2])
+bcOptimized = sys.argv[3].lower() == 'true'
+ohOptimized = sys.argv[4].lower() == 'true'
+numStandaloneRuns = 1
+if bcOptimized:
+    numStandaloneRuns += 4
+if ohOptimized:
+    numStandaloneRuns += 1
+nRuns = math.ceil((nElements - numStandaloneRuns) / nTracers)
+nRuns += numStandaloneRuns
+print(nRuns)
 " $1 $2 $3 $4
 }
