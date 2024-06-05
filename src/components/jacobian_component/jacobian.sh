@@ -279,7 +279,7 @@ create_simulation_dir() {
 
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
-    if [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+    if [ $i -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
         for i in $(seq $start_element $end_element); do
             add_new_tracer
         done
