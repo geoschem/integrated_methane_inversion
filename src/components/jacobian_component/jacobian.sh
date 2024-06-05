@@ -148,9 +148,10 @@ create_simulation_dir() {
 
     # Perturb OH if this is the OH perturbations simulation
     OH_elem=false
+    ohThreshold=$nElements
     if "$OptimizeOH"; then
-        OHthreshold=$(($nElements - 1))
-        if [ $x -gt $OHthreshold ]; then
+        ohThreshold=$(($nElements - 1))
+        if [ $x -gt $ohThreshold ]; then
             OH_elem=true
             # if true set OH perturbation value
             sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
@@ -225,6 +226,7 @@ create_simulation_dir() {
 
     # BC optimization setup
     BC_elem=false
+    bcThreshold=$nElements
     if "$OptimizeBCs"; then
         if "$OptimizeOH"; then
             bcThreshold=$(($nElements - 5))
@@ -248,23 +250,18 @@ create_simulation_dir() {
     sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
     
     # Determine start and end element numbers for this run directory
-    if [ $NumJacobianRuns -lt 0 ]; then
-	start_element=$x
-	end_element=$x
+    if [[ $NumJacobianRuns -lt 0 ]] || [[ $x -eq 0 ]]; then
+	    start_element=$x
+	    end_element=$x
     else
-	if [ $x -eq 0 ]; then
-	    start_element=0
-	else
 	    start_element=$(( end_element + 1 ))
-	fi
-	if [ $start_element -eq 0 ]; then
-        # prior simulation is run by itself
-	    end_element=0
-	elif [ $x -eq $nRuns ]; then
-	    end_element=$nElements
-	else
-	    end_element=$(( start_element + nTracers ))
-	fi
+	    if [ $x -eq $nRuns ]; then
+	        end_element=$nElements
+	    else
+	        end_element=$(( start_element + nTracers ))
+            # calculate tracer end based on bc and oh thresholds
+	        end_element=$(calculate_tracer_end $start_element $nTracers $bcThreshold $ohThreshold)
+	    fi
     fi
 
     # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
@@ -473,5 +470,23 @@ generate_BC_perturb_values() {
     pert_index = element % bcThreshold;\
     bc_perturb[pert_index] = float(sys.argv[3]);\
     print(bc_perturb)" $1 $2 $3
+}
+
+# Description: Print end element for multitracer perturbation runs
+#   based on the current starting element, number of tracers, and whether
+#   it is an OH or BC perturbation run
+#   Returns int
+# Usage:
+#   calculate_tracer_end <start-element> <number-tracers> <bcThreshold> <ohThreshold>
+calculate_tracer_end() {
+    python -c "import sys;\
+    start_elem = int(sys.argv[1]);\
+    nTracers = int(sys.argv[2]);\
+    bcThreshold = int(sys.argv[3]);\
+    ohThreshold = int(sys.argv[4]);\
+    end_elem = start_elem + nTracers;\
+    while end_elem > bcThreshold or end_elem > ohThreshold:
+        end_elem -= 1;\
+    print(end_elem)" $1 $2 $3 $4
 }
 
