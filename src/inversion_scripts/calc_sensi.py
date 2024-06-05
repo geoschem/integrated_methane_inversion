@@ -1,4 +1,5 @@
 import os
+import glob
 import math
 import datetime
 import numpy as np
@@ -53,18 +54,6 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities, opt_OH):
     assert (
         abs(check - 1e-9) < 1e-11
     ), f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
-
-def find_element_rundir(element, ntracers, nElements, nRuns, is_BC_element, is_OH_element, opt_OH):
-    if is_OH_element:
-        run_number = nRuns + 1
-    elif is_BC_element:
-        num_back = nElements % element
-        if opt_OH:
-            num_back += 1
-        run_number = nRuns - num_back
-    else:
-        run_number = math.ceil(element / ntracers)    
-    return run_number
 
 def calc_sensi(
     nelements,
@@ -136,14 +125,10 @@ def calc_sensi(
         days.append(dt_str)
         delta = datetime.timedelta(days=1)
         dt += delta
-    # count number of directories in run_dirs_pth
-    nruns = len(
-        [
-            f
-            for f in os.listdir(run_dirs_pth)
-            if os.path.isdir(os.path.join(run_dirs_pth, f))
-        ]
-    )
+    # count number of perturbation simulations in run_dirs_pth
+    # we subtract 1 because of the prior simulation
+    pattern = os.path.join(run_dirs_pth, '*_[0-9][0-9][0-9][0-9]')
+    nruns = len([d for d in glob.glob(pattern) if os.path.isdir(d)]) - 1
 
     # Loop over model data to get sensitivities
     hours = range(24)
@@ -175,16 +160,18 @@ def calc_sensi(
             # For each state vector element
             for e in elements:
                 # State vector elements are numbered 1..nelements
-                elem = zero_pad_num(e + 1)
+                sv_elem = e + 1
+                elem = zero_pad_num(sv_elem)
 
                 # booleans for whether this element is a BC element or OH element
-                is_OH_element = opt_OH and (e >= nelements - 1)
+                is_OH_element = opt_OH and (sv_elem == nelements)
+                
                 is_BC_element = (
                     not is_OH_element
                     and opt_BC
                     and (
-                        (opt_OH and (e >= (nelements - 5)))
-                        or ((not opt_OH) and (e >= (nelements - 4)))
+                        (opt_OH and (sv_elem > (nelements - 5)))
+                        or ((not opt_OH) and (sv_elem > (nelements - 4)))
                     )
                 )
 
@@ -192,10 +179,10 @@ def calc_sensi(
                 if is_OH_element:
                     run_number = nruns
                 elif is_BC_element:
-                    num_back = nelements % e
+                    num_back = nelements % sv_elem
                     run_number = nruns - num_back
                 else:
-                    run_number = math.ceil(e / ntracers)
+                    run_number = math.ceil(sv_elem / ntracers)
                 
                 run_num = zero_pad_num(run_number)
 
