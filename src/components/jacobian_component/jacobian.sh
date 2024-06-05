@@ -15,7 +15,8 @@ setup_jacobian() {
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml"
         exit 9999
     fi
-
+    set -e
+    set -x
     printf "\n=== CREATING JACOBIAN RUN DIRECTORIES ===\n"
 
     cd ${RunDirs}
@@ -64,16 +65,6 @@ setup_jacobian() {
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
-    # Link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        RestartFile=$RestartFileFromSpinup
-    else
-        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-        fi
-    fi
 
     # Create jacobian run directories
     while [ $x -le $nRuns ]; do
@@ -126,6 +117,15 @@ create_simulation_dir() {
     ln -s ../../GEOSChem_build/gcclassic .
 
     # link to restart file
+    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
+        RestartFile=$RestartFileFromSpinup
+    else
+        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+        if "$UseBCsForRestart"; then
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+        fi
+    fi
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 
     # Modify HEMCO_Config.rc to turn off individual emission inventories
@@ -223,6 +223,7 @@ create_simulation_dir() {
             end_element=$(calculate_tracer_end $start_element $nTracers $bcThreshold $ohThreshold)
         fi
     fi
+    echo "start elem: ${start_element}. end elem: ${end_element}"
 
     # Perturb OH if this is the OH perturbations simulation
     if [ $start_element -gt $ohThreshold ]; then
@@ -482,16 +483,18 @@ generate_BC_perturb_values() {
 # Usage:
 #   calculate_tracer_end <start-element> <number-tracers> <bcThreshold> <ohThreshold>
 calculate_tracer_end() {
-    python -c "import sys;\
-    start_elem = int(sys.argv[1]);\
-    nTracers = int(sys.argv[2]);\
-    bcThreshold = int(sys.argv[3]);\
-    ohThreshold = int(sys.argv[4]);\
-    end_elem = start_elem + nTracers;\
-    if start_elem > bcThreshold or start_elem > ohThreshold:\
-        end_elem = start_elem;\
-    else:\
-        while end_elem > bcThreshold or end_elem > ohThreshold:\
-            end_elem -= 1;\
-    print(end_elem)" $1 $2 $3 $4
+    python -c "
+import sys
+start_elem = int(sys.argv[1])
+nTracers = int(sys.argv[2])
+bcThreshold = int(sys.argv[3])
+ohThreshold = int(sys.argv[4])
+end_elem = start_elem + nTracers
+if start_elem > bcThreshold or start_elem > ohThreshold:
+    end_elem = start_elem
+else:
+    while end_elem > bcThreshold or end_elem > ohThreshold:
+        end_elem -= 1
+print(end_elem)
+" $1 $2 $3 $4
 }
