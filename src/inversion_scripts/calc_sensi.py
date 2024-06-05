@@ -1,7 +1,8 @@
+import os
+import math
+import datetime
 import numpy as np
 import xarray as xr
-import datetime
-import math
 from joblib import Parallel, delayed
 from src.inversion_scripts.utils import zero_pad_num_hour
 
@@ -53,10 +54,21 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities, opt_OH):
         abs(check - 1e-9) < 1e-11
     ), f"GC CH4 perturb not working... perturbation is off by {abs(check - 1e-9)} mol/mol/ppb"
 
+def find_element_rundir(element, ntracers, nElements, nRuns, is_BC_element, is_OH_element, opt_OH):
+    if is_OH_element:
+        run_number = nRuns + 1
+    elif is_BC_element:
+        num_back = nElements % element
+        if opt_OH:
+            num_back += 1
+        run_number = nRuns - num_back
+    else:
+        run_number = math.ceil(element / ntracers)    
+    return run_number
 
 def calc_sensi(
     nelements,
-    nruns,
+    ntracers,
     perturbation,
     startday,
     endday,
@@ -72,7 +84,7 @@ def calc_sensi(
 
     Arguments
         nelements      [int]   : Number of state vector elements
-        nruns          [int]   : Number of Jacobian run directories
+        ntracers       [int]   : Number of Jacobian tracers in simulations
         perturbation   [str]   : Path to perturbation array file
         startday       [str]   : First day of inversion period; formatted YYYYMMDD
         endday         [str]   : Last day of inversion period; formatted YYYYMMDD
@@ -124,12 +136,14 @@ def calc_sensi(
         days.append(dt_str)
         delta = datetime.timedelta(days=1)
         dt += delta
-
-    # Number of tracers per jacobian run
-    if nruns > 0:
-        ntracers = nelements / nruns
-    else:
-        ntracers = nelements
+    # count number of directories in run_dirs_pth
+    nruns = len(
+        [
+            f
+            for f in os.listdir(run_dirs_pth)
+            if os.path.isdir(os.path.join(run_dirs_pth, f))
+        ]
+    )
 
     # Loop over model data to get sensitivities
     hours = range(24)
@@ -175,12 +189,14 @@ def calc_sensi(
                 )
 
                 # Determine which run directory to look in
-                if nruns > 0:
-                    run_number = math.trunc((e + 1) / ntracers)
-                    if run_number >= nruns:
-                        run_number = nruns - 1
+                if is_OH_element:
+                    run_number = nruns
+                elif is_BC_element:
+                    num_back = nelements % e
+                    run_number = nruns - num_back
                 else:
-                    run_number = e + 1
+                    run_number = math.ceil(e / ntracers)
+                
                 run_num = zero_pad_num(run_number)
 
                 # Load the SpeciesConc file for the current element and day
@@ -224,8 +240,8 @@ def calc_sensi(
                 coords=(
                     np.arange(1, nelements + 1),
                     np.arange(1, nlev + 1),
-                    base.lat,
-                    base.lon,
+                    prior.lat,
+                    prior.lon,
                 ),
                 dims=["element", "lev", "lat", "lon"],
                 name="Sensitivities",
@@ -244,7 +260,7 @@ if __name__ == "__main__":
     import sys
 
     nelements = int(sys.argv[1])
-    nruns = int(sys.argv[2])
+    ntracers = int(sys.argv[2])
     perturbation = sys.argv[3]
     startday = sys.argv[4]
     endday = sys.argv[5]
@@ -257,7 +273,7 @@ if __name__ == "__main__":
     perturbation = np.load(perturbation)
     calc_sensi(
         nelements,
-        nruns,
+        ntracers,
         perturbation,
         startday,
         endday,

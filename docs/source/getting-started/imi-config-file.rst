@@ -256,11 +256,11 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
-   * - ``NumJacobianRuns``
-     - The number of Jacobian runs to perform. The default value is -1
-       which will create and submit a jacobian run for each state
-       vector element. Specifying a value greater than or equal to 1
-       will combine state vector elements into fewer runs.
+   * - ``NumJacobianTracers``
+     - The number of tracers to use for each jacobian simulation. A value of 1
+       will create and submit a jacobian run for each state vector element. 
+       Specifying a value greater than 1 will combine state vector elements 
+       into fewer runs. The default values is 5 tracers per simulation.
        
 Advanced settings: GEOS-Chem options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

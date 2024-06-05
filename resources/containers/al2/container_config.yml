@@ -128,6 +128,12 @@ SchedulerPartition: "debug"
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
 
+## Number of Jacobians tracers to use for each jacobian simulation
+##   Specifying a value = 1 will submit a separate jacobian simulation for each
+##   state vector element. Specifying a value > 1 will combine state vector 
+##   elements into a single jacobian simulation.
+NumJacobianTracers: 5
+
 ##====================================================================
 ##
 ## Advanced Settings (optional)

@@ -44,7 +44,7 @@ LonMaxInvDomain={LON_MAX}
 LatMinInvDomain={LAT_MIN}
 LatMaxInvDomain={LAT_MAX}
 nElements={STATE_VECTOR_ELEMENTS}
-nRuns={NUM_JACOBIAN_RUNS}
+nTracers={NUM_JACOBIAN_TRACERS}
 OutputPath={OUTPUT_PATH}
 Res={RES}
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
@@ -133,7 +133,7 @@ if ! "$PrecomputedJacobian"; then
 	pertOH=0.0
     fi
     PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/flat_pert_sf_${period_i}.npy
-    python_args=(calc_sensi.py $nElements $nRuns $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
+    python_args=(calc_sensi.py $nElements $nTracers $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
     printf "Calling calc_sensi.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- calc_sensi.py\n\n"
