@@ -90,7 +90,7 @@ run_spinup() {
     -c $RequestedCPUs \
     -t $RequestedTime \
     -p $SchedulerPartition \
-    -W ${SpinupName}.run; wait;
+    -W ${RunName}_Spinup.run; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
