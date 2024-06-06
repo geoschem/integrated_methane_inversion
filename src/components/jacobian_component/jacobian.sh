@@ -375,6 +375,7 @@ run_jacobian() {
             jacobian_period=1
         fi
 
+        set -e
         # update perturbation values before running jacobian simulations
         printf "\n=== UPDATING PERTURBATION SFs ===\n"
         python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
@@ -384,6 +385,7 @@ run_jacobian() {
         # create 1ppb restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
         python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
+        set +e
 
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
         # Submit job to job scheduler
