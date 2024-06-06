@@ -109,6 +109,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
+##   NOTE: DoPriorEmis must be true to run DoPriorEmis
 DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false

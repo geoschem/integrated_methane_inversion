@@ -99,6 +99,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
@@ -107,7 +108,8 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
+##   NOTE: DoPriorEmis must be true to run DoPriorEmis
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: true
