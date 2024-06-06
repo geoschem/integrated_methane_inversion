@@ -156,7 +156,7 @@ NumJacobianTracers: 5
 ## perturbation will be 10e-8 kg/m2/s 
 ## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
 PerturbValue: 10.0
-PerturbValueOH: 1.5
+PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
