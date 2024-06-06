@@ -87,7 +87,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
                 original_emis_ds["EmisCH4_Total_ExclSoilAbs"].attrs = original_emis_ds[
                     "EmisCH4_Total"
                 ].attrs
-                emis.to_netcdf(hemco_emis_path)
+                original_emis_ds.to_netcdf(hemco_emis_path)
 
             original_emis = original_emis_ds["EmisCH4_Total_ExclSoilAbs"].isel(
                 time=0, drop=True

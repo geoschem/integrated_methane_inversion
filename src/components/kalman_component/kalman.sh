@@ -3,6 +3,8 @@
 # Functions available in this file include:
 #   - setup_kf
 #   - run_kf
+#   - run_period
+#   - get_oh_rundir_suffix
 
 # Description: Setup Kalman filter prereqiuisites
 # Usage:
@@ -149,10 +151,17 @@ run_period() {
         else
             xstr="${x}"
         fi
-        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${xstr}/Restarts/.
+        
     done
 
-    # Also link to posterior restart file in background directory if using lognormal errors
+    # Make link to restart file from posterior run directory in prior simulation 
+    # and conditionally OH perturbation and background run directories
+    ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_{}/Restarts/.
+    ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_0000/Restarts/.
+    if $"OptimizeOH"; then
+        oh_dir_suffix=$(get_oh_rundir_suffix $JacobianRunsDir)
+        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${oh_dir_suffix}/Restarts/.
+    fi
     if "$LognormalErrors"; then
         ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
     fi
@@ -167,4 +176,15 @@ run_period() {
     # Move to next time step
     print_stats
     echo -e "Moving to next iteration\n"
+}
+
+# Description: Get the run directory number for the OH perturbation
+#     The OH perturbation dir is always the last run directory
+# Usage: get_oh_rundir <run_dirs_path>
+get_oh_rundir_suffix() {
+    python -c "import sys; import os; import glob; \
+    run_dirs_pth = sys.argv[1]; \
+    pattern = os.path.join(run_dirs_pth, '*_[0-9][0-9][0-9][0-9]'); \
+    nruns = len([d for d in glob.glob(pattern) if os.path.isdir(d)]) - 1; \
+    print(int(nruns))" $1
 }
