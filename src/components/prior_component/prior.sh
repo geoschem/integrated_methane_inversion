@@ -58,9 +58,6 @@ run_prior() {
     cd ${RunPrior}
 
     # Modify HEMCO files based on settings in config.yml
-    sed -i -e "s:2019-07-01:${StartDate:0:4}-${StartDate:4:2}-${StartDate:6:2}:g" \
-           -e "s:2019-08-01 00:${StartDate:0:4}-${StartDate:4:2}-${EndDate:6:2} 01:g" HEMCO_sa_Time.rc
-
     sed -i -e "s:_NA::g" -e "s:.NA.:.:g" HEMCO_Config.rc.gmao_metfields
 
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
@@ -105,7 +102,28 @@ run_prior() {
     fi
     printf "\nDone compiling HEMCO \n\nSee ${RunDirs}/HEMCO_build_info for details\n\n"
 
-    printf "\nSubmitting prior emissions simulation\n\n"
+    printf "\nSubmitting prior emissions hemco simulation\n\n"
+    
+    # TODO switch to use enddate- this just computes the first hour of emissions
+    run_hemco_sa $StartDate $StartDate
+    
+    printf "\nDone prior emissions hemco simulation\n\n"
+    
+    printf "\n=== DONE GENERATING PRIOR EMISSIONS ===\n"
+    prior_end=$(date +%s)
+}
+
+# Description: Run HEMCO standalone simulation
+#     to generate prior emissions for given dates
+# Usage: run_hemco_sa <hemco_start> <hemco_end>
+run_hemco_sa() {
+    hemco_start=$1
+    hemco_end=$2
+    pushd ${RunPrior}
+
+    # replace start and end times in HEMCO_sa_Time.rc
+    sed -i -e "s|START.*|${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
+           -e "s|END.*|${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 01:00:00|g" HEMCO_sa_Time.rc
 
     # Submit job to job scheduler
     sbatch --mem $RequestedMemory \
@@ -117,15 +135,11 @@ run_prior() {
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
-    # Remove soil absorption uptake from total emissions
+        # Remove soil absorption uptake from total emissions
     pushd OutputDir
-    mv HEMCO_sa_diagnostics.${StartDate}0000.nc HEMCO_sa_diagnostics.${StartDate}0000.orig.nc
-    exclude_soil_sink HEMCO_sa_diagnostics.${StartDate}0000.orig.nc HEMCO_sa_diagnostics.${StartDate}0000.nc
+    exclude_soil_sink HEMCO_sa_diagnostics.${hemco_start}0000.nc HEMCO_sa_diagnostics.${hemco_start}0000.nc
     popd
-    printf "\nDone prior emissions simulation\n\n"
-    
-    printf "\n=== DONE GENERATING PRIOR EMISSIONS ===\n"
-    prior_end=$(date +%s)
+    popd
 }
 
 # Description: Create new netCDF file with EmisCH4_Total_ExclSoilAbs

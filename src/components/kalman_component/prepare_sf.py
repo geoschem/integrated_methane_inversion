@@ -61,10 +61,6 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     # the initial scale factors for the current period.
     period_number = int(period_number)
     if period_number > 1:
-        # List all available HEMCO diagnostic files from the prior simulation
-        hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
-        hemco_list.sort()
-
         # For each period up to (but not including) the current one
         for p in range(period_number - 1):
             # Add one since we're counting from period 1, not 0
@@ -73,7 +69,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Get the original HEMCO emissions for period p
             # Note: we remove soil absorption from the prior for our nudging operations
             # since it is not optimized in the inversion.
-            hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
+            hemco_emis_path = os.path.join(original_prior_cache, diags_files[p - 1])  # p-1 index
             original_emis_ds = xr.load_dataset(hemco_emis_path)
 
             # check if data variable ExcludeSoilAbsorb is not in the dataset
