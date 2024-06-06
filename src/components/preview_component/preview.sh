@@ -14,6 +14,13 @@ run_preview() {
         exit 9999
     fi
 
+    # First run the Preview if necessary to get prior emissions
+    # needed for prepare_sf.py
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
+        run_prior
+    fi
+
     printf "\n=== CREATING IMI PREVIEW RUN DIRECTORY ===\n"
 
     cd ${RunDirs}
@@ -76,18 +83,6 @@ run_preview() {
     ##===============##
 
     printf "\n=== RUNNING IMI PREVIEW ===\n"
-
-    # Submit preview GEOS-Chem job to job scheduler
-    printf "\nRunning preview GEOS-Chem simulation... "
-    if "$UseSlurm"; then
-        sbatch --mem $RequestedMemory \
-               -c $RequestedCPUs \
-               -t $RequestedTime \
-               -p $SchedulerPartition \
-               -W ${RunName}_Preview.run; wait;
-    else
-        ./${RunName}_Preview.run
-    fi
 
     # Specify inputs for preview script
     config_path=${InversionPath}/${ConfigFile}

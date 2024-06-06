@@ -420,11 +420,11 @@ def estimate_averaging_kernel(
     # ----------------------------------
 
     # Prior emissions
-    preview_cache = os.path.join(preview_dir, "OutputDir")
+    prior_cache = os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
     hemco_diags_file = [
-        f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f
+        f for f in os.listdir(prior_cache) if "HEMCO_sa_diagnostics" in f
     ][0]
-    prior_pth = os.path.join(preview_cache, hemco_diags_file)
+    prior_pth = os.path.join(prior_cache, hemco_diags_file)
     prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
 
     # Start and end dates of the inversion

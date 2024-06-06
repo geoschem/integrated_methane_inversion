@@ -173,8 +173,6 @@ setup_imi() {
     ##=======================================================================
     ## Generate Prior Emissions
     ##=======================================================================
-    priorDir="prior_run"
-    RunPrior="${RunDirs}/${priorDir}"
     if "$DoPriorEmis"; then
        run_prior
     fi

@@ -10,7 +10,7 @@
 #   run_prior
 run_prior() {
     prior_start=$(date +%s)
-    if [[ -d ${RunPrior} ]]; then
+    if [[ -d ${RunDirs}/prior_run ]]; then
 	printf "\nERROR: ${PriorDir} already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
 	exit 9999
     fi
@@ -45,14 +45,15 @@ run_prior() {
     fi
     HEMCOconfig=${RunTemplate}/HEMCO_Config.rc
     
+    priorDir="prior_run"
     cmd="${metNum}\n${resnum}\n${HEMCOconfig}\n${RunDirs}\n${priorDir}\nn\n"
 
     # Create HEMCO standalone directory
     printf ${cmd} | ./createRunDir.sh >> createHemcoDir.log 2>&1
     rm -f createHemcoDir.log
-    printf "\nCreated ${RunPrior}\n" 
+    printf "\nCreated ${RunDirs}/prior_run\n" 
 
-    cd ${RunPrior}
+    cd ${RunDirs}/prior_run
 
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "s:_NA::g" -e "s:.NA.:.:g" HEMCO_Config.rc.gmao_metfields
@@ -102,7 +103,14 @@ run_prior() {
     printf "\nSubmitting prior emissions hemco simulation\n\n"
     
     # TODO switch to use enddate- this just computes the first hour of emissions
-    run_hemco_sa $StartDate $StartDate
+    if "$KalmanMode"; then
+        kalman_end=$(date -d "${StartDate} +${UpdateFreqDays} days" +"%Y%m%d")
+        # run_hemco_sa $StartDate $kalman_end
+        run_hemco_sa $StartDate $StartDate
+    else
+        # run_hemco_sa $StartDate $EndDate
+        run_hemco_sa $StartDate $StartDate
+    fi
     
     printf "\nDone prior emissions hemco simulation\n\n"
     
@@ -118,7 +126,7 @@ run_hemco_sa() {
     hemco_end=$2
     set -e
 
-    pushd ${RunPrior}
+    pushd ${RunDirs}/prior_run
     # replace start and end times in HEMCO_sa_Time.rc
     sed -i -e "s|START.*|START: ${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
            -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 01:00:00|g" HEMCO_sa_Time.rc
