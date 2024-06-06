@@ -201,6 +201,7 @@ create_simulation_dir() {
     # read in for jacobian runs
     sed -i -e "s:EmisCH4:#EmisCH4:g" HEMCO_Diagn.rc
     sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
+    sed -i -e "s:#EmisCH4_SoilAbsorb:EmisCH4_SoilAbsorb:g" HEMCO_Diagn.rc
 
     # Determine start and end element numbers for this run directory
     if [[ $x -eq 0 ]]; then
