@@ -100,7 +100,7 @@ run_period() {
     echo "Start, End: $StartDate_i, $EndDate_i"
 
     # check if precomputed prior emissions for this period exists already
-    if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}_0000.nc ]]; then
+    if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
         printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
         # TODO: switch to use enddate- this just computes the first hour of emissions
         run_hemco_sa $StartDate_i $StartDate_i
@@ -146,24 +146,8 @@ run_period() {
     cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
 
-    # Make link to restart file from posterior run directory in each Jacobian run directory
-    for ((x=0;x<=nElements;x++)); do
-        # Add zeros to string name
-        if [ $x -lt 10 ]; then
-            xstr="000${x}"
-        elif [ $x -lt 100 ]; then
-            xstr="00${x}"
-        elif [ $x -lt 1000 ]; then
-            xstr="0${x}"
-        else
-            xstr="${x}"
-        fi
-        
-    done
-
     # Make link to restart file from posterior run directory in prior simulation 
     # and conditionally OH perturbation and background run directories
-    ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_{}/Restarts/.
     ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_0000/Restarts/.
     if $"OptimizeOH"; then
         oh_dir_suffix=$(get_oh_rundir_suffix $JacobianRunsDir)

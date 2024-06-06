@@ -111,17 +111,10 @@ def make_perturbation_sf(config, period_number, perturb_value=10e-8):
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
 
     # find the hemco emissions file for the period
-    if period_number > 1:
-        prior_sim = [r for r in os.listdir(jacobian_dir) if "0000" in r][0]
-        prior_cache = os.path.join(jacobian_dir, f"{prior_sim}/OutputDir")
-        hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
-        hemco_list.sort()
-        hemco_emis_path = os.path.join(prior_cache, hemco_list[period_number - 1])
-    else:
-        prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
-        hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
-        hemco_list.sort()
-        hemco_emis_path = os.path.join(prior_cache, hemco_list[0])
+    prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
+    hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO_sa_diagnostics" in f]
+    hemco_list.sort()
+    hemco_emis_path = os.path.join(prior_cache, hemco_list[period_number - 1])
 
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))

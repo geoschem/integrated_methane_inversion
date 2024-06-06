@@ -19,9 +19,6 @@ run_prior() {
 
     cd ${GCClassicPath}/src/HEMCO/run
 
-    # Define the run directory name
-    PriorName="${RunName}_Prior"
-
     # Commands to feed to createRunDir.sh
     # HEMCO standalone run directories are created for the global domain by default
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
@@ -83,7 +80,7 @@ run_prior() {
             -e "s/NY.*/NY: ${sa_NY}/" \
             -e "s/YEDGE.*/YEDGE: ${sa_YEDGE}/" \
             -e "s/YMID.*/YMID: ${sa_YMID}/" HEMCO_sa_Grid.${gridFile}.rc
-    mv runHEMCO.sh ${PriorName}.run
+    mv runHEMCO.sh ${RunName}_Prior.run
 
     # Compile HEMCO and store executable in template run directory
     printf "\nCompiling HEMCO...\n"
@@ -119,18 +116,19 @@ run_prior() {
 run_hemco_sa() {
     hemco_start=$1
     hemco_end=$2
-    pushd ${RunPrior}
+    set -e
 
+    pushd ${RunPrior}
     # replace start and end times in HEMCO_sa_Time.rc
-    sed -i -e "s|START.*|${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
-           -e "s|END.*|${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 01:00:00|g" HEMCO_sa_Time.rc
+    sed -i -e "s|START.*|START: ${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
+           -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 01:00:00|g" HEMCO_sa_Time.rc
 
     # Submit job to job scheduler
     sbatch --mem $RequestedMemory \
     -c $RequestedCPUs \
     -t $RequestedTime \
     -p $SchedulerPartition \
-    -W ${PriorName}.run; wait;
+    -W ${RunName}_Prior.run; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
@@ -140,6 +138,7 @@ run_hemco_sa() {
     exclude_soil_sink HEMCO_sa_diagnostics.${hemco_start}0000.nc HEMCO_sa_diagnostics.${hemco_start}0000.nc
     popd
     popd
+    set +e
 }
 
 # Description: Create new netCDF file with EmisCH4_Total_ExclSoilAbs
