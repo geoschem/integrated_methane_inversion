@@ -147,12 +147,22 @@ run_period() {
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
 
     # Make link to restart file from posterior run directory in prior simulation 
-    # and conditionally OH perturbation and background run directories
-    ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_0000/Restarts/.
-    if $"OptimizeOH"; then
-        oh_dir_suffix=$(get_oh_rundir_suffix $JacobianRunsDir)
-        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${oh_dir_suffix}/Restarts/.
-    fi
+    rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
+    for ((idx=0;idx<=rundir_num;idx++)); do
+        # Add zeros to string name
+        if [ $idx -lt 10 ]; then
+            idxstr="000${idx}"
+        elif [ $idx -lt 100 ]; then
+            idxstr="00${idx}"
+        elif [ $idx -lt 1000 ]; then
+            idxstr="0${idx}"
+        else
+            idxstr="${idx}"
+        fi
+        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_{idxstr}/Restarts/.
+    done
+
+    # and conditionally background run directory
     if "$LognormalErrors"; then
         ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
     fi
@@ -171,8 +181,8 @@ run_period() {
 
 # Description: Get the run directory number for the OH perturbation
 #     The OH perturbation dir is always the last run directory
-# Usage: get_oh_rundir <run_dirs_path>
-get_oh_rundir_suffix() {
+# Usage: get_last_rundir_suffix <run_dirs_path>
+get_last_rundir_suffix() {
     python -c "import sys; import os; import glob; \
     run_dirs_pth = sys.argv[1]; \
     pattern = os.path.join(run_dirs_pth, '*_[0-9][0-9][0-9][0-9]'); \
