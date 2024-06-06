@@ -5,19 +5,6 @@ import numpy as np
 import yaml
 from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 
-def remove_soil_absorb_from_total(emis):
-    """
-    Remove soil absorption from total emissions and return the new total.
-    
-    Arguments
-        emis [xr.Dataset] : HEMCO emissions dataset
-    Returns
-        [xr.DataArray] : Total emission from all sources except soil absorption
-    """
-    ds = emis.copy()
-    ds["EmisCH4_Total"] = ds["EmisCH4_Total"] - ds["EmisCH4_SoilAbsorb"]
-    
-    return ds["EmisCH4_Total"].isel(time=0, drop=True)
 
 def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     """
@@ -30,7 +17,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
     Arguments
         period_number   [int]   : What period are we on? For the first period, period_number = 1
-        base_directory  [str]   : The base directory for the inversion, where e.g., "preview_sim/" resides
+        base_directory  [str]   : The base directory for the inversion, where e.g., "prior_run/" resides
         nudge_factor    [float] : Weight applied to original prior when nudging (default = 0.1)
     """
 
@@ -43,12 +30,16 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     # Define some useful paths
     unit_sf_path = os.path.join(base_directory, "unit_sf.nc")
     statevector_path = os.path.join(base_directory, "StateVector.nc")
-    preview_cache = os.path.join(base_directory, "preview_run/OutputDir")
+    original_prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
     prior_sim = [r for r in os.listdir(jacobian_dir) if "0000" in r][0]
     prior_cache = os.path.join(base_directory, f"jacobian_runs/{prior_sim}/OutputDir")
-    diags_file = [f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f][0]
-    diags_path = os.path.join(preview_cache, diags_file)
+    diags_files = [
+        f for f in os.listdir(original_prior_cache) if "HEMCO_diagnostics" in f
+    ]
+    diags_files.sort()
+    diags_file = diags_files[0]
+    diags_path = os.path.join(original_prior_cache, diags_file)
 
     # Get state vector, grid-cell areas, mask
     statevector = xr.load_dataset(statevector_path)
@@ -59,7 +50,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     )
     mask = state_vector_labels <= last_ROI_element
 
-    # Get original emissions from preview, for first inversion period
+    # Get original emissions from hemco run, for first inversion period
     original_emis_ds = xr.load_dataset(diags_path)
 
     # Initialize unit scale factors
@@ -84,7 +75,23 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # since it is not optimized in the inversion.
             hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
             original_emis_ds = xr.load_dataset(hemco_emis_path)
-            original_emis = remove_soil_absorb_from_total(original_emis_ds)
+
+            # check if data variable ExcludeSoilAbsorb is not in the dataset
+            # if not, create new Total emis variable and overwrite the original
+            # file to include this additional data variable
+            if "EmisCH4_Total_ExclSoilAbs" not in original_emis_ds.data_vars:
+                original_emis_ds["EmisCH4_Total_ExclSoilAbs"] = (
+                    original_emis_ds["EmisCH4_Total"]
+                    - original_emis_ds["EmisCH4_SoilAbsorb"]
+                )
+                original_emis_ds["EmisCH4_Total_ExclSoilAbs"].attrs = original_emis_ds[
+                    "EmisCH4_Total"
+                ].attrs
+                emis.to_netcdf(hemco_emis_path)
+
+            original_emis = original_emis_ds["EmisCH4_Total_ExclSoilAbs"].isel(
+                time=0, drop=True
+            )
 
             # Get the gridded posterior for period p
             gridded_posterior_filename = (
@@ -98,9 +105,11 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             posterior_p = xr.load_dataset(gridded_posterior_path)
 
             # Get posterior emissions multiplied up to current period p, and apply nudging
-            posterior_scale_ds["ScaleFactor"] = posterior_p["ScaleFactor"] * sf["ScaleFactor"]
+            posterior_scale_ds["ScaleFactor"] = (
+                posterior_p["ScaleFactor"] * sf["ScaleFactor"]
+            )
             current_posterior_emis = original_emis * posterior_scale_ds["ScaleFactor"]
-            
+
             nudged_posterior_emis = (
                 nudge_factor * original_emis
                 + (1 - nudge_factor) * current_posterior_emis
@@ -134,7 +143,9 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         )
 
     # Print the current total emissions in the region of interest
-    emis = get_posterior_emissions(original_emis_ds, sf)["EmisCH4_Total"].isel(time=0, drop=True)
+    emis = get_posterior_emissions(original_emis_ds, sf)["EmisCH4_Total"].isel(
+        time=0, drop=True
+    )
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
 

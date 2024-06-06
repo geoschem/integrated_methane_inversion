@@ -48,9 +48,9 @@ run_kf() {
 
         # First run the Preview if necessary to get prior emissions
         # needed for prepare_sf.py
-        if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-            printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite for Kalman Mode.\n"
-            run_preview
+        if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+            printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for Kalman Mode.\n"
+            run_prior
         fi
         # Key directories
         JacobianRunsDir="${RunDirs}/jacobian_runs"
