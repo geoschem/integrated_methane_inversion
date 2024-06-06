@@ -98,7 +98,7 @@ run_prior() {
         printf "\nHEMCO build failed! \n\nSee ${RunTemplate}/build/build_hemco.log for details\n"
         exit 999
     fi
-    printf "\nDone compiling HEMCO \n\nSee ${RunDirs}/HEMCO_build_info for details\n\n"
+    printf "\nDone compiling HEMCO \n\nSee ${RunDirs}/prior_run/HEMCO_build_info for details\n\n"
 
     printf "\nSubmitting prior emissions hemco simulation\n\n"
     
