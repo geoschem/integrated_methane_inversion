@@ -100,6 +100,11 @@ setup_template() {
     OLD=" StateVector.nc"
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
+    
+    # Modify HEMCO_Config.rc if running Kalman filter
+    if "$KalmanMode"; then
+        sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+    fi
 
     # Turn other options on/off according to settings above
     if "$UseEmisSF"; then
