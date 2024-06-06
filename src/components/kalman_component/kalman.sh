@@ -88,7 +88,7 @@ run_period() {
 
     # Create inversion directory for the period
     cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${period_i}
-
+    sed -i -e "s:{PERIOD}:${period_i}:g" ${RunDirs}/kf_inversions/period${period_i}/run_inversion.sh
 
     # Get Start/End dates of current period from periods.csv
     ithLine=$(sed "$((period_i+1))q;d" $PeriodsFile)
