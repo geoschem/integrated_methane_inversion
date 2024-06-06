@@ -35,7 +35,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     prior_sim = [r for r in os.listdir(jacobian_dir) if "0000" in r][0]
     prior_cache = os.path.join(base_directory, f"jacobian_runs/{prior_sim}/OutputDir")
     diags_files = [
-        f for f in os.listdir(original_prior_cache) if "HEMCO_diagnostics" in f
+        f for f in os.listdir(original_prior_cache) if "HEMCO_sa_diagnostics" in f
     ]
     diags_files.sort()
     diags_file = diags_files[0]
