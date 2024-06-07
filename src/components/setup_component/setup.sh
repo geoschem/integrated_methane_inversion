@@ -23,7 +23,7 @@ setup_imi() {
 
     # Use global boundary condition files for initial conditions
     UseBCsForRestart=true
-
+    
     printf "\nActivating python environment: ${PythonEnv}\n"
     if "$isAWS"; then
         # Get max process count for spinup, production, and run_inversion scripts
@@ -37,6 +37,7 @@ setup_imi() {
         if [[ $SchedulerType = "tmux" ]]; then
             cpu_count="$((cpu_count-1))"
         fi
+    fi
 
     # Source python environment
     source ${PythonEnv}
