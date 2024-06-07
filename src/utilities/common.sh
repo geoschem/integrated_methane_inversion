@@ -74,7 +74,7 @@ convert_sbatch_to_pbs() {
         echo "    ${f}"
 
         # First, insert needed sites at the top of every file
-        awk -i inplace 'NR==FNR{if (/#SBATCH/) nr=NR; next} {print; if(nr==FNR) print "\nPBS --site-needed=${SitesNeeded}}"}' ${f}
+        awk -i 'NR==FNR{if (/#SBATCH/) nr=NR; next} {print; if(nr==FNR) print "\nPBS --site-needed=${SitesNeeded}}"}' ${f} ${f}
         
         # Replace SBATCH options
         sed -i -e "s/PBS -N /PBS -N /g" \
