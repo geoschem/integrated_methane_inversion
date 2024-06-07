@@ -15,7 +15,7 @@
 # Usage:
 #   submit_job $SchedulerType $JobArguments
 submit_job() {
-    if [[ $1 = "slurm" | $1 = "tmux" ]]; then
+    if [[ $1 = "slurm" || $1 = "tmux" ]]; then
         submit_slurm_job "${@:2}"
     elif [[ $1 = "PBS" ]]; then
         submit_pbs_job "${@:2}"
@@ -64,21 +64,26 @@ convert_sbatch_to_pbs() {
     SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
     SitesNeeded="/${SitesNeeded::-1}"
 
-    # Get files containing SBATCH
-    sbatch_files=($(grep -rl "SBATCH" . --exclude-dir=GCClassic --exclude-dir=.git))
+    # Get files containing SBATCH7
+    current_dir=$(pwd)
+    sbatch_files=($(grep -rl "SBATCH" . --exclude-dir={"GCClassic",".git","*utilities*"}))
+    echo "Replacing SBATCH with PBS in the following files:"
     for file in ${sbatch_files[@]}; do
-        # First, insert needed sites at the top of every file
-        awk 'NR==FNR{if (/#SBATCH/) nr=NR; next} {print; if(nr==FNR) print "\nPBS --site-needed=${SitesNeeded}}"}' file file
+        f=${current_dir}${file:1}
+        echo "    ${f}"
 
+        # First, insert needed sites at the top of every file
+        awk -i inplace 'NR==FNR{if (/#SBATCH/) nr=NR; next} {print; if(nr==FNR) print "\nPBS --site-needed=${SitesNeeded}}"}' ${f}
+        
         # Replace SBATCH options
-        echo sed -i -e "s/SBATCH -J /PBS -N /g" \
-            -e "s/SBATCH -N /PBS -l nodes=/g" \
-            -e "s/SBATCH -c /PBS -l ncpus=/g" \
-            -e "s/SBATCH --mem /PBS -l mem=/g" \
-            -e "s/SBATCH -t /PBS -l walltime=/g" \
-            -e "s/SBATCH -n /PBS -l nodes=1:ppn=/g" \
-            -e "s/SBATCH -p /PBS -q /g" \
-            -e "s/SBATCH --mail-type=END/PBS -m e/g" ${file}
+        sed -i -e "s/PBS -N /PBS -N /g" \
+            -e "s/PBS -l nodes=/PBS -l nodes=/g" \
+            -e "s/PBS -l ncpus=/PBS -l ncpus=/g" \
+            -e "s/PBS -l mem=/PBS -l mem=/g" \
+            -e "s/PBS -l walltime=/PBS -l walltime=/g" \
+            -e "s/PBS -l nodes=1:ppn=/PBS -l nodes=1:ppn=/g" \
+            -e "s/PBS -q /PBS -q /g" \
+            -e "s/PBS -m e/PBS -m e/g" ${f}
     done
 }
 
