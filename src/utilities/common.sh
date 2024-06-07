@@ -63,6 +63,7 @@ convert_sbatch_to_pbs() {
     done
     SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
     SitesNeeded="/${SitesNeeded::-1}"
+    echo $SitesNeeded
 
     # Get files containing SBATCH7
     current_dir=$(pwd)
