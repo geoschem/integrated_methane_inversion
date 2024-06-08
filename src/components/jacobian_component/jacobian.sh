@@ -185,50 +185,52 @@ create_simulation_dir() {
         activate_observations
     fi
 
-    ### Perform dry run if requested, only for base run
-    if [[ $x -eq 0 ]]; then
-        if "$ProductionDryRun"; then
-            printf "\nExecuting dry-run for production runs...\n"
-            ./gcclassic --dryrun &>log.dryrun
-            # prevent restart file from getting downloaded since
-            # we don't want to overwrite the one we link to above
-            sed -i '/GEOSChem.Restart/d' log.dryrun
-            ./download_data.py log.dryrun aws
-        fi
-    fi
-
     # Turn off sectoral emissions diagnostics since total emissions are
     # read in for jacobian runs
     sed -i -e "s:EmisCH4:#EmisCH4:g" HEMCO_Diagn.rc
     sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
     sed -i -e "s:#EmisCH4_SoilAbsorb:EmisCH4_SoilAbsorb:g" HEMCO_Diagn.rc
 
-    # Determine start and end element numbers for this run directory
-    if [[ $x -eq 0 ]]; then
-        # if using 1 tracer per simulation. Or is the prior simulation.
-        start_element=$x
-        end_element=$x
-    else
-        start_element=$((end_element + 1))
-        # calculate tracer end based on the number of tracers and bc/oh thresholds
-        # Note: the prior simulation, BC simulations, and OH simulation get their 
-        # own dedicated simulation, so end_element is the same as start_element
-        end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
-    fi
+    if is_number "$start_element"; then
+        ### Perform dry run if requested, only for base run
+        if [[ $x -eq 0 ]]; then
+            if "$ProductionDryRun"; then
+                printf "\nExecuting dry-run for production runs...\n"
+                ./gcclassic --dryrun &>log.dryrun
+                # prevent restart file from getting downloaded since
+                # we don't want to overwrite the one we link to above
+                sed -i '/GEOSChem.Restart/d' log.dryrun
+                ./download_data.py log.dryrun aws
+            fi
+        fi
 
-    # Perturb OH if this is the OH perturbations simulation
-    if [ $start_element -gt $ohThreshold ]; then
-        OH_elem=true
-        sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
-    fi
+        # Determine start and end element numbers for this run directory
+        if [[ $x -eq 0 ]]; then
+            # if using 1 tracer per simulation. Or is the prior simulation.
+            start_element=$x
+            end_element=$x
+        else
+            start_element=$((end_element + 1))
+            # calculate tracer end based on the number of tracers and bc/oh thresholds
+            # Note: the prior simulation, BC simulations, and OH simulation get their
+            # own dedicated simulation, so end_element is the same as start_element
+            end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
+        fi
 
-    # If the current state vector element is one of the BC state vector elements, then
-    # turn on BC optimization for the corresponding edge
-    if [[ $start_element -gt $bcThreshold ]] && [[ "$OH_elem" = false ]]; then
-        BC_elem=true
-        PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $start_element $PerturbValueBCs)
-        sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
-            -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+        # Perturb OH if this is the OH perturbations simulation
+        if [ $start_element -gt $ohThreshold ]; then
+            OH_elem=true
+            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+        fi
+
+        # If the current state vector element is one of the BC state vector elements, then
+        # turn on BC optimization for the corresponding edge
+        if [[ $start_element -gt $bcThreshold ]] && [[ "$OH_elem" = false ]]; then
+            BC_elem=true
+            PerturbBCValues=$(generate_BC_perturb_values $bcThreshold $start_element $PerturbValueBCs)
+            sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
+                -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
+        fi
     fi
 
     # the prior, OH perturbation, and background simulations need to have soil absorption
@@ -272,10 +274,12 @@ create_simulation_dir() {
 
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
-    if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
-        for i in $(seq $start_element $end_element); do
-            add_new_tracer
-        done
+    if is_number "$start_element"; then
+        if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+            for i in $(seq $start_element $end_element); do
+                add_new_tracer
+            done
+        fi
     fi
 
     # Navigate back to top-level directory
@@ -497,7 +501,7 @@ print(end_elem)
 }
 
 # Description: Print number of jacobian runs for multitracer perturbation runs
-#   based on the number of targeted tracers per simulation, number of state 
+#   based on the number of targeted tracers per simulation, number of state
 #   vector elements, and whether OH and BC are optimized. Returns an int.
 # Usage:
 #   calculate_num_jacobian_runs <num-tracers> <number-elements> <bc-optimized> <oh-optimized>
@@ -518,4 +522,9 @@ nRuns = math.ceil((nElements - numStandaloneRuns) / nTracers)
 nRuns += numStandaloneRuns
 print(nRuns)
 " $1 $2 $3 $4
+}
+
+is_number() {
+    local s="$1"
+    [[ $s =~ ^[0-9]+$ ]]
 }
