@@ -13,7 +13,7 @@
       - if your simulation starts on 1 April 2018, this won't be used (`GEOSChem.Restart.20180401_0000z.nc4` will).
          - this file comes from a CH4 simulation by Todd Mooring that is constrained by NOAA surface observations.
       - if your simulation starts on another date, it should use a restart file from the simulation that started on 1 April 2018.
-      - this is accommodated by the fact that the simulation is setup to write daily restart files.
+      - this is accommodated by the fact that the simulation run here is setup to write daily restart files.
       - to determine what day your restart file should be for, subtract 30 days from `startDate`.
          - for example, if `startDate: 20230601`, your restart file should be `GEOSChem.Restart.20230502_0000z.nc4`.
          - this allows for a 15 day previous average (using 18 May 2023 to 1 June 2023) and the 1 day at the start where no first hour will be written by GEOS-Chem.

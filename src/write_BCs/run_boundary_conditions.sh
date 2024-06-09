@@ -7,8 +7,11 @@
 cwd="$(pwd)"
 
 # Read in the config file and source the environment file
-source ../utilities/parse_yaml.sh
-eval $(parse_yaml config_boundary_conditions.yml)
+condaEnv=$(grep -Po 'condaEnv:\s*\K.*' config_boundary_conditions.yml)
+condaFile=$(grep -Po 'condaFile:\s*\K.*' config_boundary_conditions.yml)
+source $(eval echo "$condaFile")
+conda activate $condaEnv
+eval $(python ../../src/utilities/parse_yaml.py config_boundary_conditions.yml)
 source ${geosChemEnv}
 echo "Environment file  --> ${geosChemEnv}" >> "${cwd}/boundary_conditions.log"
 
@@ -27,10 +30,10 @@ mkdir -p "${workDir}/tropomi-boundary-conditions"
 mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
 
-# Get GCClassic v14.4.0 (dev) and create the run directory
+# Get GCClassic v14.4.0 and create the run directory
 git clone https://github.com/geoschem/GCClassic.git
 cd GCClassic
-git checkout 19a6ac4
+git checkout 14.4.0
 git submodule update --init --recursive
 cd run
 runDir="gc_run"

@@ -11,6 +11,7 @@ blendedDir: "/n/holylfs05/LABS/jacob_lab/Everyone/imi/ch4/blended"
 
 ## Conda environment to use, GEOS-Chem environment to use, GEOS-Chem input data path, and partitions to run on
 condaEnv: imi_env
+condaFile: "~/.bashrc"
 geosChemEnv: "../../envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 geosChemDataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 partition: huce_cascade,seas_compute,huce_ice
@@ -20,3 +21,5 @@ restartFilePath: "/path/to/restart/file"
 
 # Debug or not?
 debug: true
+
+
