@@ -37,7 +37,7 @@ git checkout 14.4.0
 git submodule update --init --recursive
 cd run
 runDir="gc_run"
-c="3\n2\n2\n2\n${workDir}\n${runDir}\nn\n" # CH4, GEOS-FP, 2.0 x 2.5, 47L
+c="9\n2\n2\n2\n${workDir}\n${runDir}\nn\n" # CH4, GEOS-FP, 2.0 x 2.5, 47L
 printf ${c} | ./createRunDir.sh
 cd "${workDir}/${runDir}/build"
 cmake ../CodeDir -DRUNDIR=..
