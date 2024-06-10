@@ -189,7 +189,7 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
     elif config["Res"] == "4.0x5.0":
         max_aggregation_level = 8
 
-    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else default_max_aggregation_level
+    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else max_aggregation_level
     
     background_elements_needed = np.ceil(len(sensitivities) / max_cluster_size)
     if background_elements_needed > desired_element_num:
