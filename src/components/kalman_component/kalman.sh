@@ -159,7 +159,7 @@ run_period() {
         else
             idxstr="${idx}"
         fi
-        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_{idxstr}/Restarts/.
+        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
     done
 
     # and conditionally background run directory
