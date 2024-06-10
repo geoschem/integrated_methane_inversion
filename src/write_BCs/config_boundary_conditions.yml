@@ -1,6 +1,6 @@
 ## Date range (inclusive) that you want to generate BCs for
 startDate: "20180401"
-endDate: "20180601"
+endDate: "20240430"
 
 ## A directory with a lot of space where you can write the BCs (and intermediate files)
 workDir: "/n/holylfs05/LABS/jacob_lab/Users/nbalasus/v2024-06-IMI-BCs"
