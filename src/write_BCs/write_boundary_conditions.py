@@ -137,28 +137,28 @@ def calculate_bias(daily_means):
     bias = bias.rolling(lat=5,              # five lat grid boxes (10 degrees)
                         lon=5,              # five lon grid boxes (12.5 degrees)
                         center=True,        # five boxes includes the one we are cented on
-                        min_periods=25/2    # half of the grid cells have a value to not output NaN
+                        min_periods=25/2    # half (13) of the grid cells have a value to not output NaN
                         ).mean(skipna=True)
 
     # Smooth temporally
     bias_15 = bias.rolling(time=15,            # average 15 days back in time (including the time we are centered on)
-                        min_periods=1,      # only one of the time values must have a value to not output NaN
-                    ).mean(skipna=True)
+                           min_periods=1,      # only one of the time values must have a value to not output NaN
+                          ).mean(skipna=True)
 
     bias_30 = bias.rolling(time=30,            # average 30 days back in time (including the time we are centered on)
-                        min_periods=1,      # only one of the time values must have a value to not output NaN
-                    ).mean(skipna=True)
+                           min_periods=1,      # only one of the time values must have a value to not output NaN
+                          ).mean(skipna=True)
     
-    bias = bias_15.fillna(bias_30)          # fill in NaN values with the 30 day average
+    bias = bias_15.fillna(bias_30)             # fill in NaN values with the 30 day average
 
     # Create a dataarray with latitudinal average for each time step
     # We will fill the NaN values in bias with these averages
     nan_value_filler_2d = bias.copy()
-    nan_value_filler_2d = (nan_value_filler_2d.where(nan_value_filler_2d.count("lon") >= 30) # there needs to be 30 grid boxes       
-                                            .mean(dim=["lon"], skipna=True)                #    at this lat to define a mean
-                                            .interpolate_na(dim="lat", method="nearest")   # fill in "middle" NaN values
-                                            .bfill(dim="lat")                              # fill in NaN values towards -90 deg
-                                            .ffill(dim="lat")                              # fill in NaN values towards +90 deg
+    nan_value_filler_2d = (nan_value_filler_2d.where(nan_value_filler_2d.count("lon") >= 15) # there needs to be 15 grid boxes
+                                            .mean(dim=["lon"], skipna=True)                  #  at this lat to define a mean
+                                            .interpolate_na(dim="lat", method="linear")      # fill in "middle" NaN values
+                                            .bfill(dim="lat")                                # fill in NaN values towards -90 deg
+                                            .ffill(dim="lat")                                # fill in NaN values towards +90 deg
                                         )
 
     # Expand to 3 dimensions
@@ -195,6 +195,7 @@ def write_bias_corrected_files(bias):
             & (np.datetime64(re.search(r'(\d{8})_(\d{4}z)', f).group(1)) <= np.datetime64(config["endDate"]))
         )
     ]
+    assert len(files) == len(strdate), "ERROR -> bias dimension is not the same as number of boundary condition files"
 
     # For each file, remove the total column bias from each level of the GEOS-Chem boundary condition
     for filename in files:
