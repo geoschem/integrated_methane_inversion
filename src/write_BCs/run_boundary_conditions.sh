@@ -9,8 +9,9 @@ cwd="$(pwd)"
 # Read in the config file and source the environment file
 condaEnv=$(grep -Po 'condaEnv:\s*\K.*' config_boundary_conditions.yml)
 condaFile=$(grep -Po 'condaFile:\s*\K.*' config_boundary_conditions.yml)
-source $(eval echo "$condaFile")
-conda activate $condaEnv
+condaFile=$(eval echo "$condaFile")
+source ${condaFile}
+conda activate ${condaEnv}
 eval $(python ../../src/utilities/parse_yaml.py config_boundary_conditions.yml)
 source ${geosChemEnv}
 echo "Environment file  --> ${geosChemEnv}" >> "${cwd}/boundary_conditions.log"
@@ -114,8 +115,8 @@ sbatch -W geoschem.run; wait;
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source ~/.bashrc; micromamba activate $condaEnv; python write_boundary_conditions.py True $blendedDir $gcStartDate $gcEndDate"; wait; # run for Blended TROPOMI+GOSAT
-sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source ~/.bashrc; micromamba activate $condaEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"; wait; # run for TROPOMI data
+sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py True $blendedDir $gcStartDate $gcEndDate"; wait; # run for Blended TROPOMI+GOSAT
+sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"; wait; # run for TROPOMI data
 echo "" >> "${cwd}/boundary_conditions.log"
 echo "Blended TROPOMI+GOSAT boundary conditions --> ${workDir}/blended-boundary-conditions" >> "${cwd}/boundary_conditions.log"
 echo "TROPOMI boundary conditions               --> ${workDir}/tropomi-boundary-conditions" >> "${cwd}/boundary_conditions.log"
