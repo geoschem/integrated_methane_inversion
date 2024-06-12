@@ -191,7 +191,7 @@ create_simulation_dir() {
     sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
     sed -i -e "s:#EmisCH4_SoilAbsorb:EmisCH4_SoilAbsorb:g" HEMCO_Diagn.rc
 
-    if is_number "$start_element"; then
+    if is_number "$x"; then
         ### Perform dry run if requested, only for base run
         if [[ $x -eq 0 ]]; then
             if "$ProductionDryRun"; then
@@ -274,7 +274,7 @@ create_simulation_dir() {
 
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
-    if is_number "$start_element"; then
+    if is_number "$x"; then
         if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
