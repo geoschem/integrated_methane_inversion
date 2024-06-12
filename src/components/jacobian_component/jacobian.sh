@@ -291,9 +291,9 @@ create_simulation_dir() {
 add_new_tracer() {
     if [ $i -lt 10 ]; then
         istr="000${i}"
-    elif [ $x -lt 100 ]; then
+    elif [ $i -lt 100 ]; then
         istr="00${i}"
-    elif [ $x -lt 1000 ]; then
+    elif [ $i -lt 1000 ]; then
         istr="0${i}"
     else
         istr="${i}"
