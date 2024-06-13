@@ -542,17 +542,19 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
         # protects against possibility of too few elements left to 
         # achieve desired number of clusters
-        total_elements = 0
-        print(np.array(num_elements).sum())
-        for i, n in enumerate(num_elements):
-            total_elements += n
-            if elements_left - total_elements < clusters_left:
-                n_ind = i
-                n_max_labels = n_max_labels[:n_ind]
-                num_elements = num_elements[:n_ind]
-                break
+        if not fill_grid:
+            total_elements = 0
+            for i, n in enumerate(num_elements):
+                total_elements += n
+                if elements_left - total_elements < clusters_left and not fill_grid:
+                    n_ind = i
+                    n_max_labels = n_max_labels[:n_ind]
+                    num_elements = num_elements[:n_ind]
+                    break
                 
-        print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
+        # informational output
+        if len(n_max_labels) > 0:
+            print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
         # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
         label_start = int(labels.max()) + 1
