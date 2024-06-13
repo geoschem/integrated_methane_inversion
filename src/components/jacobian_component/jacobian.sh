@@ -513,7 +513,7 @@ nTracers = int(sys.argv[1])
 nElements = int(sys.argv[2])
 bcOptimized = sys.argv[3].lower() == 'true'
 ohOptimized = sys.argv[4].lower() == 'true'
-numStandaloneRuns = 1
+numStandaloneRuns = 0
 if bcOptimized:
     numStandaloneRuns += 4
 if ohOptimized:
