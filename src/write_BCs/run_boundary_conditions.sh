@@ -108,9 +108,9 @@ fi
 # Modify and submit the run script
 cp runScriptSamples/operational_examples/harvard_cannon/geoschem.run .
 sed -i -e "s|sapphire,huce_cascade,seas_compute,shared|${partition}|g" \
-    -e "s|--mem=15000|--mem=64000|g" \
+    -e "s|--mem=15000|--mem=128000|g" \
     -e "s|-t 0-12:00|-t 07-00:00|g"\
-    -e "s|-c 8|-c 24|g" geoschem.run
+    -e "s|-c 8|-c 48|g" geoschem.run
 sbatch -W geoschem.run; wait;
 
 # Write the boundary conditions using write_boundary_conditions.py
