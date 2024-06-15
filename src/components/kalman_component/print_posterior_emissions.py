@@ -39,7 +39,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     # Emissions
     hemco_emis = hemco_diags
     posterior_sf = xr.load_dataset(post_sf_path)
-    posterior_emis_ds = get_posterior_emissions(posterior_sf, hemco_emis)
+    posterior_emis_ds = get_posterior_emissions(hemco_emis, posterior_sf)
     posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
     # Recall that posterior_sf from archive_sf multiplies sf over the full inversion record
     posterior_emis = posterior_sf * hemco_emis
