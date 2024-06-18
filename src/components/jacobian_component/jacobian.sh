@@ -247,13 +247,16 @@ create_simulation_dir() {
         fi
 
     else
-        # set 1ppb CH4 boundary conditions for all other perturbation simulations
+        # set 1ppb CH4 boundary conditions and restarts for all other perturbation simulations
         # Note that we use the timecycle flag C to avoid having to make additional files
         RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
         BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
         BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
         sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
-
+        
+        # create symlink to 1ppb restart file
+        ln -s ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4 Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        
         # Also, set emissions to zero for default CH4 tracer by applying new ZERO scale factor
         sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
             -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc

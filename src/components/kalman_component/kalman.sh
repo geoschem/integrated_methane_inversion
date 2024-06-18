@@ -146,7 +146,9 @@ run_period() {
     cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
 
-    # Make link to restart file from posterior run directory in prior simulation 
+    # Make link to restart file from posterior run directory in prior, OH, and background simulation
+    # and link to 1ppb restart file for perturbations
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
     rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
     for ((idx=0;idx<=rundir_num;idx++)); do
         # Add zeros to string name
@@ -159,7 +161,19 @@ run_period() {
         else
             idxstr="${idx}"
         fi
-        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
+        # read the original symlink for period 1
+        target=$(readlink "${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4")
+
+        # Extract the filename from the target path
+        filename=$(basename "$target")
+
+        # Check if the filename contains "1ppb". If so, use the 1ppb restart file
+        # Otherwise use the posterior simulation as the restart file 
+        if [[ "$filename" == *1ppb* ]]; then
+            ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
+        else
+            ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
+        fi
     done
 
     # and conditionally background run directory
