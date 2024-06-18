@@ -255,7 +255,7 @@ create_simulation_dir() {
         sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
         
         # create symlink to 1ppb restart file
-        ln -s ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4 Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4 Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         
         # Also, set emissions to zero for default CH4 tracer by applying new ZERO scale factor
         sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
