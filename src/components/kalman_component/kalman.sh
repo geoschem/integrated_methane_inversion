@@ -170,7 +170,7 @@ run_period() {
         # Check if the filename contains "1ppb". If so, use the 1ppb restart file
         # Otherwise use the posterior simulation as the restart file 
         if [[ "$filename" == *1ppb* ]]; then
-            ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
+            ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
         else
             ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
         fi
