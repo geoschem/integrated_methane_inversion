@@ -317,7 +317,7 @@ the IMI on a local cluster<../advanced/local-cluster>`).
    * - ``BCpath``
      - Path to GEOS-Chem boundary condition files (for regional simulations).
    * - ``BCversion``
-     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2023-04``). Note: this will be appended onto BCpath as a subdirectory.
+     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2024-06``). Note: this will be appended onto BCpath as a subdirectory.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``SpinupDryRun``
