@@ -85,14 +85,19 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     # Add state vector labels to sf Dataset
     sf = sf.assign(StateVector=state_vector_labels)
 
-    # Use groupby to find the maximum scale factor for each state vector label
-    max_sf_da = sf["ScaleFactor"].groupby(sf["StateVector"]).max()
+    # Use groupby to find the median scale factor for each state vector label
+    max_sf_da = sf["ScaleFactor"].groupby(sf["StateVector"]).median()
 
     # get flat, numpy array by converting to dataframe and sorting based on
     # state vector element
     max_sf_df = max_sf_da.to_dataframe().reset_index()
     max_sf_df = max_sf_df[max_sf_df["StateVector"] > 0].sort_values(by="StateVector")
     flat_sf = max_sf_df["ScaleFactor"].values
+    
+    # Replace any values greater than the threshold to avoid issues 
+    # with reaching infinity
+    max_sf_threshold = 15000000.0
+    flat_sf[flat_sf > max_sf_threshold] = max_sf_threshold
 
     return flat_sf
 
