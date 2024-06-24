@@ -29,7 +29,8 @@ submit_job() {
 # Usage:
 #   submit_slurm_job $JobArguments
 submit_slurm_job() {
-    sbatch --mem $SimulationMemory \
+    sbatch -N 1 \
+        --mem $SimulationMemory \
         -c $SimulationCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
@@ -43,12 +44,8 @@ submit_slurm_job() {
 submit_pbs_job() {
     echo "Check aa"
     echo ${@}
-    qsub -l nodes=1 \
-        -l mem=$SimulationMemory \
-        -l ncpus=$SimulationCPUs \
-        -l walltime=$RequestedTime \
-        -l model=ivy \
-        -Wblock=true ${@}; wait;
+    echo "$RequestedTime"
+    qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy,walltime=$RequestedTime -Wblock=true ${@}; wait;
     echo "Check bb"
 }
 
