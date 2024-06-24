@@ -8,7 +8,6 @@
 ##############################################################################
 # Custom to Harvard FAS RC cluster:
 #SBATCH -n 1
-#SBATCH -N 1
 #SBATCH -t 0-6:00
 #SBATCH -p huce_cascade
 #SBATCH --mem=2gb

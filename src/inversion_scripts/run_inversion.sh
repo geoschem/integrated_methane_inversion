@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
 #SBATCH -e run_inversion_%j.err
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# SBATCH -N 1
-
 import os
 import sys
 import yaml
