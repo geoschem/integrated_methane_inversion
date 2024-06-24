@@ -41,13 +41,15 @@ submit_slurm_job() {
 # Usage:
 #   submit_pbs_job $JobArguments
 submit_pbs_job() {
+    echo "Check aa"
+    echo ${@}
     qsub -l nodes=1 \
-        -l mem="$SimulationMemory" \
+        -l mem=$SimulationMemory \
         -l ncpus=$SimulationCPUs \
         -l walltime=$RequestedTime \
-        -l site=needed=$SitesNeeded \
         -l model=ivy \
-        -sync y ${@}; wait;
+        -Wblock=true ${@}; wait;
+    echo "Check bb"
 }
 
 convert_sbatch_to_pbs() {
@@ -63,7 +65,6 @@ convert_sbatch_to_pbs() {
     done
     SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
     SitesNeeded="/${SitesNeeded::-1}"
-    echo $SitesNeeded
 
     # Get files containing SBATCH7
     current_dir=$(pwd)
@@ -74,8 +75,8 @@ convert_sbatch_to_pbs() {
         echo "    ${f}"
 
         # First, insert needed sites at the top of every file
-        awk -i inplace 'FNR==NR{ if (/^##SBATCH/) p=NR; next} 1; FNR==p{ print "##PBS --site-needed=${SitesNeeded}" }' ${f} ${f}
-        awk -i inplace 'FNR==NR{ if (/^#SBATCH/) p=NR; next} 1; FNR==p{ print "#PBS --site-needed=${SitesNeeded}" }' ${f} ${f}
+        awk -i inplace 'FNR==NR{ if (/^##SBATCH/) p=NR; next} 1; FNR==p{ print "##PBS -l site-needed='${SitesNeeded}'" }' ${f} ${f}
+        awk -i inplace 'FNR==NR{ if (/^#SBATCH/) p=NR; next} 1; FNR==p{ print "#PBS -l site-needed='${SitesNeeded}'" }' ${f} ${f}
 
         # Replace SBATCH options
         sed -i -e "s/SBATCH -J /PBS -N /g" \
