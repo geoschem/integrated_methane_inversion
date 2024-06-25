@@ -113,10 +113,10 @@ DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
 SimulationCPUs: 16
-SimulationMemory: 16000
+SimulationMemory: "16gb"
 JacobianCPUs: 1
 JacobianMemory: 2000
-RequestedTime: "0-24:00"
+RequestedTime: "24:00:00"
 SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
@@ -164,6 +164,9 @@ PLANEFLIGHT: false
 GOSAT: false
 TCCON: false
 AIRS: false
+
+## Use global boundary condition files for initial conditions
+UseBCsForRestart: False
 
 ##------------------------------------------------------------------
 ## Settings for running on local cluster
