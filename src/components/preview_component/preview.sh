@@ -61,9 +61,9 @@ run_preview() {
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
-	-e "s:##:#:g" ch4_run.template > ${PreviewName}.run
+    -e "s:##:#:g" ${Species,,}_run.template > ${PreviewName}.run
     chmod 755 ${PreviewName}.run
-    rm -f ch4_run.template
+    rm -f ${Species,,}_run.template
 
     ### Perform dry run if requested
     if "$PreviewDryRun"; then
@@ -92,7 +92,7 @@ run_preview() {
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
-    tropomi_cache=${RunDirs}/data_TROPOMI
+    satellite_cache=${RunDirs}/data_satellite
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # Run preview script
@@ -100,10 +100,10 @@ run_preview() {
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
     if [[ $SchedulerType = "tmux" ]]; then
-        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+        python $preview_file $InversionPath $config_path $state_vector_path $preview_dir $Species $satellite_cache
     else
         chmod +x $preview_file
-        submit_job $SchedulerType $preview_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache
+        submit_job $SchedulerType $preview_file $InversionPath $config_path $state_vector_path $preview_dir $Species $satellite_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
