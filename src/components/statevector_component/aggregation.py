@@ -478,7 +478,7 @@ if __name__ == "__main__":
     config_path = sys.argv[2]
     state_vector_path = sys.argv[3]
     preview_dir = sys.argv[4]
-    tropomi_cache = sys.argv[5]
+    satellite_cache = sys.argv[5]
     kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     output_file = open(f"{inversion_path}/imi_output.log", "a")
@@ -487,7 +487,7 @@ if __name__ == "__main__":
 
     original_clusters = xr.open_dataset(state_vector_path)
     print("Starting aggregation")
-    sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
+    sensitivity_args = [config, state_vector_path, preview_dir, satellite_cache, False]
 
     # dynamically generate sensitivities with only a
     # subset of the data if kf_index is not None
