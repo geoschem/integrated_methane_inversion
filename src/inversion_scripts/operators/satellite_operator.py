@@ -71,7 +71,7 @@ def apply_average_satellite_operator(
 
     # map satellite obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
-    obs_mapped_to_gc = average_satellite_observations(satellite, gc_lat_lon, sat_ind)
+    obs_mapped_to_gc = average_satellite_observations(satellite, species, gc_lat_lon, sat_ind)
     n_gridcells = len(obs_mapped_to_gc)
 
     if build_jacobian:
@@ -205,7 +205,7 @@ def apply_satellite_operator(
 
     Returns
         output             [dict]       : Dictionary with one or two fields:
-                                                        - obs_GC : GEOS-Chem and satellite species data
+                                                    - obs_GC : GEOS-Chem and satellite species data
                                                     - satellite species
                                                     - GEOS-Chem species
                                                     - satellite lat, lon
@@ -442,16 +442,17 @@ def apply_satellite_operator(
     return output
 
 
-def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
+def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind):
     """
     Map TROPOMI observations into appropriate gc gridcells. Then average all
     observations within a gridcell for processing. Use area weighting if
     observation overlaps multiple gridcells.
 
     Arguments
-        TROPOMI        [dict]   : Dict of tropomi data
+        satellite      [dict]   : Dict of satellite data
+        species        [str]    : Name of species analyzed (CO2 or CH4)
         gc_lat_lon     [list]   : list of dictionaries containing  gc gridcell info
-        sat_ind        [int]    : index list of Tropomi data that passes filters
+        sat_ind        [int]    : index list of satellite data that passes filters
 
     Returns
         output         [dict[]]   : flat list of dictionaries the following fields:
@@ -467,7 +468,7 @@ def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
                                     - apriori             : averaged
                                     - avkern              : averaged average kernel
                                     - time                : averaged time
-                                    - CH4                 : averaged methane
+                                    - $species            : averaged species
                                     - observation_count   : number of observations averaged in cell
                                     - observation_weights : area weights for the observation
 
@@ -558,8 +559,8 @@ def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
                 ].append(  # convert times to epoch time to make taking the mean easier
                     int(pd.to_datetime(str(satellite["time"][iSat,jSat])).strftime("%s"))
                 )
-                gridcell_dict["CH4"].append(
-                    satellite["CH4"][iSat, jSat]
+                gridcell_dict[species].append(
+                    satellite[species][iSat, jSat]
                 )  # Actual satellite mixing ratio column observation
                 # record weights for averaging later
                 gridcell_dict["observation_weights"].append(
@@ -583,8 +584,8 @@ def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
         gridcell_dict["overlap_area"] = np.average(
             gridcell_dict["overlap_area"], weights=gridcell_dict["observation_weights"],
         )
-        gridcell_dict["CH4"] = np.average(
-            gridcell_dict["CH4"], weights=gridcell_dict["observation_weights"],
+        gridcell_dict[species] = np.average(
+            gridcell_dict[species], weights=gridcell_dict["observation_weights"],
         )
         # take mean of epoch times and then convert gc filename time string
         gridcell_dict["time"] = (
@@ -616,7 +617,6 @@ def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
             weights=gridcell_dict["observation_weights"],
         )
     return gridcell_dicts
-
 
 
 def apply_averaging_kernel(
