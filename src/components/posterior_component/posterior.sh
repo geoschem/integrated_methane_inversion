@@ -56,7 +56,7 @@ setup_posterior() {
 
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
@@ -70,9 +70,9 @@ setup_posterior() {
 
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
-	-e "s:##:#:g" ch4_run.template > ${PosteriorName}.run
+	-e "s:##:#:g" run.template > ${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
-    rm -f ch4_run.template
+    rm -f run.template
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
@@ -166,7 +166,7 @@ run_posterior() {
     python ${InversionPath}/src/inversion_scripts/setup_gc_cache.py $StartDate_i $EndDate_i $GCsourcepth $GCDir; wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
-    # Sample GEOS-Chem atmosphere with TROPOMI
+    # Sample GEOS-Chem atmosphere with satellite
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
@@ -178,12 +178,11 @@ run_posterior() {
     if "$OptimizeOH";then
 	nElements=$((nElements+1))
     fi
-    FetchTROPOMI="False"
     isPost="True"
     buildJacobian="False"
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $isPost $buildJacobian; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 
