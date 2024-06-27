@@ -132,7 +132,7 @@ setup_jacobian() {
 	# Update settings in HISTORY.rc
 	# Only save out hourly pressure fields to daily files for base run
 	if [ $x -eq 0 ]; then
-	    if "$HourlyCH4"; then
+	    if "$HourlySpecies"; then
 		sed -i -e 's/'\''Restart/#'\''Restart/g' \
                        -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                        -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
@@ -141,14 +141,14 @@ setup_jacobian() {
 	    fi
 	    # For all other runs, just disable Restarts
 	else
-            if "$HourlyCH4"; then
+            if "$HourlySpecies"; then
 		sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
             fi
 	fi
 
 	# Create run script from template
-	sed -e "s:namename:${name}:g" ch4_run.template > ${name}.run
-	rm -f ch4_run.template
+	sed -e "s:namename:${name}:g" run.template > ${name}.run
+	rm -f run.template
 	chmod 755 ${name}.run
 
 	### Turn on observation operators if requested, only for base run
