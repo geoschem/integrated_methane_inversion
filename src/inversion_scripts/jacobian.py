@@ -73,10 +73,11 @@ if __name__ == "__main__":
     latmin = float(sys.argv[5])
     latmax = float(sys.argv[6])
     n_elements = int(sys.argv[7])
-    satellite_cache = sys.argv[8]
-    satellite_product = sys.argv[9]
-    isPost = sys.argv[10]
-    build_jacobian = sys.argv[11]
+    species = sys.argv[8]
+    satellite_cache = sys.argv[9]
+    satellite_product = sys.argv[10]
+    isPost = sys.argv[11]
+    build_jacobian = sys.argv[12]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -132,13 +133,14 @@ if __name__ == "__main__":
         date = re.split("\.", shortname)[0]
 
         # If not yet processed, run apply_average_satellite_operator()
-        if not os.path.isfile(f"{outputdir}/{date}_GCtosatellite.pkl"):
+        if not os.path.isfile(f"{outputdir}/{date}_GCtoSatellite.pkl"):
             print("Applying satellite operator...")
 
             output = apply_operator(
                 "satellite_average",
                 {
                     "filename": filename,
+                    "species" : species,
                     "satellite_product": satellite_product,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
@@ -156,6 +158,7 @@ if __name__ == "__main__":
                 "satellite",
                 {
                     "filename": filename,
+                    "species" : species,
                     "satellite_product": satellite_product,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
@@ -175,8 +178,8 @@ if __name__ == "__main__":
 
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
-            save_obj(output, f"{outputdir}/{date}_GCtosatellite.pkl")
-            save_obj(viz_output, f"{vizdir}/{date}_GCtosatellite.pkl")
+            save_obj(output, f"{outputdir}/{date}_GCtoSatellite.pkl")
+            save_obj(viz_output, f"{vizdir}/{date}_GCtoSatellite.pkl")
         return 0
 
     results = Parallel(n_jobs=-1)(delayed(process)(filename) for filename in sat_files)
