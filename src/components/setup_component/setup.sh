@@ -20,9 +20,6 @@ setup_imi() {
     # Start and end date for the spinup simulation
     SpinupStart=$(date --date="${StartDate} -${SpinupMonths} month" +%Y%m%d)
     SpinupEnd=${StartDate}
-
-    # Use global boundary condition files for initial conditions
-    UseBCsForRestart=true
     
     printf "\nActivating python environment: ${PythonEnv}\n"
     if "$isAWS"; then
