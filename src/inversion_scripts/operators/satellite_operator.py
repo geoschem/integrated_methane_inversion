@@ -4,8 +4,7 @@ import pandas as pd
 import datetime
 from shapely.geometry import Polygon
 from src.inversion_scripts.utils import (
-    filter_tropomi,
-    filter_blended,
+    read_and_filter_satellite,
     mixing_ratio_conv_factor,
 )
 from src.inversion_scripts.operators.operator_utilities import (
@@ -22,7 +21,7 @@ from src.inversion_scripts.operators.operator_utilities import (
 def apply_average_satellite_operator(
     filename,
     species,
-    satellite_str,
+    satellite_product,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -36,19 +35,20 @@ def apply_average_satellite_operator(
     Apply the averaging satellite operator to map GEOS-Chem data to satellite observation space.
 
     Arguments
-        filename       [str]        : satellite netcdf data file to read
-        satellite_str  [str]        : "BlendedTROPOMI", "TROPOMI", or "Other", specifying the data used in the inversion.
-        n_elements     [int]        : Number of state vector elements
-        gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and satellite
-        gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and satellite
-        xlim           [float]      : Longitude bounds for simulation domain
-        ylim           [float]      : Latitude bounds for simulation domain
-        gc_cache       [str]        : Path to GEOS-Chem output data
-        build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
-        sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        filename          [str]        : satellite netcdf data file to read
+        species           [str]        : The species (CH4 or CO2) to use
+        satellite_product [str]        : "BlendedTROPOMI", "TROPOMI", or "Other", specifying the data used in the inversion.
+        n_elements        [int]        : Number of state vector elements
+        gc_startdate      [datetime64] : First day of inversion period, for GEOS-Chem and satellite
+        gc_enddate        [datetime64] : Last day of inversion period, for GEOS-Chem and satellite
+        xlim              [float]      : Longitude bounds for simulation domain
+        ylim              [float]      : Latitude bounds for simulation domain
+        gc_cache          [str]        : Path to GEOS-Chem output data
+        build_jacobian    [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
+        sensi_cache       [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
-        output         [dict]       : Dictionary with:
+        output            [dict]       : Dictionary with:
                                         - obs_GC : GEOS-Chem and satellite data
                                         - satellite gas
                                         - GEOS-Chem gas
@@ -59,8 +59,8 @@ def apply_average_satellite_operator(
     """
 
     # Read satellite data
-    satellite, sat_ind = read_and_filter_satellite_str(
-        filename, satellite_str , gc_startdate, gc_enddate, xlim, ylim)
+    satellite, sat_ind = read_and_filter_satellite(
+        filename, satellite_product, gc_startdate, gc_enddate, xlim, ylim)
     
     # Number of satellite observations
     n_obs = len(sat_ind[0])
@@ -106,7 +106,7 @@ def apply_average_satellite_operator(
         p_gc = GEOSCHEM["PEDGE"][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
         # Get GEOS-Chem species for the cell
         gc_species = GEOSCHEM[species][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
-        # Get merged GEOS-Chem/TROPOMI pressure grid for the cell
+        # Get merged GEOS-Chem/satellite pressure grid for the cell
         merged = merge_pressure_grids(p_sat, p_gc)
         # Remap GEOS-Chem species to TROPOMI pressure levels
         sat_species = remap(
@@ -177,7 +177,7 @@ def apply_average_satellite_operator(
 def apply_satellite_operator(
     filename,
     species,
-    satellite_str,
+    satellite_product,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -191,20 +191,20 @@ def apply_satellite_operator(
     Apply the satellite operator to map GEOS-Chem species data to satellite observation space.
 
     Arguments
-        filename       [str]        : Satellite netcdf data file to read
-        species        [str]        : The species (CH4 or CO2) to use
-        satellite_str  [str]        : "BlendedTROPOMI", "TROPOMI", or "Other", specifying the data used in the inversion.
-        n_elements     [int]        : Number of state vector elements
-        gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and satellite
-        gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and satellite
-        xlim           [float]      : Longitude bounds for simulation domain
-        ylim           [float]      : Latitude bounds for simulation domain
-        gc_cache       [str]        : Path to GEOS-Chem output data
-        build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
-        sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        filename           [str]        : Satellite netcdf data file to read
+        species            [str]        : The species (CH4 or CO2) to use
+        satellite_product  [str]        : "BlendedTROPOMI", "TROPOMI", or "Other", specifying the data used in the inversion.
+        n_elements         [int]        : Number of state vector elements
+        gc_startdate       [datetime64] : First day of inversion period, for GEOS-Chem and satellite
+        gc_enddate         [datetime64] : Last day of inversion period, for GEOS-Chem and satellite
+        xlim               [float]      : Longitude bounds for simulation domain
+        ylim               [float]      : Latitude bounds for simulation domain
+        gc_cache           [str]        : Path to GEOS-Chem output data
+        build_jacobian     [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
+        sensi_cache        [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
-        output         [dict]       : Dictionary with one or two fields:
+        output             [dict]       : Dictionary with one or two fields:
                                                         - obs_GC : GEOS-Chem and satellite species data
                                                     - satellite species
                                                     - GEOS-Chem species
@@ -215,8 +215,8 @@ def apply_satellite_operator(
     """
 
     # Read satellite data
-    satellite, sat_ind = read_and_filter_satellite_str (
-        filename, satellite_str , gc_startdate, gc_enddate, xlim, ylim)
+    satellite, sat_ind = read_and_filter_satellite(
+        filename, satellite_product, gc_startdate, gc_enddate, xlim, ylim)
 
     # Number of satellite observations
     n_obs = len(sat_ind[0])
@@ -442,155 +442,6 @@ def apply_satellite_operator(
     return output
 
 
-def read_tropomi(filename):
-    """
-    Read TROPOMI data and save important variables to dictionary.
-
-    Arguments
-        filename [str]  : TROPOMI netcdf data file to read
-
-    Returns
-        dat      [dict] : Dictionary of important variables from TROPOMI:
-                            - CH4
-                            - Latitude
-                            - Longitude
-                            - QA value
-                            - UTC time
-                            - Time (utc time reshaped for orbit)
-                            - Averaging kernel
-                            - SWIR albedo
-                            - NIR albedo
-                            - Blended albedo
-                            - CH4 prior profile
-                            - Dry air subcolumns
-                            - Latitude bounds
-                            - Longitude bounds
-                            - Vertical pressure profile
-    """
-
-    # Initialize dictionary for TROPOMI data
-    dat = {}
-
-    # Catch read errors in any of the variables
-    try:
-        # Store methane, QA, lat, lon, and time
-        with xr.open_dataset(filename, group="PRODUCT") as tropomi_data:
-            dat["CH4"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
-            dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
-            dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
-            dat["latitude"] = tropomi_data["latitude"].values[0, :, :]
-
-            utc_str = tropomi_data["time_utc"].values[0,:]
-            utc_str = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
-            dat["time"] = np.repeat(utc_str[:, np.newaxis], dat["CH4"].shape[1], axis=1)
-
-        # Store column averaging kernel, SWIR and NIR surface albedo
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS") as tropomi_data:
-            dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[0, :, :, ::-1]
-            dat["swir_albedo"] = tropomi_data["surface_albedo_SWIR"].values[0, :, :]
-            dat["nir_albedo"] = tropomi_data["surface_albedo_NIR"].values[0, :, :]
-            dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
-
-        # Store methane prior profile, dry air subcolumns
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
-            dat["profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
-            dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
-            dat["surface_classification"] = (tropomi_data["surface_classification"].values[0, :, :].astype("uint8") & 0x03).astype(int)
-
-            # Also get pressure interval and surface pressure for use below
-            pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
-            surface_pressure = (tropomi_data["surface_pressure"].values[0, :, :] / 100)  # Pa -> hPa
-
-        # Store latitude and longitude bounds for pixels
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS") as tropomi_data:
-            dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[0, :, :, :]
-            dat["latitude_bounds"] = tropomi_data["latitude_bounds"].values[0, :, :, :]
-
-        # Store vertical pressure profile
-        n1 = dat["CH4"].shape[0]  # length of along-track dimension (scanline) of retrieval field
-        n2 = dat["CH4"].shape[1]  # length of across-track dimension (ground_pixel) of retrieval field
-        pressures = np.full([n1, n2, 12 + 1], np.nan, dtype=np.float32)
-        for i in range(12 + 1):
-            pressures[:, :, i] = surface_pressure - i * pressure_interval
-        dat["pressures"] = pressures
-
-    # Return an error if any of the variables were not read correctly
-    except Exception as e:
-        print(f"Error opening {filename}: {e}")
-        return None
-
-    return dat
-
-def read_blended(filename):
-    """
-    Read Blended TROPOMI+GOSAT data and save important variables to dictionary.
-    Arguments
-        filename [str]  : Blended TROPOMI+GOSAT netcdf data file to read
-    Returns
-        dat      [dict] : Dictionary of important variables from Blended TROPOMI+GOSAT:
-                            - CH4
-                            - Latitude
-                            - Longitude
-                            - Time (utc time reshaped for orbit)
-                            - Averaging kernel
-                            - SWIR albedo
-                            - NIR albedo
-                            - Blended albedo
-                            - CH4 prior profile
-                            - Dry air subcolumns
-                            - Latitude bounds
-                            - Longitude bounds
-                            - Surface classification
-                            - Chi-Square for SWIR
-                            - Vertical pressure profile
-    """
-    assert "BLND" in filename, f"BLND not in filename {filename}, but a blended function is being used"
-
-    try:
-        # Initialize dictionary for Blended TROPOMI+GOSAT data
-        dat = {}
-
-        # Extract data from netCDF file to our dictionary
-        with xr.open_dataset(filename) as blended_data:
-
-            dat["CH4"] = blended_data["methane_mixing_ratio_blended"].values[:]
-            dat["longitude"] = blended_data["longitude"].values[:]
-            dat["latitude"] = blended_data["latitude"].values[:]
-            dat["column_AK"] = blended_data["column_averaging_kernel"].values[:, ::-1]
-            dat["swir_albedo"] = blended_data["surface_albedo_SWIR"][:]
-            dat["nir_albedo"] = blended_data["surface_albedo_NIR"].values[:]
-            dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
-            dat["profile_apriori"] = blended_data["methane_profile_apriori"].values[:, ::-1]
-            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[:, ::-1]
-            dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
-            dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
-            dat["surface_classification"] = (blended_data["surface_classification"].values[:].astype("uint8") & 0x03).astype(int)
-            dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
-
-            # Remove "Z" from time so that numpy doesn't throw a warning
-            utc_str = blended_data["time_utc"].values[:]
-            dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
-
-            # Need to calculate the pressure for the 13 TROPOMI levels (12 layer edges)
-            pressure_interval = (blended_data["pressure_interval"].values[:] / 100)  # Pa -> hPa
-            surface_pressure = (blended_data["surface_pressure"].values[:] / 100)    # Pa -> hPa
-            n = len(dat["CH4"])
-            pressures = np.full([n, 12 + 1], np.nan, dtype=np.float32)
-            for i in range(12 + 1):
-                pressures[:, i] = surface_pressure - i * pressure_interval
-            dat["pressures"] = pressures
-
-        # Add an axis here to mimic the (scanline, groundpixel) format of operational TROPOMI data
-        # This is so the blended data will be compatible with the TROPOMI operators
-        for key in dat.keys():
-            dat[key] = np.expand_dims(dat[key], axis=0)
-
-    except Exception as e:
-        print(f"Error opening {filename}: {e}")
-        return None
-
-    return dat
-
 def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
     """
     Map TROPOMI observations into appropriate gc gridcells. Then average all
@@ -766,41 +617,6 @@ def average_satellite_observations(satellite, gc_lat_lon, sat_ind):
         )
     return gridcell_dicts
 
-def read_and_filter_satellite_str (
-    filename,
-    satellite_str ,
-    gc_startdate,
-    gc_enddate,
-    xlim,
-    ylim,
-):
-    # Read TROPOMI data
-    assert satellite_str  in ["BlendedTROPOMI", "TROPOMI", "Other"], "satellite_str  is not one of BlendedTROPOMI, TROPOMI, or Other"
-    if satellite_str  == "BlendedTROPOMI":
-        satellite = read_blended(filename)
-    elif satellite_str  == "TROPOMI":
-        satellite = read_tropomi(filename)
-    else:
-        satellite = ...
-        print("Other data source is not currently supported --HON")
-
-    # If empty, skip this file
-    if satellite == None:
-        print(f"Skipping {filename} due to file processing issue.")
-        return satellite
-
-    # Filter the data
-    if satellite_str  == "BlendedTROPOMI":
-        # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(satellite, xlim, ylim, gc_startdate, gc_enddate)
-    elif satellite_str  == "TROPOMI":
-        # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(satellite, xlim, ylim, gc_startdate, gc_enddate)
-    else:
-        sat_ind = ...
-        print("Other data source filtering is not currently supported --HON")
-
-    return satellite, sat_ind
 
 
 def apply_averaging_kernel(
