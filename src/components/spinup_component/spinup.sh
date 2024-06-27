@@ -53,7 +53,7 @@ setup_spinup() {
     fi
 
     # Turn on LevelEdgeDiags output
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
@@ -62,9 +62,9 @@ setup_spinup() {
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
-        -e "s:##:#:g" ch4_run.template > ${SpinupName}.run
+        -e "s:##:#:g" ${Species,,}_run.template > ${SpinupName}.run
     chmod 755 ${SpinupName}.run
-    rm -f ch4_run.template
+    rm -f ${Species,,}_run.template
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
