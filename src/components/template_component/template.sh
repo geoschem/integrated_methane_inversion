@@ -139,8 +139,8 @@ setup_template() {
            -e "s:'Metrics:#'Metrics:g" \
            -e "s:'StateMet:#'StateMet:g" HISTORY.rc
     
-    # If turned on, save out hourly CH4 concentrations to daily files
-    if "$HourlyCH4"; then
+    # If turned on, save out hourly concentrations to daily files
+    if "$HourlySpecies"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
     	       -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
                -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
@@ -150,7 +150,7 @@ setup_template() {
     rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
-    cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
+    cp ${InversionPath}/src/geoschem_run_scripts/${Species,,}_run.template .
 
     # Compile GEOS-Chem and store executable in template run directory
     printf "\nCompiling GEOS-Chem...\n"
