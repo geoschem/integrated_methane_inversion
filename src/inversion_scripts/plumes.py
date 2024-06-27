@@ -98,10 +98,18 @@ class PointSources:
         # 1. filter points to roi
         inout = self.geofilter.filter_points(datasource.gdf)
         
-        if inout.sum() > 0:
+        if inout is None:
+            return None
+        elif inout.sum() > 0:
             gdf_inroi = datasource.gdf[inout].copy()
         else:
+            msg = (
+                'Unable to detect point sources, '
+                'continuing without plume data.'
+            )
+            warnings.warn(msg)
             return None
+
         
         # 3. get I,J indices
         lon_dist = gdf_inroi.geometry.x.values[:,None] - self.geofilter.lons[None,:]
@@ -347,13 +355,13 @@ class GeoFilter:
             matches input GeoDataFrame
         '''
         if points.shape[0] == 0:
-            print('No CarbonMapper points found')
+            print('No plumes found.')
             return None
             
         inout = points.within(self.geo)
         
         if not inout.any():
-            print('No CarbonMapper points in ROI')
+            print('No plumes in ROI')
             return None
         
         else:
@@ -393,13 +401,15 @@ class PlumeObserver:
         
         else:
             self.gdf = self._get_data()
+
+        if self.gdf.shape[0] > 0:
         
-        # cache all data
-        self._cache_data()
-        
-        # filter data according to 
-        # options from subclass
-        self._filter_data()
+            # cache all data
+            self._cache_data()
+            
+            # filter data according to 
+            # options from subclass
+            self._filter_data()
         
     def _filter_data(self):
         raise NotImplementedError
