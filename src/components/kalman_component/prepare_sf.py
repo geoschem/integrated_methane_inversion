@@ -3,17 +3,29 @@ import os
 import sys
 import numpy as np
 import yaml
-from src.inversion_scripts.utils import sum_total_emissions
+from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 
-
+def remove_soil_absorb_from_total(emis):
+    """
+    Remove soil absorption from total emissions and return the new total.
+    
+    Arguments
+        emis [xr.Dataset] : HEMCO emissions dataset
+    Returns
+        [xr.DataArray] : Total emission from all sources except soil absorption
+    """
+    ds = emis.copy()
+    ds["EmisCH4_Total"] = ds["EmisCH4_Total"] - ds["EmisCH4_SoilAbsorb"]
+    
+    return ds["EmisCH4_Total"].isel(time=0, drop=True)
 
 def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     """
-    Function to prepare scale factors for HEMCO emissions. 
-    
-    This is done at the beginning of an inversion, to generate the appropriate scale factors for the 
-    prior simulation. In the first period, the scale factors are just unit scale factors (i.e., use 
-    the emissions from HEMCO directly). In following periods, the scale factors are derived from 
+    Function to prepare scale factors for HEMCO emissions.
+
+    This is done at the beginning of an inversion, to generate the appropriate scale factors for the
+    prior simulation. In the first period, the scale factors are just unit scale factors (i.e., use
+    the emissions from HEMCO directly). In following periods, the scale factors are derived from
     previous inversion results, including nudging to the original prior emission estimates.
 
     Arguments
@@ -48,42 +60,47 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     mask = state_vector_labels <= last_ROI_element
 
     # Get original emissions from preview, for first inversion period
-    original_emis = xr.load_dataset(diags_path)
-    original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
+    original_emis_ds = xr.load_dataset(diags_path)
 
     # Initialize unit scale factors
     sf = xr.load_dataset(unit_sf_path)
+    posterior_scale_ds = sf.copy()
 
     # If we are past the first inversion period, need to use previous inversion results to construct
     # the initial scale factors for the current period.
     period_number = int(period_number)
     if period_number > 1:
-
         # List all available HEMCO diagnostic files from the prior simulation
         hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO" in f]
         hemco_list.sort()
 
         # For each period up to (but not including) the current one
         for p in range(period_number - 1):
-
             # Add one since we're counting from period 1, not 0
             p = p + 1
 
             # Get the original HEMCO emissions for period p
+            # Note: we remove soil absorption from the prior for our nudging operations
+            # since it is not optimized in the inversion.
             hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
-            original_emis = xr.load_dataset(hemco_emis_path)
-            original_emis = original_emis["EmisCH4_Total"].isel(time=0, drop=True)
+            original_emis_ds = xr.load_dataset(hemco_emis_path)
+            original_emis = remove_soil_absorb_from_total(original_emis_ds)
 
             # Get the gridded posterior for period p
+            gridded_posterior_filename = (
+                "gridded_posterior_ln.nc"
+                if config["LognormalErrors"]
+                else "gridded_posterior.nc"
+            )
             gridded_posterior_path = os.path.join(
-                base_directory, f"kf_inversions/period{p}/gridded_posterior.nc"
+                base_directory, f"kf_inversions/period{p}/{gridded_posterior_filename}"
             )
             posterior_p = xr.load_dataset(gridded_posterior_path)
 
             # Get posterior emissions multiplied up to current period p, and apply nudging
-            current_posterior_emis = (
-                posterior_p["ScaleFactor"] * sf["ScaleFactor"] * original_emis
-            )
+            posterior_scale_ds["ScaleFactor"] = posterior_p["ScaleFactor"] * sf["ScaleFactor"]
+            current_posterior_emis = original_emis * posterior_scale_ds["ScaleFactor"]
+            
             nudged_posterior_emis = (
                 nudge_factor * original_emis
                 + (1 - nudge_factor) * current_posterior_emis
@@ -104,10 +121,12 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Get the final posterior scale factors
             sf["ScaleFactor"] = scaled_nudged_posterior_emis / original_emis
 
-            # Reset buffer area to 1 
-            # Note: resetting the buffer area to 1 seems to prevent issues where 
+            # Reset buffer area to 1
+            # Note: resetting the buffer area to 1 seems to prevent issues where
             # emissions can become negative.
-            sf["ScaleFactor"] = sf["ScaleFactor"].where(state_vector_labels <= last_ROI_element)  # Replace buffers with nan
+            sf["ScaleFactor"] = sf["ScaleFactor"].where(
+                state_vector_labels <= last_ROI_element
+            )  # Replace buffers with nan
             sf["ScaleFactor"] = sf["ScaleFactor"].fillna(1)  # Fill nan with 1
 
         print(
@@ -115,7 +134,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         )
 
     # Print the current total emissions in the region of interest
-    emis = sf["ScaleFactor"] * original_emis
+    emis = get_posterior_emissions(original_emis_ds, sf)["EmisCH4_Total"].isel(time=0, drop=True)
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
 
@@ -140,8 +159,8 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
     )
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     config_path = sys.argv[1]
     period_number = sys.argv[2]
     base_directory = sys.argv[3]

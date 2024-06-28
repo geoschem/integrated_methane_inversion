@@ -20,24 +20,6 @@ setup_imi() {
     # Start and end date for the spinup simulation
     SpinupStart=$(date --date="${StartDate} -${SpinupMonths} month" +%Y%m%d)
     SpinupEnd=${StartDate}
-    
-    printf "\nActivating python environment: ${PythonEnv}\n"
-    if "$isAWS"; then
-        # Get max process count for spinup, production, and run_inversion scripts
-        output=$(echo $(slurmd -C))
-        array=($output)
-        cpu_str=$(echo ${array[1]})
-        cpu_count=$(echo ${cpu_str:5})
-
-        # With sbatch reduce cpu_count by 1 to account for parent sbatch process 
-        # using 1 core 
-        if [[ $SchedulerType = "tmux" ]]; then
-            cpu_count="$((cpu_count-1))"
-        fi
-    fi
-
-    # Source python environment
-    source ${PythonEnv}
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested
@@ -63,11 +45,11 @@ setup_imi() {
     if "$RestartDownload"; then
         RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
         if [ ! -f "$RestartFile" ]; then
-            aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+            aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
         fi
         RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
         if [ ! -f "$RestartFilePreview" ]; then
-            aws s3 cp --request-payer=requester s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
+            aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
         fi
     fi
 
@@ -118,7 +100,7 @@ setup_imi() {
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout 14.2.3
+        git checkout ${GEOSCHEM_VERSION}
         git submodule update --init --recursive
         cd ..
     else
@@ -167,8 +149,6 @@ setup_imi() {
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
-    Lats="${LatMinInvDomain}, ${LatMaxInvDomain}"
 
     ##=======================================================================
     ## Set up template run directory

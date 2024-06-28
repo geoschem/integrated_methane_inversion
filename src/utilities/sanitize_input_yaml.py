@@ -10,9 +10,7 @@ Arguments
 # ************ Add required config variables to the corresponding list **************
 
 # variables only required by AWS
-# config_required_aws = [
-#     ,
-# ]
+config_required_aws = []
 
 # variables only required by local cluster
 config_required_local_cluster = [
@@ -58,6 +56,7 @@ config_required = [
     "SetupPosteriorRun",
     "RunSetup",
     "DoSpinup",
+    "ReDoJacobian",
     "DoJacobian",
     "DoInversion",
     "DoPosterior",
@@ -93,6 +92,7 @@ config_required = [
     "SchedulerPartition",
     "KalmanMode",
     "S3Upload",
+    "LognormalErrors"
 ]
 
 # dict of variables that are required if another variable is set to true 
@@ -106,6 +106,9 @@ conditional_dict["KalmanMode"] = [
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
+    "EmissionRateFilter",
+    "PlumeCountFilter",
+    "GroupByCountry"
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 conditional_dict["S3Upload"] = [
@@ -113,6 +116,7 @@ conditional_dict["S3Upload"] = [
     "S3UploadFiles",
 ]
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
+conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
 
 def raise_error_message(var):

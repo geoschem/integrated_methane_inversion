@@ -18,15 +18,22 @@ setup_inversion() {
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
+    if "$LognormalErrors"; then
+        mkdir -p inversion/data_converted_prior
+        mkdir -p inversion/data_geoschem_prior
+        mkdir -p inversion/data_visualization_prior
+    fi
     
     cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/lognormal_invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
     cp ${InversionPath}/src/inversion_scripts/operators/*.py inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
@@ -59,7 +66,7 @@ run_inversion() {
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
         # Modify inversion driver script to reflect current inversion period
-        sed -i "s|data_satellite\"|data_satellite\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
+        sed -i "s|satellite_data\"|satellite_data\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
         if (( period_i > 1 )); then
             FirstSimSwitch=false
         fi
@@ -81,7 +88,6 @@ run_inversion() {
 # Usage:
 #   run_notebooks
 run_notebooks() {
-    config_path=${InversionPath}/${ConfigFile}
     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
@@ -89,7 +95,7 @@ run_notebooks() {
         cd ${RunDirs}/inversion
     fi
     # replace config file path in viz notebook
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$config_path'|g' visualization_notebook.ipynb
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' visualization_notebook.ipynb
     jupyter nbconvert --execute --to html visualization_notebook.ipynb
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }

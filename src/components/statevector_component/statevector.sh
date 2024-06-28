@@ -21,9 +21,9 @@ create_statevector() {
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
         s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
-        aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
+        aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
         s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
-        aws s3 cp --request-payer=requester ${s3_hd_path} ${HemcoDiagFile}
+        aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
     fi
 
     # Output path and filename for state vector file
@@ -36,11 +36,8 @@ create_statevector() {
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    # Get config path
-    config_path=${InversionPath}/${ConfigFile}
-
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file.py $config_path $LandCoverFile $HemcoDiagFile $StateVectorFName
+    python make_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 }
@@ -58,12 +55,11 @@ reduce_dimension() {
     fi
 
     # set input variables
-    config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
 
     preview_dir=${RunDirs}/preview_run
-    satellite_cache=${RunDirs}/data_satellite
+    satellite_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
     if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
@@ -91,7 +87,9 @@ reduce_dimension() {
         python "${python_args[@]}"
     else
         chmod +x $aggregation_file
-        submit_job $SchedulerType "${python_args[@]}"
+        submit_job $SchedulerType -o imi_output.tmp "${python_args[@]}"
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
     fi
 
     # archive state vector file if using Kalman filter

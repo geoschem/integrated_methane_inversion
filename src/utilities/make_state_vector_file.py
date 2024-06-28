@@ -178,7 +178,11 @@ def make_state_vector_file(
     hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
 
     # Initialize state vector from land cover, replacing all values with NaN (to be filled later)
-    statevector = lc.where(lc == -9999.0)
+    if is_regional:
+        statevector = lc.where(lc == -9999.0)
+    else:
+        # if global, use hemco file 
+        statevector = hd.where(hd == -9999.0)
 
     # Set pixels in buffer areas to 0
     if is_regional:
@@ -188,7 +192,20 @@ def make_state_vector_file(
     # Also set pixels over water to 0, unless there are offshore emissions
     if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
-        land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+        if is_regional:
+            land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+        else:
+            # handle half-width polar grid boxes for global,
+            # global files are same shape but different lat
+            # at poles in that case
+            if (
+                np.not_equal(hd.lat.values, lc.lat.values).any() &
+                np.equal(hd.lat.shape, lc.lat.shape).all()
+            ):
+                land = lc.where((lc.values > land_threshold) | (hd.values > emis_threshold))
+            else:
+                land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+
         statevector.values[land.isnull().values] = -9999
 
     # Fill in the remaining NaNs with state vector element values

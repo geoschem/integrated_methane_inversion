@@ -49,11 +49,18 @@ setup_posterior() {
     # Update settings in geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
     sed -i "s/use_emission_scale_factor: false/use_emission_scale_factor: true/g" geoschem_config.yml
+    if "${OptimizeOH}"; then
+        sed -i "s/use_oh_scale_factor: false/use_oh_scale_factor: true/g" geoschem_config.yml
+    fi
     
     # Update settings in HEMCO_Config.rc
+    if "$LognormalErrors"; then
+        gridded_posterior_filename="gridded_posterior_ln.nc"
+    else
+        gridded_posterior_filename="gridded_posterior.nc"
+    fi
     sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-           -e "s|gridded_posterior.nc|${RunDirs}/inversion/gridded_posterior.nc|g" HEMCO_Config.rc
-
+           -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlySpecies"; then
@@ -78,6 +85,9 @@ setup_posterior() {
     if "$PosteriorDryRun"; then
         printf "\nExecuting dry-run for posterior run...\n"
         ./gcclassic --dryrun &> log.dryrun
+        # prevent restart file from getting downloaded since
+        # we don't want to overwrite the one we link to above
+        sed -i '/GEOSChem.Restart/d' log.dryrun
         ./download_data.py log.dryrun aws
     fi
     
@@ -94,17 +104,18 @@ setup_posterior() {
 run_posterior() {
     posterior_start=$(date +%s)
     cd ${RunDirs}/posterior_run
-    
-    if ! "$isAWS"; then
-        # Load environment with modules for compiling GEOS-Chem Classic
-        source ${GEOSChemEnv}
+
+    if $LognormalErrors; then
+        inversion_result_filename="inversion_result_ln.nc"
+    else
+        inversion_result_filename="inversion_result.nc"
     fi
 
     if "$OptimizeBCs"; then
         if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
         else
-            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+            inv_result_path="${RunDirs}/inversion/${inversion_result_filename}"
         fi
         # set BC optimal delta values
         PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)
@@ -117,9 +128,9 @@ run_posterior() {
 
     if "$OptimizeOH"; then
         if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/inversion_result.nc"
+            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
         else
-            inv_result_path="${RunDirs}/inversion/inversion_result.nc"
+            inv_result_path="${RunDirs}/inversion/${inversion_result_filename}"
         fi
         # set OH optimal delta values
         PerturbOHValue=$(generate_optimized_OH_value $inv_result_path)
@@ -196,11 +207,11 @@ run_posterior() {
 generate_optimized_BC_values() {
     if $OptimizeOH; then
        python -c "import sys; import xarray;\
-       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-5:];\
+       xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-5:-1];\
        print(xhat.tolist())" $1
     else
        python -c "import sys; import xarray;\
-       xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-4:];\
+       xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-4:];\
        print(xhat.tolist())" $1
     fi
 }
@@ -210,6 +221,6 @@ generate_optimized_BC_values() {
 #   generate_optimized_OH_values <path-to-inversion-result> <oh-pert-value>
 generate_optimized_OH_value() {
     python -c "import sys; import xarray;\
-    xhat = xarray.open_dataset(sys.argv[1])['xhat'].values[-1:];\
-    print(xhat.tolist())" $1
+    xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-1:];\
+    print(xhat.tolist()[0])" $1
 }

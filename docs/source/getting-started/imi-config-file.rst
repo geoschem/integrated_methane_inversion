@@ -124,6 +124,10 @@ For more information on using the clustering options take a look at the `cluster
      - Boolean for whether to update the statevector clustering with each Kalman Filter update. Note: ``KalmanMode`` must be set to true.
    * - ``ClusteringMethod``
      - Clustering method to use for state vector reduction. (eg. "kmeans" or "mini-batch-kmeans")
+   * - ``MaxClusterSize``
+     - Maximum number of native resolution elements in a cluster. Default value is ``64`` (~2x2.5 degrees when using a .25 degree native grid).
+   * - ``ClusteringThreshold``
+     - Aggregate DOFS that a cluster must have before being added to the grid. Making this value higher will smooth out the clustering. Default value is ``Estimated_DOFS / NumberOfElements``.
    * - ``NumberOfElements``
      - Number of elements in the reduced dimension state vector. This is only used if ``ReducedDimensionStateVector`` is ``true``.
    * - ``ForcedNativeResolutionElements``
@@ -152,12 +156,16 @@ Inversion
    :widths: 30, 70
    :class: tight-table
 
+   * - ``LognormalErrors``
+     - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
      - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
    * - ``PriorErrorOH``
      - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
    * - ``PriorErrorBCs``
      - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
+   * - ``PriorErrorBufferElements``
+     - Error in the prior estimates for buffer elements (1-sigma; relative). Default is ``0.5`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
    * - ``ObsError``
      - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
    * - ``Gamma``
@@ -247,7 +255,7 @@ Note: some python scripts are also deployed using slurm and default to using the
    * - ``JacobianMemory``
      - Amount of memory to allocate to each jacobian simulation (in MB).
    * - ``SchedulerPartition``
-     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_intel,seas_compute,etc").
+     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
  
@@ -306,7 +314,7 @@ the IMI on a local cluster<../advanced/local-cluster>`).
    * - ``BCpath``
      - Path to GEOS-Chem boundary condition files (for regional simulations).
    * - ``BCversion``
-     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2023-04``). Note: this will be appended onto BCpath as a subdirectory.
+     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2024-06``). Note: this will be appended onto BCpath as a subdirectory.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``SpinupDryRun``

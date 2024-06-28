@@ -35,9 +35,8 @@ def get_satellite_times(filename):
 def apply_satellite_operator_to_one_satellite_file(filename, satellite_product, species):
     
     """
-    Run apply_satellite_operator from src/inversion_scripts/operators/satellite_operator.py for a single satellite file (then saves it to a pkl file)
+    Run apply_satellite_operator from src/inversion_scripts/operators/satellite_operator.py for a single satellite file
     Example input (str): S5P_RPRO_L2__CH4____20220725T152751_20220725T170921_24775_03_020400_20230201T100624.nc
-    Example output: write the file config["workdir"]/step1/S5P_RPRO_L2__CH4____20220725T152751_20220725T170921_24775_03_020400_20230201T100624_GCtoSatellite.pkl
     """
     
     result = apply_satellite_operator(
@@ -138,22 +137,28 @@ def calculate_bias(daily_means):
     bias = bias.rolling(lat=5,              # five lat grid boxes (10 degrees)
                         lon=5,              # five lon grid boxes (12.5 degrees)
                         center=True,        # five boxes includes the one we are cented on
-                        min_periods=25/2    # half of the grid cells have a value to not output NaN
+                        min_periods=25/2    # half (13) of the grid cells have a value to not output NaN
                         ).mean(skipna=True)
 
     # Smooth temporally
-    bias = bias.rolling(time=15,            # average 15 days back in time (including the time we are centered on)
-                        min_periods=1,      # only one of the time values must have a value to not output NaN
-                    ).mean(skipna=True)
+    bias_15 = bias.rolling(time=15,            # average 15 days back in time (including the time we are centered on)
+                           min_periods=1,      # only one of the time values must have a value to not output NaN
+                          ).mean(skipna=True)
+
+    bias_30 = bias.rolling(time=30,            # average 30 days back in time (including the time we are centered on)
+                           min_periods=1,      # only one of the time values must have a value to not output NaN
+                          ).mean(skipna=True)
+    
+    bias = bias_15.fillna(bias_30)             # fill in NaN values with the 30 day average
 
     # Create a dataarray with latitudinal average for each time step
     # We will fill the NaN values in bias with these averages
     nan_value_filler_2d = bias.copy()
-    nan_value_filler_2d = (nan_value_filler_2d.where(nan_value_filler_2d.count("lon") >= 30) # there needs to be 30 grid boxes       
-                                            .mean(dim=["lon"], skipna=True)                #    at this lat to define a mean
-                                            .interpolate_na(dim="lat", method="nearest")   # fill in "middle" NaN values
-                                            .bfill(dim="lat")                              # fill in NaN values towards -90 deg
-                                            .ffill(dim="lat")                              # fill in NaN values towards +90 deg
+    nan_value_filler_2d = (nan_value_filler_2d.where(nan_value_filler_2d.count("lon") >= 15) # there needs to be 15 grid boxes
+                                            .mean(dim=["lon"], skipna=True)                  #  at this lat to define a mean
+                                            .interpolate_na(dim="lat", method="linear")      # fill in "middle" NaN values
+                                            .bfill(dim="lat")                                # fill in NaN values towards -90 deg
+                                            .ffill(dim="lat")                                # fill in NaN values towards +90 deg
                                         )
 
     # Expand to 3 dimensions
@@ -190,6 +195,7 @@ def write_bias_corrected_files(bias, species, satellite_product):
             & (np.datetime64(re.search(r'(\d{8})_(\d{4}z)', f).group(1)) <= np.datetime64(config["endDate"]))
         )
     ]
+    assert len(files) == len(strdate), "ERROR -> bias dimension is not the same as number of boundary condition files"
 
     # For each file, remove the total column bias from each level of the GEOS-Chem boundary condition
     for filename in files:
@@ -236,8 +242,9 @@ if __name__ == "__main__":
     (2) Make a gridded (2.0 x 2.5 x daily) field of the bias between TROPOMI and GEOS-Chem
         - subtract the TROPOMI and GEOS-Chem grids from part 1 to get a starting point for the bias
         - smooth this field spatially (5 lon grid boxes, 5 lat grid boxes) then temporally (15 days backwards)
+            - use a temporal smoothing of 30 days back in time if there are no data in the past 15 days
         - fill NaN values with the latitudinal average at that time
-            - for a latitudinal average to be defined, there must be >= 30 grid cells at that latitude
+            - for a latitudinal average to be defined, there must be >= 15 grid cells at that latitude
             - when a latitudinal average cannot be found, the closest latitudinal average is used
     (3) Write the boundary conditions
         - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions

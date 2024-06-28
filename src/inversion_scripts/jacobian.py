@@ -78,6 +78,7 @@ if __name__ == "__main__":
     satellite_product = sys.argv[10]
     isPost = sys.argv[11]
     build_jacobian = sys.argv[12]
+    viz_prior = sys.argv[13] # Merged in dev but isn't in posterior.py, etc. -HON
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -94,6 +95,14 @@ if __name__ == "__main__":
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
         vizdir = f"{workdir}/data_visualization"
+        
+        # for lognormal, we also sample the prior simulation in a 
+        # separate call to jacobian.py solely for visualization purposes
+        if viz_prior.lower() == "true":
+            gc_cache = f"{gc_cache}_prior"
+            outputdir = f"{outputdir}_prior"
+            vizdir = f"{vizdir}_prior"
+             
     else:  # if sampling posterior simulation
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
@@ -166,11 +175,11 @@ if __name__ == "__main__":
                     "xlim": xlim,
                     "ylim": ylim,
                     "gc_cache": gc_cache,
-                    "build_jacobian": build_jacobian,
+                    "build_jacobian": False,
                     "sensi_cache": sensi_cache,
                 },
             )
-
+            
             if output == None:
                 return 0
         else:
