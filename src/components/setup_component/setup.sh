@@ -97,7 +97,7 @@ setup_imi() {
         gridDir="${gridDir}_${RegionID}"
     fi
 
-    # Clone version 14.2.1 of GCClassic
+    # Clone version 14.4.1 of GCClassic
     # Define path to GEOS-Chem run directory files
     cd "${InversionPath}"
     if [ ! -d "GCClassic" ]; then
@@ -108,10 +108,10 @@ setup_imi() {
         cd ..
     else
         cd GCClassic
-        if grep -Fq "VERSION 14.2.3" CMakeLists.txt; then
+        if grep -Fq "VERSION 14.4.1" CMakeLists.txt; then
             echo "GCClassic already exists and is the correct version."
         else
-            echo "ERROR: GCClassic already exists but is not version 14.2.3."
+            echo "ERROR: GCClassic already exists but is not version 14.4.1."
             exit 1
         fi
         cd ..
