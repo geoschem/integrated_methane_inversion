@@ -126,8 +126,8 @@ export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
 # Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
 mkdir -p -v ${RunDirs}
-tropomiCache=${RunDirs}/data_TROPOMI
-if "$isAWS"; then
+satelliteCache=${RunDirs}/data_satellite
+if ("$isAWS" && [[ "$Species" == "CH4" ]]); then
     { # test if instance has access to TROPOMI bucket
         stdout=`aws s3 ls s3://meeo-s5p`
     } || { # catch 
@@ -135,19 +135,21 @@ if "$isAWS"; then
         printf "IMI $RunName Aborted.\n"
         exit 1
     }
-    mkdir -p -v $tropomiCache
+    mkdir -p -v $satelliteCache
     printf "Downloading TROPOMI data from S3\n"
-    python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
+    python src/utilities/download_TROPOMI.py $StartDate $EndDate $satelliteCache
     printf "\nFinished TROPOMI download\n"
+elif ("$isAWS" && [[ "$Species" != "CO2" ]]); then
+    printf "Non methane species are not currently supported on AWS."
 else
     # use existing tropomi data and create a symlink to it
-    if [[ ! -L $tropomiCache ]]; then
-	ln -s $DataPathObs $tropomiCache
+    if [[ ! -L $satelliteCache ]]; then
+	ln -s $DataPathObs $satelliteCache
     fi
 fi
 
 # Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
-python src/utilities/test_TROPOMI_dir.py $tropomiCache
+python src/utilities/test_TROPOMI_dir.py $satelliteCache
 
 ##=======================================================================
 ##  Run the setup script
