@@ -42,11 +42,9 @@ submit_slurm_job() {
 # Usage:
 #   submit_pbs_job $JobArguments
 submit_pbs_job() {
-    echo "Check aa"
-    echo ${@}
-    echo "$RequestedTime"
-    qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy,walltime=$RequestedTime -Wblock=true ${@}; wait;
-    echo "Check bb"
+    qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
+         -l walltime=$RequestedTime \
+         -Wblock=true ${@}; wait;
 }
 
 convert_sbatch_to_pbs() {
@@ -72,8 +70,8 @@ convert_sbatch_to_pbs() {
         echo "    ${f}"
 
         # First, insert needed sites at the top of every file
-        awk -i inplace 'FNR==NR{ if (/^##SBATCH/) p=NR; next} 1; FNR==p{ print "##PBS -l site-needed='${SitesNeeded}'" }' ${f} ${f}
-        awk -i inplace 'FNR==NR{ if (/^#SBATCH/) p=NR; next} 1; FNR==p{ print "#PBS -l site-needed='${SitesNeeded}'" }' ${f} ${f}
+        awk -i inplace 'FNR==NR{ if (/^##SBATCH/) p=NR; next} 1; FNR==p{ print "##PBS -l site=needed='${SitesNeeded}'" }' ${f} ${f}
+        awk -i inplace 'FNR==NR{ if (/^#SBATCH/) p=NR; next} 1; FNR==p{ print "#PBS -l site=needed='${SitesNeeded}'" }' ${f} ${f}
 
         # Replace SBATCH options
         sed -i -e "s/SBATCH -J /PBS -N /g" \
