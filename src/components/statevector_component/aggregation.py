@@ -361,7 +361,30 @@ def get_country_centroids(grid_data, valid_indices):
         .reset_index()
         [['cell_idx','name']]
     )
-    
+
+    # handle fatal error where cell is considered
+    # overlap by sjoin but not overlay
+    # seen to affects 0 or 1 cell in some regional cases
+    if (~gdf_dup.cell_idx.isin(dfcountry.cell_idx)).any():
+        missing_idx = (
+            gdf_dup
+            [(~gdf_dup.cell_idx.isin(dfcountry.cell_idx))]
+            .cell_idx.unique()
+        )
+        dfcountry = (
+            dfcountry
+            .merge(
+                (
+                    gdf_comb[gdf_comb.cell_idx.isin(missing_idx)]
+                    .groupby('cell_idx')
+                    .first()
+                    .reset_index()
+                    [['cell_idx', 'name']]
+                ),
+                'outer'
+            ).reset_index()
+        )
+
     # re-merge df of grid cells, now without duplicated cells
     # geometry and country name of cells on borders
     df1 = gdf_comb[['geometry','cell_idx','name']].merge(dfcountry, on=['cell_idx','name'])

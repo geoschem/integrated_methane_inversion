@@ -36,22 +36,22 @@ setup_template() {
 	exit 1
     fi	
     if [ "$Res" = "4.0x5.0" ]; then
-	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
-	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+	cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
 	if "$isRegional"; then
 	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
 	else
-	    cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
 	fi
     elif [ "$Res" == "0.25x0.3125" ]; then
 	if "$isRegional"; then
 	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
 	else
-	    cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
 	fi
     else
 	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
