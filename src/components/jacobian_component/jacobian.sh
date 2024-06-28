@@ -226,11 +226,7 @@ run_jacobian() {
         source submit_jacobian_simulations_array.sh
 
         if "$LognormalErrors"; then
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W run_bkgd_simulation.sh
+            submit_job $SchedulerType run_bkgd_simulation.sh
             wait
         fi
 
@@ -258,11 +254,7 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch --mem $SimulationMemory \
-            -c $SimulationCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -W run_prior_simulation.sh
+        submit_job $SchedulerType -o imi_output.tmp run_prior_simulation.sh
         wait
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
@@ -271,11 +263,7 @@ run_jacobian() {
         # Run the background simulation if lognormal errors enabled
         if "$LognormalErrors"; then
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
-            sbatch --mem $SimulationMemory \
-                -c $SimulationCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W run_bkgd_simulation.sh
+            submit_job $SchedulerType run_bkgd_simulation.sh
             wait
             printf "=== DONE BACKGROUND SIMULATION ===\n"
         fi
