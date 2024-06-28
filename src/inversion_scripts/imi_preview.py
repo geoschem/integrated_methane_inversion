@@ -614,8 +614,9 @@ if __name__ == "__main__":
     config_path = sys.argv[2]
     state_vector_path = sys.argv[3]
     preview_dir = sys.argv[4]
-    satellite_cache = sys.argv[5]
+    species = sys.argv[5]
+    satellite_cache = sys.argv[6]
 
     imi_preview(
-        inversion_path, config_path, state_vector_path, preview_dir, satellite_cache
+        inversion_path, config_path, state_vector_path, preview_dir, species, satellite_cache
     )
