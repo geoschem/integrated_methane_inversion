@@ -150,7 +150,7 @@ setup_template() {
     rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
-    cp ${InversionPath}/src/geoschem_run_scripts/${Species,,}_run.template .
+    cp ${InversionPath}/src/geoschem_run_scripts/run.template .
 
     # Compile GEOS-Chem and store executable in template run directory
     printf "\nCompiling GEOS-Chem...\n"

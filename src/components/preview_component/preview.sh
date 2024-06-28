@@ -61,9 +61,9 @@ run_preview() {
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
-    -e "s:##:#:g" ${Species,,}_run.template > ${PreviewName}.run
+    -e "s:##:#:g" run.template > ${PreviewName}.run
     chmod 755 ${PreviewName}.run
-    rm -f ${Species,,}_run.template
+    rm -f run.template
 
     ### Perform dry run if requested
     if "$PreviewDryRun"; then

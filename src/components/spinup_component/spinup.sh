@@ -62,9 +62,9 @@ setup_spinup() {
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
-        -e "s:##:#:g" ${Species,,}_run.template > ${SpinupName}.run
+        -e "s:##:#:g" run.template > ${SpinupName}.run
     chmod 755 ${SpinupName}.run
-    rm -f ${Species,,}_run.template
+    rm -f run.template
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then

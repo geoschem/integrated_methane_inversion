@@ -70,9 +70,9 @@ setup_posterior() {
 
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
-	-e "s:##:#:g" ${Species,,}_run.template > ${PosteriorName}.run
+	-e "s:##:#:g" run.template > ${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
-    rm -f ${Species,,}_run.template
+    rm -f run.template
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then

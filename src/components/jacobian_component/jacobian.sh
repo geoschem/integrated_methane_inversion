@@ -147,8 +147,8 @@ setup_jacobian() {
 	fi
 
 	# Create run script from template
-	sed -e "s:namename:${name}:g" ${Species,,}_run.template > ${name}.run
-	rm -f ${Species,,}_run.template
+	sed -e "s:namename:${name}:g" run.template > ${name}.run
+	rm -f run.template
 	chmod 755 ${name}.run
 
 	### Turn on observation operators if requested, only for base run
