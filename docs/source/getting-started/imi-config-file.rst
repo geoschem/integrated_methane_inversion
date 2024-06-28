@@ -269,7 +269,7 @@ These settings are intended for advanced users who wish to modify additional GEO
      - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
    * - ``UseOHSF``
      - Boolean to apply OH scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
-   * - ``HourlyCH4``
+   * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
      - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <http://wiki.seas.harvard.edu/geos-chem/index.php/Planeflight_diagnostic>`_ documentation for details. Default value is ``false``.
