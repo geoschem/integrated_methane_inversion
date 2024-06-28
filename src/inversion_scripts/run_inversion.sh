@@ -42,7 +42,7 @@ StateVectorFile={STATE_VECTOR_PATH}
 GCDir="./data_geoschem"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
-tropomiCache="${OutputPath}/${RunName}/data_TROPOMI"
+satelliteCache="${OutputPath}/${RunName}/data_satellite"
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
 # Switch is flipped to false automatically if (( period_i > 1 ))
@@ -141,7 +141,7 @@ else
    buildJacobian="False"
 fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian; wait
+python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $isPost $buildJacobian; wait
 printf " DONE -- jacobian.py\n\n"
 
 #=======================================================================
