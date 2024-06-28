@@ -78,7 +78,7 @@ modules" and "Run modules" and turning them on one or a few at a
 time. You may find that you need to manually edit some files. For
 example, after creating the template run directory, but before
 creating your spinup, Jacobian, and posterior run directories, you should open
-``ch4_run.template`` in a text editor and modify as needed for your
+``run.template`` in a text editor and modify as needed for your
 system (by default this script is set up to submit to a SLURM
 scheduler).
 
