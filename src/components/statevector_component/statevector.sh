@@ -85,8 +85,8 @@ reduce_dimension() {
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
         chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \

@@ -29,9 +29,8 @@ setup_posterior() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
@@ -59,8 +58,10 @@ setup_posterior() {
     else
         gridded_posterior_filename="gridded_posterior.nc"
     fi
-    sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
+    sed -i -e "s|\.\./\.\.|\.\.|g" \
+           -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" HEMCO_Config.rc
+
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
@@ -141,8 +142,8 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $SimulationMemory \
-           -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+           -c $RequestedCPUs \
            -t $RequestedTime \
            -p $SchedulerPartition \
            -W ${RunName}_Posterior.run; wait;

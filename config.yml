@@ -99,6 +99,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
@@ -107,7 +108,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -120,15 +121,19 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-SimulationCPUs: 32
-SimulationMemory: 32000
-JacobianCPUs: 1
-JacobianMemory: 2000
+RequestedCPUs: 32
+RequestedMemory: 32000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
+
+## Specify number of Jacobians runs to perform
+##   The default is -1 which will create and submit a jacobian run
+##   for each state vector element. Specifying a value >= 1 will
+##   combine state vector elements into fewer runs.
+NumJacobianRuns: -1
 
 ##====================================================================
 ##

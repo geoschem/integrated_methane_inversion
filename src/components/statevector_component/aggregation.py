@@ -180,12 +180,14 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    if config["Res"] == "2.0x2.5":
-        default_max_aggregation_level = 16 # Setting background to 8x10 for global
+    if config["Res"] == "0.25x0.3125":
+        max_aggregation_level = 64
     elif config["Res"] == "0.5x0.625":
-        default_max_aggregation_level = 32
-    elif config["Res"] == "0.25x0.3125":
-        default_max_aggregation_level = 64
+        max_aggregation_level = 32
+    elif config["Res"] == "2.0x2.5":
+        max_aggregation_level = 16
+    elif config["Res"] == "4.0x5.0":
+        max_aggregation_level = 8
 
     max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else default_max_aggregation_level
     

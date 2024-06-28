@@ -32,9 +32,8 @@ run_preview() {
     # Remove old error status file if present
     rm -f .error_status_file.txt
     
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
@@ -86,8 +85,8 @@ run_preview() {
     # Submit preview GEOS-Chem job to job scheduler
     printf "\nRunning preview GEOS-Chem simulation... "
     if "$UseSlurm"; then
-        sbatch --mem $SimulationMemory \
-               -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+               -c $RequestedCPUs \
                -t $RequestedTime \
                -p $SchedulerPartition \
                -W ${RunName}_Preview.run; wait;
@@ -108,8 +107,8 @@ run_preview() {
     printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
         chmod +x $preview_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \

@@ -40,6 +40,7 @@ setup_inversion() {
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
+           -e "s:{NUM_JACOBIAN_RUNS}:${NumJacobianRuns}:g" \
            -e "s:{OUTPUT_PATH}:${OutputPath}:g" \
            -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
            -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
@@ -75,8 +76,8 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory \
-           -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+           -c $RequestedCPUs \
            -t $RequestedTime \
            -p $SchedulerPartition \
            -W run_inversion.sh $FirstSimSwitch; wait;

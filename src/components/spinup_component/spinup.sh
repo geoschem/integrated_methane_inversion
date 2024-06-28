@@ -29,9 +29,8 @@ setup_spinup() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
@@ -92,11 +91,11 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    sbatch --mem $SimulationMemory \
-    -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+    -c $RequestedCPUs \
     -t $RequestedTime \
     -p $SchedulerPartition \
-    -W ${RunName}_Spinup.run; wait;
+    -W ${SpinupName}.run; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

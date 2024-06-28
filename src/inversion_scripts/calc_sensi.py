@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import datetime
+import math
 from joblib import Parallel, delayed
 from src.inversion_scripts.utils import zero_pad_num_hour
 
@@ -55,6 +56,7 @@ def test_GC_output_for_BC_perturbations(e, nelements, sensitivities, opt_OH):
 
 def calc_sensi(
     nelements,
+    nruns,
     perturbation,
     startday,
     endday,
@@ -70,6 +72,7 @@ def calc_sensi(
 
     Arguments
         nelements      [int]   : Number of state vector elements
+        nruns          [int]   : Number of Jacobian run directories
         perturbation   [float] : Size of emissions perturbation (e.g., 1.5)
         startday       [str]   : First day of inversion period; formatted YYYYMMDD
         endday         [str]   : Last day of inversion period; formatted YYYYMMDD
@@ -122,6 +125,12 @@ def calc_sensi(
         delta = datetime.timedelta(days=1)
         dt += delta
 
+    # Number of tracers per jacobian run
+    if nruns > 0:
+        ntracers = nelements / nruns
+    else:
+        ntracers = nelements
+        
     # Loop over model data to get sensitivities
     hours = range(24)
     elements = range(nelements)
@@ -152,12 +161,23 @@ def calc_sensi(
             for e in elements:
                 # State vector elements are numbered 1..nelements
                 elem = zero_pad_num(e + 1)
+
+                # Determine which run directory to look in
+                if nruns > 0:
+                    run_number = math.trunc((e+1)/ntracers)
+                    if run_number >= nruns:
+                        run_number = nruns-1
+                else:
+                    run_number = e + 1
+                run_num = zero_pad_num(run_number)
+
                 # Load the SpeciesConc file for the current element and day
                 pert_data = xr.load_dataset(
-                    f"{run_dirs_pth}/{run_name}_{elem}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
+                    f"{run_dirs_pth}/{run_name}_{run_num}/OutputDir/GEOSChem.SpeciesConc.{d}_0000z.nc4"
                 )
                 # Get the data for the current hour
-                pert = pert_data["SpeciesConcVV_CH4"][h, :, :, :]
+                var = f"SpeciesConcVV_CH4_{elem}"
+                pert = pert_data[var][h, :, :, :]
                 # Compute and store the sensitivities
                 
                 if opt_OH and (e >= nelements - 1):
@@ -213,17 +233,19 @@ if __name__ == "__main__":
     import sys
 
     nelements = int(sys.argv[1])
-    perturbation = float(sys.argv[2])
-    startday = sys.argv[3]
-    endday = sys.argv[4]
-    run_dirs_pth = sys.argv[5]
-    run_name = sys.argv[6]
-    sensi_save_pth = sys.argv[7]
-    perturbationBC = float(sys.argv[8])
-    perturbationOH = float(sys.argv[9])
+    nruns = int(sys.argv[2])
+    perturbation = float(sys.argv[3])
+    startday = sys.argv[4]
+    endday = sys.argv[5]
+    run_dirs_pth = sys.argv[6]
+    run_name = sys.argv[7]
+    sensi_save_pth = sys.argv[8]
+    perturbationBC = float(sys.argv[9])
+    perturbationOH = float(sys.argv[10])
 
     calc_sensi(
         nelements,
+        nruns,
         perturbation,
         startday,
         endday,
