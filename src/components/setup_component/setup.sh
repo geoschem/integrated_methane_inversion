@@ -108,9 +108,9 @@ setup_imi() {
     else
         cd GCClassic
         if grep -Fq "VERSION ${GEOSCHEM_VERSION}" CMakeLists.txt; then
-            echo "GCClassic already exists and is the correct version ${GEOSCHEM_VERSION}."
+            echo "GCClassic already exists and is the correct version ${GEOSCHEM_VERSION}.\n"
         else
-            echo "ERROR: GCClassic already exists but is not version ${GEOSCHEM_VERSION}."
+            echo "ERROR: GCClassic already exists but is not version ${GEOSCHEM_VERSION}.\n"
             exit 1
         fi
         cd ..
