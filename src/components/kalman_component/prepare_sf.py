@@ -5,7 +5,7 @@ import numpy as np
 import yaml
 from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 
-def remove_soil_absorb_from_total(emis):
+def remove_soil_absorb_from_total(emis, species):
     """
     Remove soil absorption from total emissions and return the new total.
     
@@ -14,12 +14,14 @@ def remove_soil_absorb_from_total(emis):
     Returns
         [xr.DataArray] : Total emission from all sources except soil absorption
     """
+    if species != "CH4":
+        raise ValueError("Soil absorption is only removed for CH4. Please check your species.")
     ds = emis.copy()
     ds["EmisCH4_Total"] = ds["EmisCH4_Total"] - ds["EmisCH4_SoilAbsorb"]
     
     return ds["EmisCH4_Total"].isel(time=0, drop=True)
 
-def prepare_sf(config_path, period_number, base_directory, nudge_factor):
+def prepare_sf(config_path, period_number, base_directory, nudge_factor, species):
     """
     Function to prepare scale factors for HEMCO emissions.
 
@@ -84,7 +86,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # since it is not optimized in the inversion.
             hemco_emis_path = os.path.join(prior_cache, hemco_list[p - 1])  # p-1 index
             original_emis_ds = xr.load_dataset(hemco_emis_path)
-            original_emis = remove_soil_absorb_from_total(original_emis_ds)
+            original_emis = remove_soil_absorb_from_total(original_emis_ds, species)
 
             # Get the gridded posterior for period p
             gridded_posterior_filename = (
@@ -134,7 +136,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         )
 
     # Print the current total emissions in the region of interest
-    emis = get_posterior_emissions(original_emis_ds, sf)["EmisCH4_Total"].isel(time=0, drop=True)
+    emis = get_posterior_emissions(original_emis_ds, sf, species)[f"Emis{species}_Total"].isel(time=0, drop=True)
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
 
@@ -165,5 +167,6 @@ if __name__ == "__main__":
     period_number = sys.argv[2]
     base_directory = sys.argv[3]
     nudge_factor = sys.argv[4]
+    species = sys.argv[5]
 
-    prepare_sf(config_path, period_number, base_directory, nudge_factor)
+    prepare_sf(config_path, period_number, base_directory, nudge_factor, species)
