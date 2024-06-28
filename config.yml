@@ -2,16 +2,16 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_ICI_Global"
-Species: "CO2"
-isAWS: false
-SchedulerType: "PBS"
-SafeMode: false
+RunName: "Test_Permian_1week"
+Species: "CH4"
+isAWS: true
+SchedulerType: "slurm"
+SafeMode: true
 S3Upload: false
 
 ## Period of interest
-StartDate: 20221001
-EndDate: 20221003
+StartDate: 20180501
+EndDate: 20180508
 SpinupMonths: 1
 
 ## What satellite data product should be used? Current options are: 
@@ -26,7 +26,7 @@ SatelliteProduct: "Other"
 # BlendedTROPOMI: false
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: false
+isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -40,15 +40,15 @@ isRegional: false
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-RegionID: ""
+RegionID: "NA"
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -102.5
-LonMax: -87.5
-LatMin: 16
-LatMax: 24
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 33
 
 ## Kalman filter options
 KalmanMode: false
@@ -57,11 +57,11 @@ NudgeFactor: 0.1
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 
-BufferDeg: 0
-OptimizeBCs: false
+nBufferClusters: 8
+BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
+OptimizeBCs: false
 OptimizeOH: false
 
 ## Point source datasets
@@ -77,8 +77,8 @@ ForcedNativeResolutionElements:
   - [31.5, -104]
 
 ## Custom state vector
-StateVectorFile: "/path/to/StateVector.nc"
-ShapeFile: "None"
+StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
+ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
 ## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
@@ -92,25 +92,25 @@ PrecomputedJacobian: false
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "2.0x2.5"
+Res: "0.25x0.3125"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
-Met: "MERRA2"
+Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: true
-SetupJacobianRuns: true
+SetupSpinupRun: false
+SetupJacobianRuns: false
 SetupInversion: false
 SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: false
-DoSpinup: true
-DoJacobian: true
+RunSetup: true
+DoSpinup: false
+DoJacobian: false
 DoInversion: false
 DoPosterior: false
 
@@ -124,11 +124,11 @@ SimulationCPUs: 32
 SimulationMemory: "32gb"
 JacobianCPUs: 1
 JacobianMemory: 2000
-RequestedTime: "01:00:00"
+RequestedTime: "24:00:00"
 SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: 50
+MaxSimultaneousRuns: -1
 
 ##====================================================================
 ##
@@ -181,40 +181,33 @@ UseBCsForRestart: False
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/nobackupp27/$USER/IMI_demo"
+OutputPath: "/home/ubuntu/imi_output_dir"
 
 ## Path to GEOS-Chem input data
-DataPath: "/nobackupp27/$USER/ExtData"
+DataPath: "/home/ubuntu/ExtData"
 
-## Path to satellite data
-# DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
-DataPathObs: "/nobackupp27/$USER/IMI_demo/data_TROPOMI"
-
-## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
-##   NOTE: Copy your own file in the envs/ directory within the IMI
-GEOSChemEnv: "envs/NASA-Pleiades/gcclassic.pleiades.env"
-
-## Python environment file (this is normally one or two lines)
-PythonEnv: "envs/NASA-Pleiades/python.env"
+## Conda environment file
+PythonEnv: "/home/ubuntu/integrated_methane_inversion/envs/aws/python.env"
 
 ## Download initial restart file from AWS S3?
-##   NOTE: Must have AWS CLI enabled
-RestartDownload: false
+##  NOTE: Must have AWS CLI enabled
+RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/nobackup/$USER/CO2_inversion/restart_"
-RestartFilePreviewPrefix: "/nobackup/$USER/CO2_inversion/restart_"
+RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
+RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/nobackup/$USER"
-BCversion: "v2023-10"
+BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
+BCversion: "v2023-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: Must have AWS CLI enabled
-PreviewDryRun: false
-SpinupDryrun: false
-ProductionDryRun: false
-PosteriorDryRun: false
-BCdryrun: false
+##   NOTE: You will be charged if your ec2 instance is not in the
+##         us-east-1 region.
+PreviewDryRun: true
+SpinupDryrun: true
+ProductionDryRun: true
+PosteriorDryRun: true
+BCdryrun: true

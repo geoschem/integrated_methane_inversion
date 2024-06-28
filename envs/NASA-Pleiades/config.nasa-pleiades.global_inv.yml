@@ -6,12 +6,12 @@ RunName: "Test_ICI_Global"
 Species: "CO2"
 isAWS: false
 SchedulerType: "PBS"
-SafeMode: true
+SafeMode: false
 S3Upload: false
 
 ## Period of interest
-StartDate: 20180501
-EndDate: 20180502
+StartDate: 20221001
+EndDate: 20221003
 SpinupMonths: 1
 
 ## What satellite data product should be used? Current options are: 
@@ -45,10 +45,10 @@ RegionID: ""
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -180
-LonMax: 180
-LatMin: -90
-LatMax: 90
+LonMin: -102.5
+LonMax: -87.5
+LatMin: 16
+LatMax: 24
 
 ## Kalman filter options
 KalmanMode: false
@@ -57,7 +57,7 @@ NudgeFactor: 0.1
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 0
+nBufferClusters: 
 BufferDeg: 0
 OptimizeBCs: false
 LandThreshold: 0.25
@@ -96,21 +96,21 @@ Res: "2.0x2.5"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
-Met: "GEOSFP"
+Met: "MERRA2"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: false
-SetupJacobianRuns: false
+SetupSpinupRun: true
+SetupJacobianRuns: true
 SetupInversion: false
 SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
-DoSpinup: false
-DoJacobian: false
+RunSetup: false
+DoSpinup: true
+DoJacobian: true
 DoInversion: false
 DoPosterior: false
 
@@ -124,7 +124,8 @@ SimulationCPUs: 32
 SimulationMemory: "32gb"
 JacobianCPUs: 1
 JacobianMemory: 2000
-RequestedTime: "24:00:00"
+RequestedTime: "01:00:00"
+SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: 50
@@ -180,13 +181,14 @@ UseBCsForRestart: False
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/nobackup/$USER"
+OutputPath: "/nobackupp27/$USER/IMI_demo"
 
 ## Path to GEOS-Chem input data
-DataPath: "/nobackup/$USER/ExtData"
+DataPath: "/nobackupp27/$USER/ExtData"
 
 ## Path to satellite data
-DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
+# DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
+DataPathObs: "/nobackupp27/$USER/IMI_demo/data_TROPOMI"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
