@@ -61,7 +61,7 @@ convert_sbatch_to_pbs() {
     SitesNeeded=$(IFS=/ ; echo "${SitesNeeded[*]}")
     SitesNeeded="/${SitesNeeded::-1}"
 
-    # Get files containing SBATCH7
+    # Get files containing SBATCH
     current_dir=$(pwd)
     sbatch_files=($(grep -rl "SBATCH" . --exclude-dir={"GCClassic",".git","*utilities*"}))
     echo "Replacing SBATCH with PBS in the following files:"
