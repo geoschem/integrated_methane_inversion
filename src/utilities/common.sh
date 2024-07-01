@@ -80,7 +80,9 @@ convert_sbatch_to_pbs() {
             -e "s/SBATCH --mem /PBS -l mem=/g" \
             -e "s/SBATCH -t /PBS -l walltime=/g" \
             -e "s/SBATCH -n /PBS -l nodes=1:ppn=/g" \
+            -e "s/SBATCH --ntasks-per-node/PBS -l nodes=1:ppn/g" \
             -e "s/SBATCH -p /PBS -q /g" \
+            -e "s/SBATCH -o /PBS -o /g" \
             -e "s/SBATCH --mail-type=END/PBS -m e/g" ${f}
     done
 }
