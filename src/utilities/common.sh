@@ -86,6 +86,9 @@ convert_sbatch_to_pbs() {
             -e "s/SBATCH -p /PBS -q /g" \
             -e "s/SBATCH -o /PBS -o /g" \
             -e "s/SBATCH --mail-type=END/PBS -m e/g" ${f}
+
+        printf "    Remaining SBATCH options:"
+        grep "SBATCH" $file
     done
 }
 
