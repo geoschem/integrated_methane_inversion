@@ -44,23 +44,14 @@ fi
 # Get the conda environment name and source file
 # These variables are sourced manually because
 # we need the python environment to parse the yaml file
-CondaEnv=$(grep '^CondaEnv:' ${ConfigFile} |
-    sed 's/CondaEnv://' |
+PythonEnv=$(grep '^PythonEnv:' ${ConfigFile} |
+    sed 's/PythonEnv://' |
     sed 's/#.*//' |
     sed 's/^[[:space:]]*//' |
     tr -d '"')
-CondaFile=$(eval echo $(grep '^CondaFile:' ${ConfigFile} |
-    sed 's/CondaFile://' |
-    sed 's/#.*//' |
-    sed 's/^[[:space:]]*//' |
-    tr -d '"'))
 
 # Load conda/mamba/micromamba e.g. ~/.bashrc
-source $CondaFile
-
-# Activate Conda environment
-printf "\nActivating conda environment: ${CondaEnv}\n"
-conda activate ${CondaEnv}
+source $PythonEnv
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
@@ -74,16 +65,6 @@ if ! "$isAWS"; then
     else
         printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
             source ${GEOSChemEnv}
-    fi
-
-    # Load the python environment
-    if [ ! -f "${PythonEnv}" ]; then
-        printf "\nPython environment file ${PythonEnv} does not exist!"
-        printf "\nIMI $RunName Aborted\n"
-        exit 1
-    else
-        printf "\nLoading Python environment: ${PythonEnv}\n"
-            source ${PythonEnv}
     fi
 
     # If scheduler is PBS, get the list of needed sites
