@@ -249,11 +249,7 @@ create_simulation_dir() {
     else
         # set 1ppb CH4 boundary conditions and restarts for all other perturbation simulations
         # Note that we use the timecycle flag C to avoid having to make additional files
-        if "$UseBCsForRestart"; then
-            RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
-        else
-            RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
-        fi
+        RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
         BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
         BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
         sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
@@ -394,6 +390,9 @@ run_jacobian() {
         # create 1ppb restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
         python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
+        cd ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/
+        mv GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4 2>/dev/null
+        cd ${RunDirs}/jacobian_runs
         set +e
 
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
