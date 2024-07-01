@@ -83,6 +83,7 @@ ShapeFile: "None"
 ## Inversion
 ## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
 ##  and PriorErrorBCs is in ppb
+LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
 PriorErrorOH: 0.5
@@ -108,9 +109,10 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: false
-DoSpinup: true
-DoJacobian: true
+RunSetup: true
+DoSpinup: false
+DoJacobian: false
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
