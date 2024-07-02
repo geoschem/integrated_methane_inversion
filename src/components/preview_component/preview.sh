@@ -106,9 +106,7 @@ run_preview() {
         python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     else
         chmod +x $preview_file
-        submit_job $SchedulerType -o imi_output.tmp $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
-        rm imi_output.tmp
+        submit_job $SchedulerType true $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
