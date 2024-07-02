@@ -34,7 +34,8 @@ setup_template() {
 	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
 	printf "\n Options are GEOSFP or MERRA2.\n"
 	exit 1
-    fi	
+    fi
+    
     if [ "$Res" = "4.0x5.0" ]; then
 	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
