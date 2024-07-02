@@ -68,6 +68,7 @@ submit_pbs_job() {
         qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
             -l walltime=$RequestedTime -q devel \
             -Wblock=true -- ${@:2}; wait;
+    fi
 }
 
 convert_sbatch_to_pbs() {
