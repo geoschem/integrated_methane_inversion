@@ -166,7 +166,7 @@ if "$isAWS"; then
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $satelliteCache ]]; then
-    	ln -s $DataPathObs $satelliteCache
+        ln -s $DataPathObs $satelliteCache
     fi
 fi
 
