@@ -85,14 +85,6 @@ setup_template() {
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi
 
-    # For CH4 inversions always turn analytical inversion on
-    sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
-
-    # Also turn on analytical inversion option in HEMCO_Config.rc
-    OLD="--> AnalyticalInv          :       false"
-    NEW="--> AnalyticalInv          :       true "
-    sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
-
     # Update time cycling flags to use most recent year
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
     
