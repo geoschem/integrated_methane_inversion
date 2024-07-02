@@ -151,10 +151,10 @@ def do_inversion(
             ]
         )
         # Define observational errors (diagonal entries of S_o matrix)
-        obs_error = np.power(obs_error, 2)
+        obs_error = np.power(obs_err, 2)
         gP = s_superO_p**2 / s_superO_1**2
         # scale error variance by gP
-        obs_error = gP * obs_err
+        obs_error = gP * obs_error
 
         # check to make sure obs_err isn't negative, set 1 as default value
         obs_error = [obs if obs > 0 else 1 for obs in obs_error]
