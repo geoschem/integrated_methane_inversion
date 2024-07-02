@@ -391,7 +391,9 @@ run_jacobian() {
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
         python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
         cd ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/
-        mv GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4 2>/dev/null
+        if [ -f GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 ]; then
+            mv GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
+        fi
         cd ${RunDirs}/jacobian_runs
         set +e
 
