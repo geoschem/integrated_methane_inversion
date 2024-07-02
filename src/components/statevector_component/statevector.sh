@@ -87,9 +87,7 @@ reduce_dimension() {
         python "${python_args[@]}"
     else
         chmod +x $aggregation_file
-        submit_job $SchedulerType -o imi_output.tmp "${python_args[@]}"
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
-        rm imi_output.tmp
+        submit_job $SchedulerType true "${python_args[@]}"
     fi
 
     # archive state vector file if using Kalman filter

@@ -141,7 +141,7 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    submit_job $SchedulerType ${RunName}_Posterior.run
+    submit_job $SchedulerType false ${RunName}_Posterior.run
     
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

@@ -75,7 +75,7 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    submit_job $SchedulerType run_inversion.sh $FirstSimSwitch
+    submit_job $SchedulerType false run_inversion.sh $FirstSimSwitch
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

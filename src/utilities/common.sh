@@ -13,7 +13,7 @@
 # Description: 
 #   Submit a job with default ICI settings using either SBATCH or PBS
 # Usage:
-#   submit_job $SchedulerType $JobArguments
+#   submit_job $SchedulerType $SaveOutput $JobArguments
 submit_job() {
     if [[ $1 = "slurm" || $1 = "tmux" ]]; then
         submit_slurm_job "${@:2}"
@@ -22,6 +22,12 @@ submit_job() {
     else
         echo "Scheduler type $1 not recognized."
     fi
+
+    # If output was saved, concatenate it to imi_output
+    if [[ $2 = "true" ]]; then
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
+    fi
 }
 
 # Description: 
@@ -29,12 +35,23 @@ submit_job() {
 # Usage:
 #   submit_slurm_job $JobArguments
 submit_slurm_job() {
-    sbatch -N 1 \
-        --mem $SimulationMemory \
-        -c $SimulationCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${@}; wait;
+    if [[ $1 = "true" ]]; then
+        sbatch -N 1 \
+            --mem $SimulationMemory \
+            -c $SimulationCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W ${@:2}; wait;
+    else
+        sbatch -N 1 \
+            --mem $SimulationMemory \
+            -c $SimulationCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W ${@:2}; wait;
+    fi
 }
 
 # Description: 
@@ -42,9 +59,16 @@ submit_slurm_job() {
 # Usage:
 #   submit_pbs_job $JobArguments
 submit_pbs_job() {
-    qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
-         -l walltime=$RequestedTime \
-         -Wblock=true ${@}; wait;
+    # If save output
+    if [[ $1 = "true" ]]; then
+        qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
+            -l walltime=$RequestedTime -q devel -o imi_output.tmp \
+            -Wblock=true -- ${@:2}; wait;
+    else
+        qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
+            -l walltime=$RequestedTime -q devel \
+            -Wblock=true -- ${@:2}; wait;
+    fi
 }
 
 convert_sbatch_to_pbs() {
