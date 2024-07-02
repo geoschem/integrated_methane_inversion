@@ -88,7 +88,7 @@ run_preview() {
     if [[ $SchedulerType = "tmux" ]]; then
         ./${RunName}_Preview.run
     else
-        submit_job $SchedulerType ${RunName}_Preview.run
+        submit_job $SchedulerType false ${RunName}_Preview.run
     fi
 
     # Specify inputs for preview script
