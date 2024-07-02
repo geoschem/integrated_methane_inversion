@@ -156,12 +156,8 @@ if "$isAWS"; then
     else
         printf "$SatelliteProduct is not currently supported for download --HON"
     fi
-    # HON: This no longer has the -o imi_output.tmp option in order to use 
-    # the PBS/SBATCH agnostic function
-    submit_job $SchedulerType -o imi_output.tmp $downloadScript $StartDate $EndDate $tropomiCache
-    wait
-    cat imi_output.tmp >>${InversionPath}/imi_output.log
-    rm imi_output.tmp
+
+    submit_job $SchedulerType true $downloadScript $StartDate $EndDate $tropomiCache
 
 else
     # use existing tropomi data and create a symlink to it
