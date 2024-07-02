@@ -13,50 +13,64 @@ setup_template() {
 
     # The createRunDir.sh script assumes the file ~/.geoschem/config exists
     # and contains the path to GEOS-Chem input data
-	export GC_USER_REGISTERED=true
+    export GC_USER_REGISTERED=true
     if [[ ! -f ${HOME}/.geoschem/config ]]; then
-	mkdir -p ${HOME}/.geoschem
-	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
-	source ${HOME}/.geoschem/config
+        mkdir -p ${HOME}/.geoschem
+        echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
+        source ${HOME}/.geoschem/config
     fi
 
     if [[ -d ${RunTemplate} ]]; then
-	printf "\nERROR: ${RunTemplate} already exists. Please remove or set 'SetupTemplateRunDir: false' in config.yml.\n"
-	exit 9999
+        printf "\nERROR: ${RunTemplate} already exists. Please remove or set 'SetupTemplateRunDir: false' in config.yml.\n"
+        exit 9999
     fi
 
     # Commands to feed to createRunDir.sh
+    # Set meteorology
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
-	metNum="1"
+        metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
-	metNum="2"
+        metNum="2"
     else
-	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
-	printf "\n Options are GEOSFP or MERRA2.\n"
-	exit 1
-    fi	
+        printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
+        printf "\n Options are GEOSFP or MERRA2.\n"
+        exit 1
+    fi
+
+    # Set species
+    if [ "$Species" = "CH4" ]; then
+        specNum="2"
+    elif [ "$Species" = "CO2" ]; then
+        specNum="3"
+    else
+        printf "\nERROR: Species ${Species} is not supported by the IMI."
+        printf "\n Current options are CH4 or CO2."
+    fi
+
+    # Set resolution
     if [ "$Res" = "4.0x5.0" ]; then
-	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        cmd="3\n${specNum}\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
-	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+        cmd="3\n${specNum}\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
-	if "$isRegional"; then
-	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
-	else
-	    cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-	fi
+        # Set lat/lon bounds
+        if "$isRegional"; then
+            # Use NA domain by default and adjust lat/lon below
+            cmd="3\n${specNum}\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+        else
+            cmd="3\n${specNum}\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        fi
     elif [ "$Res" == "0.25x0.3125" ]; then
-	if "$isRegional"; then
-	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
-	else
-	    cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-	fi
+        if "$isRegional"; then
+            # Use NA domain by default and adjust lat/lon below
+            cmd="3\n${specNum}\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+        else
+            cmd="3\n${specNum}\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        fi
     else
-	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
-	exit 1
+        printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+        printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+        exit 1
     fi
 
     # Create run directory
@@ -67,12 +81,12 @@ setup_template() {
     cd ${RunTemplate}
 
     if "$isAWS"; then
-	# Update GC data download to silence output from aws commands
-	sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
+        # Update GC data download to silence output from aws commands
+        sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
     fi
 
-
     # Modify geoschem_config.yml based on settings in config.yml
+    # Set start and end date
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" geoschem_config.yml
 
@@ -85,7 +99,7 @@ setup_template() {
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi
 
-    # For CH4 inversions always turn analytical inversion on
+    # For inversions always turn analytical inversion on
     sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
 
     # Also turn on analytical inversion option in HEMCO_Config.rc
@@ -162,6 +176,7 @@ setup_template() {
     cd build
     cmake ${InversionPath}/GCClassic >> build_geoschem.log 2>&1
     cmake . -DRUNDIR=..  >> build_geoschem.log 2>&1 
+    cmake . -DMECH=carbon >> build_geoschem.log 2>&1
     make -j install >> build_geoschem.log 2>&1
     cd ..
     if [[ -f gcclassic ]]; then
