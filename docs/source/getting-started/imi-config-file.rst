@@ -24,8 +24,6 @@ General
      - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
    * - ``S3UploadFiles``
      - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
-   * - ``PointSourceDataset``
-     - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -101,7 +99,7 @@ State vector
      - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``false``.
    * - ``OptimizeOH``
      - Boolean to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
-
+       
 Point source datasets
 ~~~~~~~~~~~~~~~~~~~~~
 .. list-table::
@@ -194,6 +192,8 @@ These settings turn on/off (``true`` / ``false``) different steps for setting up
    :widths: 30, 70
    :class: tight-table
 
+   * - ``RunSetup``
+     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules above.
    * - ``SetupTemplateRundir``
      - Boolean to create a GEOS-Chem run directory and modify it with settings from ``config.yml``.
    * - ``SetupSpinupRun``
@@ -213,8 +213,9 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    :widths: 30, 70
    :class: tight-table
 
-   * - ``RunSetup``
-     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules above.
+   * - ``DoPriorEmis``
+     - Boolean to run a HEMCO standalone simulation to generate the
+       prior emissions.
    * - ``DoSpinup``
      - Boolean to run the spin-up simulation.
    * - ``DoJacobian``
@@ -236,30 +237,31 @@ IMI preview
      - Threshold for estimated DOFS below which the IMI should automatically exit with a warning after performing the preview.
        Default value ``0`` prevents exit.
 
-SLURM Resource Allocation
+Job Resource Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
-Note: some python scripts are also deployed using slurm and default to using the ``SimulationCPUs`` and ``SimulationMemory`` settings.
+Note: some python scripts are also deployed using slurm and default to using the ``RequestedCPUs`` and ``RequestedMemory`` settings.
 
 .. list-table::
    :widths: 30, 70
    :class: tight-table
 
+   * - ``RequestedCPUs``
+     - Number of cores to allocate to slurm jobs.
+   * - ``RequestedMemory``
+     - Amount of memory to allocate to each in series simulation (in MB).
    * - ``RequestedTime``
      - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
-   * - ``SimulationCPUs``
-     - Number of cores to allocate to each in series simulation.
-   * - ``SimulationMemory``
-     - Amount of memory to allocate to each in series simulation (in MB).
-   * - ``JacobianCPUs``
-     - Number of cores to allocate to each jacobian simulation (run in parallel).
-   * - ``JacobianMemory``
-     - Amount of memory to allocate to each jacobian simulation (in MB).
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
- 
+   * - ``NumJacobianTracers``
+     - The number of tracers to use for each jacobian simulation. A value of 1
+       will create and submit a jacobian run for each state vector element. 
+       Specifying a value greater than 1 will combine state vector elements 
+       into fewer runs. The default values is 5 tracers per simulation.
+       
 Advanced settings: GEOS-Chem options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are intended for advanced users who wish to modify additional GEOS-Chem options.
@@ -269,15 +271,11 @@ These settings are intended for advanced users who wish to modify additional GEO
    :class: tight-table
 
    * - ``PerturbValue``
-     - Value to perturb emissions by in each sensitivity simulation. Default value is ``1.5``.
+     - Target perturbation amount on the emissions in each sensitivity simulation. Default value is ``1``. Corresponding to a 1e-8 kg/m2/s perturbation.
    * - ``PerturbValueOH``
      - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``
      - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
-   * - ``UseEmisSF``
-     - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
-   * - ``UseOHSF``
-     - Boolean to apply OH scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
    * - ``HourlyCH4``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``

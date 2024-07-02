@@ -37,9 +37,16 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
+
+    # set inversion period to 1 if not in Kalman mode
+    if [ -z "$KalmanMode" ] || [ "$KalmanMode" != true ]; then
+        sed -i -e "s:{PERIOD}:1:g" inversion/run_inversion.sh
+    fi
+    
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
            -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
            -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
+           -e "s:{NUM_JACOBIAN_TRACERS}:${NumJacobianTracers}:g" \
            -e "s:{OUTPUT_PATH}:${OutputPath}:g" \
            -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
            -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
@@ -75,8 +82,8 @@ run_inversion() {
     fi
 
     # Execute inversion driver script
-    sbatch --mem $SimulationMemory \
-           -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+           -c $RequestedCPUs \
            -t $RequestedTime \
            -p $SchedulerPartition \
            -W run_inversion.sh $FirstSimSwitch; wait;
@@ -99,7 +106,8 @@ run_notebooks() {
         cd ${RunDirs}/inversion
     fi
     # replace config file path in viz notebook
-    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' visualization_notebook.ipynb
+    copied_config=${RunDirs}/config_${RunName}.yml
+    sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$copied_config'|g' visualization_notebook.ipynb
     jupyter nbconvert --execute --to html visualization_notebook.ipynb
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }
