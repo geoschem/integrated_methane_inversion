@@ -45,9 +45,6 @@ setup_posterior() {
         fi
     fi
 
-    # Update settings in geoschem_config.yml
-    sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
         gridded_posterior_filename="gridded_posterior_ln.nc"
