@@ -98,18 +98,6 @@ setup_template() {
         sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
     fi
 
-    # Turn other options on/off according to settings above
-    if "$UseEmisSF"; then
-	OLD="use_emission_scale_factor: false"
-	NEW="use_emission_scale_factor: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-    if "$UseOHSF"; then
-	OLD="use_OH_scale_factors: false"
-	NEW="use_OH_scale_factors: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
     if "$isRegional"; then
