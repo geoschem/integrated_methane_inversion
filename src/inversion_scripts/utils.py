@@ -608,3 +608,12 @@ def get_posterior_emissions(prior, scale, species):
     # Add the original soil sink back to the total emissions
     posterior[f"Emis{species}_Total"] = posterior[f"Emis{species}_Total"] + prior_soil_sink
     return posterior
+
+def get_strdate(current_time, date_threshold):
+    # round observation time to nearest hour
+    strdate = current_time.round("60min").strftime("%Y%m%d_%H")
+    # Unless it equals the date threshold (hour 00 after the inversion period)
+    if strdate == date_threshold:
+        strdate = current_time.floor("60min").strftime("%Y%m%d_%H")
+ 
+    return strdate

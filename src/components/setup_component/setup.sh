@@ -94,7 +94,8 @@ setup_imi() {
         gridDir="${gridDir}_${RegionID}"
     fi
 
-    # Clone correct version of GCClassic
+    # Clone defined version of GCClassic
+    # Define path to GEOS-Chem run directory files
     cd "${InversionPath}"
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git

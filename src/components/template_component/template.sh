@@ -99,14 +99,6 @@ setup_template() {
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi
 
-    # For inversions always turn analytical inversion on
-    sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
-
-    # Also turn on analytical inversion option in HEMCO_Config.rc
-    OLD="--> AnalyticalInv          :       false"
-    NEW="--> AnalyticalInv          :       true "
-    sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
-
     # Update time cycling flags to use most recent year
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
     
@@ -118,18 +110,6 @@ setup_template() {
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
         sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
-    fi
-
-    # Turn other options on/off according to settings above
-    if "$UseEmisSF"; then
-	OLD="use_emission_scale_factor: false"
-	NEW="use_emission_scale_factor: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-    if "$UseOHSF"; then
-	OLD="use_OH_scale_factors: false"
-	NEW="use_OH_scale_factors: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
 
     # Modify HEMCO_Config.rc based on settings in config.yml
@@ -150,6 +130,9 @@ setup_template() {
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
+
+    # If reading total prior emissions (as in the jacobian and posterior), read a new file each month
+    sed -i -e "s|EmisCH4_Total \$YYYY/\$MM/\$DD/0|EmisCH4_Total 1900-2050/1-12/1/0|g" HEMCO_Config.rc
 
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
     sed -i -e "s:'CH4':#'CH4':g" \

@@ -270,15 +270,11 @@ These settings are intended for advanced users who wish to modify additional GEO
    :class: tight-table
 
    * - ``PerturbValue``
-     - Target perturbation amount on the emissions in each sensitivity simulation. Default value is ``10.0``. Corresponding to a 10e-8 kg/m2/s perturbation.
+     - Target perturbation amount on the emissions in each sensitivity simulation. Default value is ``1``. Corresponding to a 1e-8 kg/m2/s perturbation.
    * - ``PerturbValueOH``
      - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``
      - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
-   * - ``UseEmisSF``
-     - Boolean to apply emissions scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
-   * - ``UseOHSF``
-     - Boolean to apply OH scale factors derived from a previous inversion. This file should be provided as a netCDF file and specified in HEMCO_Config.rc. Default value is ``false``.
    * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``

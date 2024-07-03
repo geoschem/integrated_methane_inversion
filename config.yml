@@ -161,16 +161,12 @@ NumJacobianTracers: 5
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 10 means the 
-## perturbation will be 10e-8 kg/m2/s 
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the 
+## perturbation will be 1e-8 kg/m2/s 
 ## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
-PerturbValue: 10.0
+PerturbValue: 1.0
 PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
-
-## Apply scale factors from a previous inversion?
-UseEmisSF: false
-UseOHSF: false
 
 ## Save out hourly diagnostics from GEOS-Chem?
 ## For use in satellite operators via post-processing -- required for TROPOMI

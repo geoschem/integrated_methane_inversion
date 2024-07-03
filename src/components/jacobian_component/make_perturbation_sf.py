@@ -61,7 +61,7 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
                         file.writelines(lines)
 
 
-def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
+def calculate_sfs(state_vector, hemco_emis_path, target_emission=1e-8):
     """
     Calculate the scale factors to perturb each state vector
     element by based on the target_emission. Return a flat
@@ -102,7 +102,7 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=10e-8):
     return flat_sf
 
 
-def make_perturbation_sf(config, period_number, perturb_value=10e-8):
+def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     """
     Calculate the perturbations for each state vector element and update the perturbation files.
     Write out an archive of the flat scale factors for later use in sensitivity calculations.

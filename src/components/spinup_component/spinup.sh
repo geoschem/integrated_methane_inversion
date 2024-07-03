@@ -43,8 +43,6 @@ setup_spinup() {
     # Update settings in geoschem_config.yml
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
-    sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-
 
     # Turn on LevelEdgeDiags output
     if "$HourlySpecies"; then

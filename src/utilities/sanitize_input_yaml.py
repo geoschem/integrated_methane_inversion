@@ -73,8 +73,6 @@ config_required = [
     "MaxSimultaneousRuns",
     "NumJacobianTracers",
     "PerturbValue",
-    "UseEmisSF",
-    "UseOHSF",
     "HourlySpecies",
     "PLANEFLIGHT",
     "GOSAT",

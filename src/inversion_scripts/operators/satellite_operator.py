@@ -6,6 +6,7 @@ from shapely.geometry import Polygon
 from src.inversion_scripts.utils import (
     read_and_filter_satellite,
     mixing_ratio_conv_factor,
+    get_strdate,
 )
 from src.inversion_scripts.operators.operator_utilities import (
     get_gc_lat_lon,
@@ -69,9 +70,13 @@ def apply_average_satellite_operator(
     # get the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
 
+    # Define time threshold (hour 00 after the inversion period)
+    date_after_inversion = str(gc_enddate + np.timedelta64(1, 'D'))[:10].replace('-', '')
+    time_threshold = f"{date_after_inversion}_00"
+
     # map satellite obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
-    obs_mapped_to_gc = average_satellite_observations(satellite, species, gc_lat_lon, sat_ind)
+    obs_mapped_to_gc = average_satellite_observations(satellite, species, gc_lat_lon, sat_ind, time_threshold)
     n_gridcells = len(obs_mapped_to_gc)
 
     if build_jacobian:
@@ -154,7 +159,7 @@ def apply_average_satellite_operator(
 
         # Save actual and virtual satellite data
         obs_GC[i, 0] = gridcell_dict[
-            "species"
+            f"{species}"
         ]  # Actual satellite species column observation
         obs_GC[i, 1] = virtual_satellite  # Virtual satellite column observation
         obs_GC[i, 2] = gridcell_dict["lon_sat"]  # satellite longitude
@@ -231,13 +236,17 @@ def apply_satellite_operator(
     # Initialize a list to store the dates we want to look at
     all_strdate = []
 
+    # Define time threshold (hour 00 after the inversion period)
+    date_after_inversion = str(gc_enddate + np.timedelta64(1, 'D'))[:10].replace('-', '')
+    time_threshold = f"{date_after_inversion}_00"
+
     # For each satellite observation
     for k in range(n_obs):
         # Get the date and hour
         iSat = sat_ind[0][k]  # lat index
         jSat = sat_ind[1][k]  # lon index
         time = pd.to_datetime(str(satellite["time"][iSat,jSat]))
-        strdate = time.round("60min").strftime("%Y%m%d_%H")
+        strdate = get_strdate(time, time_threshold)
         all_strdate.append(strdate)
     all_strdate = list(set(all_strdate))
 
@@ -260,7 +269,7 @@ def apply_satellite_operator(
         apriori = satellite["profile_apriori"][iSat, jSat, :]  # mol m-2
         avkern = satellite["column_AK"][iSat, jSat, :]
         time = pd.to_datetime(str(satellite["time"][iSat,jSat]))
-        strdate = time.round("60min").strftime("%Y%m%d_%H")
+        strdate = get_strdate(time, time_threshold)
         GEOSCHEM = all_date_gc[strdate]
         dlon = np.median(np.diff(GEOSCHEM["lon"])) # GEOS-Chem lon resolution
         dlat = np.median(np.diff(GEOSCHEM["lat"])) # GEOS-Chem lon resolution
@@ -442,7 +451,7 @@ def apply_satellite_operator(
     return output
 
 
-def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind):
+def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind, time_threshold):
     """
     Map TROPOMI observations into appropriate gc gridcells. Then average all
     observations within a gridcell for processing. Use area weighting if
@@ -588,13 +597,7 @@ def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind):
             gridcell_dict[species], weights=gridcell_dict["observation_weights"],
         )
         # take mean of epoch times and then convert gc filename time string
-        gridcell_dict["time"] = (
-            pd.to_datetime(
-                datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))
-            )
-            .round("60min")
-            .strftime("%Y%m%d_%H")
-        )
+        gridcell_dict["time"] = get_strdate(time, time_threshold)
         # for multi-dimensional arrays, we only take the average across the 0 axis
         gridcell_dict["p_sat"] = np.average(
             gridcell_dict["p_sat"],
