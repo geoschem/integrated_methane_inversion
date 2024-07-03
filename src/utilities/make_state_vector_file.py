@@ -54,6 +54,12 @@ def cluster_buffer_elements(data, num_clusters, offset):
         offset              bool : offset labels by this integer value
     Returns:       [][]dataarray : labeled data
     """
+    
+    # if using 0 clusters, return data with buffer pixels
+    # infilled with -9999
+    if num_clusters == 0:
+        return xr.where(data == 0, -9999, data)
+    
     # Get the latitude and longitude coordinates as separate arrays
     latitudes = data.coords["lat"].values
     longitudes = data.coords["lon"].values
@@ -126,6 +132,27 @@ def make_state_vector_file(
     land_threshold = config["LandThreshold"]
     emis_threshold = config["OffshoreEmisThreshold"]
     k_buffer_clust = config["nBufferClusters"]
+    buffer_min_lat = 0
+    buffer_min_lon = 0
+    
+    # set minimum buffer degrees based on resolution
+    if config["isRegional"]  == "true":
+        if config["Res"] == "4.0x5.0":
+            deg_lat, deg_lon = 4.0, 5.0 
+        elif config["Res"] == "2.0x2.5":
+            deg_lat, deg_lon = 2.0, 2.5
+        elif config["Res"] == "0.5x0.625":
+            deg_lat, deg_lon = 0.5, 0.625
+        elif config["Res"] == "0.25x0.3125":
+            deg_lat, deg_lon = 0.25, 0.3125
+        buffer_min_lat = deg_lat * 3
+        buffer_min_lon = deg_lon * 3
+
+    # set the buffer degrees to the maximum to ensure 
+    # that the buffer is at least the minimum (3 extra grid cells on each side)
+    buffer_deg_lat = max(buffer_deg, buffer_min_lat)
+    buffer_deg_lon = max(buffer_deg, buffer_min_lon)
+        
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
@@ -166,10 +193,10 @@ def make_state_vector_file(
         minLon_allowed,
         maxLon_allowed,
     ) = get_grid_bounds(land_cover_pth)
-    lon_min_inv_domain = np.max([lon_min - buffer_deg, minLon_allowed])
-    lon_max_inv_domain = np.min([lon_max + buffer_deg, maxLon_allowed])
-    lat_min_inv_domain = np.max([lat_min - buffer_deg, minLat_allowed])
-    lat_max_inv_domain = np.min([lat_max + buffer_deg, maxLat_allowed])
+    lon_min_inv_domain = np.max([lon_min - buffer_deg_lon, minLon_allowed])
+    lon_max_inv_domain = np.min([lon_max + buffer_deg_lon, maxLon_allowed])
+    lat_min_inv_domain = np.max([lat_min - buffer_deg_lat, minLat_allowed])
+    lat_max_inv_domain = np.min([lat_max + buffer_deg_lat, maxLat_allowed])
 
     # Subset inversion domain for land cover and hemco diagnostics fields
     lc = lc.isel(lon=lc.lon >= lon_min_inv_domain, lat=lc.lat >= lat_min_inv_domain)

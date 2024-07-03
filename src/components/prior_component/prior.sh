@@ -56,11 +56,9 @@ run_prior() {
     cd ${RunDirs}/prior_run
 
     # Modify HEMCO files based on settings in config.yml
-    sed -i -e "s:_NA::g" -e "s:.NA.:.:g" HEMCO_Config.rc.gmao_metfields
-
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
-        -e "/Negative values:     0/d" \
-        -e "s/Verbose:             false/Verbose:             true/g" HEMCO_sa_Config.rc
+        -e "/Negative values:     0/d" HEMCO_sa_Config.rc
+    sed -i -e "s/METEOROLOGY            :       true/METEOROLOGY            :       false/g" HEMCO_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
@@ -112,14 +110,11 @@ fi' runHEMCO.sh
 
     printf "\nSubmitting prior emissions hemco simulation\n\n"
 
-    # TODO switch to use enddate- this just computes the first hour of emissions
     if "$KalmanMode"; then
         kalman_end=$(date -d "${StartDate} +${UpdateFreqDays} days" +"%Y%m%d")
-        # run_hemco_sa $StartDate $kalman_end
-        run_hemco_sa $StartDate $StartDate
+        run_hemco_sa $StartDate $kalman_end
     else
-        # run_hemco_sa $StartDate $EndDate
-        run_hemco_sa $StartDate $StartDate
+        run_hemco_sa $StartDate $EndDate
     fi
 
     printf "\nDone prior emissions hemco simulation\n\n"
@@ -139,7 +134,7 @@ run_hemco_sa() {
     pushd ${RunDirs}/prior_run
     # replace start and end times in HEMCO_sa_Time.rc
     sed -i -e "s|START.*|START: ${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
-        -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 01:00:00|g" HEMCO_sa_Time.rc
+        -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 00:00:00|g" HEMCO_sa_Time.rc
 
     # Submit job to job scheduler
     sbatch --mem $RequestedMemory \
@@ -154,7 +149,9 @@ run_hemco_sa() {
 
     # Remove soil absorption uptake from total emissions
     pushd OutputDir
-    exclude_soil_sink HEMCO_sa_diagnostics.${hemco_start}0000.nc HEMCO_sa_diagnostics.${hemco_start}0000.nc
+    for file in HEMCO_sa_diagnostics*.nc; do
+        exclude_soil_sink $file $file
+    done
     popd
     popd
     set +e

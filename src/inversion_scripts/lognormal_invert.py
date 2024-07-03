@@ -82,7 +82,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # get the So matrix
     ds = np.load("so_super.npz")
-    so = ds["so"] ** 2
+    so = ds["so"]
 
     # Calculate the difference between tropomi and the background
     # simulation, which has no emissions
