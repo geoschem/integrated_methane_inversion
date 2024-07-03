@@ -319,25 +319,32 @@ add_new_tracer() {
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
     GcNewLine='\
-      - CH4_'$istr
+      - ${Species}_'$istr
     sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
-    GcPrevLine='- CH4_'$istr
+    GcPrevLine='- ${Species}_'$istr
 
     # Add lines to species_database.yml
     SpcNextLine='CHBr3:'
-    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
+    if [[ $Species = "CH4" ]]; then
+        bg_vv="1.8e-6"
+        fullname="Methane"
+    elif [[ $Species = "CO2" ]]; then
+        bg_vv="4.0e-6"
+        fullname="Carbon dioxide"
+    fi
+    SpcNewLines='${Species}_'$istr':\n  << : *${Species}properties\n  Background_VV: ${bg_vv}\n  FullName: ${fullname}'
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
     # Add lines to HEMCO_Config.yml
     HcoNewLine1='\
-* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+* SPC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_CH4_'$istr
+    HcoPrevLine1='SPC_${Species}_'$istr
 
     HcoNewLine2='\
-0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
+0 ${Species}_Emis_Prior_'$istr' - - - - - - ${Species}_'$istr' '$SFnum' 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-    HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
+    HcoPrevLine2='${Species}_'$istr' '$SFnum' 1 500'
 
     HcoNewLine3='\
 '$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
@@ -345,9 +352,9 @@ add_new_tracer() {
     HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
 
     HcoNewLine4='\
-* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+* BC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-    HcoPrevLine4='BC_CH4_'$istr
+    HcoPrevLine4='BC_${Species}_'$istr
 
     # Add new Perturbations.txt and update for non prior runs
     cp Perturbations.txt Perturbations_${istr}.txt
