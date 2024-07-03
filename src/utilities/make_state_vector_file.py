@@ -58,7 +58,7 @@ def cluster_buffer_elements(data, num_clusters, offset):
     # if using 0 clusters, return data with buffer pixels
     # infilled with -9999
     if num_clusters == 0:
-        return data.where(data == 0, -9999, data)
+        return xr.where(data == 0, -9999, data)
     
     # Get the latitude and longitude coordinates as separate arrays
     latitudes = data.coords["lat"].values
