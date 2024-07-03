@@ -69,7 +69,7 @@ def do_inversion(
     xlim = [lon_min + degx, lon_max - degx]
     ylim = [lat_min + degy, lat_max - degy]
 
-    # Read output data from jacobian.py (virtual & true TROPOMI columns, Jacobian matrix)
+    # Read output data from jacobian.py (virtual & true satellite columns, Jacobian matrix)
     files = glob.glob(f"{jacobian_dir}/*.pkl")
     files.sort()
 
@@ -111,14 +111,14 @@ def do_inversion(
     for fi in files:
         print(fi)
 
-        # Load TROPOMI/GEOS-Chem and Jacobian matrix data from the .pkl file
+        # Load satellite/GEOS-Chem and Jacobian matrix data from the .pkl file
         dat = load_obj(fi)
 
-        # Skip if there aren't any TROPOMI observations on this day
+        # Skip if there aren't any satellite observations on this day
         if dat["obs_GC"].shape[0] == 0:
             continue
 
-        # Otherwise, grab the TROPOMI/GEOS-Chem data
+        # Otherwise, grab the satellite/GEOS-Chem data
         obs_GC = dat["obs_GC"]
 
         # Only consider data within the new latitude and longitude bounds
@@ -133,7 +133,7 @@ def do_inversion(
         if len(ind) == 0:
             continue
 
-        # TROPOMI and GEOS-Chem data within bounds
+        # satellite and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
         # weight obs_err based on the observation count to prevent overfitting
@@ -182,7 +182,7 @@ def do_inversion(
         # Define observational errors (diagonal entries of S_o matrix)
         obs_error = np.power(obs_error, 2)
 
-        # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
+        # Measurement-model mismatch: satellite columns minus GEOS-Chem virtual satellite columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand
         delta_y = obs_GC[:, 0] - obs_GC[:, 1]  # [ppb]
 

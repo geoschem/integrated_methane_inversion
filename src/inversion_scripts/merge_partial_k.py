@@ -29,11 +29,11 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
         obs_err     [float]: default observational error value
         precomp_K [boolean]: whether or not to use precomputed jacobian matrices
     """
-    # Get observed and GEOS-Chem-simulated TROPOMI columns
-    files = [f for f in np.sort(os.listdir(satdat_dir)) if "TROPOMI" in f]
+    # Get observed and GEOS-Chem-simulated satellite columns
+    files = [f for f in np.sort(os.listdir(satdat_dir)) if "Satellite" in f]
     # lat = np.array([])
     # lon = np.array([])
-    tropomi = np.array([])
+    satellite = np.array([])
     geos_prior = np.array([])
     so = np.array([])
     for i, f in enumerate(files):
@@ -41,12 +41,12 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
         # Get paths
         pth = os.path.join(satdat_dir, f)
         # Get same file from bc folder
-        # Load TROPOMI/GEOS-Chem and Jacobian matrix data from the .pkl file
+        # Load satellite/GEOS-Chem and Jacobian matrix data from the .pkl file
         obj = load_obj(pth)
-        # If there aren't any TROPOMI observations on this day, skip
+        # If there aren't any satellite observations on this day, skip
         if obj["obs_GC"].shape[0] == 0:
             continue
-        # Otherwise, grab the TROPOMI/GEOS-Chem data
+        # Otherwise, grab the satellite/GEOS-Chem data
         obs_GC = obj["obs_GC"]
         # Only consider data within latitude and longitude bounds
         ind = np.where(
@@ -57,10 +57,10 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
         )
         if len(ind[0]) == 0:  # Skip if no data in bounds
             continue
-        obs_GC = obs_GC[ind[0], :]  # TROPOMI and GEOS-Chem data within bounds
+        obs_GC = obs_GC[ind[0], :]  # satellite and GEOS-Chem data within bounds
 
         # concatenate full jacobian, obs, so, and prior
-        tropomi = np.concatenate((tropomi, obs_GC[:, 0]))
+        satellite = np.concatenate((satellite, obs_GC[:, 0]))
         geos_prior = np.concatenate((geos_prior, obs_GC[:, 1]))
 
         # read K from reference dir if precomp_K is true
@@ -95,8 +95,8 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
 
     gc_ch4_prior = np.asmatrix(geos_prior)
 
-    obs_tropomi = np.asmatrix(tropomi)
-    return gc_ch4_prior, obs_tropomi, K, so
+    obs_satellite = np.asmatrix(satellite)
+    return gc_ch4_prior, obs_satellite, K, so
 
 
 if __name__ == "__main__":
@@ -107,21 +107,17 @@ if __name__ == "__main__":
     precomputed_jacobian = sys.argv[4] == "true"
 
     # directory containing partial K matrices
-    # Get observed and GEOS-Chem-simulated TROPOMI columns
-    files = np.sort(os.listdir(satdat_dir))
-    files = [f for f in files if "TROPOMI" in f]
-
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector["StateVector"]
     lon_bounds = [np.min(state_vector.lon.values), np.max(state_vector.lon.values)]
     lat_bounds = [np.min(state_vector.lat.values), np.max(state_vector.lat.values)]
 
     # Paths to GEOS/satellite data
-    gc_ch4_bkgd, obs_tropomi, jacobian_K, so = merge_partial_k(
+    gc_bkgd, obs_satellite, jacobian_K, so = merge_partial_k(
         satdat_dir, lat_bounds, lon_bounds, obs_error, precomputed_jacobian
     )
 
     np.savez("full_jacobian_K.npz", K=jacobian_K)
-    np.savez("obs_ch4_tropomi.npz", obs_tropomi=obs_tropomi)
-    np.savez("gc_ch4_bkgd.npz", gc_ch4_bkgd=gc_ch4_bkgd)
+    np.savez("obs_satellite.npz", obs_satellite=obs_satellite)
+    np.savez("gc_bkgd.npz", gc_bkgd=gc_bkgd)
     np.savez("so_super.npz", so=so)

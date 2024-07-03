@@ -33,10 +33,10 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     convergence_threshold = 5e-3
 
     # Load in the observation and background data
-    ds = np.load("obs_ch4_tropomi.npz")
-    y = np.array(ds["obs_tropomi"])
-    ds = np.load("gc_ch4_bkgd.npz")
-    ybkg = np.array(ds["gc_ch4_bkgd"])
+    ds = np.load("obs_satellite.npz")
+    y = np.array(ds["obs_satellite"])
+    ds = np.load("gc_bkgd.npz")
+    ybkg = np.array(ds["gc_bkgd"])
 
     # We only solve using lognormal errors for state vector elements
     # within the domain of interest, not the buffer elements, the
