@@ -13,7 +13,8 @@ def check_for_duplicate_orbit_numbers(Sat_datadir):
 
     all_orbit_numbers = []
     for filename in files:
-        matches = re.findall(r'_(\d{5})_', filename) # find orbit number
+        filestem = filename.split('/')[-1]
+        matches = re.findall(r'_(\d{5})_', filestem) # find orbit number
         assert len(matches) == 1, f"Please check the TROPOMI filenames, as they are not formatted in the way that the IMI expects. (e.g., {filename})"
         all_orbit_numbers.append(matches[0])
         
