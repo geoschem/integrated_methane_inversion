@@ -23,7 +23,6 @@ SpinupMonths: 1
 ## "Other" is selected, the user must specify the path where observations are
 ## located under "Advanced settings" in this file.
 SatelliteProduct: "Other"
-# BlendedTROPOMI: false
 
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
