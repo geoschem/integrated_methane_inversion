@@ -29,9 +29,8 @@ setup_spinup() {
     cp -r ${RunTemplate}/*  ${runDir}
     cd $runDir
 
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
@@ -46,11 +45,6 @@ setup_spinup() {
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
     sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
 
-    # Update for Kalman filter option
-    if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
-    fi
 
     # Turn on LevelEdgeDiags output
     if "$HourlySpecies"; then
@@ -92,7 +86,7 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    submit_job $SchedulerType ${RunName}_Spinup.run
+    submit_job $SchedulerType false ${RunName}_Spinup.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

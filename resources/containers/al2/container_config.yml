@@ -108,6 +108,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
@@ -116,7 +117,8 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
+##   NOTE: DoPriorEmis must be true to run DoPriorEmis
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: true
@@ -129,15 +131,19 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-SimulationCPUs: 16
-SimulationMemory: "16gb"
-JacobianCPUs: 1
-JacobianMemory: 2000
+RequestedCPUs: 16
+RequestedMemory: "16gb"
 RequestedTime: "24:00:00"
 SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
+
+## Number of Jacobians tracers to use for each jacobian simulation
+##   Specifying a value = 1 will submit a separate jacobian simulation for each
+##   state vector element. Specifying a value > 1 will combine state vector 
+##   elements into a single jacobian simulation.
+NumJacobianTracers: 5
 
 ##====================================================================
 ##
@@ -155,10 +161,11 @@ MaxSimultaneousRuns: -1
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scale factors and 
-## PerturbValueBCs is in ppb
-PerturbValue: 1.5
-PerturbValueOH: 1.5
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 10.0 means the 
+## perturbation will be 10e-8 kg/m2/s 
+## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
+PerturbValue: 10.0
+PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
 
 ## Apply scale factors from a previous inversion?
