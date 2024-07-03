@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "CO2_inversion"
+RunName: "Test_ICI_Global"
 Species: "CO2"
 isAWS: false
 SchedulerType: "PBS"
@@ -25,7 +25,7 @@ SpinupMonths: 1
 SatelliteProduct: "Other"
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: false
+isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -58,9 +58,9 @@ NudgeFactor: 0.1
 CreateAutomaticRectilinearStateVectorFile: false
 nBufferClusters: 0
 BufferDeg: 0
-OptimizeBCs: false
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
+OptimizeBCs: false
 OptimizeOH: false
 
 ## Point source datasets
@@ -68,12 +68,15 @@ OptimizeOH: false
 PointSourceDatasets: ["SRON"]
 
 ## Clustering Options
-ReducedDimensionStateVector: false
+ReducedDimensionStateVector: true
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
 ForcedNativeResolutionElements: 
   - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
 
 ## Custom state vector
 StateVectorFile: "/nobackupp27/hnesser/CO2_inversion/state_vector/clusters_annual.nc"
@@ -92,7 +95,7 @@ PrecomputedJacobian: false
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "4.0x5.0"
+Res: "2.0x2.5"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
@@ -100,6 +103,7 @@ Met: "MERRA2"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: true
@@ -108,7 +112,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -121,15 +125,19 @@ DoPreview: false
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-SimulationCPUs: 16
-SimulationMemory: "20gb"
-JacobianCPUs: 1
-JacobianMemory: "2gb"
+RequestedCPUs: 16
+RequestedMemory: "20gb"
 RequestedTime: "01:00:00"
 SchedulerPartition: "devel"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: 50
+MaxSimultaneousRuns: -1
+
+## Number of Jacobians tracers to use for each jacobian simulation
+##   Specifying a value = 1 will submit a separate jacobian simulation for each
+##   state vector element. Specifying a value > 1 will combine state vector 
+##   elements into a single jacobian simulation.
+NumJacobianTracers: 10
 
 ##====================================================================
 ##
@@ -149,13 +157,9 @@ MaxSimultaneousRuns: 50
 ## Jacobian settings
 ## Note PerturbValue and PerturbValueOH are relative scale factors and 
 ## PerturbValueBCs is in ppb
-PerturbValue: 1.5
-PerturbValueOH: 1.5
+PerturbValue: 1.0
+PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
-
-## Apply scale factors from a previous inversion?
-UseEmisSF: false
-UseOHSF: false
 
 ## Use eigenvector perturbations instead of grid cell perturbations in the 
 ## GEOSChem run
@@ -185,14 +189,14 @@ UseBCsForRestart: False
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/nobackupp27/$USER"
+OutputPath: "/nobackupp27/$USER/IMI_demo"
 
 ## Path to GEOS-Chem input data
 DataPath: "/nobackupp27/$USER/ExtData"
 
 ## Path to satellite data
-DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
-# DataPathObs: "/nobackupp27/$USER/IMI_demo/data_TROPOMI"
+# DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
+DataPathObs: "/nobackupp27/$USER/IMI_demo/data_TROPOMI"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
