@@ -15,49 +15,49 @@ setup_template() {
     # and contains the path to GEOS-Chem input data
     export GC_USER_REGISTERED=true
     if [[ ! -f ${HOME}/.geoschem/config ]]; then
-	mkdir -p ${HOME}/.geoschem
-	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
-	source ${HOME}/.geoschem/config
+        mkdir -p ${HOME}/.geoschem
+        echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
+        source ${HOME}/.geoschem/config
     fi
 
     if [[ -d ${RunTemplate} ]]; then
-	printf "\nERROR: ${RunTemplate} already exists. Please remove or set 'SetupTemplateRunDir: false' in config.yml.\n"
-	exit 9999
+        printf "\nERROR: ${RunTemplate} already exists. Please remove or set 'SetupTemplateRunDir: false' in config.yml.\n"
+        exit 9999
     fi
 
     # Commands to feed to createRunDir.sh
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
-	metNum="1"
+        metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
-	metNum="2"
+        metNum="2"
     else
-	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
-	printf "\n Options are GEOSFP or MERRA2.\n"
-	exit 1
+        printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
+        printf "\n Options are GEOSFP or MERRA2.\n"
+        exit 1
     fi
     
     if [ "$Res" = "4.0x5.0" ]; then
-	cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
-	cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+        cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
-	if "$isRegional"; then
-	    # Use NA domain by default and adjust lat/lon below
-	    cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
-	else
-	    cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-	fi
+        if "$isRegional"; then
+            # Use NA domain by default and adjust lat/lon below
+            cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+        else
+            cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        fi
     elif [ "$Res" == "0.25x0.3125" ]; then
-	if "$isRegional"; then
-	    # Use NA domain by default and adjust lat/lon below
-	    cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
-	else
-	    cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-	fi
+        if "$isRegional"; then
+            # Use NA domain by default and adjust lat/lon below
+            cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+        else
+            cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        fi
     else
-	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
-	exit 1
+        printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+        printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+        exit 1
     fi
 
     # Create run directory
@@ -68,10 +68,9 @@ setup_template() {
     cd ${RunTemplate}
 
     if "$isAWS"; then
-	# Update GC data download to silence output from aws commands
-	sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
+        # Update GC data download to silence output from aws commands
+        sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
     fi
-
 
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
@@ -86,14 +85,6 @@ setup_template() {
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi
 
-    # For CH4 inversions always turn analytical inversion on
-    sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
-
-    # Also turn on analytical inversion option in HEMCO_Config.rc
-    OLD="--> AnalyticalInv          :       false"
-    NEW="--> AnalyticalInv          :       true "
-    sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
-
     # Update time cycling flags to use most recent year
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
     
@@ -105,18 +96,6 @@ setup_template() {
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
         sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
-    fi
-
-    # Turn other options on/off according to settings above
-    if "$UseEmisSF"; then
-	OLD="use_emission_scale_factor: false"
-	NEW="use_emission_scale_factor: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-    if "$UseOHSF"; then
-	OLD="use_OH_scale_factors: false"
-	NEW="use_OH_scale_factors: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
 
     # Modify HEMCO_Config.rc based on settings in config.yml
