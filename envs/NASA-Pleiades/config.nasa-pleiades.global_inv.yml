@@ -25,7 +25,7 @@ SpinupMonths: 1
 SatelliteProduct: "Other"
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: true
+isRegional: false
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -55,7 +55,7 @@ UpdateFreqDays: 7
 NudgeFactor: 0.1
 
 ## State vector
-CreateAutomaticRectilinearStateVectorFile: false
+CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 0
 BufferDeg: 0
 LandThreshold: 0.25
@@ -68,7 +68,7 @@ OptimizeOH: false
 PointSourceDatasets: ["SRON"]
 
 ## Clustering Options
-ReducedDimensionStateVector: true
+ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
@@ -112,7 +112,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-DoPriorEmis: true
+DoPriorEmis: false
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -161,8 +161,10 @@ PerturbValue: 1.0
 PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
 
-## Use eigenvector perturbations instead of grid cell perturbations in the 
-## GEOSChem run
+# ## Use eigenvector perturbations instead of grid cell perturbations in the 
+# ## GEOSChem run
+# PerturbEigenvectors: true
+# nEigenvectors: 263
 
 ## Save out hourly diagnostics from GEOS-Chem?
 ## For use in satellite operators via post-processing -- required for TROPOMI
