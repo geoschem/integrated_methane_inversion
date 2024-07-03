@@ -1,0 +1,7 @@
+# Input file for applying emissions perturbations to state vector elements via HEMCO
+
+# Mask field name
+CH4_STATE_VECTOR
+
+# Name   | ID  | Scale factor
+DEFAULT    0     1.0

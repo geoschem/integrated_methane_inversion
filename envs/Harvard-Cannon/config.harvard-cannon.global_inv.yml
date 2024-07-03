@@ -53,7 +53,7 @@ BufferDeg: 0
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: false
-OptimizeOH: false
+OptimizeOH: true
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -63,7 +63,7 @@ PointSourceDatasets: ["SRON"]
 ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: 45
+NumberOfElements: 1000
 ForcedNativeResolutionElements: 
   - [31.5, -104]
 EmissionRateFilter: 2500
@@ -75,10 +75,13 @@ StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "None"
 
 ## Inversion
-## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
-## if lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
-## PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-##  and PriorErrorBCs is in ppb (not used for global)
+## Notes:
+## - PriorError is a relative fraction (e.g. 0.5 = 50%)
+## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
+## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
+## - PriorErrorBCs is in ppb (not used for global)
+## - PriorErrorBufferElements is only used if LognormalErrors is true
+LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
 PriorErrorBufferElements: 0.5
@@ -97,6 +100,7 @@ Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion 
+RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
 SetupJacobianRuns: false
@@ -105,10 +109,11 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: true
+##   NOTE: DoPriorEmis must be true to run DoPriorEmis
+DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: true
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
@@ -118,15 +123,19 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-SimulationCPUs: 32
-SimulationMemory: 32000
-JacobianCPUs: 1
-JacobianMemory: 2000
+RequestedCPUs: 32
+RequestedMemory: 32000
 RequestedTime: "0-24:00"
 SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: 50
+MaxSimultaneousRuns: -1
+
+## Number of Jacobians tracers to use for each jacobian simulation
+##   Specifying a value = 1 will submit a separate jacobian simulation for each
+##   state vector element. Specifying a value > 1 will combine state vector 
+##   elements into a single jacobian simulation.
+NumJacobianTracers: 5
 
 ##====================================================================
 ##
@@ -144,15 +153,12 @@ MaxSimultaneousRuns: 50
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scale factors and 
-## PerturbValueBCs is in ppb
-PerturbValue: 1.5
-PerturbValueOH: 1.5
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the 
+## perturbation will be 1e-8 kg/m2/s 
+## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
+PerturbValue: 1.0
+PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
-
-## Apply scale factors from a previous inversion?
-UseEmisSF: false
-UseOHSF: false
 
 ## Save out hourly diagnostics from GEOS-Chem?
 ## For use in satellite operators via post-processing -- required for TROPOMI

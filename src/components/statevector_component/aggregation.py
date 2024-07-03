@@ -180,14 +180,16 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    if config["Res"] == "2.0x2.5":
-        default_max_aggregation_level = 16 # Setting background to 8x10 for global
+    if config["Res"] == "0.25x0.3125":
+        max_aggregation_level = 64
     elif config["Res"] == "0.5x0.625":
-        default_max_aggregation_level = 32
-    elif config["Res"] == "0.25x0.3125":
-        default_max_aggregation_level = 64
+        max_aggregation_level = 32
+    elif config["Res"] == "2.0x2.5":
+        max_aggregation_level = 16
+    elif config["Res"] == "4.0x5.0":
+        max_aggregation_level = 8
 
-    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else default_max_aggregation_level
+    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else max_aggregation_level
     
     background_elements_needed = np.ceil(len(sensitivities) / max_cluster_size)
     if background_elements_needed > desired_element_num:
@@ -563,17 +565,19 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
         # protects against possibility of too few elements left to 
         # achieve desired number of clusters
-        total_elements = 0
-        print(np.array(num_elements).sum())
-        for i, n in enumerate(num_elements):
-            total_elements += n
-            if elements_left - total_elements < clusters_left:
-                n_ind = i
-                n_max_labels = n_max_labels[:n_ind]
-                num_elements = num_elements[:n_ind]
-                break
+        if not fill_grid:
+            total_elements = 0
+            for i, n in enumerate(num_elements):
+                total_elements += n
+                if elements_left - total_elements < clusters_left and not fill_grid:
+                    n_ind = i
+                    n_max_labels = n_max_labels[:n_ind]
+                    num_elements = num_elements[:n_ind]
+                    break
                 
-        print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
+        # informational output
+        if len(n_max_labels) > 0:
+            print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
         # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
         label_start = int(labels.max()) + 1

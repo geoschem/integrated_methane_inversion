@@ -14,6 +14,13 @@ run_preview() {
         exit 9999
     fi
 
+    # First run the Preview if necessary to get prior emissions
+    # needed for prepare_sf.py
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
+        run_prior
+    fi
+
     printf "\n=== CREATING IMI PREVIEW RUN DIRECTORY ===\n"
 
     cd ${RunDirs}
@@ -32,9 +39,8 @@ run_preview() {
     # Remove old error status file if present
     rm -f .error_status_file.txt
     
-    # Link to GEOS-Chem executable instead of having a copy in each run dir
-    rm -rf gcclassic
-    ln -s ${RunTemplate}/gcclassic .
+    # Link to GEOS-Chem executable
+    ln -s ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
@@ -53,11 +59,6 @@ run_preview() {
     # Update settings in HEMCO_Config.rc
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
-    # Update for Kalman filter option
-    if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
-    fi
 
     # Create run script from template
     sed -e "s:namename:${PreviewName}:g" \
@@ -83,18 +84,6 @@ run_preview() {
 
     printf "\n=== RUNNING IMI PREVIEW ===\n"
 
-    # Submit preview GEOS-Chem job to job scheduler
-    printf "\nRunning preview GEOS-Chem simulation... "
-    if "$UseSlurm"; then
-        sbatch --mem $SimulationMemory \
-               -c $SimulationCPUs \
-               -t $RequestedTime \
-               -p $SchedulerPartition \
-               -W ${RunName}_Preview.run; wait;
-    else
-        ./${RunName}_Preview.run
-    fi
-
     # Specify inputs for preview script
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
@@ -108,8 +97,8 @@ run_preview() {
     printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
         chmod +x $preview_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \
