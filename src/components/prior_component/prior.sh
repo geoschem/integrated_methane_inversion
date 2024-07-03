@@ -149,7 +149,9 @@ run_hemco_sa() {
 
     # Remove soil absorption uptake from total emissions
     pushd OutputDir
-    exclude_soil_sink HEMCO_sa_diagnostics.${hemco_start}0000.nc HEMCO_sa_diagnostics.${hemco_start}0000.nc
+    for file in in HEMCO_sa_diagnostics*.nc; do
+        exclude_soil_sink $file $file
+    done
     popd
     popd
     set +e
