@@ -15,6 +15,7 @@ source src/utilities/common.sh
 source src/components/setup_component/setup.sh
 source src/components/template_component/template.sh
 source src/components/statevector_component/statevector.sh
+source src/components/prior_component/prior.sh
 source src/components/preview_component/preview.sh
 source src/components/spinup_component/spinup.sh
 source src/components/jacobian_component/jacobian.sh
@@ -127,7 +128,7 @@ mkdir -p -v ${RunDirs}
 
 # Set/Collect information about the GEOS-Chem version, IMI version,
 # and TROPOMI processor version
-GEOSCHEM_VERSION=14.2.3
+GEOSCHEM_VERSION=14.4.1
 IMI_VERSION=$(git describe --tags)
 TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
     sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |

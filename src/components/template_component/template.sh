@@ -13,7 +13,7 @@ setup_template() {
 
     # The createRunDir.sh script assumes the file ~/.geoschem/config exists
     # and contains the path to GEOS-Chem input data
-	export GC_USER_REGISTERED=true
+    export GC_USER_REGISTERED=true
     if [[ ! -f ${HOME}/.geoschem/config ]]; then
 	mkdir -p ${HOME}/.geoschem
 	echo "export GC_DATA_ROOT=${DataPath}" >> ${HOME}/.geoschem/config
@@ -37,22 +37,22 @@ setup_template() {
     fi
     
     if [ "$Res" = "4.0x5.0" ]; then
-	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
-	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+	cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
 	if "$isRegional"; then
 	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
 	else
-	    cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
 	fi
     elif [ "$Res" == "0.25x0.3125" ]; then
 	if "$isRegional"; then
 	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
 	else
-	    cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
 	fi
     else
 	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
@@ -101,12 +101,10 @@ setup_template() {
     OLD=" StateVector.nc"
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
-
+    
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: false|use_emission_scale_factor: true|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-               -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+        sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
     fi
 
     # Turn other options on/off according to settings above
@@ -140,12 +138,18 @@ setup_template() {
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
 
-    # Modify HISTORY.rc
+    # Modify HISTORY.rc - comment out diagnostics that aren't needed
     sed -i -e "s:'CH4':#'CH4':g" \
            -e "s:'Metrics:#'Metrics:g" \
-           -e "s:'StateMet:#'StateMet:g" HISTORY.rc
-    
-    # If turned on, save out hourly concentrations to daily files
+           -e "s:'StateMet:#'StateMet:g" \
+           -e "s:'SpeciesConcMND:#'SpeciesConcMND:g" \
+           -e "s:'Met_PEDGEDRY:#'Met_PEDGEDRY:g" \
+           -e "s:'Met_PFICU:#'Met_PFICU:g" \
+           -e "s:'Met_PFILSAN:#'Met_PFILSAN:g" \
+           -e "s:'Met_PFLCU:#'Met_PFLCU:g" \
+           -e "s:'Met_PFLLSAN:#'Met_PFLLSAN:g" HISTORY.rc
+
+    # If turned on, save out hourly CH4 concentrations to daily files
     if "$HourlySpecies"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
     	       -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
@@ -158,7 +162,10 @@ setup_template() {
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/run.template .
 
-    # Compile GEOS-Chem and store executable in template run directory
+    # Copy input file for applying emissions perturbations via HEMCO
+    cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
+    
+    # Compile GEOS-Chem and store executable in GEOSChem_build directory
     printf "\nCompiling GEOS-Chem...\n"
     cd build
     cmake ${InversionPath}/GCClassic >> build_geoschem.log 2>&1
@@ -167,7 +174,8 @@ setup_template() {
     cd ..
     if [[ -f gcclassic ]]; then
         rm -rf build
-        mv build_info ../GEOSChem_build_info
+        mv build_info ../GEOSChem_build
+        mv -v gcclassic ../GEOSChem_build/
     else
         printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
         exit 999

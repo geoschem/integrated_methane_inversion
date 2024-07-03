@@ -31,10 +31,10 @@ mkdir -p "${workDir}/tropomi-boundary-conditions"
 mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
 
-# Get GCClassic v14.4.0 and create the run directory
+# Get GCClassic v14.4.1 and create the run directory
 git clone https://github.com/geoschem/GCClassic.git
 cd GCClassic
-git checkout 14.4.0
+git checkout 14.4.1
 git submodule update --init --recursive
 cd run
 runDir="gc_run"
@@ -59,8 +59,8 @@ sed -i -e "s|'CH4',|#'CH4',|g" \
     -e "s|'Met_AD                        ',|'Met_AIRVOL                    ',|g" HISTORY.rc
 
 # Remove unnecessary StateMet and then LevelEdge variables
-sed -i '269,344d' HISTORY.rc
-sed -i '199,204d' HISTORY.rc
+sed -i '265,340d' HISTORY.rc
+sed -i '195,200d' HISTORY.rc
 
 # Modify HEMCO_Config.rc so that GEOS-Chem can run into 2024
 sed -i '/GFED4/s/ RF/ C/g' HEMCO_Config.rc
