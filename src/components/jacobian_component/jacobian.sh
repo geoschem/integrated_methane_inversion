@@ -20,10 +20,12 @@ setup_jacobian() {
     cd ${RunDirs}
 
     # make dir for jacobian ics/bcs
-    mkdir -p jacobian_1ppb_ics_bcs/Restarts
-    mkdir -p jacobian_1ppb_ics_bcs/BCs
-    OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
+    mkdir -p jacobian_lowbg_ics_bcs/Restarts
+    if $isRegional; then
+        mkdir -p jacobian_lowbg_ics_bcs/BCs
+        OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_lowbg_ics_bcs/BCs $StartDate $Species
+    fi
 
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
@@ -247,17 +249,17 @@ create_simulation_dir() {
         fi
 
     else
-        # set 1ppb CH4 boundary conditions and restarts for all other perturbation simulations
+        # set lowbg boundary conditions and restarts for all other perturbation simulations
         # Note that we use the timecycle flag C to avoid having to make additional files
         if "$UseBCsForRestart"; then
-            RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
+            RestartFile=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4
         else
-            RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
+            RestartFile=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
         fi
-        BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
-        BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
-        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
-        # create symlink to 1ppb restart file
+        BCFilelowbg=${RunDirs}/jacobian_lowbg_ics_bcs/BCs/GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4
+        BCSettingslowbg="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
+        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFilelowbg} ${BCSettingslowbg}|g" HEMCO_Config.rc
+        # create symlink to lowbg restart file
         ln -sf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         # Also, set emissions to zero for default CH4 tracer by applying new ZERO scale factor
         sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
@@ -391,9 +393,9 @@ run_jacobian() {
 
         cd ${RunDirs}/jacobian_runs
 
-        # create 1ppb restart file
+        # create lowbg restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
-        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate $Species
         set +e
 
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
