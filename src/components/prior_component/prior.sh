@@ -59,6 +59,7 @@ run_prior() {
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
         -e "/Negative values:     0/d" HEMCO_sa_Config.rc
     sed -i -e "s/METEOROLOGY            :       true/METEOROLOGY            :       false/g" HEMCO_Config.rc
+    sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   Daily|g" HEMCO_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
