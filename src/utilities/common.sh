@@ -37,16 +37,16 @@ submit_job() {
 submit_slurm_job() {
     if [[ $1 = "true" ]]; then
         sbatch -N 1 \
-            --mem $SimulationMemory \
-            -c $SimulationCPUs \
+            --mem $RequestedMemory \
+            -c $RequestedCPUs \
             -t $RequestedTime \
             -p $SchedulerPartition \
             -o imi_output.tmp \
             -W ${@:2}; wait;
     else
         sbatch -N 1 \
-            --mem $SimulationMemory \
-            -c $SimulationCPUs \
+            --mem $RequestedMemory \
+            -c $RequestedCPUs \
             -t $RequestedTime \
             -p $SchedulerPartition \
             -o imi_output.tmp \
@@ -61,11 +61,11 @@ submit_slurm_job() {
 submit_pbs_job() {
     # If save output
     if [[ $1 = "true" ]]; then
-        qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
+        qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
             -l walltime=$RequestedTime -q devel -o imi_output.tmp \
             -Wblock=true -- ${@:2}; wait;
     else
-        qsub -lselect=1:ncpus=$SimulationCPUs:mem=$SimulationMemory:model=ivy \
+        qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
             -l walltime=$RequestedTime -q devel \
             -Wblock=true -- ${@:2}; wait;
     fi
