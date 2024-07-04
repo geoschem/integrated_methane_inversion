@@ -112,15 +112,15 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     )
     
     # get start and end dates
-    start_date = config["StartDate"]
-    end_date = config["EndDate"]
+    start_date = str(config["StartDate"])
+    end_date = str(config["EndDate"])
 
     # jacobian rundir path
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
 
     # find the hemco emissions file for the period
     prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
-    if config["KalmanMode"] == "true":
+    if config["KalmanMode"]:
         hemco_emis = get_period_mean_emissions(prior_cache, period_number, os.path.join(base_directory, "periods.csv"))
     else:   
         hemco_emis = get_mean_emissions(start_date, end_date, prior_cache)
