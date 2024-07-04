@@ -45,6 +45,8 @@ LatMax: 90
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
+MakePeriodsCSV: false
+CustomPeriodsCSV: "/n/holylfs05/LABS/jacob_lab/Users/mhe/Global_IMI_2019/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true

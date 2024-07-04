@@ -21,9 +21,13 @@ setup_kf() {
     cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
     sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' ${RunDirs}/kf_inversions/kf_notebook.ipynb
 
-
     # Define Kalman filter update periods
-    python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
+    if "$MakePeriodsCSV"; then
+        python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
+    else
+        printf "Copying custom periods.csv to the run directory.\n"
+        cp $CustomPeriodsCSV ${RunDirs}/
+    fi
 
     # Create unit scale factor file
     python ${InversionPath}/src/components/kalman_component/make_unit_sf.py $StateVectorFile $RunDirs; wait
