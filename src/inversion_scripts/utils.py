@@ -444,7 +444,7 @@ def get_mean_emissions(start_date, end_date, prior_cache_path):
     """
     # find all prior files in the specified date range
     prior_files = [f for f in os.listdir(prior_cache_path) if "HEMCO_sa_diagnostics" in f]
-    prior_files = filter_prior_files(prior_files, start_date, end_date)
+    prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
     hemco_diags = [xr.load_dataset(os.path.join(prior_cache_path, f)) for f in prior_files]
     
     # concatenate all datasets and aggregate into the mean prior 
