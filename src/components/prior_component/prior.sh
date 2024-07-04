@@ -111,12 +111,7 @@ fi' runHEMCO.sh
 
     printf "\nSubmitting prior emissions hemco simulation\n\n"
 
-    if "$KalmanMode"; then
-        kalman_end=$(date -d "${StartDate} +${UpdateFreqDays} days" +"%Y%m%d")
-        run_hemco_sa $StartDate $kalman_end
-    else
-        run_hemco_sa $StartDate $EndDate
-    fi
+    run_hemco_sa $StartDate $EndDate
 
     printf "\nDone prior emissions hemco simulation\n\n"
 
