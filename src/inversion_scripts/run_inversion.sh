@@ -34,8 +34,7 @@ configFile={CONFIG_FILE}
 #  Make sure $PrecomputedJacobian is true, and then re-run this script
 #   (or run_imi.sh with only the $DoInversion module switched on in config.yml).
 
-source ${invPath}/src/utilities/parse_yaml.sh
-eval $(parse_yaml ${invPath}/${configFile})
+eval $(python ${invPath}/src/utilities/parse_yaml.py ${invPath}/${configFile})
 
 #=======================================================================
 # Configuration (these settings generated on initial setup)
@@ -45,6 +44,7 @@ LonMaxInvDomain={LON_MAX}
 LatMinInvDomain={LAT_MIN}
 LatMaxInvDomain={LAT_MAX}
 nElements={STATE_VECTOR_ELEMENTS}
+nTracers={NUM_JACOBIAN_TRACERS}
 OutputPath={OUTPUT_PATH}
 Res={RES}
 SpinupDir="${OutputPath}/${RunName}/spinup_run"
@@ -58,6 +58,7 @@ GCVizDir="./data_geoschem_prior"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
 tropomiCache="${OutputPath}/${RunName}/satellite_data"
+period_i={PERIOD}
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
 # Switch is flipped to false automatically if (( period_i > 1 ))
@@ -131,7 +132,8 @@ if ! "$PrecomputedJacobian"; then
     else
 	pertOH=0.0
     fi
-    python_args=(calc_sensi.py $nElements $PerturbValue $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH )
+    PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/flat_pert_sf_${period_i}.npy
+    python_args=(calc_sensi.py $nElements $nTracers $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
     printf "Calling calc_sensi.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- calc_sensi.py\n\n"

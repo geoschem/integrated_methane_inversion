@@ -3,7 +3,7 @@ import numpy as np
 import os
 import sys
 import yaml
-from src.inversion_scripts.utils import sum_total_emissions
+from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 
 
 def print_posterior_emissions(config_path, period_number, base_directory):
@@ -37,10 +37,10 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     mask = state_vector_labels <= last_ROI_element
 
     # Emissions
-    hemco_emis = hemco_diags["EmisCH4_Total"].isel(time=0, drop=True)
-    posterior_sf = xr.load_dataset(post_sf_path)["ScaleFactor"]
-    # Recall that posterior_sf from archive_sf multiplies sf over the full inversion record
-    posterior_emis = posterior_sf * hemco_emis
+    hemco_emis = hemco_diags
+    posterior_sf = xr.load_dataset(post_sf_path)
+    posterior_emis_ds = get_posterior_emissions(hemco_emis, posterior_sf)
+    posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
     total_emis = sum_total_emissions(posterior_emis, areas, mask)
 
     # Print

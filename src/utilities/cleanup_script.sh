@@ -18,8 +18,7 @@ printf "\n###########################################\n\n"
 if [[ $# == 1 ]] ; then
     ConfigFile=$1
     # parse config file
-    source parse_yaml.sh
-    eval $(parse_yaml $1)
+    eval $(python parse_yaml.py $1)
 
 else
     printf "\n No config file provided. Using current directory as IMI run directory: $(pwd)\n"

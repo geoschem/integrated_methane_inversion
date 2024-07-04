@@ -97,25 +97,27 @@ setup_imi() {
         gridDir="${gridDir}_${RegionID}"
     fi
 
-    # Clone version 14.2.1 of GCClassic
+    # Clone defined version of GCClassic
     # Define path to GEOS-Chem run directory files
     cd "${InversionPath}"
     if [ ! -d "GCClassic" ]; then
         git clone https://github.com/geoschem/GCClassic.git
         cd GCClassic
-        git checkout 14.2.3
+        git checkout ${GEOSCHEM_VERSION}
         git submodule update --init --recursive
         cd ..
     else
         cd GCClassic
-        if grep -Fq "VERSION 14.2.3" CMakeLists.txt; then
-            echo "GCClassic already exists and is the correct version."
+        if grep -Fq "VERSION ${GEOSCHEM_VERSION}" CMakeLists.txt; then
+            printf "\nGCClassic already exists and is the correct version ${GEOSCHEM_VERSION}.\n"
         else
-            echo "ERROR: GCClassic already exists but is not version 14.2.3."
+            printf "\nERROR: GCClassic already exists but is not version ${GEOSCHEM_VERSION}.\n"
             exit 1
         fi
         cd ..
     fi
+
+    # Define path to GEOS-Chem run directory files
     GCClassicPath="${InversionPath}/GCClassic"
     RunFilesPath="${GCClassicPath}/run"
 
@@ -126,7 +128,7 @@ setup_imi() {
     fi
 
     ##=======================================================================
-    ## Create state vector file
+    ## Create or copy state vector file
     ##=======================================================================
 
     if "$CreateAutomaticRectilinearStateVectorFile"; then
@@ -163,12 +165,19 @@ setup_imi() {
     fi
 
     ##=======================================================================
+    ## Generate Prior Emissions
+    ##=======================================================================
+    if "$DoPriorEmis"; then
+       run_prior
+    fi
+
+    ##=======================================================================
     ## Reduce state vector dimension
     ##=======================================================================
     if "$ReducedDimensionStateVector"; then
         reduce_dimension
     fi
-
+    
     ##=======================================================================
     ##  Set up IMI preview run directory
     ##=======================================================================

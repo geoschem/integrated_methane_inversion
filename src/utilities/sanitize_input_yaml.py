@@ -10,9 +10,7 @@ Arguments
 # ************ Add required config variables to the corresponding list **************
 
 # variables only required by AWS
-config_required_aws = [
-    "CondaFile",
-]
+config_required_aws = []
 
 # variables only required by local cluster
 config_required_local_cluster = [
@@ -26,21 +24,24 @@ config_required = [
     "isAWS",
     "UseSlurm",
     "SafeMode",
+    "S3Upload",
     "StartDate",
     "EndDate",
     "SpinupMonths",
     "BlendedTROPOMI",
+    "isRegional",
+    "RegionID",
     "LonMin",
     "LonMax",
     "LatMin",
     "LatMax",
-    "isRegional",
-    "RegionID",
+    "KalmanMode",
     "CreateAutomaticRectilinearStateVectorFile",
     "nBufferClusters",
     "BufferDeg",
     "LandThreshold",
     "OffshoreEmisThreshold",
+    "PointSourceDatasets",
     "ReducedDimensionStateVector",
     "StateVectorFile",
     "ShapeFile",
@@ -50,12 +51,13 @@ config_required = [
     "PrecomputedJacobian",
     "Res",
     "Met",
+    "RunSetup",
     "SetupTemplateRundir",
     "SetupSpinupRun",
     "SetupJacobianRuns",
     "SetupInversion",
     "SetupPosteriorRun",
-    "RunSetup",
+    "DoPriorEmis",
     "DoSpinup",
     "ReDoJacobian",
     "DoJacobian",
@@ -63,9 +65,13 @@ config_required = [
     "DoPosterior",
     "DoPreview",
     "DOFSThreshold",
+    "RequestedMemory",
+    "RequestedCPUs",
+    "RequestedTime",
+    "SchedulerPartition",
+    "MaxSimultaneousRuns",
+    "NumJacobianTracers",
     "PerturbValue",
-    "UseEmisSF",
-    "UseOHSF",
     "HourlyCH4",
     "PLANEFLIGHT",
     "GOSAT",
@@ -74,6 +80,7 @@ config_required = [
     "OutputPath",
     "DataPath",
     "CondaEnv",
+    "CondaFile",
     "RestartDownload",
     "RestartFilePrefix",
     "RestartFilePreviewPrefix",
@@ -84,14 +91,6 @@ config_required = [
     "ProductionDryRun",
     "PosteriorDryRun",
     "BCdryrun",
-    "SimulationMemory",
-    "SimulationCPUs",
-    "JacobianMemory",
-    "JacobianCPUs",
-    "RequestedTime",
-    "SchedulerPartition",
-    "KalmanMode",
-    "S3Upload",
     "LognormalErrors"
 ]
 
@@ -106,6 +105,9 @@ conditional_dict["KalmanMode"] = [
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
+    "EmissionRateFilter",
+    "PlumeCountFilter",
+    "GroupByCountry"
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 conditional_dict["S3Upload"] = [

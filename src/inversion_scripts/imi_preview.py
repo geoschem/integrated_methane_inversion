@@ -28,6 +28,8 @@ from src.inversion_scripts.utils import (
     filter_blended,
     calculate_area_in_km,
     calculate_superobservation_error,
+    get_mean_emissions,
+    get_posterior_emissions,
 )
 from joblib import Parallel, delayed
 from src.inversion_scripts.operators.TROPOMI_operator import (
@@ -110,6 +112,9 @@ def imi_preview(
 
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    for key in config.keys():
+        if isinstance(config[key],str):
+            config[key] = os.path.expandvars(config[key])
 
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
@@ -418,19 +423,12 @@ def estimate_averaging_kernel(
     # ----------------------------------
     # Total prior emissions
     # ----------------------------------
-
-    # Prior emissions
-    preview_cache = os.path.join(preview_dir, "OutputDir")
-    hemco_diags_file = [
-        f for f in os.listdir(preview_cache) if "HEMCO_diagnostics" in f
-    ][0]
-    prior_pth = os.path.join(preview_cache, hemco_diags_file)
-    prior = xr.load_dataset(prior_pth)["EmisCH4_Total"].isel(time=0)
-
     # Start and end dates of the inversion
     startday = str(config["StartDate"])
     endday = str(config["EndDate"])
 
+    # Prior emissions
+    prior_cache = os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
         # use different date range for KF inversion if kf_index is not None
@@ -441,10 +439,15 @@ def estimate_averaging_kernel(
 
         # use the nudged (prior) emissions for generating averaging kernel estimate
         sf = xr.load_dataset(f"{rundir_path}archive_sf/prior_sf_period{kf_index}.nc")
-        prior = sf["ScaleFactor"] * prior
+        prior_ds = get_mean_emissions(startday, endday, prior_cache)
+        prior_ds = get_posterior_emissions(prior_ds, sf)
+    else:
+        prior_ds = get_mean_emissions(startday, endday, prior_cache)
+        
+    prior = prior_ds["EmisCH4_Total"]
 
     # Compute total emissions in the region of interest
-    areas = xr.load_dataset(prior_pth)["AREA"]
+    areas = prior_ds["AREA"]
     total_prior_emissions = sum_total_emissions(prior, areas, mask)
     outstring1 = (
         f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y \n"

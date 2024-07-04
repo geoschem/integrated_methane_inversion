@@ -1,13 +1,16 @@
+import os
+import pickle
+from datetime import datetime, timedelta
 import numpy as np
+import xarray as xr
+import cartopy
+import cartopy.crs as ccrs
 from shapely.geometry.polygon import Polygon
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from pyproj import Geod
-import cartopy
-import cartopy.crs as ccrs
-import pickle
-import csv
 from matplotlib.lines import Line2D
+from pyproj import Geod
+import pandas as pd
 
 
 def save_obj(obj, name):
@@ -367,3 +370,96 @@ def calculate_superobservation_error(sO, p):
         sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
     )
     return s_super
+
+def get_posterior_emissions(prior, scale):
+    """
+    Function to calculate the posterior emissions from the prior 
+    and the scale factors. Properly accounting for no optimization 
+    of the soil sink.
+    Args:
+        prior  : xarray dataset
+            prior emissions
+        scales : xarray dataset scale factors
+    Returns:
+        posterior : xarray dataset
+            posterior emissions
+    """
+    # we do not optimize soil absorbtion in the inversion. This 
+    # means that we need to keep the soil sink constant and properly 
+    # account for it in the posterior emissions calculation.
+    # To do this, we:
+    
+    # make a copy of the original soil sink
+    prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
+    
+    # remove the soil sink from the prior total before applying scale factors
+    prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
+    
+    # scale the prior emissions for all sectors using the scale factors
+    posterior = prior * scale["ScaleFactor"]
+    
+    # But reset the soil sink to the original value
+    posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
+    
+    # Add the original soil sink back to the total emissions
+    posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
+    return posterior
+
+def get_strdate(current_time, date_threshold):
+    # round observation time to nearest hour
+    strdate = current_time.round("60min").strftime("%Y%m%d_%H")
+    # Unless it equals the date threshold (hour 00 after the inversion period)
+    if strdate == date_threshold:
+        strdate = current_time.floor("60min").strftime("%Y%m%d_%H")
+ 
+    return strdate
+
+
+def filter_prior_files(filenames, start_date, end_date):
+    """
+    Filter a list of HEMCO diagnostic files based on the specified date range.
+    """
+    # Parse the input dates
+    start_date = datetime.strptime(start_date, "%Y%m%d")
+    end_date = datetime.strptime(end_date, "%Y%m%d") - timedelta(days=1)
+
+    filtered_files = []
+    for file in filenames:
+        # Extract the date part from the filename
+        date_str = file.split('.')[1]
+        file_date = datetime.strptime(date_str, "%Y%m%d%H%M")
+
+        # Check if the file date is within the specified range
+        if start_date <= file_date <= end_date:
+            # Create a key for the year and month
+            year_month = file_date.strftime("%Y%m")
+            # Only add the first file encountered for each month
+            filtered_files.append(file)
+    
+    return filtered_files
+    
+def get_mean_emissions(start_date, end_date, prior_cache_path):
+    """
+    Calculate the mean emissions for the specified date range.
+    """
+    # find all prior files in the specified date range
+    prior_files = [f for f in os.listdir(prior_cache_path) if "HEMCO_sa_diagnostics" in f]
+    prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
+    hemco_diags = [xr.load_dataset(os.path.join(prior_cache_path, f)) for f in prior_files]
+    
+    # concatenate all datasets and aggregate into the mean prior 
+    # emissions for the specified date range
+    prior_ds = xr.concat(hemco_diags, dim="time")
+    return prior_ds.mean(dim=["time"])
+
+def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
+    """
+    Calculate the mean emissions for the specified kalman period.
+    """
+    period_df = pd.read_csv(periods_csv_path)
+    period_df = period_df[period_df['period_number'] == period]
+    period_df.reset_index(drop=True, inplace=True)
+    start_date = str(period_df.loc[0,"Starts"])
+    end_date = str(period_df.loc[0,"Ends"])
+    return get_mean_emissions(start_date, end_date, prior_cache_path)
+    

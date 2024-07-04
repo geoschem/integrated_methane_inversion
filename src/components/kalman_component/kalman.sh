@@ -3,6 +3,8 @@
 # Functions available in this file include:
 #   - setup_kf
 #   - run_kf
+#   - run_period
+#   - get_oh_rundir_suffix
 
 # Description: Setup Kalman filter prereqiuisites
 # Usage:
@@ -48,9 +50,9 @@ run_kf() {
 
         # First run the Preview if necessary to get prior emissions
         # needed for prepare_sf.py
-        if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-            printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite for Kalman Mode.\n"
-            run_preview
+        if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+            printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for Kalman Mode.\n"
+            run_prior
         fi
         # Key directories
         JacobianRunsDir="${RunDirs}/jacobian_runs"
@@ -88,7 +90,7 @@ run_period() {
 
     # Create inversion directory for the period
     cp -r ${RunDirs}/inversion_template/. ${RunDirs}/kf_inversions/period${period_i}
-
+    sed -i -e "s:{PERIOD}:${period_i}:g" ${RunDirs}/kf_inversions/period${period_i}/run_inversion.sh
 
     # Get Start/End dates of current period from periods.csv
     ithLine=$(sed "$((period_i+1))q;d" $PeriodsFile)
@@ -96,6 +98,12 @@ run_period() {
     StartDate_i=${ithDates[0]}
     EndDate_i=${ithDates[1]}
     echo "Start, End: $StartDate_i, $EndDate_i"
+
+    # check if precomputed prior emissions for this period exists already
+    if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
+        printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
+        run_hemco_sa $StartDate_i $EndDate_i
+    fi
 
     # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs
     python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir; wait
@@ -137,22 +145,37 @@ run_period() {
     cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
     echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
 
-    # Make link to restart file from posterior run directory in each Jacobian run directory
-    for ((x=0;x<=nElements;x++)); do
+    # Make link to restart file from posterior run directory in prior, OH, and background simulation
+    # and link to 1ppb restart file for perturbations
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
+    rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
+    for ((idx=0;idx<=rundir_num;idx++)); do
         # Add zeros to string name
-        if [ $x -lt 10 ]; then
-            xstr="000${x}"
-        elif [ $x -lt 100 ]; then
-            xstr="00${x}"
-        elif [ $x -lt 1000 ]; then
-            xstr="0${x}"
+        if [ $idx -lt 10 ]; then
+            idxstr="000${idx}"
+        elif [ $idx -lt 100 ]; then
+            idxstr="00${idx}"
+        elif [ $idx -lt 1000 ]; then
+            idxstr="0${idx}"
         else
-            xstr="${x}"
+            idxstr="${idx}"
         fi
-        ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${xstr}/Restarts/.
+        # read the original symlink for period 1
+        target=$(readlink "${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4")
+
+        # Extract the filename from the target path
+        filename=$(basename "$target")
+
+        # Check if the filename contains "1ppb". If so, use the 1ppb restart file
+        # Otherwise use the posterior simulation as the restart file 
+        if [[ "$filename" == *1ppb* ]]; then
+            ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
+        else
+            ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
+        fi
     done
 
-    # Also link to posterior restart file in background directory if using lognormal errors
+    # and conditionally background run directory
     if "$LognormalErrors"; then
         ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
     fi
@@ -167,4 +190,15 @@ run_period() {
     # Move to next time step
     print_stats
     echo -e "Moving to next iteration\n"
+}
+
+# Description: Get the run directory number for the OH perturbation
+#     The OH perturbation dir is always the last run directory
+# Usage: get_last_rundir_suffix <run_dirs_path>
+get_last_rundir_suffix() {
+    python -c "import sys; import os; import glob; \
+    run_dirs_pth = sys.argv[1]; \
+    pattern = os.path.join(run_dirs_pth, '*_[0-9][0-9][0-9][0-9]'); \
+    nruns = len([d for d in glob.glob(pattern) if os.path.isdir(d)]) - 1; \
+    print(int(nruns))" $1
 }

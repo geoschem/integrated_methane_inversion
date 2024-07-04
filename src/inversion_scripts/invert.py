@@ -150,8 +150,11 @@ def do_inversion(
                 for p in obs_GC[:, 4]
             ]
         )
+        # Define observational errors (diagonal entries of S_o matrix)
+        obs_error = np.power(obs_err, 2)
         gP = s_superO_p**2 / s_superO_1**2
-        obs_error = gP * obs_err
+        # scale error variance by gP
+        obs_error = gP * obs_error
 
         # check to make sure obs_err isn't negative, set 1 as default value
         obs_error = [obs if obs > 0 else 1 for obs in obs_error]
@@ -178,9 +181,6 @@ def do_inversion(
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
             K *= scaling_matrix
-
-        # Define observational errors (diagonal entries of S_o matrix)
-        obs_error = np.power(obs_error, 2)
 
         # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand
@@ -261,7 +261,15 @@ def do_inversion(
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
     
+    # Calculate J_A, where ratio = xhat - xA
+    # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
+    ratioT = ratio.transpose()
+    J_A = ratioT @ inv_Sa @ ratio
+    J_A_normalized = J_A / n_elements
+    
     # Print some statistics
+    print(f'gamma: {gamma}')
+    print(f'Normalized J_A: {J_A_normalized}') # ideal gamma is where this is close to 1
     print("Min:", xhat[:scale_factor_idx].min(), "Mean:", xhat[:scale_factor_idx].mean(), "Max", xhat[:scale_factor_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A

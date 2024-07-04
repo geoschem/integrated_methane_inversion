@@ -29,13 +29,22 @@ jobs:
       with:
         registry-type: public
 
-
-    - name: Build, tag, and push image to Amazon ECR
+    - name: Build, tag, and push al2 image to Amazon ECR
       env:
         REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
         REGISTRY_ALIAS: w1q7j9l2
-        REPOSITORY: imi-docker-image
+        REPOSITORY: imi-al2-docker-image
         IMAGE_TAG: latest
       run: |
-        docker build -f resources/containers/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
+        docker build -f resources/containers/al2/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
+        docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+
+    - name: Build, tag, and push ubuntu image to Amazon ECR
+      env:
+        REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+        REGISTRY_ALIAS: w1q7j9l2
+        REPOSITORY: imi-ubuntu-docker-image
+        IMAGE_TAG: latest
+      run: |
+        docker build -f resources/containers/ubuntu/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG

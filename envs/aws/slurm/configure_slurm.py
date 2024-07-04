@@ -10,7 +10,7 @@ PartitionName=debug Nodes=ip-172-31-6-14 Default=YES MaxTime=INFINITE State=UP
 import subprocess
 
 slurm_info = (
-    subprocess.run(["/usr/sbin/slurmd", "-C"], stdout=subprocess.PIPE)
+    subprocess.run(["slurmd", "-C"], stdout=subprocess.PIPE)
     .stdout.decode("utf-8")
     .split()
 )
@@ -22,7 +22,7 @@ second_line = (
             slurm_info[0],
             slurm_info[1],
             slurm_info[6],
-            "CoresPerSocket" + slurm_info[1][4:],
+            "SocketsPerBoard" + slurm_info[1][4:],
             "ThreadsPerCore=1 State=UNKNOWN",
         ]
     )
