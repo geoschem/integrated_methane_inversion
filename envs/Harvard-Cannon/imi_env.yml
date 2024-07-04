@@ -9,6 +9,7 @@ dependencies:
   - bs4=4.12.3
   - cartopy=0.23.0
   - colorcet=3.1.0
+  - dask=2024.6.2
   - geopandas=0.14.4
   - ipykernel=6.29.3
   - joblib=1.4.2
