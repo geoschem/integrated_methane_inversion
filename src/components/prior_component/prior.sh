@@ -58,7 +58,8 @@ run_prior() {
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
         -e "/Negative values:     0/d" HEMCO_sa_Config.rc
-    sed -i -e "s/METEOROLOGY            :       true/METEOROLOGY            :       false/g" HEMCO_Config.rc
+    sed -i -e "s/METEOROLOGY            :       true/METEOROLOGY            :       false/g" \
+        -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   Daily|g" HEMCO_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
@@ -110,12 +111,7 @@ fi' runHEMCO.sh
 
     printf "\nSubmitting prior emissions hemco simulation\n\n"
 
-    if "$KalmanMode"; then
-        kalman_end=$(date -d "${StartDate} +${UpdateFreqDays} days" +"%Y%m%d")
-        run_hemco_sa $StartDate $kalman_end
-    else
-        run_hemco_sa $StartDate $EndDate
-    fi
+    run_hemco_sa $StartDate $EndDate
 
     printf "\nDone prior emissions hemco simulation\n\n"
 

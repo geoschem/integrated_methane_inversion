@@ -11,6 +11,8 @@ import glob
 import yaml
 import xarray as xr
 import numpy as np
+import pandas as pd
+from src.inversion_scripts.utils import get_mean_emissions, get_period_mean_emissions
 
 
 def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_sf):
@@ -61,16 +63,13 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
                         file.writelines(lines)
 
 
-def calculate_sfs(state_vector, hemco_emis_path, target_emission=1e-8):
+def calculate_sfs(state_vector, emis_prior, target_emission=1e-8):
     """
     Calculate the scale factors to perturb each state vector
     element by based on the target_emission. Return a flat
     numpy array of the scale factors indexed by state vector
     element.
     """
-    # load the prior emissions dataset
-    emis_prior = xr.open_dataset(hemco_emis_path)
-
     # create a sf dataset with the same structure as the state vector
     sf = state_vector.copy()
     sf = sf.rename({"StateVector": "ScaleFactor"})
@@ -111,21 +110,26 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     base_directory = os.path.expandvars(
         os.path.join(config["OutputPath"], config["RunName"])
     )
+    
+    # get start and end dates
+    start_date = str(config["StartDate"])
+    end_date = str(config["EndDate"])
 
     # jacobian rundir path
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
 
     # find the hemco emissions file for the period
     prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
-    hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO_sa_diagnostics" in f]
-    hemco_list.sort()
-    hemco_emis_path = os.path.join(prior_cache, hemco_list[period_number - 1])
+    if config["KalmanMode"]:
+        hemco_emis = get_period_mean_emissions(prior_cache, period_number, os.path.join(base_directory, "periods.csv"))
+    else:   
+        hemco_emis = get_mean_emissions(start_date, end_date, prior_cache)
 
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
 
     # calculate the scale factors to perturb each state vector element by
-    flat_sf = calculate_sfs(state_vector, hemco_emis_path, perturb_value)
+    flat_sf = calculate_sfs(state_vector, hemco_emis, perturb_value)
 
     # update jacobian perturbation files with new scale factors
     # before we run the jacobian simulations

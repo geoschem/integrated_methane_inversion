@@ -102,8 +102,7 @@ run_period() {
     # check if precomputed prior emissions for this period exists already
     if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
         printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
-        # TODO: switch to use enddate- this just computes the first hour of emissions
-        run_hemco_sa $StartDate_i $StartDate_i
+        run_hemco_sa $StartDate_i $EndDate_i
     fi
 
     # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs
