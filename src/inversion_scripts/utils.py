@@ -431,9 +431,6 @@ def filter_prior_files(filenames, start_date, end_date):
 
         # Check if the file date is within the specified range
         if start_date <= file_date <= end_date:
-            # Create a key for the year and month
-            year_month = file_date.strftime("%Y%m")
-            # Only add the first file encountered for each month
             filtered_files.append(file)
     
     return filtered_files
