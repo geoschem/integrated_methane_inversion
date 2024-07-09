@@ -242,7 +242,7 @@ def imi_preview(
         title="Prior emissions",
         point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-        mask=mask,
+        mask=None,
         only_ROI=False,
     )
     plt.savefig(
@@ -265,7 +265,7 @@ def imi_preview(
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
         cbar_label="Column mixing ratio (ppb)",
-        mask=mask,
+        mask=None,
         only_ROI=False,
     )
 
@@ -289,7 +289,7 @@ def imi_preview(
         lat_bounds=None,
         title="SWIR Albedo",
         cbar_label="Albedo",
-        mask=mask,
+        mask=None,
         only_ROI=False,
     )
     plt.savefig(
@@ -310,7 +310,7 @@ def imi_preview(
         lat_bounds=None,
         title="Observation density",
         cbar_label="Number of observations",
-        mask=mask,
+        mask=None,
         only_ROI=False,
     )
     plt.savefig(
