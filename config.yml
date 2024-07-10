@@ -205,9 +205,8 @@ BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: You will be charged if your ec2 instance is not in the
-##         us-east-1 region.
 PreviewDryRun: true
+PriorDryRun: true
 SpinupDryrun: true
 ProductionDryRun: true
 PosteriorDryRun: true

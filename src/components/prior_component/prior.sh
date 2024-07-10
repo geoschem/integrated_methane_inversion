@@ -15,6 +15,17 @@ run_prior() {
         exit 9999
     fi
 
+    ### Perform dry run if requested
+    if "$PriorDryRun"; then
+        printf "\nExecuting dry-run for prior run...\n"
+        ../GEOSChem_build/gcclassic --dryrun &> log.dryrun
+        # prevent restart file from getting downloaded
+        sed -i '/GEOSChem.Restart/d' log.dryrun
+        # prevent download of GEOS met fields
+        sed -i "/GEOS_$Res/d" log.dryrun
+        ./download_data.py log.dryrun aws
+    fi
+
     printf "\n=== GENERATING PRIOR EMISSIONS ===\n"
 
     cd ${GCClassicPath}/src/HEMCO/run

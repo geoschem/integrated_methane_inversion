@@ -216,6 +216,7 @@ BCversion: "v2024-06"
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled
 PreviewDryRun: false
+PriorDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false
 PosteriorDryRun: false
