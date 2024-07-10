@@ -75,11 +75,12 @@ StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevecto
 ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
-## Note PriorError is a relative fraction (e.g. 0.5 = 50%)
-## if lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
-## PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-## and PriorErrorBCs is in ppb
-## PriorErrorBufferElements is only used if LognormalErrors is true
+## Notes:
+## - PriorError is a relative fraction (e.g. 0.5 = 50%)
+## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
+## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
+## - PriorErrorBCs is in ppb
+## - PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
 PriorError: 0.5
 PriorErrorBCs: 10.0
@@ -108,7 +109,6 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-##   NOTE: DoPriorEmis must be true to run DoPriorEmis
 DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
@@ -197,7 +197,6 @@ RestartDownload: true
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
 RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2024-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2024-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
@@ -207,7 +206,6 @@ BCversion: "v2024-06"
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: You will be charged if your ec2 instance is not in the
 ##         us-east-1 region.
-PreviewDryRun: true
 SpinupDryrun: true
 ProductionDryRun: true
 PosteriorDryRun: true
