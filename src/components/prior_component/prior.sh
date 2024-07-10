@@ -11,7 +11,7 @@
 run_prior() {
     prior_start=$(date +%s)
     if [[ -d ${RunDirs}/prior_run ]]; then
-        printf "\nERROR: ${PriorDir} already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
+        printf "\nERROR: ${RunDirs}/prior_run already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
         exit 9999
     fi
 
