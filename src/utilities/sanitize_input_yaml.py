@@ -41,7 +41,6 @@ config_required = [
     "BufferDeg",
     "LandThreshold",
     "OffshoreEmisThreshold",
-    "PointSourceDatasets",
     "ReducedDimensionStateVector",
     "StateVectorFile",
     "ShapeFile",
