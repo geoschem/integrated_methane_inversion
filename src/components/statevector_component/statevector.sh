@@ -102,7 +102,7 @@ reduce_dimension() {
 	nElements=$((nElements+4))
     fi
     if "$OptimizeOH";then
-	nElements=$((nElements+1))
+	nElements=$((nElements+2))
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"

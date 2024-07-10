@@ -41,7 +41,7 @@ setup_kf() {
 	nElements=$((nElements+4))
     fi
     if "$OptimizeOH";then
-	nElements=$((nElements+1))
+	nElements=$((nElements+2))
     fi
 }
 

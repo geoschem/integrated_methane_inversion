@@ -138,7 +138,7 @@ create_simulation_dir() {
     bcThreshold=$nElements
     if "$OptimizeBCs"; then
         if "$OptimizeOH"; then
-            bcThreshold=$(($nElements - 5))
+            bcThreshold=$(($nElements - 6))
         else
             bcThreshold=$(($nElements - 4))
         fi
@@ -148,7 +148,7 @@ create_simulation_dir() {
     OH_elem=false
     ohThreshold=$nElements
     if "$OptimizeOH"; then
-        ohThreshold=$(($nElements - 1))
+        ohThreshold=$(($nElements - 2))
     fi
 
     # Update settings in HISTORY.rc
@@ -523,7 +523,7 @@ numStandaloneRuns = 0
 if bcOptimized:
     numStandaloneRuns += 4
 if ohOptimized:
-    numStandaloneRuns += 1
+    numStandaloneRuns += 2
 nRuns = math.ceil((nElements - numStandaloneRuns) / nTracers)
 nRuns += numStandaloneRuns
 print(nRuns)
