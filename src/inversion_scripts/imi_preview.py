@@ -6,7 +6,6 @@
 import os
 import sys
 import yaml
-import time
 import warnings
 import datetime
 import numpy as np
@@ -428,8 +427,9 @@ def estimate_averaging_kernel(
     endday = str(config["EndDate"])
 
     # Prior emissions
-    prior_cache = os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
-    prior_cache = os.path.expandvars(prior_cache)
+    prior_cache = os.path.expandvars(
+        os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
+    )
     
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
