@@ -393,6 +393,7 @@ class PlumeObserver:
                 infile = self.cache
             else:
                 basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+                basedir = os.path.expandvars(basedir)
                 infile = f'{basedir}/{self.myname}_plumes/plumes.geojson'
             try:
                 gdf = gpd.read_file(infile)

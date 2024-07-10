@@ -429,6 +429,8 @@ def estimate_averaging_kernel(
 
     # Prior emissions
     prior_cache = os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
+    prior_cache = os.path.expandvars(prior_cache)
+    
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
         # use different date range for KF inversion if kf_index is not None
