@@ -3,6 +3,7 @@
 
 import yaml
 import sys
+import os
 
 # Description: Parse yaml file and convert to shell variables
 # Example Usage as a script:
@@ -47,6 +48,8 @@ def yaml_to_shell_variables(data, prefix=''):
                 shell_vars.append(array_declaration)
         elif isinstance(data, bool):
             shell_vars.append(f'{current_prefix[:-1]}="{str(data).lower()}"')
+        elif isinstance(data, str):
+            shell_vars.append(f'{current_prefix[:-1]}="{os.path.expandvars(data)}"')
         else:
             shell_vars.append(f'{current_prefix[:-1]}="{data}"')
     
