@@ -434,7 +434,7 @@ def estimate_averaging_kernel(
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
         # use different date range for KF inversion if kf_index is not None
-        rundir_path = preview_dir.split("preview_run")[0]
+        rundir_path = preview_dir.split("preview")[0]
         periods = pd.read_csv(f"{rundir_path}periods.csv")
         startday = str(periods.iloc[kf_index - 1]["Starts"])
         endday = str(periods.iloc[kf_index - 1]["Ends"])

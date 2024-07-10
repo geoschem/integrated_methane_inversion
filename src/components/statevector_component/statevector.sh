@@ -48,17 +48,16 @@ create_statevector() {
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
-    # First run the Preview if necessary to get prior emissions
-    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-        run_preview
+    # First generate the prior emissions if not available yet
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\nPrior Dir not detected. Running HEMCO for prior emissions as a prerequisite for reducing dimension of state vector.\n"
+        run_prior
     fi
 
     # set input variables
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
-
-    preview_dir=${RunDirs}/preview_run
+    preview_dir=${RunDirs}/preview
     tropomi_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
