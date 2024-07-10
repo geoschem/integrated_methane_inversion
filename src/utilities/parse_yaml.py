@@ -3,7 +3,6 @@
 
 import yaml
 import sys
-import os
 
 # Description: Parse yaml file and convert to shell variables
 # Example Usage as a script:
