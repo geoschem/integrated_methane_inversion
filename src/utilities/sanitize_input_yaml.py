@@ -87,6 +87,7 @@ config_required = [
     "BCpath",
     "BCversion",
     "PreviewDryRun",
+    "PriorDryRun",
     "SpinupDryrun",
     "ProductionDryRun",
     "PosteriorDryRun",
