@@ -181,7 +181,7 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holylfs05/LABS/jacob_lab/$USER"
+OutputPath: "/n/holyscratch01/jacob_lab/$USER"
 
 ## Path to GEOS-Chem input data
 DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
