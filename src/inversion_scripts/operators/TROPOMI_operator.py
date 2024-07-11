@@ -30,6 +30,7 @@ def apply_average_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    config,
 ):
     """
     Apply the averaging tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -45,6 +46,7 @@ def apply_average_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        config         [dict]       : dict of the config file
 
     Returns
         output         [dict]       : Dictionary with:
@@ -100,7 +102,7 @@ def apply_average_tropomi_operator(
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
+    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian, sensi_cache)
 
     # Initialize array with n_gridcells rows and 5 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
     obs_GC = np.zeros([n_gridcells, 5], dtype=np.float32)
@@ -201,6 +203,7 @@ def apply_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    config
 ):
     """
     Apply the tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -273,7 +276,7 @@ def apply_tropomi_operator(
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
+    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian, sensi_cache)
 
     # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
     obs_GC = np.zeros([n_obs, 6], dtype=np.float32)

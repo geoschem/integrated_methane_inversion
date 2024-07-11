@@ -104,6 +104,35 @@ def count_obs_in_mask(mask, df):
     return n_obs
 
 
+'''
+jde add fxns start
+'''
+def check_is_OH_element(sv_elem, nelements, opt_OH):
+    """
+    Determine if the current state vector element is the OH element
+    """
+    return opt_OH and (sv_elem == nelements)
+
+
+def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element):
+    """
+    Determine if the current state vector element is a boundary condition element
+    """
+    return (
+        not is_OH_element
+        and opt_BC
+        and (
+            (opt_OH and (sv_elem > (nelements - 5)))
+            or ((not opt_OH) and (sv_elem > (nelements - 4)))
+        )
+    )
+'''
+jde add fxns end
+'''
+
+
+
+
 def plot_field(
     ax,
     field,
