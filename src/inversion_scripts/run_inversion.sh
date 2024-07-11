@@ -132,7 +132,7 @@ if ! "$PrecomputedJacobian"; then
     else
 	pertOH=0.0
     fi
-    PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/flat_pert_sf_${period_i}.npy
+    PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/pert_sf_${period_i}.npz
     python_args=(calc_sensi.py $nElements $nTracers $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
     printf "Calling calc_sensi.py\n"
     python "${python_args[@]}"; wait
