@@ -112,7 +112,7 @@ def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None)
         prior_sf_da = prior_sf["ScaleFactor"].groupby(prior_sf["StateVector"]).median()
         prior_sf_df = prior_sf_da.to_dataframe().reset_index()
         prior_sf_df = prior_sf_df[prior_sf_df["StateVector"] > 0].sort_values(by="StateVector")
-        flat_prior_sf = max_sf_df["ScaleFactor"].values
+        flat_prior_sf = prior_sf_df["ScaleFactor"].values
     else:
         flat_prior_sf = np.ones(len(jacobian_pert_sf))
         
