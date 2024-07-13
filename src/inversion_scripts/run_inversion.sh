@@ -120,24 +120,24 @@ printf "DONE -- postproc_diags.py\n\n"
 # Calculate GEOS-Chem sensitivities and save to sensitivities directory
 #=======================================================================
 
-if ! "$PrecomputedJacobian"; then
-    # add an argument to calc_sensi.py if optimizing BCs and/or OH
-    if "$OptimizeBCs"; then
-        pertBCs=$PerturbValueBCs
-    else
-	pertBCs=0.0
-    fi
-    if "$OptimizeOH"; then
-        pertOH=$PerturbValueOH
-    else
-	pertOH=0.0
-    fi
-    PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/flat_pert_sf_${period_i}.npy
-    python_args=(calc_sensi.py $nElements $nTracers $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
-    printf "Calling calc_sensi.py\n"
-    python "${python_args[@]}"; wait
-    printf "DONE -- calc_sensi.py\n\n"
-fi
+### if ! "$PrecomputedJacobian"; then
+###     # add an argument to calc_sensi.py if optimizing BCs and/or OH
+###     if "$OptimizeBCs"; then
+###         pertBCs=$PerturbValueBCs
+###     else
+### 	pertBCs=0.0
+###     fi
+###     if "$OptimizeOH"; then
+###         pertOH=$PerturbValueOH
+###     else
+### 	pertOH=0.0
+###     fi
+###     PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/flat_pert_sf_${period_i}.npy
+###     python_args=(calc_sensi.py $nElements $nTracers $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
+###     printf "Calling calc_sensi.py\n"
+###     python "${python_args[@]}"; wait
+###     printf "DONE -- calc_sensi.py\n\n"
+### fi
 
 #=======================================================================
 # Setup GC data directory in workdir
@@ -176,11 +176,11 @@ else
 
 fi
 
-python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $buildJacobian False; wait
+python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $period_i $buildJacobian False; wait
 if "$LognormalErrors"; then
     # for lognormal error visualization of the prior we sample the prior run
     # without constructing the jacobian matrix
-    python jacobian.py $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost False True; wait
+    python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $period_i False True; wait
 fi
 printf " DONE -- jacobian.py\n\n"
 
