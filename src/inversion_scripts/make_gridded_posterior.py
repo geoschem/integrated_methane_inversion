@@ -65,9 +65,9 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     lon = gridded_SF["lon"].values
     ds = xr.Dataset(
         {
-            "ScaleFactor": (["lat", "lon"], gridded_SF),
-            "S_post": (["lat", "lon"], gridded_S_post),
-            "A": (["lat", "lon"], gridded_A),
+            "ScaleFactor": (["lat", "lon"], gridded_SF.values),
+            "S_post": (["lat", "lon"], gridded_S_post.values),
+            "A": (["lat", "lon"], gridded_A.values),
         },
         coords={"lon": ("lon", lon), "lat": ("lat", lat)},
     )
