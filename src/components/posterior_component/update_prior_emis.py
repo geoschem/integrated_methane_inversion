@@ -29,7 +29,10 @@ def get_posterior_emissions(prior, scale):
     prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
     
     # scale the prior emissions for all sectors using the scale factors
-    posterior = prior * scale["ScaleFactor"]
+    posterior = prior.copy()
+    for ds_var in list(prior.keys()):
+        if "EmisCH4" in ds_var:
+            posterior[ds_var] = prior[ds_var] * scale["ScaleFactor"]
     
     # But reset the soil sink to the original value
     posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
