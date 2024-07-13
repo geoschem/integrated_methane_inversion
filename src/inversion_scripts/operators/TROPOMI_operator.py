@@ -209,27 +209,29 @@ def apply_average_tropomi_operator(
             is_bc = np.full(n_elements, False, dtype=bool)
             is_emis = np.full(n_elements, False, dtype=bool)
             
-            for isv_elem in range(n_elements):
+            for e in range(n_elements):
+                i_elem = e + 1
                 # booleans for whether this element is a
                 # BC element or OH element
                 is_OH_element = check_is_OH_element(
-                    isv_elem, n_elements, config['OptimizeOH']
+                    i_elem, n_elements, config['OptimizeOH']
                 )
 
                 is_BC_element = check_is_BC_element(
-                    isv_elem, n_elements, config['OptimizeOH'],
+                    i_elem, n_elements, config['OptimizeOH'],
                     config['OptimizeBCs'], is_OH_element
                 )
                 
-                is_oh[isv_elem] = is_OH_element
-                is_bc[isv_elem] = is_BC_element
+                is_oh[e] = is_OH_element
+                is_bc[e] = is_BC_element
             is_emis = ~np.equal(is_oh | is_bc, True)
-                
+            
             # fill pert base array with values
             pert_base_xch4 = np.full(n_elements, np.nan)
             pert_base_xch4 = np.where(is_emis, emis_base_xch4, pert_base_xch4)
-            pert_base_xch4 = np.where(is_oh, oh_base_xch4, pert_base_xch4)
             pert_base_xch4 = np.where(is_bc, emis_base_xch4, pert_base_xch4)
+            if config['OptimizeOH']:
+                pert_base_xch4 = np.where(is_oh, oh_base_xch4, pert_base_xch4)
             
             # get perturbations and calculate sensitivities
             perturbations = np.full(n_elements, 1.0, dtype=float)
