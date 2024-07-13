@@ -7,7 +7,10 @@ from src.inversion_scripts.utils import (
     filter_tropomi,
     filter_blended,
     get_strdate,
+    check_is_OH_element,
+    check_is_BC_element
 )
+
 from src.inversion_scripts.operators.operator_utilities import (
     get_gc_lat_lon,
     read_all_geoschem,
@@ -30,6 +33,7 @@ def apply_average_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    period_i,
     config,
 ):
     """
@@ -46,6 +50,7 @@ def apply_average_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        period_i       [int]        : kalman filter period 
         config         [dict]       : dict of the config file
 
     Returns
@@ -96,6 +101,13 @@ def apply_average_tropomi_operator(
         # Initialize Jacobian K
         jacobian_K = np.zeros([n_gridcells, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
+        
+        pertf = (
+            f'{config["OutputPath"]}/{config["RunName"]}/'
+            f'archive_perturbation_sfs/flat_pert_sf_{period_i}.npy'
+        )
+        
+        emis_perturbations = np.load(pertf)
 
     # create list to store the dates/hour of each gridcell
     all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
@@ -104,7 +116,8 @@ def apply_average_tropomi_operator(
     # Read GEOS_Chem data for the dates of interest
     all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian, sensi_cache)
 
-    # Initialize array with n_gridcells rows and 5 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
+    # Initialize array with n_gridcells rows and 5 columns. Columns are
+    # TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
     obs_GC = np.zeros([n_gridcells, 5], dtype=np.float32)
     obs_GC.fill(np.nan)
 
@@ -145,31 +158,105 @@ def apply_average_tropomi_operator(
 
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:
-            # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-            sensi_lonlat = GEOSCHEM["Sensitivities"][
-                gridcell_dict["iGC"], gridcell_dict["jGC"], :, :
-            ]
-            # Map the sensitivities to TROPOMI pressure levels
-            sat_deltaCH4 = remap_sensitivities(
-                sensi_lonlat,
-                merged["data_type"],
-                merged["p_merge"],
-                merged["edge_index"],
-                merged["first_gc_edge"],
-            )  # mixing ratio, unitless
-            # Tile the TROPOMI averaging kernel
-            avkern_tiled = np.transpose(np.tile(avkern, (n_elements, 1)))
-            # Tile the TROPOMI dry air subcolumns
-            dry_air_subcolumns_tiled = np.transpose(
-                np.tile(dry_air_subcolumns, (n_elements, 1))
-            )  # mol m-2
-            # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
-            jacobian_K[i, :] = np.sum(
-                avkern_tiled * sat_deltaCH4 * dry_air_subcolumns_tiled, 0
-            ) / sum(
-                dry_air_subcolumns
-            )  # mixing ratio, unitless
+            
+            # redundant code here...
+            
+            if config['OptimizeOH']:
+                vars_to_xch4 = ['jacobian_ch4', 'emis_base_ch4', 'oh_base_ch4']
+            else:
+                vars_to_xch4 = ['jacobian_ch4', 'emis_base_ch4']
+                
+            xch4 = {}
+                
+            for v in vars_to_xch4:
+                # Get GEOS-Chem jacobian ch4 at this lat/lon, for all vertical levels and state vector elements
+                jacobian_lonlat = GEOSCHEM[v][
+                    gridcell_dict["iGC"], gridcell_dict["jGC"], :, :
+                ]
+                # Map the sensitivities to TROPOMI pressure levels
+                sat_deltaCH4 = remap_sensitivities(
+                    jacobian_lonlat,
+                    merged["data_type"],
+                    merged["p_merge"],
+                    merged["edge_index"],
+                    merged["first_gc_edge"],
+                )  # mixing ratio, unitless
+                # Tile the TROPOMI averaging kernel
+                avkern_tiled = np.transpose(np.tile(avkern, (n_elements, 1)))
+                # Tile the TROPOMI dry air subcolumns
+                dry_air_subcolumns_tiled = np.transpose(
+                    np.tile(dry_air_subcolumns, (n_elements, 1))
+                )  # mol m-2
+                # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
+                #jacobian_K[i, :] = np.sum(
+                xch4[v] = np.sum(
+                    avkern_tiled * sat_deltaCH4 * dry_air_subcolumns_tiled, 0
+                ) / sum(
+                    dry_air_subcolumns
+                )  # mixing ratio, unitless
+            
+            # separate variables for convenience later
+            jacobian_xch4 = xch4['jacobian_ch4']
+            emis_base_xch4 = xch4['emis_base_ch4']
+            if config['OptimizeOH']:
+                oh_base_xch4 = xch4['oh_base_ch4']
+            
+            
+            # Calculate sensitivities and save in K matrix
+            # determine which elements are for emis,
+            # BCs, and OH
+            is_oh = np.full(n_elements, False, dtype=bool)
+            is_bc = np.full(n_elements, False, dtype=bool)
+            is_emis = np.full(n_elements, False, dtype=bool)
+            
+            for isv_elem in range(n_elements):
+                # booleans for whether this element is a
+                # BC element or OH element
+                is_OH_element = check_is_OH_element(
+                    isv_elem, n_elements, config['OptimizeOH']
+                )
 
+                is_BC_element = check_is_BC_element(
+                    isv_elem, n_elements, config['OptimizeOH'],
+                    config['OptimizeBCs'], is_OH_element
+                )
+                
+                is_oh[isv_elem] = is_OH_element
+                is_bc[isv_elem] = is_BC_element
+            is_emis = ~np.equal(is_oh | is_bc, True)
+                
+            # fill pert base array with values
+            pert_base_xch4 = np.full(n_elements, np.nan)
+            pert_base_xch4 = np.where(is_emis, emis_base_xch4, pert_base_xch4)
+            pert_base_xch4 = np.where(is_oh, oh_base_xch4, pert_base_xch4)
+            pert_base_xch4 = np.where(is_bc, emis_base_xch4, pert_base_xch4)
+            
+            # get perturbations and calculate sensitivities
+            perturbations = np.full(n_elements, 1.0, dtype=float)
+            
+            if config['OptimizeOH']:
+                oh_perturbation = config['PerturbValueOH']
+            else:
+                oh_perturbation = 1.0
+            if config['OptimizeBCs']:
+                bc_perturbation = config['PerturbValueBCs']
+            else:
+                bc_perturbation = 1.0
+                
+            perturbations[0: is_emis.sum()] = emis_perturbations
+            perturbations = np.where(is_oh, oh_perturbation, perturbations)
+            perturbations = np.where(is_bc, bc_perturbation, perturbations)
+            
+            # calculate difference
+            delta_xch4 = jacobian_xch4 - pert_base_xch4
+            
+            # calculate sensitivities
+            sensi_xch4 = delta_xch4 / perturbations
+            
+            # fill jacobian array
+            jacobian_K[i,:] = sensi_xch4
+            
+            
         # Save actual and virtual TROPOMI data
         obs_GC[i, 0] = gridcell_dict[
             "methane"
@@ -203,6 +290,7 @@ def apply_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    period_i,
     config
 ):
     """
@@ -219,6 +307,7 @@ def apply_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        period_i       [int]        : kalman filter period 
 
     Returns
         output         [dict]       : Dictionary with one or two fields:
@@ -405,7 +494,7 @@ def apply_tropomi_operator(
             if build_jacobian:
 
                 # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-                sensi_lonlat = GEOSCHEM["Sensitivities"][iGC, jGC, :, :]
+                sensi_lonlat = GEOSCHEM["jacobian_ch4"][iGC, jGC, :, :]
 
                 # Map the sensitivities to TROPOMI pressure levels
                 sat_deltaCH4 = remap_sensitivities(

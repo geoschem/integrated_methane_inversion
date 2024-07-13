@@ -135,32 +135,46 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
         ds_sensi = xr.concat(ds_all, 'element')
         ds_sensi.load()
         
-        sensitivities = ds_sensi["Sensitivities"].values
+        sensitivities = ds_sensi["ch4"].values
         # Reshape so the data have dimensions (lon, lat, lev, grid_element)
         sensitivities = np.einsum("klji->ijlk", sensitivities)
-        dat["Sensitivities"] = sensitivities
+        dat["jacobian_ch4"] = sensitivities
         
+        # get emis base, which is also BC base
+        ds_emis_base = concat_tracers('0001', gc_date, config, [0], baserun=True)
+        ds_emis_base.load()
+        dat['emis_base_ch4'] = np.einsum('klji->ijlk', ds_emis_base['ch4'].values)
+        
+        # get OH base, run out_0000
+        # it's always here whether OptimizeOH is true or not
+        # so we can keep it here for convenience
+        ds_oh_base = concat_tracers('0000', gc_date, config, [0])
+        ds_oh_base.load()
+        dat['oh_base_ch4'] = np.einsum('klji->ijlk', ds_oh_base['ch4'].values)
         
 
     return dat
 
 
-def concat_tracers(run_id, gc_date, config, sv_elems):
+def concat_tracers(run_id, gc_date, config, sv_elems, baserun=False):
     prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
     j_dir = f'{prefix}/out_{run_id}/OutputDir'
     file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')
     dsmf = xr.open_dataset(
         '/'.join([j_dir,file_stub]),
-        chunks = {'time': 24}
+        chunks = 'auto'
     )
     keepvars = [f'SpeciesConcVV_CH4_{i:04}' for i in sv_elems]
     if len(keepvars) == 1:
         # for BC and OH elems, no number in var name
         keepvars = ['SpeciesConcVV_CH4']
-    ds_concat = xr.concat([dsmf[v] for v in keepvars], 'element').rename('Sensitivities')
+    elif baserun:
+        keepvars = ['SpeciesConcVV_CH4']
+    ds_concat = xr.concat([dsmf[v] for v in keepvars], 'element').rename('ch4')
     ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
     ds_concat = ds_concat.isel(time=gc_date.hour, drop=True) #subset hour of interest
-    ds_concat = ds_concat.assign_coords({'element':sv_elems})
+    if not baserun:
+        ds_concat = ds_concat.assign_coords({'element':sv_elems})
     return ds_concat
 
 
