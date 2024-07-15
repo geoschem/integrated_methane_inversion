@@ -226,6 +226,10 @@ def imi_preview(
 
     plt.rcParams.update({"font.size": 18})
 
+    # Adjust plot mask if global inversion
+    if not config["isRegional"]:
+        mask=None
+
     # Plot prior emissions
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
@@ -242,7 +246,7 @@ def imi_preview(
         title="Prior emissions",
         point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-        mask=None,
+        mask=mask,
         only_ROI=False,
     )
     plt.savefig(
@@ -265,7 +269,7 @@ def imi_preview(
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
         cbar_label="Column mixing ratio (ppb)",
-        mask=None,
+        mask=mask,
         only_ROI=False,
     )
 
@@ -289,7 +293,7 @@ def imi_preview(
         lat_bounds=None,
         title="SWIR Albedo",
         cbar_label="Albedo",
-        mask=None,
+        mask=mask,
         only_ROI=False,
     )
     plt.savefig(
@@ -310,7 +314,7 @@ def imi_preview(
         lat_bounds=None,
         title="Observation density",
         cbar_label="Number of observations",
-        mask=None,
+        mask=mask,
         only_ROI=False,
     )
     plt.savefig(
