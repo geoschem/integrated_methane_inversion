@@ -1,8 +1,6 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
-
-#JDE add below
 import yaml
 from src.inversion_scripts.utils import (
     check_is_OH_element,
@@ -11,7 +9,6 @@ from src.inversion_scripts.utils import (
 
 
 
-#JDE end add
 
 # common utilities for using different operators
 def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False, sensi_cache=None):
@@ -95,9 +92,11 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
         ntracers = config['NumJacobianTracers']
         opt_OH = config['OptimizeOH']
         opt_BC = config['OptimizeBCs']
+
+        n_base_runs = (n_elements - int(opt_OH) - (int(opt_BC) * 4)) / ntracers
         
         nruns = (
-            np.ceil(n_elements/ntracers).astype(int) +
+            np.ceil(n_base_runs).astype(int) +
             int(opt_OH) +
             (int(opt_BC) * 4)
         )
