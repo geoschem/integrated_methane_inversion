@@ -109,7 +109,6 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-##   NOTE: DoPriorEmis must be true to run DoPriorEmis
 DoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
@@ -206,7 +205,6 @@ RestartDownload: false
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
 RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2024-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2024-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
@@ -215,7 +213,6 @@ BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled
-PreviewDryRun: false
 PriorDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false

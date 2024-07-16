@@ -217,7 +217,6 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    coords = get_point_source_coordinates(config)
     
     # make sure elements are native res by asserting higher sensitivity
     # than clustering threshold
@@ -226,10 +225,11 @@ def force_native_res_pixels(config, clusters, sensitivities):
     else:
         dofs_max = 1.1
         
+    coords = get_point_source_coordinates(config)
     if len(coords) == 0:
         # No forced pixels inputted
         print(
-            f"No forced native pixels specified or in {config['PointSourceDatasets']} dataset."
+            f"No ForcedNativeResolutionElements or PointSourceDatasets specified in config file."
         )
         return sensitivities
 
