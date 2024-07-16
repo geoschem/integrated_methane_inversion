@@ -117,29 +117,6 @@ fi
 printf "DONE -- postproc_diags.py\n\n"
 
 #=======================================================================
-# Calculate GEOS-Chem sensitivities and save to sensitivities directory
-#=======================================================================
-
-### if ! "$PrecomputedJacobian"; then
-###     # add an argument to calc_sensi.py if optimizing BCs and/or OH
-###     if "$OptimizeBCs"; then
-###         pertBCs=$PerturbValueBCs
-###     else
-### 	pertBCs=0.0
-###     fi
-###     if "$OptimizeOH"; then
-###         pertOH=$PerturbValueOH
-###     else
-### 	pertOH=0.0
-###     fi
-###     PerturbPath=${OutputPath}/${RunName}/archive_perturbation_sfs/flat_pert_sf_${period_i}.npy
-###     python_args=(calc_sensi.py $nElements $nTracers $PerturbPath $StartDate $EndDate $JacobianRunsDir $RunName $sensiCache $pertBCs $pertOH)
-###     printf "Calling calc_sensi.py\n"
-###     python "${python_args[@]}"; wait
-###     printf "DONE -- calc_sensi.py\n\n"
-### fi
-
-#=======================================================================
 # Setup GC data directory in workdir
 #=======================================================================
 
