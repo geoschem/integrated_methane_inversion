@@ -384,6 +384,9 @@ def get_posterior_emissions(prior, scale):
         posterior : xarray dataset
             posterior emissions
     """
+    # keep attributes of data even when arithmetic operations applied
+    xr.set_options(keep_attrs=True)
+    
     # we do not optimize soil absorbtion in the inversion. This 
     # means that we need to keep the soil sink constant and properly 
     # account for it in the posterior emissions calculation.
@@ -396,7 +399,10 @@ def get_posterior_emissions(prior, scale):
     prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
     
     # scale the prior emissions for all sectors using the scale factors
-    posterior = prior * scale["ScaleFactor"]
+    posterior = prior.copy()
+    for ds_var in list(prior.keys()):
+        if "EmisCH4" in ds_var:
+            posterior[ds_var] = prior[ds_var] * scale["ScaleFactor"]
     
     # But reset the soil sink to the original value
     posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink

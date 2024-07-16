@@ -82,10 +82,14 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
                 posterior_p["ScaleFactor"] * sf["ScaleFactor"]
             )
             current_posterior_emis = original_emis * posterior_scale_ds["ScaleFactor"]
+            
+            # Set areas with negative emissions to 0. 
+            # These areas will be repopulated with the nudge prior emissions
+            current_positive_posterior_emis = current_posterior_emis.where(current_posterior_emis > 0, 0)
 
             nudged_posterior_emis = (
                 nudge_factor * original_emis
-                + (1 - nudge_factor) * current_posterior_emis
+                + (1 - nudge_factor) * current_positive_posterior_emis
             )  # TODO nudge_factor is currently inverse of what's in the paper, i.e. 0.1 instead of 0.9
 
             # Sum emissions
