@@ -226,10 +226,6 @@ def imi_preview(
 
     plt.rcParams.update({"font.size": 18})
 
-    # Adjust plot mask if global inversion
-    if not config["isRegional"]:
-        mask=None
-
     # Plot prior emissions
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
@@ -246,7 +242,7 @@ def imi_preview(
         title="Prior emissions",
         point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
     plt.savefig(
@@ -269,7 +265,7 @@ def imi_preview(
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
         cbar_label="Column mixing ratio (ppb)",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
 
@@ -293,7 +289,7 @@ def imi_preview(
         lat_bounds=None,
         title="SWIR Albedo",
         cbar_label="Albedo",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
     plt.savefig(
@@ -314,7 +310,7 @@ def imi_preview(
         lat_bounds=None,
         title="Observation density",
         cbar_label="Number of observations",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
     plt.savefig(
@@ -324,7 +320,6 @@ def imi_preview(
     )
     
     # plot state vector
-    mask = state_vector_labels <= last_ROI_element # define mask again to plot state vector
     num_colors = state_vector_labels.where(mask).max().item()
     sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors),3))
     fig = plt.figure(figsize=(8, 8))
