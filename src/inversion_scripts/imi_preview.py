@@ -324,6 +324,7 @@ def imi_preview(
     )
     
     # plot state vector
+    mask = state_vector_labels <= last_ROI_element # define mask again to plot state vector
     num_colors = state_vector_labels.where(mask).max().item()
     sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors),3))
     fig = plt.figure(figsize=(8, 8))
@@ -589,10 +590,20 @@ def estimate_averaging_kernel(
     if config["KalmanMode"]:
         startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
         endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
-        n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
+        if config["MakePeriodsCSV"]:
+            n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
+            m = config["UpdateFreqDays"]  # number of days in inversion period
+        else:
+            rundir_path = preview_dir.split("preview_run")[0]
+            periods = pd.read_csv(f"{rundir_path}periods.csv")
+            n_periods = periods.iloc[-1]["period_number"]
+            startday = str(periods.iloc[0]["Starts"])
+            endday = str(periods.iloc[0]["Ends"])
+            startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
+            endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
+            m = (endday_dt - startday_dt).days # number of days in first inversion period
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-        m = config["UpdateFreqDays"]  # number of days in inversion period
 
     print("\n" + outstring2)
 
