@@ -50,10 +50,6 @@ setup_imi() {
         if [ ! -f "$RestartFile" ]; then
             aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
         fi
-        RestartFilePreview=${RestartFilePreviewPrefix}${StartDate}_0000z.nc4
-        if [ ! -f "$RestartFilePreview" ]; then
-            aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4 $RestartFilePreview
-        fi
     fi
 
     ##=======================================================================
@@ -179,7 +175,7 @@ setup_imi() {
     fi
     
     ##=======================================================================
-    ##  Set up IMI preview run directory
+    ##  Run the IMI preview
     ##=======================================================================
     preview_start=$(date +%s)
     if  "$DoPreview"; then

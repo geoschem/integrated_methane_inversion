@@ -21,9 +21,13 @@ setup_kf() {
     cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
     sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' ${RunDirs}/kf_inversions/kf_notebook.ipynb
 
-
     # Define Kalman filter update periods
-    python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
+    if ! "$MakePeriodsCSV"; then
+        printf "Copying custom periods.csv to the run directory.\n"
+        cp $CustomPeriodsCSV ${RunDirs}/
+    else
+        python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait 
+    fi
 
     # Create unit scale factor file
     python ${InversionPath}/src/components/kalman_component/make_unit_sf.py $StateVectorFile $RunDirs; wait
@@ -102,8 +106,7 @@ run_period() {
     # check if precomputed prior emissions for this period exists already
     if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
         printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
-        # TODO: switch to use enddate- this just computes the first hour of emissions
-        run_hemco_sa $StartDate_i $StartDate_i
+        run_hemco_sa $StartDate_i $EndDate_i
     fi
 
     # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs

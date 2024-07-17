@@ -38,7 +38,7 @@ if {ReDoJacobian}; then
     # rerun if it is not there
     # get last date from geoschem_config file
     date_str=$(grep end_date geoschem_config.yml)
-    yyyymmdd=$(python -c "import re; date_str='${date_str}'; print(re.split('\[|,', date_str)[1])")
+    yyyymmdd=$(python -c "import re; date_str='${date_str}'; print(re.split(r'\[|,', date_str)[1])")
     LastConcFile=$(date -d ${yyyymmdd} +GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4)
         
     cd OutputDir

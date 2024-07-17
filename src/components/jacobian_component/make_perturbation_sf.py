@@ -11,6 +11,8 @@ import glob
 import yaml
 import xarray as xr
 import numpy as np
+import pandas as pd
+from src.inversion_scripts.utils import get_mean_emissions, get_period_mean_emissions
 
 
 def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_sf):
@@ -61,16 +63,18 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
                         file.writelines(lines)
 
 
-def calculate_sfs(state_vector, hemco_emis_path, target_emission=1e-8):
+def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None):
     """
     Calculate the scale factors to perturb each state vector
-    element by based on the target_emission. Return a flat
-    numpy array of the scale factors indexed by state vector
-    element.
+    element by based on the target_emission. Return a dictionary containing
+    two flat numpy arrays of perturbation scale factors indexed by state vector
+    element. The first array contains the perturbation scale factors to apply 
+    to the state vector elements in jacobian simulations (based on the 
+    original prior emissions). The second array contains the effective scale
+    factors (based on the nudged prior emissions for kalman mode) used in the 
+    inversion to calculate the sensitivity of observations to the perturbation.
+    For a standalone inversion, the effective scale factors == jacobian scale factors.
     """
-    # load the prior emissions dataset
-    emis_prior = xr.open_dataset(hemco_emis_path)
-
     # create a sf dataset with the same structure as the state vector
     sf = state_vector.copy()
     sf = sf.rename({"StateVector": "ScaleFactor"})
@@ -92,14 +96,36 @@ def calculate_sfs(state_vector, hemco_emis_path, target_emission=1e-8):
     # state vector element
     max_sf_df = max_sf_da.to_dataframe().reset_index()
     max_sf_df = max_sf_df[max_sf_df["StateVector"] > 0].sort_values(by="StateVector")
-    flat_sf = max_sf_df["ScaleFactor"].values
+    jacobian_pert_sf = max_sf_df["ScaleFactor"].values
     
     # Replace any values greater than the threshold to avoid issues 
     # with reaching infinity
     max_sf_threshold = 15000000.0
-    flat_sf[flat_sf > max_sf_threshold] = max_sf_threshold
+    jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
 
-    return flat_sf
+    # If we are using a kalman filter and have nudged prior emissions,
+    # calculate the effective scale factors based on the nudged prior emissions
+    # these will be used later in the inversion to calculate the sensitivity of 
+    # observations to the perturbation
+    if prior_sf is not None:
+        prior_sf = prior_sf.assign(StateVector=state_vector_labels)
+        prior_sf_da = prior_sf["ScaleFactor"].groupby(prior_sf["StateVector"]).median()
+        prior_sf_df = prior_sf_da.to_dataframe().reset_index()
+        prior_sf_df = prior_sf_df[prior_sf_df["StateVector"] > 0].sort_values(by="StateVector")
+        flat_prior_sf = prior_sf_df["ScaleFactor"].values
+    else:
+        flat_prior_sf = np.ones(len(jacobian_pert_sf))
+        
+    # calculate the effective scale factors
+    effective_pert_sf = jacobian_pert_sf / flat_prior_sf
+    
+    # return dictionary of scale factor arrays
+    perturbation_dict = {
+        "effective_pert_sf": effective_pert_sf,
+        "jacobian_pert_sf": jacobian_pert_sf,
+    }
+    
+    return perturbation_dict
 
 
 def make_perturbation_sf(config, period_number, perturb_value=1e-8):
@@ -111,34 +137,41 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     base_directory = os.path.expandvars(
         os.path.join(config["OutputPath"], config["RunName"])
     )
+    
+    # get start and end dates
+    start_date = str(config["StartDate"])
+    end_date = str(config["EndDate"])
 
     # jacobian rundir path
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
 
     # find the hemco emissions file for the period
     prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
-    hemco_list = [f for f in os.listdir(prior_cache) if "HEMCO_sa_diagnostics" in f]
-    hemco_list.sort()
-    hemco_emis_path = os.path.join(prior_cache, hemco_list[period_number - 1])
+    if config["KalmanMode"]:
+        hemco_emis = get_period_mean_emissions(prior_cache, period_number, os.path.join(base_directory, "periods.csv"))
+        prior_sf = xr.load_dataset(os.path.join(base_directory, f"archive_sf/prior_sf_period{period_number}.nc"))
+    else:   
+        hemco_emis = get_mean_emissions(start_date, end_date, prior_cache)
+        prior_sf = None
 
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
 
     # calculate the scale factors to perturb each state vector element by
-    flat_sf = calculate_sfs(state_vector, hemco_emis_path, perturb_value)
+    perturbation_dict = calculate_sfs(state_vector, hemco_emis, perturb_value, prior_sf)
 
     # update jacobian perturbation files with new scale factors
     # before we run the jacobian simulations
     update_jacobian_perturbation_files(
-        jacobian_dir, state_vector["StateVector"], flat_sf
+        jacobian_dir, state_vector["StateVector"], perturbation_dict["jacobian_pert_sf"]
     )
 
-    # archive npy file of flat scale factors for later calculation of sensitivity
+    # archive npz file of scale factor dictionary for later calculation of sensitivity
     archive_dir = os.path.join(base_directory, "archive_perturbation_sfs")
     os.makedirs(archive_dir, exist_ok=True)
-    np.save(
-        os.path.join(archive_dir, f"flat_pert_sf_{period_number}.npy"),
-        np.array(flat_sf),
+    np.savez(
+        os.path.join(archive_dir, f"pert_sf_{period_number}.npz"),
+        **perturbation_dict
     )
 
 
