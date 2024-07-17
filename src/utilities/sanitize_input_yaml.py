@@ -10,9 +10,7 @@ Arguments
 # ************ Add required config variables to the corresponding list **************
 
 # variables only required by AWS
-config_required_aws = [
-    "CondaFile",
-]
+config_required_aws = []
 
 # variables only required by local cluster
 config_required_local_cluster = [
@@ -26,16 +24,18 @@ config_required = [
     "isAWS",
     "UseSlurm",
     "SafeMode",
+    "S3Upload",
     "StartDate",
     "EndDate",
     "SpinupMonths",
     "BlendedTROPOMI",
+    "isRegional",
+    "RegionID",
     "LonMin",
     "LonMax",
     "LatMin",
     "LatMax",
-    "isRegional",
-    "RegionID",
+    "KalmanMode",
     "CreateAutomaticRectilinearStateVectorFile",
     "nBufferClusters",
     "BufferDeg",
@@ -50,21 +50,27 @@ config_required = [
     "PrecomputedJacobian",
     "Res",
     "Met",
+    "RunSetup",
     "SetupTemplateRundir",
     "SetupSpinupRun",
     "SetupJacobianRuns",
     "SetupInversion",
     "SetupPosteriorRun",
-    "RunSetup",
+    "DoPriorEmis",
     "DoSpinup",
+    "ReDoJacobian",
     "DoJacobian",
     "DoInversion",
     "DoPosterior",
     "DoPreview",
     "DOFSThreshold",
+    "RequestedMemory",
+    "RequestedCPUs",
+    "RequestedTime",
+    "SchedulerPartition",
+    "MaxSimultaneousRuns",
+    "NumJacobianTracers",
     "PerturbValue",
-    "UseEmisSF",
-    "UseOHSF",
     "HourlyCH4",
     "PLANEFLIGHT",
     "GOSAT",
@@ -73,24 +79,17 @@ config_required = [
     "OutputPath",
     "DataPath",
     "CondaEnv",
+    "CondaFile",
     "RestartDownload",
     "RestartFilePrefix",
-    "RestartFilePreviewPrefix",
     "BCpath",
     "BCversion",
-    "PreviewDryRun",
+    "PriorDryRun",
     "SpinupDryrun",
     "ProductionDryRun",
     "PosteriorDryRun",
     "BCdryrun",
-    "SimulationMemory",
-    "SimulationCPUs",
-    "JacobianMemory",
-    "JacobianCPUs",
-    "RequestedTime",
-    "SchedulerPartition",
-    "KalmanMode",
-    "S3Upload",
+    "LognormalErrors"
 ]
 
 # dict of variables that are required if another variable is set to true 
@@ -104,6 +103,9 @@ conditional_dict["KalmanMode"] = [
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
+    "EmissionRateFilter",
+    "PlumeCountFilter",
+    "GroupByCountry"
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 conditional_dict["S3Upload"] = [
@@ -111,6 +113,7 @@ conditional_dict["S3Upload"] = [
     "S3UploadFiles",
 ]
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
+conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
 
 def raise_error_message(var):

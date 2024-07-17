@@ -43,13 +43,6 @@ setup_spinup() {
     # Update settings in geoschem_config.yml
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
            -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
-    sed -i "/analytical_inversion/{N;s/activate: true/activate: false/}" geoschem_config.yml
-
-    # Update for Kalman filter option
-    if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: true|use_emission_scale_factor: false|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       true|--> Emis_ScaleFactor       :       false|g" HEMCO_Config.rc
-    fi
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
@@ -69,6 +62,9 @@ setup_spinup() {
     if "$SpinupDryrun"; then
         printf "\nExecuting dry-run for spinup run...\n"
         ./gcclassic --dryrun &> log.dryrun
+        # prevent restart file from getting downloaded since
+        # we don't want to overwrite the one we link to above
+        sed -i '/GEOSChem.Restart/d' log.dryrun
         ./download_data.py log.dryrun aws
     fi
     
@@ -88,11 +84,11 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    sbatch --mem $SimulationMemory \
-    -c $SimulationCPUs \
+    sbatch --mem $RequestedMemory \
+    -c $RequestedCPUs \
     -t $RequestedTime \
     -p $SchedulerPartition \
-    -W ${SpinupName}.run; wait;
+    -W ${RunName}_Spinup.run; wait;
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

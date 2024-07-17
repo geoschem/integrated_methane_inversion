@@ -1,12 +1,9 @@
 #!/bin/bash
 
 #SBATCH -N 1
-#SBATCH -n 1
+#SBATCH -c 1
+#SBATCH --mem=2000
 #SBATCH -o "imi_output.log"
-#SBATCH -t 0-16:00
-#SBATCH --mem=20000
-#SBATCH -p sapphire,seas_compute,huce_cascade,huce_intel,shared
-#SBATCH --mail-type=END
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -41,29 +38,44 @@ setup_start=$(date +%s)
 printf "\n=== PARSING CONFIG FILE (run_imi.sh) ===\n"
 
 # Check if user has specified a configuration file
-if [[ $# == 1 ]] ; then
+if [[ $# == 1 ]]; then
     ConfigFile=$1
 else
     ConfigFile="config.yml"
 fi
 
-# Get configuration
-source src/utilities/parse_yaml.sh
-eval $(parse_yaml ${ConfigFile})
+# Get the conda environment name and source file
+# These variables are sourced manually because
+# we need the python environment to parse the yaml file
+CondaEnv=$(grep '^CondaEnv:' ${ConfigFile} |
+    sed 's/CondaEnv://' |
+    sed 's/#.*//' |
+    sed 's/^[[:space:]]*//' |
+    tr -d '"')
+CondaFile=$(eval echo $(grep '^CondaFile:' ${ConfigFile} |
+    sed 's/CondaFile://' |
+    sed 's/#.*//' |
+    sed 's/^[[:space:]]*//' |
+    tr -d '"'))
+
+# Load conda/mamba/micromamba e.g. ~/.bashrc
+source $CondaFile
+
+# Activate Conda environment
+printf "\nActivating conda environment: ${CondaEnv}\n"
+conda activate ${CondaEnv}
+
+# Parsing the config file
+eval $(python src/utilities/parse_yaml.py ${ConfigFile})
 
 if ! "$isAWS"; then
-    # Activate Conda environment
-    printf "\nActivating conda environment: ${CondaEnv}\n"
-    source ~/.bashrc
-    conda activate ${CondaEnv}
-
     # Load environment for compiling and running GEOS-Chem
     if [ ! -f "${GEOSChemEnv}" ]; then
-	printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
-	printf "\nIMI $RunName Aborted\n"
-	exit 1
+        printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
+        printf "\nIMI $RunName Aborted\n"
+        exit 1
     else
-	printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
+        printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
         source ${GEOSChemEnv}
     fi
 fi
@@ -82,63 +94,87 @@ RunDirs="${OutputPath}/${RunName}"
 if "$SafeMode"; then
 
     # Check if directories exist before creating them
-    if ([ -d "${RunDirs}/spinup_run" ] && "$SetupSpinupRun") || \
-       ([ -d "${RunDirs}/jacobian_runs" ] && "$SetupJacobianRuns") || \
-       ([ -d "${RunDirs}/inversion" ] && "$SetupInversion") || \
-       ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
-        
+    if ([ -d "${RunDirs}/spinup_run" ] && "$SetupSpinupRun") ||
+        ([ -d "${RunDirs}/jacobian_runs" ] && "$SetupJacobianRuns") ||
+        ([ -d "${RunDirs}/inversion" ] && "$SetupInversion") ||
+        ([ -d "${RunDirs}/posterior_run" ] && "$SetupPosteriorRun"); then
+
         printf "\nERROR: Run directories in ${RunDirs}/"
         printf "\n   already exist. Please change RunName or change the"
         printf "\n   Setup* options to false in the IMI config file.\n"
         printf "\n  To proceed, and overwrite existing run directories, set"
-        printf "\n  SafeMode in the config file to false.\n" 
+        printf "\n  SafeMode in the config file to false.\n"
         printf "\nIMI $RunName Aborted\n"
-        exit 1 
+        exit 1
     fi
 
     # Check if output from previous runs exists
-    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") || \
-       ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") || \
-       ([ -d "${RunDirs}/inversion" ] && "$DoInversion") || \
-       ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
-        printf "\nWARNING: Output files in ${RunDirs}/" 
+    if ([ -d "${RunDirs}/spinup_run" ] && "$DoSpinup") ||
+        ([ -d "${RunDirs}/jacobian_runs" ] && "$DoJacobian") ||
+        ([ -d "${RunDirs}/inversion" ] && "$DoInversion") ||
+        ([ -d "${RunDirs}/posterior_run/OutputDir/" ] && "$DoPosterior"); then
+        printf "\nWARNING: Output files in ${RunDirs}/"
         printf "\n  may be overwritten. Please change RunName in the IMI"
         printf "\n  config file to avoid overwriting files.\n"
         printf "\n  To proceed, and overwrite existing output files, set"
-        printf "\n  SafeMode in the config file to false.\n" 
+        printf "\n  SafeMode in the config file to false.\n"
         printf "\nIMI $RunName Aborted\n"
-        exit 1 
+        exit 1
     fi
 fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
+ConfigPath=${InversionPath}/${ConfigFile}
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
+
+# Make run directory
+mkdir -p -v ${RunDirs}
+
+# Set/Collect information about the GEOS-Chem version, IMI version,
+# and TROPOMI processor version
+GEOSCHEM_VERSION=14.4.1
+IMI_VERSION=$(git describe --tags)
+TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
+    sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |
+    tr -d '"')
+
+# copy config file to run directory and add some run information to it for reference
+cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
+echo "## ================== IMI run information ==================" >>"${RunDirs}/config_${RunName}.yml"
+echo "# Run with IMI version: ${IMI_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
+echo "# GEOS-Chem version: ${GEOSCHEM_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
+echo "# TROPOMI/blended processor version(s): ${TROPOMI_PROCESSOR_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
 
 ##=======================================================================
 ##  Download the TROPOMI data
 ##=======================================================================
 
-# Download TROPOMI data from AWS. You will be charged if your ec2 instance is not in the eu-central-1 region.
-mkdir -p -v ${RunDirs}
-tropomiCache=${RunDirs}/data_TROPOMI
+# Download TROPOMI or blended dataset from AWS
+tropomiCache=${RunDirs}/satellite_data
 if "$isAWS"; then
-    { # test if instance has access to TROPOMI bucket
-        stdout=`aws s3 ls s3://meeo-s5p`
-    } || { # catch 
-        printf "\nError: Unable to connect to TROPOMI bucket. This is likely caused by misconfiguration of the ec2 instance iam role s3 permissions.\n"
-        printf "IMI $RunName Aborted.\n"
-        exit 1
-    }
     mkdir -p -v $tropomiCache
-    printf "Downloading TROPOMI data from S3\n"
-    python src/utilities/download_TROPOMI.py $StartDate $EndDate $tropomiCache
-    printf "\nFinished TROPOMI download\n"
+
+    if "$BlendedTROPOMI"; then
+        downloadScript=src/utilities/download_blended_TROPOMI.py
+    else
+        downloadScript=src/utilities/download_TROPOMI.py
+    fi
+    sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -o imi_output.tmp \
+        -W $downloadScript $StartDate $EndDate $tropomiCache
+    wait
+    cat imi_output.tmp >>${InversionPath}/imi_output.log
+    rm imi_output.tmp
+
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then
-	ln -s $DataPathTROPOMI $tropomiCache
+        ln -s $DataPathTROPOMI $tropomiCache
     fi
 fi
 
@@ -156,7 +192,7 @@ setup_end=$(date +%s)
 ##=======================================================================
 ##  Submit spinup simulation
 ##=======================================================================
-if  "$DoSpinup"; then
+if "$DoSpinup"; then
     run_spinup
 fi
 
@@ -199,7 +235,7 @@ printf "\n"
 
 if ! "$KalmanMode"; then
     print_stats
-fi 
+fi
 
 # Copy output log to run directory for storage
 if [[ -f ${InversionPath}/imi_output.log ]]; then

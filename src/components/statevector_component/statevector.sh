@@ -24,12 +24,19 @@ create_statevector() {
         HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
     fi
 
+    # First generate the prior emissions if not available yet
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\nPrior Dir not detected. Running HEMCO for prior emissions as a prerequisite for creating the state vector.\n"
+        run_prior
+    fi
+    
+    # Use prior emissions output
+    HemcoDiagFile="${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate}0000.nc"
+	
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
         s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
-        aws s3 cp --request-payer=requester ${s3_lc_path} ${LandCoverFile}
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
-        aws s3 cp --request-payer=requester ${s3_hd_path} ${HemcoDiagFile}
+        aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
     fi
 
     # Output path and filename for state vector file
@@ -42,11 +49,8 @@ create_statevector() {
     cp ${InversionPath}/src/utilities/make_state_vector_file.py .
     chmod 755 make_state_vector_file.py
 
-    # Get config path
-    config_path=${InversionPath}/${ConfigFile}
-
     printf "\nCalling make_state_vector_file.py\n"
-    python make_state_vector_file.py $config_path $LandCoverFile $HemcoDiagFile $StateVectorFName
+    python make_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
 
     printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 }
@@ -57,19 +61,17 @@ create_statevector() {
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
-    # First run the Preview if necessary to get prior emissions
-    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-        run_preview
+    # First generate the prior emissions if not available yet
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\nPrior Dir not detected. Running HEMCO for prior emissions as a prerequisite for reducing dimension of state vector.\n"
+        run_prior
     fi
 
     # set input variables
-    config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
-
-    preview_dir=${RunDirs}/preview_run
-    tropomi_cache=${RunDirs}/data_TROPOMI
+    preview_dir=${RunDirs}/preview
+    tropomi_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
     if [[ ! -f ${RunDirs}/NativeStateVector.nc ]]; then
@@ -82,7 +84,7 @@ reduce_dimension() {
     fi
 
     # conditionally add period_i to python args
-    python_args=($aggregation_file $InversionPath $config_path $state_vector_path $preview_dir $tropomi_cache)
+    python_args=($aggregation_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
     archive_sv=false
     if ("$KalmanMode" && "$DynamicKFClustering"); then
         if [ -n "$period_i" ]; then
@@ -95,11 +97,14 @@ reduce_dimension() {
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
         chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
+        -o imi_output.tmp \
         -W "${python_args[@]}"; wait;
+        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+        rm imi_output.tmp
     else
         python "${python_args[@]}"
     fi

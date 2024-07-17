@@ -18,7 +18,6 @@ def do_inversion(
     gamma=0.25,
     res="0.25x0.3125",
     jacobian_sf=None,
-    perturb_oh=0.0,
     prior_err_bc=0.0,
     prior_err_oh=0.0,
 ):
@@ -154,8 +153,11 @@ def do_inversion(
                 for p in obs_GC[:, 4]
             ]
         )
+        # Define observational errors (diagonal entries of S_o matrix)
+        obs_error = np.power(obs_err, 2)
         gP = s_superO_p**2 / s_superO_1**2
-        obs_error = gP * obs_err
+        # scale error variance by gP
+        obs_error = gP * obs_error
 
         # check to make sure obs_err isn't negative, set 1 as default value
         obs_error = [obs if obs > 0 else 1 for obs in obs_error]
@@ -182,9 +184,6 @@ def do_inversion(
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
             K *= scaling_matrix
-
-        # Define observational errors (diagonal entries of S_o matrix)
-        obs_error = np.power(obs_error, 2)
 
         # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand
@@ -223,7 +222,7 @@ def do_inversion(
     scale_factor_idx = n_elements
 
     # If optimizing OH, adjust for it in the inversion
-    if prior_err_oh > 0.0:
+    if oh_optimization:
         # Add prior error for OH as the last element of the diagonal
         # Following Masakkers et al. (2019, ACP) weight the OH term by the
         # ratio of the number of elements (n_OH_elements/n_emission_elements)
@@ -237,7 +236,7 @@ def do_inversion(
         scale_factor_idx -= 4
 
         # add prior error for BCs as the last 4 elements of the diagonal
-        if prior_err_oh > 0.0:
+        if oh_optimization:
             Sa_diag[-5:-1] = prior_err_bc**2
         else:
             Sa_diag[-4:] = prior_err_bc**2
@@ -255,9 +254,9 @@ def do_inversion(
     #  - If optimizing OH, the last element also needs to be updated by 1
     xhat = ratio.copy()
     xhat[:scale_factor_idx] += 1
-    if prior_err_oh > 0.0:
-        xhat[n_elements] += 1
-        print(f"xhat[OH] = {xhat[n_elements]}")
+    if oh_optimization:
+        xhat[-1] += 1
+        print(f"xhat[OH] = {xhat[-1]}")
         
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
@@ -265,7 +264,15 @@ def do_inversion(
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
     
+    # Calculate J_A, where ratio = xhat - xA
+    # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
+    ratioT = ratio.transpose()
+    J_A = ratioT @ inv_Sa @ ratio
+    J_A_normalized = J_A / n_elements
+    
     # Print some statistics
+    print(f'gamma: {gamma}')
+    print(f'Normalized J_A: {J_A_normalized}') # ideal gamma is where this is close to 1
     print("Min:", xhat[:scale_factor_idx].min(), "Mean:", xhat[:scale_factor_idx].mean(), "Max", xhat[:scale_factor_idx].max())
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
@@ -286,9 +293,8 @@ if __name__ == "__main__":
     gamma = float(sys.argv[10])
     res = sys.argv[11]
     jacobian_sf = sys.argv[12]
-    perturb_oh = float(sys.argv[13])
-    prior_err_BC = float(sys.argv[14])
-    prior_err_OH = float(sys.argv[15])
+    prior_err_BC = float(sys.argv[13])
+    prior_err_OH = float(sys.argv[14])
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -307,7 +313,6 @@ if __name__ == "__main__":
         gamma,
         res,
         jacobian_sf,
-        perturb_oh,
         prior_err_BC,
         prior_err_OH,
     )

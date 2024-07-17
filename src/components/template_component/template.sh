@@ -36,22 +36,22 @@ setup_template() {
 	exit 1
     fi	
     if [ "$Res" = "4.0x5.0" ]; then
-	cmd="3\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
-	cmd="3\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+	cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
 	if "$isRegional"; then
 	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
 	else
-	    cmd="3\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
 	fi
     elif [ "$Res" == "0.25x0.3125" ]; then
 	if "$isRegional"; then
 	    # Use NA domain by default and adjust lat/lon below
-	    cmd="3\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
 	else
-	    cmd="3\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+	    cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
 	fi
     elif [ "$Res" == "0.125x0.15625" ]; then
         cmd="3\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
@@ -70,25 +70,22 @@ setup_template() {
 
     if "$isAWS"; then
 	# Update GC data download to silence output from aws commands
-	sed -i "s/command: 'aws s3 cp --request-payer=requester '/command: 'aws s3 cp --request-payer=requester --only-show-errors '/" download_data.yml
+	sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
     fi
+
 
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" geoschem_config.yml
 
     if "$isRegional"; then
+        # Adjust lat/lon bounds because GEOS-Chem defines the domain 
+        # based on grid cell edges (not centers) for the lat/lon bounds
+        Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
+        Lats=$(calculate_geoschem_domain lat ${RunDirs}/StateVector.nc ${LatMinInvDomain} ${LatMaxInvDomain})
         sed -i -e "s:-130.0,  -60.0:${Lons}:g" \
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
     fi
-
-    # For CH4 inversions always turn analytical inversion on
-    sed -i "/analytical_inversion/{N;s/activate: false/activate: true/}" geoschem_config.yml
-
-    # Also turn on analytical inversion option in HEMCO_Config.rc
-    OLD="--> AnalyticalInv          :       false"
-    NEW="--> AnalyticalInv          :       true "
-    sed -i "s/$OLD/$NEW/g" HEMCO_Config.rc
 
     # Update time cycling flags to use most recent year
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
@@ -97,24 +94,10 @@ setup_template() {
     OLD=" StateVector.nc"
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
-
+    
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
-        sed -i -e "s|use_emission_scale_factor: false|use_emission_scale_factor: true|g" geoschem_config.yml
-        sed -i -e "s|--> Emis_ScaleFactor       :       false|--> Emis_ScaleFactor       :       true|g" \
-               -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
-    fi
-
-    # Turn other options on/off according to settings above
-    if "$UseEmisSF"; then
-	OLD="use_emission_scale_factor: false"
-	NEW="use_emission_scale_factor: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-    fi
-    if "$UseOHSF"; then
-	OLD="use_OH_scale_factors: false"
-	NEW="use_OH_scale_factors: true"
-	sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+        sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
     fi
 
     # Modify the METDIR for 0.125x0.15625 simulation
@@ -144,6 +127,9 @@ setup_template() {
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
+
+    # If reading total prior emissions (as in the jacobian and posterior), read a new file each month
+    sed -i -e "s|EmisCH4_Total \$YYYY/\$MM/\$DD/0|EmisCH4_Total 1900-2050/1-12/1-31/0|g" HEMCO_Config.rc
 
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
     sed -i -e "s:'CH4':#'CH4':g" \
