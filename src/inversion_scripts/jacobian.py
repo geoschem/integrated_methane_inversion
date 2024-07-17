@@ -119,9 +119,9 @@ if __name__ == "__main__":
     sat_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        shortname = re.split("\/", filename)[-1]
-        shortname = re.split("\.", shortname)[0]
-        strdate = re.split("\.|_+|T", shortname)[4]
+        shortname = re.split(r"\/", filename)[-1]
+        shortname = re.split(r"\.", shortname)[0]
+        strdate = re.split(r"\.|_+|T", shortname)[4]
         strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
         if (strdate >= gc_startdate) and (strdate <= gc_enddate):
             sat_files.append(filename)
@@ -134,9 +134,9 @@ if __name__ == "__main__":
 
         # Check if TROPOMI file has already been processed
         print("========================")
-        shortname = re.split("\/", filename)[-1]
+        shortname = re.split(r"\/", filename)[-1]
         print(shortname)
-        date = re.split("\.", shortname)[0]
+        date = re.split(r"\.", shortname)[0]
 
         # If not yet processed, run apply_average_tropomi_operator()
         if not os.path.isfile(f"{outputdir}/{date}_GCtoTROPOMI.pkl"):
