@@ -6,7 +6,6 @@
 import os
 import sys
 import yaml
-import time
 import warnings
 import datetime
 import numpy as np
@@ -243,7 +242,7 @@ def imi_preview(
         title="Prior emissions",
         point_sources=get_point_source_coordinates(config),
         cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
     plt.savefig(
@@ -266,7 +265,7 @@ def imi_preview(
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
         cbar_label="Column mixing ratio (ppb)",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
 
@@ -290,7 +289,7 @@ def imi_preview(
         lat_bounds=None,
         title="SWIR Albedo",
         cbar_label="Albedo",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
     plt.savefig(
@@ -311,7 +310,7 @@ def imi_preview(
         lat_bounds=None,
         title="Observation density",
         cbar_label="Number of observations",
-        mask=mask,
+        mask=mask if config["isRegional"] else None,
         only_ROI=False,
     )
     plt.savefig(
@@ -428,11 +427,14 @@ def estimate_averaging_kernel(
     endday = str(config["EndDate"])
 
     # Prior emissions
-    prior_cache = os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
+    prior_cache = os.path.expandvars(
+        os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
+    )
+    
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
         # use different date range for KF inversion if kf_index is not None
-        rundir_path = preview_dir.split("preview_run")[0]
+        rundir_path = preview_dir.split("preview")[0]
         periods = pd.read_csv(f"{rundir_path}periods.csv")
         startday = str(periods.iloc[kf_index - 1]["Starts"])
         endday = str(periods.iloc[kf_index - 1]["Ends"])
@@ -583,10 +585,16 @@ def estimate_averaging_kernel(
     if config["KalmanMode"]:
         startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
         endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
-        n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
+        if not config["MakePeriodsCSV"]:
+            rundir_path = preview_dir.split("preview_run")[0]
+            periods = pd.read_csv(f"{rundir_path}periods.csv")
+            n_periods = periods.iloc[-1]["period_number"]
+            m = ((endday_dt - startday_dt).days) / n_periods # average number of days in each inversion period
+        else:
+            n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
+            m = config["UpdateFreqDays"]  # number of days in inversion period      
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-        m = config["UpdateFreqDays"]  # number of days in inversion period
 
     print("\n" + outstring2)
 

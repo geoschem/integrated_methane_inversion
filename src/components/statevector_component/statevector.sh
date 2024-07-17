@@ -16,14 +16,20 @@ create_statevector() {
     else
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
-    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
+
+    # First generate the prior emissions if not available yet
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\nPrior Dir not detected. Running HEMCO for prior emissions as a prerequisite for creating the state vector.\n"
+        run_prior
+    fi
+    
+    # Use prior emissions output
+    HemcoDiagFile="${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate}0000.nc"
 	
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
         s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
         aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
-        aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
     fi
 
     # Output path and filename for state vector file
@@ -48,17 +54,16 @@ create_statevector() {
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
-    # First run the Preview if necessary to get prior emissions
-    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-        run_preview
+    # First generate the prior emissions if not available yet
+    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
+        printf "\nPrior Dir not detected. Running HEMCO for prior emissions as a prerequisite for reducing dimension of state vector.\n"
+        run_prior
     fi
 
     # set input variables
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
-
-    preview_dir=${RunDirs}/preview_run
+    preview_dir=${RunDirs}/preview
     tropomi_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 

@@ -299,8 +299,9 @@ class GeoFilter:
         # infer lat lons from state vector file
         # this file should already exist
         # expand any environment variables
-        svf = f'{self.config["OutputPath"]}/{self.config["RunName"]}/StateVector.nc'
-        svf = os.path.expandvars(svf)
+        svf = os.path.expandvars(
+            f'{self.config["OutputPath"]}/{self.config["RunName"]}/StateVector.nc'
+        )
         
         try:
             svds = xr.load_dataset(svf)
@@ -392,7 +393,7 @@ class PlumeObserver:
             if self.cache is not None:
                 infile = self.cache
             else:
-                basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+                basedir = os.path.expandvars(f'{self.config["OutputPath"]}/{self.config["RunName"]}')
                 infile = f'{basedir}/{self.myname}_plumes/plumes.geojson'
             try:
                 gdf = gpd.read_file(infile)
@@ -426,7 +427,7 @@ class PlumeObserver:
         
     def _cache_data(self):
         # dir for saving file
-        basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+        basedir = os.path.expandvars(f'{self.config["OutputPath"]}/{self.config["RunName"]}')
         write_dir = f'{basedir}/{self.myname}_plumes'
         if not os.path.exists(write_dir):
             os.makedirs(write_dir)
@@ -735,7 +736,7 @@ class IMEO(PlumeObserver):
         '''
        
         # dir for saving file
-        basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+        basedir = os.path.expandvars(f'{self.config["OutputPath"]}/{self.config["RunName"]}')
         write_dir = f'{basedir}/{self.myname}_plumes'
         if not os.path.exists(write_dir):
             os.makedirs(write_dir)

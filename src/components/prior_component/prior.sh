@@ -11,8 +11,21 @@
 run_prior() {
     prior_start=$(date +%s)
     if [[ -d ${RunDirs}/prior_run ]]; then
-        printf "\nERROR: ${PriorDir} already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
+        printf "\nERROR: ${RunDirs}/prior_run already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
         exit 9999
+    fi
+
+    ### Perform dry run if requested
+    if "$PriorDryRun"; then
+        pushd ${RunDirs}/template_run
+        printf "\nExecuting dry-run for prior run...\n"
+        ../GEOSChem_build/gcclassic --dryrun &> log.dryrun
+        # prevent restart file from getting downloaded
+        sed -i '/GEOSChem.Restart/d' log.dryrun
+        # prevent download of GEOS met fields
+        sed -i "/GEOS_${Res}/d" log.dryrun
+        ./download_data.py log.dryrun aws
+        popd
     fi
 
     printf "\n=== GENERATING PRIOR EMISSIONS ===\n"
@@ -59,7 +72,7 @@ run_prior() {
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
         -e "/Negative values:     0/d" HEMCO_sa_Config.rc
     sed -i -e "s/METEOROLOGY            :       true/METEOROLOGY            :       false/g" \
-        -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   Daily|g" HEMCO_Config.rc
+        -e "s|DiagnFreq:                   End|DiagnFreq:                   Daily|g" HEMCO_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh

@@ -298,6 +298,8 @@ if __name__ == "__main__":
     perturbationOH = float(sys.argv[10])
 
     perturbation = np.load(perturbation)
+    # unpack perturbation dictionary
+    perturbation = perturbation["effective_pert_sf"]
     calc_sensi(
         nelements,
         ntracers,

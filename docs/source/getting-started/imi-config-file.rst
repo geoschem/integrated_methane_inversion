@@ -78,6 +78,10 @@ Kalman filter options
      - Number of days in each Kalman filter update cycle eg. ``7`` days. 
    * - ``NudgeFactor``
      - Fraction of original prior emissions to use in the prior for each Kalman filter update (eg. ``0.1``). See Kalman mode documentation for more details.
+   * - ``MakePeriodsCSV``
+     - Option to automatically create ``periods.csv`` based on the constant number of days in ``UpdateFreqDays``. Default is ``true``. If ``false``, a custom ``periods.csv`` will be used instead.
+   * - ``CustomPeriodsCSV``
+     - Path to custom ``periods.csv`` with user-defined start and end dates for each Kalman filter update period.
 
 State vector 
 ~~~~~~~~~~~~
