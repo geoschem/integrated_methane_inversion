@@ -104,10 +104,12 @@ def apply_average_tropomi_operator(
         
         pertf = (
             f'{config["OutputPath"]}/{config["RunName"]}/'
-            f'archive_perturbation_sfs/flat_pert_sf_{period_i}.npy'
+            f'archive_perturbation_sfs/pert_sf_{period_i}.npz'
         )
         
-        emis_perturbations = np.load(pertf)
+        emis_perturbations_dict = np.load(pertf)
+        emis_perturbations = emis_perturbations_dict['effective_pert_sf']
+
 
     # create list to store the dates/hour of each gridcell
     all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
@@ -244,7 +246,7 @@ def apply_average_tropomi_operator(
                 bc_perturbation = config['PerturbValueBCs']
             else:
                 bc_perturbation = 1.0
-                
+            
             perturbations[0: is_emis.sum()] = emis_perturbations
             perturbations = np.where(is_oh, oh_perturbation, perturbations)
             perturbations = np.where(is_bc, bc_perturbation, perturbations)
