@@ -158,14 +158,6 @@ def make_state_vector_file(
     lc = xr.load_dataset(land_cover_pth)
     hd = xr.load_dataset(hemco_diag_pth)
 
-    # Require hemco diags on same global grid as land cover map
-    # TODO remove this offset once the HEMCO standalone files 
-    # are regenerated with recent bugfix that corrects the offset
-    if config["Res"] == "0.25x0.3125":
-        hd["lon"] = hd["lon"] - 0.03125
-    elif config["Res"] == "0.5x0.625":
-        hd["lon"] = hd["lon"] - 0.0625
-
     # Select / group fields together
     lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop_vars("time").squeeze()
