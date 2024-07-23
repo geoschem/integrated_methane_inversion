@@ -80,13 +80,6 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
 
     # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
     if build_jacobian:
-        ### sensitivity_data = xr.open_dataset(f"{sensi_cache}/sensi_{date}.nc")
-        ### sensitivities = sensitivity_data["Sensitivities"].values
-        ### # Reshape so the data have dimensions (lon, lat, lev, grid_element)
-        ### sensitivities = np.einsum("klji->ijlk", sensitivities)
-        ### sensitivity_data.close()
-        ### dat["Sensitivities"] = sensitivities
-        
         
         elements = range(n_elements)
         ntracers = config['NumJacobianTracers']
@@ -127,8 +120,6 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
                 pert_simulations_dict[run_num].append(sv_elem)
                 
                 
-        #j_dir_n_all = [i for i in pert_simulations_dict.keys()]
-        #jacobian_run_dirs = [f'{prefix}/out_{i}/OutputDir' for i in j_dir_n_all]
         gc_date = pd.to_datetime(date, format='%Y%m%d_%H')
         ds_all = [concat_tracers(k, gc_date, config, v) for k,v in pert_simulations_dict.items()]
         ds_sensi = xr.concat(ds_all, 'element')
@@ -144,7 +135,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
         ds_emis_base.load()
         dat['emis_base_ch4'] = np.einsum('klji->ijlk', ds_emis_base['ch4'].values)
         
-        # get OH base, run out_0000
+        # get OH base, run RunName_0000
         # it's always here whether OptimizeOH is true or not
         # so we can keep it here for convenience
         ds_oh_base = concat_tracers('0000', gc_date, config, [0])
@@ -157,7 +148,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
 
 def concat_tracers(run_id, gc_date, config, sv_elems, baserun=False):
     prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
-    j_dir = f'{prefix}/out_{run_id}/OutputDir'
+    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')
     dsmf = xr.open_dataset(
         '/'.join([j_dir,file_stub]),
