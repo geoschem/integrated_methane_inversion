@@ -121,7 +121,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
         merged_data_SC.to_netcdf(
             final_file_SC,
             encoding={
-                v: {"zlib": True, "complevel": 9} for v in merged_data_SC.data_vars
+                v: {"zlib": True, "complevel": 1} for v in merged_data_SC.data_vars
             },
         )
         if "0000" in r or "background" in r:
@@ -130,7 +130,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
             merged_data_LE.to_netcdf(
                 final_file_LE,
                 encoding={
-                    v: {"zlib": True, "complevel": 9} for v in merged_data_LE.data_vars
+                    v: {"zlib": True, "complevel": 1} for v in merged_data_LE.data_vars
                 },
             )
 
@@ -179,7 +179,7 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
     )
     merged_data_SC.to_netcdf(
         final_file_SC,
-        encoding={v: {"zlib": True, "complevel": 9} for v in merged_data_SC.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in merged_data_SC.data_vars},
     )
     merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
     final_file_LE = (
@@ -187,7 +187,7 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
     )
     merged_data_LE.to_netcdf(
         final_file_LE,
-        encoding={v: {"zlib": True, "complevel": 9} for v in merged_data_LE.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in merged_data_LE.data_vars},
     )
 
 
