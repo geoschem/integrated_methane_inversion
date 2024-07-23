@@ -3,7 +3,6 @@ import xarray as xr
 import numpy as np
 import os
 import sys
-sys.path.append('/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/bugfixes/20240703_2dsensitivities/test_kf2/integrated_methane_inversion')
 import yaml
 from src.inversion_scripts.utils import (
     sum_total_emissions,
