@@ -1,7 +1,9 @@
+
 import xarray as xr
 import numpy as np
 import os
 import sys
+sys.path.append('/n/holylfs05/LABS/jacob_lab/Users/jeast/proj/imi/bugfixes/20240703_2dsensitivities/test_kf2/integrated_methane_inversion')
 import yaml
 from src.inversion_scripts.utils import (
     sum_total_emissions,
@@ -42,7 +44,10 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     hemco_emis = hemco_diags
     posterior_sf = xr.load_dataset(post_sf_path)
     posterior_emis_ds = get_posterior_emissions(hemco_emis, posterior_sf)
-    posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+    if 'time' in posterior_emis_ds.dims:
+        posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+    else:
+        posterior_emis = posterior_emis_ds["EmisCH4_Total"].squeeze(drop=True)
     total_emis = sum_total_emissions(posterior_emis, areas, mask)
 
     # Print
