@@ -16,13 +16,15 @@ create_statevector() {
     else
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
-    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
+    
+    # Use archived HEMCO standalone emissions output
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
 	
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
         s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
         aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
+        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
         aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
     fi
 
@@ -48,17 +50,10 @@ create_statevector() {
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
-    # First run the Preview if necessary to get prior emissions
-    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-        run_preview
-    fi
-
     # set input variables
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
-
-    preview_dir=${RunDirs}/preview_run
+    preview_dir=${RunDirs}/preview
     tropomi_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
@@ -85,8 +80,8 @@ reduce_dimension() {
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
         chmod +x $aggregation_file
-        sbatch --mem $SimulationMemory \
-        -c $SimulationCPUs \
+        sbatch --mem $RequestedMemory \
+        -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \

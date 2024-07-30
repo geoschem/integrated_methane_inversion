@@ -63,8 +63,8 @@ def download_hemcodiags_files(config):
     elif config["Res"] == "0.25x0.3125":
         gridFile = "025x03125"
 
-    HemcoDiagFile = f"{DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.20190101.nc"
-    s3_hd_path = f"s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.20190101.nc"
+    HemcoDiagFile = f"{DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"
+    s3_hd_path = f"s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"
 
     # run the aws command to download the files
     command = f"aws s3 cp --no-sign-request {s3_hd_path} {HemcoDiagFile}"

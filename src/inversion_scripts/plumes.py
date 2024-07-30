@@ -98,10 +98,18 @@ class PointSources:
         # 1. filter points to roi
         inout = self.geofilter.filter_points(datasource.gdf)
         
-        if inout.sum() > 0:
+        if inout is None:
+            return None
+        elif inout.sum() > 0:
             gdf_inroi = datasource.gdf[inout].copy()
         else:
+            msg = (
+                'Unable to detect point sources, '
+                'continuing without plume data.'
+            )
+            warnings.warn(msg)
             return None
+
         
         # 3. get I,J indices
         lon_dist = gdf_inroi.geometry.x.values[:,None] - self.geofilter.lons[None,:]
@@ -265,6 +273,9 @@ class GeoFilter:
     Parameters
     ----------
     config: dict of IMI config.yml contents
+    use_shapefile: bool, whether to define the ROI
+        using the shapefile provided in the config
+        file.
 
     Use
     ---
@@ -275,8 +286,9 @@ class GeoFilter:
     gf.filter_points()
 
     '''
-    def __init__(self, config):
+    def __init__(self, config, use_shapefile = False):
         self.config = config
+        self.use_shapefile = use_shapefile
         self.geo = self._make_roi_geometry()
         self.svds = self._get_state_vector_file()
         self.lons = self.svds.lon.values
@@ -286,7 +298,10 @@ class GeoFilter:
         
         # infer lat lons from state vector file
         # this file should already exist
-        svf = f'{self.config["OutputPath"]}/{self.config["RunName"]}/StateVector.nc'
+        # expand any environment variables
+        svf = os.path.expandvars(
+            f'{self.config["OutputPath"]}/{self.config["RunName"]}/StateVector.nc'
+        )
         
         try:
             svds = xr.load_dataset(svf)
@@ -304,9 +319,9 @@ class GeoFilter:
         
     def _make_roi_geometry(self):
         
-        custom_vectorfile = not self.config["CreateAutomaticRectilinearStateVectorFile"]
-        
-        if custom_vectorfile:
+        # optionally use the shapefile
+        # provided in the config file
+        if self.use_shapefile:
             shapefile_path = self.config["ShapeFile"]
             shp_geo = gpd.read_file(shapefile_path).geometry
             if shp_geo.shape[0] > 1:
@@ -316,7 +331,9 @@ class GeoFilter:
                 )
                 warnings.warn(msg)
             geo = shp_geo.iloc[0]
+
             
+        # else define ROI based on bounds
         else:
             lon0 = self.config['LonMin']
             lat0 = self.config['LatMin']
@@ -345,13 +362,13 @@ class GeoFilter:
             matches input GeoDataFrame
         '''
         if points.shape[0] == 0:
-            print('No CarbonMapper points found')
+            print('No plumes found.')
             return None
             
         inout = points.within(self.geo)
         
         if not inout.any():
-            print('No CarbonMapper points in ROI')
+            print('No plumes in ROI')
             return None
         
         else:
@@ -376,7 +393,7 @@ class PlumeObserver:
             if self.cache is not None:
                 infile = self.cache
             else:
-                basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+                basedir = os.path.expandvars(f'{self.config["OutputPath"]}/{self.config["RunName"]}')
                 infile = f'{basedir}/{self.myname}_plumes/plumes.geojson'
             try:
                 gdf = gpd.read_file(infile)
@@ -391,13 +408,16 @@ class PlumeObserver:
         
         else:
             self.gdf = self._get_data()
+
+        if self.gdf is not None:
+            if self.gdf.shape[0] > 0:
         
-        # cache all data
-        self._cache_data()
-        
-        # filter data according to 
-        # options from subclass
-        self._filter_data()
+                # cache all data
+                self._cache_data()
+                
+                # filter data according to 
+                # options from subclass
+                self._filter_data()
         
     def _filter_data(self):
         raise NotImplementedError
@@ -407,7 +427,7 @@ class PlumeObserver:
         
     def _cache_data(self):
         # dir for saving file
-        basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+        basedir = os.path.expandvars(f'{self.config["OutputPath"]}/{self.config["RunName"]}')
         write_dir = f'{basedir}/{self.myname}_plumes'
         if not os.path.exists(write_dir):
             os.makedirs(write_dir)
@@ -639,7 +659,12 @@ class CarbonMapper(PlumeObserver):
             url = base_url + endpoint + q_params
             response = requests.get(url)
             # Raise an exception if the API call returns an HTTP error status
-            response.raise_for_status() 
+            try:
+                response.raise_for_status() 
+            except Exception as e:
+                print(f'CarbonMapper API error: {e}')
+                print('Continuing WITHOUT CarbonMapper plumes.')
+                return None
             # Process the API response
             data = response.json()
             rawdat += data['items']
@@ -711,7 +736,7 @@ class IMEO(PlumeObserver):
         '''
        
         # dir for saving file
-        basedir = f'{self.config["OutputPath"]}/{self.config["RunName"]}'
+        basedir = os.path.expandvars(f'{self.config["OutputPath"]}/{self.config["RunName"]}')
         write_dir = f'{basedir}/{self.myname}_plumes'
         if not os.path.exists(write_dir):
             os.makedirs(write_dir)

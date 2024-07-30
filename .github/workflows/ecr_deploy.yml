@@ -1,5 +1,4 @@
 name: Deploy to ECR
-# TODO: push branch when pushes to main
 on:
   push:
     branches: [ dev ]
@@ -29,6 +28,9 @@ jobs:
       with:
         registry-type: public
 
+    - name: Check disk usage before build
+      run: df -h
+
     - name: Build, tag, and push al2 image to Amazon ECR
       env:
         REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
@@ -38,6 +40,11 @@ jobs:
       run: |
         docker build -f resources/containers/al2/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+        docker rmi $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+        docker system prune -f
+
+    - name: Check disk usage after 1st build
+      run: df -h
 
     - name: Build, tag, and push ubuntu image to Amazon ECR
       env:
@@ -48,3 +55,8 @@ jobs:
       run: |
         docker build -f resources/containers/ubuntu/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+        docker rmi $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+        docker system prune -f
+
+    - name: Check disk usage after build
+      run: df -h

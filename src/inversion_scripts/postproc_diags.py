@@ -1,7 +1,24 @@
 import xarray as xr
 import os
 from joblib import Parallel, delayed
+import numpy as np
 
+def search_file(file_path, search_string):
+    """
+    Search for a string in a file and return True if there is a match.
+    
+    Args:
+        file_path (str): Path to the file.
+        search_string (str): String to search for in the file.
+    
+    Returns:
+        bool: True if the string is found, False otherwise.
+    """
+    with open(file_path, 'r') as file:
+        for line in file:
+            if search_string in line:
+                return True
+    return False
 
 def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
     """
@@ -54,6 +71,9 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
     
     # Process them
     def process(r):
+        # keep attributes of data variable when arithmetic operations applied
+        xr.set_options(keep_attrs=True)
+        
         # Load hour zero from end of spinup run or previous posterior simulation
         prev_file_SC = (
             f"{prev_run_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0000z.nc4"
@@ -64,11 +84,31 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
         prev_data_SC = xr.load_dataset(prev_file_SC)
         prev_data_LE = xr.load_dataset(prev_file_LE)
 
+        # Rename SpeciesConcVV_CH4 for the current state vector element
+        num=r[-4:]
+        
+        # For some perturbation simulation we need to scale down the CH4 concentration to 1 ppb
+        # Check if this is one of those simulations by checking if HEMCO_Config.rc 
+        # reads a 1ppb restart or BC file
+        scale_to_1ppb = search_file(f"{run_dirs_pth}/{r}/HEMCO_Config.rc", "jacobian_1ppb_ics_bcs")
+        if scale_to_1ppb:
+            prev_data_SC["SpeciesConcVV_CH4"] = 0.0
+            prev_data_SC["SpeciesConcVV_CH4"] += 1e-9
+        
+        # Only keep the first hour (0) of the previous data 
+        prev_data_SC = prev_data_SC.where(prev_data_SC.time == prev_data_SC.time[0], np.nan)
+        
         # Load output SpeciesConc and LevelEdgeDiags file
         output_file_SC = (
             f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_{timestamp}z.nc4"
         )
         output_data_SC = xr.load_dataset(output_file_SC)
+        
+        # Add additional data variables for multiple tracers
+        for ds_var in list(output_data_SC.data_vars):
+            if ds_var.startswith("SpeciesConcVV_CH4_"):
+                prev_data_SC[ds_var] = prev_data_SC["SpeciesConcVV_CH4"]
+        
         if "0000" in r or "background" in r:
             output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_{timestamp}z.nc4"
             output_data_LE = xr.load_dataset(output_file_LE)
@@ -118,6 +158,9 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
     )
     prev_data_SC = xr.load_dataset(prev_file_SC)
     prev_data_LE = xr.load_dataset(prev_file_LE)
+    
+    # Only keep the first hour (0) of the previous data 
+    prev_data_SC = prev_data_SC.where(prev_data_SC.time == prev_data_SC.time[0], np.nan)
 
     # Load output SpeciesConc
     output_file_SC = (

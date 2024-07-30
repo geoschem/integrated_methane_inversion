@@ -15,4 +15,4 @@ ADD ./ /home/al2/integrated_methane_inversion
 # make imi run scripts executable
 RUN chmod -R +x /home/al2/integrated_methane_inversion/
 
-CMD [ "/home/al2/integrated_methane_inversion/resources/containers/entrypoint.sh" ]
+CMD [ "/home/al2/integrated_methane_inversion/resources/containers/al2/entrypoint.sh" ]
