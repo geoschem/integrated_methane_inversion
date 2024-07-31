@@ -145,6 +145,30 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
 
 
 def concat_tracers(run_id, gc_date, config, sv_elems, baserun=False):
+    """
+    Concatenate CH4 tracers from all jacobian GEOS-Chem simulations.
+    Tracers are assigned a new dimension: "element"
+
+    Arguments
+        run_id   [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
+        gc_date  [pd.Datetime] : date object, specifies Ymd_h
+        config   [dict]        : dictionary of IMI config file
+        sv_elems [list]        : list of state vector element tracers in this simulations
+        baserun  [bool]        : If True, only the base variable in the simulation will
+                                 be opened, and the function will just return this one
+                                 variable instead of concatenating all elements. Used to 
+                                 get the base for calculating the sensitivities.
+
+    Returns
+        ds_concat [xarray.Dataset] : dataset of all Jacobian CH4 at this timestep for 
+                                     all tracer runs. Has dimensions
+                                        - lat
+                                        - lon
+                                        - lev
+                                        - element
+                                    
+
+    """
     prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')

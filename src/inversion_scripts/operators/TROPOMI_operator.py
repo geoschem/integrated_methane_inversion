@@ -189,7 +189,6 @@ def apply_average_tropomi_operator(
                     np.tile(dry_air_subcolumns, (n_elements, 1))
                 )  # mol m-2
                 # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
-                #jacobian_K[i, :] = np.sum(
                 xch4[v] = np.sum(
                     avkern_tiled * sat_deltaCH4 * dry_air_subcolumns_tiled, 0
                 ) / sum(
@@ -197,7 +196,7 @@ def apply_average_tropomi_operator(
                 )  # mixing ratio, unitless
             
             # separate variables for convenience later
-            jacobian_xch4 = xch4['jacobian_ch4']
+            pert_jacobian_xch4 = xch4['jacobian_ch4']
             emis_base_xch4 = xch4['emis_base_ch4']
             if config['OptimizeOH']:
                 oh_base_xch4 = xch4['oh_base_ch4']
@@ -228,11 +227,16 @@ def apply_average_tropomi_operator(
             is_emis = ~np.equal(is_oh | is_bc, True)
             
             # fill pert base array with values
-            pert_base_xch4 = np.full(n_elements, np.nan)
-            pert_base_xch4 = np.where(is_emis, emis_base_xch4, pert_base_xch4)
-            pert_base_xch4 = np.where(is_bc, emis_base_xch4, pert_base_xch4)
+            # array contains 1 entry for each state vector element
+            # fill array with nans
+            base_xch4 = np.full(n_elements, np.nan)
+            # fill emission elements with the base value
+            base_xch4 = np.where(is_emis, emis_base_xch4, base_xch4)
+            # fill BC elements with the base value, which is same as emis value
+            base_xch4 = np.where(is_bc, emis_base_xch4, base_xch4)
             if config['OptimizeOH']:
-                pert_base_xch4 = np.where(is_oh, oh_base_xch4, pert_base_xch4)
+                # fill OH elements with the OH base value
+                base_xch4 = np.where(is_oh, oh_base_xch4, base_xch4)
             
             # get perturbations and calculate sensitivities
             perturbations = np.full(n_elements, 1.0, dtype=float)
@@ -246,12 +250,13 @@ def apply_average_tropomi_operator(
             else:
                 bc_perturbation = 1.0
             
+            # fill perturbation array with OH and BC perturbations
             perturbations[0: is_emis.sum()] = emis_perturbations
             perturbations = np.where(is_oh, oh_perturbation, perturbations)
             perturbations = np.where(is_bc, bc_perturbation, perturbations)
             
             # calculate difference
-            delta_xch4 = jacobian_xch4 - pert_base_xch4
+            delta_xch4 = pert_jacobian_xch4 - base_xch4
             
             # calculate sensitivities
             sensi_xch4 = delta_xch4 / perturbations
