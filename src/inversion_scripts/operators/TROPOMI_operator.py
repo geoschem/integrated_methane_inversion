@@ -159,7 +159,8 @@ def apply_average_tropomi_operator(
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:
             
-            # redundant code here...
+            # TODO: Eliminate redundant code mapping GC to
+            #       TROPOMI when build_jacobian=True 
             
             if config['OptimizeOH']:
                 vars_to_xch4 = ['jacobian_ch4', 'emis_base_ch4', 'oh_base_ch4']
