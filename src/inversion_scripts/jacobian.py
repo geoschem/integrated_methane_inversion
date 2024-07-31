@@ -44,7 +44,6 @@ def apply_operator(operator, params, config):
             params["ylim"],
             params["gc_cache"],
             params["build_jacobian"],
-            params["sensi_cache"],
             params["period_i"],
             config
         )
@@ -59,7 +58,6 @@ def apply_operator(operator, params, config):
             params["ylim"],
             params["gc_cache"],
             params["build_jacobian"],
-            params["sensi_cache"],
             params["period_i"],
             config
         )
@@ -90,7 +88,6 @@ if __name__ == "__main__":
 
     # Configuration
     workdir = "."
-    sensi_cache = f"{workdir}/data_sensitivities"
     if build_jacobian.lower() == "true":
         build_jacobian = True
     else:
@@ -161,7 +158,6 @@ if __name__ == "__main__":
                     "ylim": ylim,
                     "gc_cache": gc_cache,
                     "build_jacobian": build_jacobian,
-                    "sensi_cache": sensi_cache,
                     "period_i": period_i,
                 },
                 config
@@ -180,7 +176,6 @@ if __name__ == "__main__":
                     "ylim": ylim,
                     "gc_cache": gc_cache,
                     "build_jacobian": False,
-                    "sensi_cache": sensi_cache,
                     "period_i": period_i,
                 },
                 config

@@ -11,7 +11,7 @@ from src.inversion_scripts.utils import (
 
 
 # common utilities for using different operators
-def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False, sensi_cache=None):
+def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
     """
     Call readgeoschem() for multiple dates in a loop.
 
@@ -19,7 +19,6 @@ def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=
         all_strdate    [list, str] : Multiple date strings
         gc_cache       [str]       : Path to GEOS-Chem output data
         build_jacobian [log]       : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]       : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
         dat            [dict]      : Dictionary of dictionaries. Each sub-dictionary is returned by read_geoschem()
@@ -27,12 +26,12 @@ def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=
 
     dat = {}
     for strdate in all_strdate:
-        dat[strdate] = read_geoschem(strdate, gc_cache, n_elements, config, build_jacobian, sensi_cache)
+        dat[strdate] = read_geoschem(strdate, gc_cache, n_elements, config, build_jacobian)
 
     return dat
 
 
-def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sensi_cache=None):
+def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     """
     Read GEOS-Chem data and save important variables to dictionary.
 
@@ -40,7 +39,6 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False, sens
         date           [str]   : Date of interest, format "YYYYMMDD_HH"
         gc_cache       [str]   : Path to GEOS-Chem output data
         build_jacobian [log]   : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]   : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
         dat            [dict]  : Dictionary of important variables from GEOS-Chem:

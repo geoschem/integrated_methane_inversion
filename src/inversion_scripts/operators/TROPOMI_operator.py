@@ -32,7 +32,6 @@ def apply_average_tropomi_operator(
     ylim,
     gc_cache,
     build_jacobian,
-    sensi_cache,
     period_i,
     config,
 ):
@@ -49,7 +48,6 @@ def apply_average_tropomi_operator(
         ylim           [float]      : Latitude bounds for simulation domain
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
         period_i       [int]        : kalman filter period 
         config         [dict]       : dict of the config file
 
@@ -116,7 +114,7 @@ def apply_average_tropomi_operator(
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian, sensi_cache)
+    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian)
 
     # Initialize array with n_gridcells rows and 5 columns. Columns are
     # TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
@@ -293,7 +291,6 @@ def apply_tropomi_operator(
     ylim,
     gc_cache,
     build_jacobian,
-    sensi_cache,
     period_i,
     config
 ):
@@ -310,7 +307,6 @@ def apply_tropomi_operator(
         ylim           [float]      : Latitude bounds for simulation domain
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
         period_i       [int]        : kalman filter period 
 
     Returns
@@ -369,7 +365,7 @@ def apply_tropomi_operator(
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian, sensi_cache)
+    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian)
 
     # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
     obs_GC = np.zeros([n_obs, 6], dtype=np.float32)
