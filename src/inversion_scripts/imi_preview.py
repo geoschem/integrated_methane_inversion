@@ -420,8 +420,8 @@ def estimate_averaging_kernel(
 
     # Whether to use observations over water?
     use_water_obs = (
-        config["UseWaterObservations"] == "true"
-        if "UseWaterObservations" in config
+        config["UseWaterObs"] == "true"
+        if "UseWaterObs" in config
         else False
     )
 

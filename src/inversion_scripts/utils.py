@@ -154,8 +154,8 @@ def plot_field(
             "cultural", "admin_1_states_provinces_lines", "50m"
         )
         ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
-        ax.add_feature(oceans_50m, facecolor=[1, 1, 1], edgecolor="black")
-        ax.add_feature(lakes_50m, facecolor=[1, 1, 1], edgecolor="black")
+        ax.add_feature(oceans_50m, facecolor="none", edgecolor="black")
+        ax.add_feature(lakes_50m, facecolor="none", edgecolor="black")
         ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
     else:
         ax.coastlines(resolution='110m')
