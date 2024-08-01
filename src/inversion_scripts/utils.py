@@ -292,31 +292,20 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
+    valid_idx = (tropomi_data["longitude"] > xlim[0])
+              & (tropomi_data["longitude"] < xlim[1])
+              & (tropomi_data["latitude"] > ylim[0])
+              & (tropomi_data["latitude"] < ylim[1])
+              & (tropomi_data["time"] >= startdate)
+              & (tropomi_data["time"] <= enddate)
+              & (tropomi_data["qa_value"] >= 0.5)
+              & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
+              & (tropomi_data["latitude"] > -60)
+
     if use_water_obs:
-        return np.where(
-            (tropomi_data["longitude"] > xlim[0])
-            & (tropomi_data["longitude"] < xlim[1])
-            & (tropomi_data["latitude"] > ylim[0])
-            & (tropomi_data["latitude"] < ylim[1])
-            & (tropomi_data["time"] >= startdate)
-            & (tropomi_data["time"] <= enddate)
-            & (tropomi_data["qa_value"] >= 0.5)
-            & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
-            & (tropomi_data["latitude"] > -60)
-        )
+        return np.where(valid_idx)
     else:
-        return np.where(
-            (tropomi_data["longitude"] > xlim[0])
-            & (tropomi_data["longitude"] < xlim[1])
-            & (tropomi_data["latitude"] > ylim[0])
-            & (tropomi_data["latitude"] < ylim[1])
-            & (tropomi_data["time"] >= startdate)
-            & (tropomi_data["time"] <= enddate)
-            & (tropomi_data["qa_value"] >= 0.5)
-            & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
-            & (tropomi_data["surface_classification"] != 1)
-            & (tropomi_data["latitude"] > -60)
-        )
+        return np.where(valididx & (tropomi_data["surface_classification"] != 1))
 
 def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=False):
     """
@@ -331,32 +320,21 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
-    if use_water_obs:
-        return np.where(
-            (blended_data["longitude"] > xlim[0])
-            & (blended_data["longitude"] < xlim[1])
-            & (blended_data["latitude"] > ylim[0])
-            & (blended_data["latitude"] < ylim[1])
-            & (blended_data["time"] >= startdate)
-            & (blended_data["time"] <= enddate)
-            & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
-            & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
-            & (blended_data["latitude"] > -60)
-        )
-    else:
-        return np.where(
-            (blended_data["longitude"] > xlim[0])
-            & (blended_data["longitude"] < xlim[1])
-            & (blended_data["latitude"] > ylim[0])
-            & (blended_data["latitude"] < ylim[1])
-            & (blended_data["time"] >= startdate)
-            & (blended_data["time"] <= enddate)
-            & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
-            & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
-            & (blended_data["surface_classification"] != 1)
-            & (blended_data["latitude"] > -60)
-        )
 
+    valid_idx = (blended_data["longitude"] > xlim[0])
+              & (blended_data["longitude"] < xlim[1])
+              & (blended_data["latitude"] > ylim[0])
+              & (blended_data["latitude"] < ylim[1])
+              & (blended_data["time"] >= startdate)
+              & (blended_data["time"] <= enddate)
+              & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
+              & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
+              & (blended_data["latitude"] > -60)
+    
+    if use_water_obs:
+        return np.where(valid_idx)
+    else:
+        return np.where(valid_idx & (blended_data["surface_classification"] != 1))
 
 def calculate_area_in_km(coordinate_list):
     """
