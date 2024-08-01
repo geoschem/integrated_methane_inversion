@@ -305,7 +305,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
     if use_water_obs:
         return np.where(valid_idx)
     else:
-        return np.where(valididx & (tropomi_data["surface_classification"] != 1))
+        return np.where(valid_idx & (tropomi_data["surface_classification"] != 1))
 
 def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=False):
     """
