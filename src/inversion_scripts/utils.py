@@ -464,7 +464,7 @@ def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     Calculate the mean emissions for the specified kalman period.
     """
     period_df = pd.read_csv(periods_csv_path)
-    period_df = period_df[period_df['period_number'] == period]
+    period_df = period_df[period_df['period_number'] == int(period)]
     period_df.reset_index(drop=True, inplace=True)
     start_date = str(period_df.loc[0,"Starts"])
     end_date = str(period_df.loc[0,"Ends"])
