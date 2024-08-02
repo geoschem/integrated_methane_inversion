@@ -91,6 +91,7 @@ config_required = [
     "BCdryrun",
     "LognormalErrors",
     "MakePeriodsCSV",
+    "UseWaterObs",
 ]
 
 # dict of variables that are required if another variable is set to true 
