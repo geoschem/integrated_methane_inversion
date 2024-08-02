@@ -136,7 +136,7 @@ def make_state_vector_file(
     buffer_min_lon = 0
     
     # set minimum buffer degrees based on resolution
-    if config["isRegional"]  == "true":
+    if config["isRegional"]:
         if config["Res"] == "4.0x5.0":
             deg_lat, deg_lon = 4.0, 5.0 
         elif config["Res"] == "2.0x2.5":

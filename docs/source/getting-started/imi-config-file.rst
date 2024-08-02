@@ -46,6 +46,8 @@ TROPOMI data type
 
    * - ``BlendedTROPOMI``
      - Boolean for if the Blended TROPOMI+GOSAT data should be used (``true``) or if the operational data should be used (``false``).
+   * - ``UseWaterObs``
+     - Boolean for whether to use observations over water (``true``) or not (``false``). Warning: if ``true``, user should inspect data for potential artifacts.
 
 Region of interest
 ~~~~~~~~~~~~~~~~~~

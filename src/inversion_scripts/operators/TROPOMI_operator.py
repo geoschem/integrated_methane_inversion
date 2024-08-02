@@ -30,6 +30,7 @@ def apply_average_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    use_water_obs=False,
 ):
     """
     Apply the averaging tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -45,6 +46,7 @@ def apply_average_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        use_water_obs  [bool]       : if True, use observations over water
 
     Returns
         output         [dict]       : Dictionary with:
@@ -69,10 +71,10 @@ def apply_average_tropomi_operator(
 
     if BlendedTROPOMI:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
     else:
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
@@ -201,6 +203,7 @@ def apply_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    use_water_obs=False,
 ):
     """
     Apply the tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -216,6 +219,7 @@ def apply_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        use_water_obs  [bool]       : if True, use observations over water
 
     Returns
         output         [dict]       : Dictionary with one or two fields:
@@ -240,10 +244,10 @@ def apply_tropomi_operator(
 
     if BlendedTROPOMI:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
     else:
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
