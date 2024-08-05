@@ -48,7 +48,7 @@ LatMax: 90
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
-MakePeriodsCSV: false
+MakePeriodsCSV: true
 CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
