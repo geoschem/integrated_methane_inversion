@@ -106,13 +106,8 @@ setup_template() {
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
-    # Determine length of inversion period in days
-    InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
-
-    # If inversion period is < 32 days, use End diagnostic output frequency
-    if (( ${InvPeriodLength} < 32 )) || $KalmanMode; then
-        sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
-    fi
+    # By default, only output emissions at the end of the simulation
+    sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
