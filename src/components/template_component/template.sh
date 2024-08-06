@@ -79,7 +79,7 @@ setup_template() {
     if "$isRegional"; then
         # Adjust lat/lon bounds because GEOS-Chem defines the domain 
         # based on grid cell edges (not centers) for the lat/lon bounds
-        Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
+        Lons=$(calculate_geoschem_domain lon ${RunDirs}/StateVector.nc ${LonMinInvDomain} ${LonMaxInvDomain})
         Lats=$(calculate_geoschem_domain lat ${RunDirs}/StateVector.nc ${LatMinInvDomain} ${LatMaxInvDomain})
         sed -i -e "s:-130.0,  -60.0:${Lons}:g" \
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
