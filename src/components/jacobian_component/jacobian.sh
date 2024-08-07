@@ -221,16 +221,25 @@ create_simulation_dir() {
         # Perturb OH by hemisphere if this is an OH perturbations simulation
         if [ $start_element -gt $ohThreshold ]; then
             OH_elem=true
-            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor  ${PerturbValueOH} - - - xy 1 1020|g" HEMCO_Config.rc
 
-	    HcoNextLineOH='### END SECTION MASKS'
-	    if [ $start_element -eq $((ohThreshold+1)) ]; then
-		HcoNewLineOH='1020 N_HEMIS -180/0/180/90  - 2000/1/1/0 C xy 1 1 -180/0/180/90'
-	    else
-		HcoNewLineOH='1020 S_HEMIS -180/-90/180/0 - 2000/1/1/0 C xy 1 1 -180/-90/180/0'
-	    fi
-	    sed -i -e "s|${HcoNextLineOH}|${HcoNewLineOH}\n\n${HcoNextLineOH}|g" HEMCO_Config.rc
+            # Add and edit perturbations txt file
+            cp Perturbations.txt Perturbations_OH.txt
+            sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" Perturbations_OH.txt
+            if [ $start_element -eq $((ohThreshold+1)) ]; then
+                OHPertNewLine="N_HEMIS    1     ${PerturbValueOH}"
+            else
+                OHPertNewLine="S_HEMIS    2     ${PerturbValueOH}"
+            fi
+            OHPertPrevLine='DEFAULT    0     1.0'
+            sed -i "/$OHPertPrevLine/a $OHPertNewLine" Perturbations_OH.txt
 
+            # Modify OH scale factor in HEMCO config
+            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor Perturbations_OH.txt - - - xy 1 1|g" HEMCO_Config.rc
+
+	    HcoPrevLineMask='CH4_STATE_VECTOR'
+	    HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
+'
+	    sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
 	fi
 
         # If the current state vector element is one of the BC state vector elements, then
