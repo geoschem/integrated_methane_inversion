@@ -529,7 +529,12 @@ def read_tropomi(filename):
         with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
             dat["methane_profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
             dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
-            dat["surface_classification"] = (tropomi_data["surface_classification"].values[0, :, :].astype("uint8") & 0x03).astype(int)
+            sc = tropomi_data["surface_classification"].values[0, :, :]
+            nan_mask = np.isnan(sc)
+            sc_no_nans = np.nan_to_num(sc, nan=0)
+            sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
+            sc[nan_mask] = np.nan
+            dat["surface_classification"] = sc
 
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
