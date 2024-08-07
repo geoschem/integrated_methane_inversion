@@ -533,8 +533,12 @@ def read_tropomi(filename):
             nan_mask = np.isnan(sc)
             sc_no_nans = np.nan_to_num(sc, nan=0)
             sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
-            sc[nan_mask] = np.nan
+            # Surface classification values of NaN will be filtered out
+            # due to a low QA value. We can make sure by setting them to 5
+            # and making sure nothing outside of [0,1,2,3] makes it through.
+            sc[nan_mask] = 5
             dat["surface_classification"] = sc
+            sc = ds["surface_classification"].values[0,:,:]
 
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
