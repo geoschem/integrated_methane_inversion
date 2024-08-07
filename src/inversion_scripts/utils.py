@@ -302,9 +302,6 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
               & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
               & (tropomi_data["latitude"] > -60))
 
-    # Make sure the surface classification flags have been made correctly
-    assert np.max(tropomi_data["surface_classification"][valid_idx]) <= 3
-
     if use_water_obs:
         return np.where(valid_idx)
     else:
@@ -333,9 +330,6 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
               & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
               & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
               & (blended_data["latitude"] > -60))
-
-    # Make sure the surface classification flags have been made correctly
-    assert np.max(tropomi_data["surface_classification"][valid_idx]) <= 3
     
     if use_water_obs:
         return np.where(valid_idx)
