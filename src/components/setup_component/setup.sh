@@ -151,7 +151,7 @@ setup_imi() {
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
 
-    # Define custom Kalman filter periods for preview calculations
+    # Define custom Kalman filter periods
     if "$KalmanMode"; then
         if ! "$MakePeriodsCSV"; then
             printf "Copying custom periods.csv to the run directory.\n"
