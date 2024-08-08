@@ -60,6 +60,9 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     gridded_S_post = do_gridding(S_post, statevector)
     gridded_A = do_gridding(A, statevector)
 
+    # Fill nan in SF with 1 to prevent GEOS-Chem error
+    gridded_SF = gridded_SF.fillna(1)
+
     # Create dataset
     lat = gridded_SF["lat"].values
     lon = gridded_SF["lon"].values

@@ -12,6 +12,9 @@
 # (5) save and overwrite the existing file eg. /var/spool/cron/crontabs/root
 # (6) $ exit # to exit root user access
 
+# sleep for a few seconds to give slurmd time to startup
+sleep 3
+
 # configure slurm
 cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/base_slurm.conf /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf
 python3 /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/configure_slurm.py

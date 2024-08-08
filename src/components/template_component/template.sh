@@ -68,7 +68,7 @@ setup_template() {
 
     if "$isAWS"; then
 	# Update GC data download to silence output from aws commands
-	sed -i "s/command: 'aws s3 cp --request-payer requester '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
+	sed -i "s/command: 'aws s3 cp '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
     fi
 
 
@@ -79,7 +79,7 @@ setup_template() {
     if "$isRegional"; then
         # Adjust lat/lon bounds because GEOS-Chem defines the domain 
         # based on grid cell edges (not centers) for the lat/lon bounds
-        Lons="${LonMinInvDomain}, ${LonMaxInvDomain}"
+        Lons=$(calculate_geoschem_domain lon ${RunDirs}/StateVector.nc ${LonMinInvDomain} ${LonMaxInvDomain})
         Lats=$(calculate_geoschem_domain lat ${RunDirs}/StateVector.nc ${LatMinInvDomain} ${LatMaxInvDomain})
         sed -i -e "s:-130.0,  -60.0:${Lons}:g" \
                -e "s:9.75,  60.0:${Lats}:g" \geoschem_config.yml
@@ -106,13 +106,8 @@ setup_template() {
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
-    # Determine length of inversion period in days
-    InvPeriodLength=$(( ( $(date -d ${EndDate} "+%s") - $(date -d ${StartDate} "+%s") ) / 86400))
-
-    # If inversion period is < 32 days, use End diagnostic output frequency
-    if (( ${InvPeriodLength} < 32 )) || $KalmanMode; then
-        sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
-    fi
+    # By default, only output emissions at the end of the simulation
+    sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc

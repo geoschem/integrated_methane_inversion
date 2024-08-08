@@ -34,9 +34,11 @@ run_preview() {
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # Define custom Kalman filter periods for preview calculations
-    if ! "$MakePeriodsCSV"; then
-        printf "Copying custom periods.csv to the run directory.\n"
-        cp $CustomPeriodsCSV ${RunDirs}/
+    if "$KalmanMode"; then
+        if ! "$MakePeriodsCSV"; then
+            printf "Copying custom periods.csv to the run directory.\n"
+            cp $CustomPeriodsCSV ${RunDirs}/
+        fi
     fi
 
     # Run preview script

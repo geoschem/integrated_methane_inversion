@@ -205,8 +205,7 @@ run_posterior() {
     kf_period=1
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python jacobian.py ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $isPost $kf_period $buildJacobian False; wait
-    wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI   $UseWaterObs $isPost $kf_period $buildJacobian False; wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 

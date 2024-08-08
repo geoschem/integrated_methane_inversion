@@ -62,5 +62,5 @@ calculate_geoschem_domain() {
     python -c "import sys; import xarray; import numpy as np; \
     sv = xarray.open_dataset(sys.argv[2])[sys.argv[1]]; \
     diff = np.unique(sv.diff(sys.argv[1])).item()/2; \
-    print('%g, %g' % (float(sys.argv[3]) - diff, float(sys.argv[4]) + diff))" $1 $2 $3 $4
+    print('%f, %f' % (float(sys.argv[3]) - diff, float(sys.argv[4]) + diff))" $1 $2 $3 $4
 }

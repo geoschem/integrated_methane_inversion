@@ -89,7 +89,9 @@ config_required = [
     "ProductionDryRun",
     "PosteriorDryRun",
     "BCdryrun",
-    "LognormalErrors"
+    "LognormalErrors",
+    "MakePeriodsCSV",
+    "UseWaterObs",
 ]
 
 # dict of variables that are required if another variable is set to true 
