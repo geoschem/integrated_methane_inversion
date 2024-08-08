@@ -607,7 +607,7 @@ def estimate_averaging_kernel(
         startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
         endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
         if not config["MakePeriodsCSV"]:
-            rundir_path = preview_dir.split("preview_run")[0]
+            rundir_path = preview_dir.split("preview")[0]
             periods = pd.read_csv(f"{rundir_path}periods.csv")
             n_periods = periods.iloc[-1]["period_number"]
             m = (
