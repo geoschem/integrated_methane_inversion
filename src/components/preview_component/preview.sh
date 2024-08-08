@@ -33,19 +33,12 @@ run_preview() {
     tropomi_cache=${RunDirs}/satellite_data
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
-    # Define custom Kalman filter periods for preview calculations
-    if "$KalmanMode"; then
-        if ! "$MakePeriodsCSV"; then
-            printf "Copying custom periods.csv to the run directory.\n"
-            cp $CustomPeriodsCSV ${RunDirs}/
-        fi
-    fi
-
     # Run preview script
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
+        rm -f .preview_error_status.txt
         chmod +x $preview_file
         sbatch --mem $RequestedMemory \
         -c $RequestedCPUs \
@@ -55,6 +48,8 @@ run_preview() {
         -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache; wait;
         cat imi_output.tmp >> ${InversionPath}/imi_output.log
         rm imi_output.tmp
+        # check for any errors
+        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
     else
         python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi

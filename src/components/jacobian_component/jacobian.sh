@@ -442,6 +442,9 @@ run_jacobian() {
         wait
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
+        # check if prior simulation exited with non-zero exit code
+        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Run the background simulation if lognormal errors enabled
@@ -453,6 +456,8 @@ run_jacobian() {
                 -p $SchedulerPartition \
                 -W run_bkgd_simulation.sh
             wait
+            # check if background simulation exited with non-zero exit code
+            [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
             printf "=== DONE BACKGROUND SIMULATION ===\n"
         fi
 

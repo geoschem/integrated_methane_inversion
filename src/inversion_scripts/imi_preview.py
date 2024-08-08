@@ -703,12 +703,19 @@ def add_observation_counts(df, state_vector, lat_step, lon_step):
 
 
 if __name__ == "__main__":
-    inversion_path = sys.argv[1]
-    config_path = sys.argv[2]
-    state_vector_path = sys.argv[3]
-    preview_dir = sys.argv[4]
-    tropomi_cache = sys.argv[5]
+    try:
+        inversion_path = sys.argv[1]
+        config_path = sys.argv[2]
+        state_vector_path = sys.argv[3]
+        preview_dir = sys.argv[4]
+        tropomi_cache = sys.argv[5]
 
-    imi_preview(
-        inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
-    )
+        imi_preview(
+            inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+        )
+    except Exception as err:
+        with open(".preview_error_status.txt", "w") as file1:
+            # Writing data to a file
+            file1.write("This file is used to tell the controlling script that the imi_preview failed")
+        print(err)
+        sys.exit(1)
