@@ -86,7 +86,6 @@ if [ $retVal -ne 0 ]; then\
     exit $retVal\
 fi' runHEMCO.sh
 
-    sed -i -e "/retVal=\$?/a retVal=\$?" runHEMCO.sh
     sa_XMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMIN)
     sa_XMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMAX)
     sa_YMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMIN)
@@ -151,13 +150,12 @@ run_hemco_sa() {
         -c $RequestedCPUs \
         -t $RequestedTime \
         -o ${RunName}_Prior.log \
-        -e .error_status_file.txt \
         -p $SchedulerPartition \
         -W ${RunName}_Prior.run
     wait
 
     # make sure error log is empty
-    [ ! -s ".error_status_file.txt" ] || imi_failed $LINENO
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     # Remove soil absorption uptake from total emissions
     pushd OutputDir
