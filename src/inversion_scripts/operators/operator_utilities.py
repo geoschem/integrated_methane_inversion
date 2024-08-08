@@ -119,7 +119,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
                 
                 
         gc_date = pd.to_datetime(date, format='%Y%m%d_%H')
-        ds_all = [concat_tracers(k, gc_date, config, v) for k,v in pert_simulations_dict.items()]
+        ds_all = [concat_tracers(k, gc_date, config, v, n_elements) for k,v in pert_simulations_dict.items()]
         ds_sensi = xr.concat(ds_all, 'element')
         ds_sensi.load()
         
@@ -129,14 +129,14 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         dat["jacobian_ch4"] = sensitivities
         
         # get emis base, which is also BC base
-        ds_emis_base = concat_tracers('0001', gc_date, config, [0], baserun=True)
+        ds_emis_base = concat_tracers('0001', gc_date, config, [0], n_elements, baserun=True)
         ds_emis_base.load()
         dat['emis_base_ch4'] = np.einsum('klji->ijlk', ds_emis_base['ch4'].values)
         
         # get OH base, run RunName_0000
         # it's always here whether OptimizeOH is true or not
         # so we can keep it here for convenience
-        ds_oh_base = concat_tracers('0000', gc_date, config, [0])
+        ds_oh_base = concat_tracers('0000', gc_date, config, n_elements, [0])
         ds_oh_base.load()
         dat['oh_base_ch4'] = np.einsum('klji->ijlk', ds_oh_base['ch4'].values)
         
@@ -144,17 +144,18 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     return dat
 
 
-def concat_tracers(run_id, gc_date, config, sv_elems, baserun=False):
+def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False):
     """
     Concatenate CH4 tracers from all jacobian GEOS-Chem simulations.
     Tracers are assigned a new dimension: "element"
 
     Arguments
-        run_id   [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
-        gc_date  [pd.Datetime] : date object, specifies Ymd_h
-        config   [dict]        : dictionary of IMI config file
-        sv_elems [list]        : list of state vector element tracers in this simulations
-        baserun  [bool]        : If True, only the base variable in the simulation will
+        run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
+        gc_date    [pd.Datetime] : date object, specifies Ymd_h
+        config     [dict]        : dictionary of IMI config file
+        sv_elems   [list]        : list of state vector element tracers in this simulations
+        n_elements [int]         : number of state vector elements in this inversion
+        baserun    [bool]        : If True, only the base variable in the simulation will
                                  be opened, and the function will just return this one
                                  variable instead of concatenating all elements. Used to 
                                  get the base for calculating the sensitivities.
@@ -177,11 +178,29 @@ def concat_tracers(run_id, gc_date, config, sv_elems, baserun=False):
         chunks = 'auto'
     )
     keepvars = [f'SpeciesConcVV_CH4_{i:04}' for i in sv_elems]
+
     if len(keepvars) == 1:
+
+        is_OH_element = check_is_OH_element(
+            sv_elems[0],
+            n_elements, 
+            config['OptimizeOH']
+        )
+        is_BC_element = check_is_BC_element(
+            sv_elems[0],
+            n_elements,
+            config['OptimizeOH'],
+            config['OptimizeBC'],
+            is_OH_element
+        )
+
         # for BC and OH elems, no number in var name
-        keepvars = ['SpeciesConcVV_CH4']
+        if (is_OH_element or is_BC_element):
+            keepvars = ['SpeciesConcVV_CH4']
+
     elif baserun:
         keepvars = ['SpeciesConcVV_CH4']
+
     ds_concat = xr.concat([dsmf[v] for v in keepvars], 'element').rename('ch4')
     ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
     ds_concat = ds_concat.isel(time=gc_date.hour, drop=True) #subset hour of interest
