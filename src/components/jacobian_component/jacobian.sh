@@ -29,7 +29,7 @@ setup_jacobian() {
     mkdir -p -v jacobian_runs
 
     if [ $NumJacobianTracers -gt 1 ]; then
-        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH)
+        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional )
 
         # Determine approx. number of CH4 tracers per Jacobian run
         printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
@@ -137,7 +137,11 @@ create_simulation_dir() {
     bcThreshold=$nElements
     if "$OptimizeBCs"; then
         if "$OptimizeOH"; then
-            bcThreshold=$(($nElements - 6))
+	    if "$isRegional"; then
+                bcThreshold=$(($nElements - 5))
+            else
+                bcThreshold=$(($nElements - 6))
+            fi
         else
             bcThreshold=$(($nElements - 4))
         fi
@@ -147,7 +151,11 @@ create_simulation_dir() {
     OH_elem=false
     ohThreshold=$nElements
     if "$OptimizeOH"; then
-        ohThreshold=$(($nElements - 2))
+        if "$isRegional"; then
+            ohThreshold=$(($nElements - 1))
+        else
+            ohThreshold=$(($nElements - 2))
+        fi
     fi
 
     # Update settings in HISTORY.rc
@@ -218,28 +226,33 @@ create_simulation_dir() {
             end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
         fi
 
-        # Perturb OH by hemisphere if this is an OH perturbations simulation
+        # Perturb OH if this is an OH state vector element
         if [ $start_element -gt $ohThreshold ]; then
             OH_elem=true
-
-            # Add and edit perturbations txt file
-            cp Perturbations.txt Perturbations_OH.txt
-            sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" Perturbations_OH.txt
-            if [ $start_element -eq $((ohThreshold+1)) ]; then
-                OHPertNewLine="N_HEMIS    1     ${PerturbValueOH}"
+            if "$isRegional"; then
+                # Perturb OH everywhere if this is a reginoal simulation
+                sed -i -e "s| OH_pert_factor 1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
             else
-                OHPertNewLine="S_HEMIS    2     ${PerturbValueOH}"
-            fi
-            OHPertPrevLine='DEFAULT    0     1.0'
-            sed -i "/$OHPertPrevLine/a $OHPertNewLine" Perturbations_OH.txt
+                # Perturb OH by hemisphere if this is a global simulation
+                # Add and edit perturbations txt file
+                cp Perturbations.txt PerturbationsOH.txt
+                sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
+                if [ $start_element -eq $((ohThreshold+1)) ]; then
+                    OHPertNewLine="N_HEMIS    1     ${PerturbValueOH}"
+                else
+                    OHPertNewLine="S_HEMIS    2     ${PerturbValueOH}"
+                fi
+                OHPertPrevLine='DEFAULT    0     1.0'
+                sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
 
-            # Modify OH scale factor in HEMCO config
-            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor Perturbations_OH.txt - - - xy 1 1|g" HEMCO_Config.rc
+                # Modify OH scale factor in HEMCO config
+                sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
 
-	    HcoPrevLineMask='CH4_STATE_VECTOR'
-	    HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
+                HcoPrevLineMask='CH4_STATE_VECTOR'
+                HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
 '
-	    sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+                sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+            fi
 	fi
 
         # If the current state vector element is one of the BC state vector elements, then
@@ -544,15 +557,19 @@ nTracers = int(sys.argv[1])
 nElements = int(sys.argv[2])
 bcOptimized = sys.argv[3].lower() == 'true'
 ohOptimized = sys.argv[4].lower() == 'true'
+isRegional = sys.argv[5].lower() == 'true'
 numStandaloneRuns = 0
 if bcOptimized:
     numStandaloneRuns += 4
 if ohOptimized:
-    numStandaloneRuns += 2
+    if isRegional:
+        numStandaloneRuns += 1
+    else:
+        numStandaloneRuns += 2
 nRuns = math.ceil((nElements - numStandaloneRuns) / nTracers)
 nRuns += numStandaloneRuns
 print(nRuns)
-" $1 $2 $3 $4
+" $1 $2 $3 $4 $5
 }
 
 is_number() {
