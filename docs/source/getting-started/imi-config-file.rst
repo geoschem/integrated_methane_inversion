@@ -226,6 +226,8 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
      - Boolean to run the spin-up simulation.
    * - ``DoJacobian``
      - Boolean to run the reference and sensitivity simulations.
+   * - ``DoJacobian``
+     - Boolean to specify whether the IMI should rerun all sensitivity simulation (``false``) or only rerun previously unsuccessful sensitivity simulations (``true``).
    * - ``DoInversion``
      - Boolean to run the inverse analysis code.
    * - ``DoPosterior``
