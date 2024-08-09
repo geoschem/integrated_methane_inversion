@@ -190,7 +190,7 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
             sv_elems[0],
             n_elements,
             config['OptimizeOH'],
-            config['OptimizeBC'],
+            config['OptimizeBCs'],
             is_OH_element
         )
 
