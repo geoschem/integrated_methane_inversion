@@ -48,14 +48,13 @@ For more information on costs, see :doc:`Tips for Minimizing AWS costs <minimizi
 
 .. _s3-permissions-label:
 
-3. Add S3 user permissions
+3. Add S3 user permissions (Optional Step)
 --------------------------
 
-Default input data for the IMI are stored in the Amazon Simple Storage Service (S3). 
-These include TROPOMI methane data, default prior emission estimates, GEOS-Chem meteorological data, and boundary condition data.
+This is an optional step but is recommended if you plan to use S3 for long-term storage of your inversion results.
 
-The IMI will automatically fetch the data needed for your inversion, but to enable this data transfer 
-you'll need to add S3 user permissions to your AWS account.
+Amazon Simple Storage Service (S3) is the base storage service on AWS. After running the IMI, you may wish to transfer your output 
+data to S3 for persistent storage. If you plan to use S3, you'll need to grant your EC2 instance access to S3.
 
 The easiest way to do this is to grant S3 access to an IAM role.
 Attaching the IAM role to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service) 
@@ -137,9 +136,12 @@ The "Network Settings" section can be left as the defaults. Proceed to "Configur
   And when your inversion is complete, consider :ref:`copying output data to S3 <s3storage-label>` and 
   :ref:`terminating your EC2 instance <shutdown-label>` to avoid continued storage fees.
 
-Expand the "Advance Details" section and select the IAM role you created in :ref:`step 2 <s3-permissions-label>` under "IAM Instance Profile".
-This ensures that your EC2 instance has access to S3 (for downloading TROPOMI data and GEOS-Chem input data).
+
+Expand the "Advanced Details" section and select the IAM role you created in :ref:`step 3 <s3-permissions-label>` under "IAM Instance Profile".
+This ensures that your EC2 instance has access to S3 (for uploading output data).
 All other config settings in "Advanced Details" can be left as the defaults.
+
+Note: Editing the advanced details is optional and only necessary if you completed step 3 and plan to use S3 for long-term storage of your inversion results.
 
 .. figure:: img/assign_iam_to_ec2.png
 
@@ -244,13 +246,13 @@ When you are ready to end your session, right-click on the instance in the AWS E
 
 .. image:: img/terminate.png
 
-There are two options for ending the session: "Stop" (temporary shutdown) or "Terminate" (permanent deletion):
+There are two options for ending the session: "Stop instance" (temporary shutdown) or "Terminate instance" (permanent deletion):
 
-- "Stop" will make the system inactive. 
+- "Stop instance" will make the system inactive. 
   You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB provisioned on your EC2 instance.
   You can restart the instance at any time and all files will be preserved.
   When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type").
-- "Terminate" will completely delete the instance so you will incur no further charges.
+- "Terminate instance" will completely delete the instance so you will incur no further charges.
   Unless you save the contents of your instance as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
 
 

@@ -30,6 +30,7 @@ def apply_average_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    use_water_obs=False,
 ):
     """
     Apply the averaging tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -45,6 +46,7 @@ def apply_average_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        use_water_obs  [bool]       : if True, use observations over water
 
     Returns
         output         [dict]       : Dictionary with:
@@ -69,10 +71,10 @@ def apply_average_tropomi_operator(
 
     if BlendedTROPOMI:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
     else:
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
@@ -201,6 +203,7 @@ def apply_tropomi_operator(
     gc_cache,
     build_jacobian,
     sensi_cache,
+    use_water_obs=False,
 ):
     """
     Apply the tropomi operator to map GEOS-Chem methane data to TROPOMI observation space.
@@ -216,6 +219,7 @@ def apply_tropomi_operator(
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         sensi_cache    [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        use_water_obs  [bool]       : if True, use observations over water
 
     Returns
         output         [dict]       : Dictionary with one or two fields:
@@ -240,10 +244,10 @@ def apply_tropomi_operator(
 
     if BlendedTROPOMI:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
     else:
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate)
+        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
@@ -525,7 +529,16 @@ def read_tropomi(filename):
         with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
             dat["methane_profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
             dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
-            dat["surface_classification"] = (tropomi_data["surface_classification"].values[0, :, :].astype("uint8") & 0x03).astype(int)
+
+            # Surface classification values of NaN will be filtered out
+            # due to a low QA value. We can make sure by setting them to 5
+            # and making sure nothing outside of [0,1,2,3] makes it through.
+            sc = tropomi_data["surface_classification"].values[0, :, :]
+            nan_mask = np.isnan(sc)
+            sc_no_nans = np.nan_to_num(sc, nan=0)
+            sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
+            sc[nan_mask] = 5
+            dat["surface_classification"] = sc
 
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa

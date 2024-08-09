@@ -154,8 +154,8 @@ def plot_field(
             "cultural", "admin_1_states_provinces_lines", "50m"
         )
         ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
-        ax.add_feature(oceans_50m, facecolor=[1, 1, 1], edgecolor="black")
-        ax.add_feature(lakes_50m, facecolor=[1, 1, 1], edgecolor="black")
+        ax.add_feature(oceans_50m, facecolor="none", edgecolor="black")
+        ax.add_feature(lakes_50m, facecolor="none", edgecolor="black")
         ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
     else:
         ax.coastlines(resolution='110m')
@@ -282,30 +282,32 @@ def plot_time_series(
     plt.show()
 
 
-def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate):
+def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=False):
     """
     Description:
         Filter out any data that does not meet the following
         criteria: We only consider data within lat/lon/time bounds,
         with QA > 0.5 and that don't cross the antimeridian.
-        Also, we filter out water pixels and south of 60S.
+        Also, we filter out pixels south of 60S and (optionally) over water.
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
-    return np.where(
-        (tropomi_data["longitude"] > xlim[0])
-        & (tropomi_data["longitude"] < xlim[1])
-        & (tropomi_data["latitude"] > ylim[0])
-        & (tropomi_data["latitude"] < ylim[1])
-        & (tropomi_data["time"] >= startdate)
-        & (tropomi_data["time"] <= enddate)
-        & (tropomi_data["qa_value"] >= 0.5)
-        & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
-        & (tropomi_data["surface_classification"] != 1)
-        & (tropomi_data["latitude"] > -60)
-    )
+    valid_idx = ((tropomi_data["longitude"] > xlim[0])
+              & (tropomi_data["longitude"] < xlim[1])
+              & (tropomi_data["latitude"] > ylim[0])
+              & (tropomi_data["latitude"] < ylim[1])
+              & (tropomi_data["time"] >= startdate)
+              & (tropomi_data["time"] <= enddate)
+              & (tropomi_data["qa_value"] >= 0.5)
+              & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
+              & (tropomi_data["latitude"] > -60))
 
-def filter_blended(blended_data, xlim, ylim, startdate, enddate):
+    if use_water_obs:
+        return np.where(valid_idx)
+    else:
+        return np.where(valid_idx & (tropomi_data["surface_classification"] != 1))
+
+def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=False):
     """
     Description:
         Filter out any data that does not meet the following
@@ -314,23 +316,25 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate):
         coastal pixels (surface classification 3) and inland water
         pixels with a poor fit (surface classifcation 2, 
         SWIR chi-2 > 20000) (recommendation from Balasus et al. 2023).
-        Also, we filter out water pixels and south of 60S.
+        Also, we filter out pixels south of 60S and (optionally) over water.
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
-    return np.where(
-        (blended_data["longitude"] > xlim[0])
-        & (blended_data["longitude"] < xlim[1])
-        & (blended_data["latitude"] > ylim[0])
-        & (blended_data["latitude"] < ylim[1])
-        & (blended_data["time"] >= startdate)
-        & (blended_data["time"] <= enddate)
-        & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
-        & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
-        & (blended_data["surface_classification"] != 1)
-        & (blended_data["latitude"] > -60)
-    )
 
+    valid_idx = ((blended_data["longitude"] > xlim[0])
+              & (blended_data["longitude"] < xlim[1])
+              & (blended_data["latitude"] > ylim[0])
+              & (blended_data["latitude"] < ylim[1])
+              & (blended_data["time"] >= startdate)
+              & (blended_data["time"] <= enddate)
+              & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
+              & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
+              & (blended_data["latitude"] > -60))
+    
+    if use_water_obs:
+        return np.where(valid_idx)
+    else:
+        return np.where(valid_idx & (blended_data["surface_classification"] != 1))
 
 def calculate_area_in_km(coordinate_list):
     """
@@ -460,7 +464,7 @@ def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     Calculate the mean emissions for the specified kalman period.
     """
     period_df = pd.read_csv(periods_csv_path)
-    period_df = period_df[period_df['period_number'] == period]
+    period_df = period_df[period_df['period_number'] == int(period)]
     period_df.reset_index(drop=True, inplace=True)
     start_date = str(period_df.loc[0,"Starts"])
     end_date = str(period_df.loc[0,"Ends"])

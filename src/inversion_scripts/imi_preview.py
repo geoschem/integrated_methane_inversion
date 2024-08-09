@@ -40,7 +40,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 def get_TROPOMI_data(
-    file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64
+    file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
 ):
     """
     Returns a dict with the lat, lon, xch4, and albedo_swir observations
@@ -59,6 +59,8 @@ def get_TROPOMI_data(
             start date for time period of interest
         enddate_np64: datetime64
             end date for time period of interest
+        use_water_obs: bool
+            if True, use observations over water
     Returns:
          tropomi_data: dict
             dictionary of the extracted values
@@ -78,10 +80,14 @@ def get_TROPOMI_data(
 
     if BlendedTROPOMI:
         # Only going to consider data within lat/lon/time bounds and without problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+        sat_ind = filter_blended(
+            TROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
+        )
     else:
         # Only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, startdate_np64, enddate_np64)
+        sat_ind = filter_tropomi(
+            TROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
+        )
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
@@ -112,7 +118,7 @@ def imi_preview(
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     for key in config.keys():
-        if isinstance(config[key],str):
+        if isinstance(config[key], str):
             config[key] = os.path.expandvars(config[key])
 
     # Open the state vector file
@@ -251,16 +257,22 @@ def imi_preview(
         dpi=150,
     )
 
+    # simple function to find the dynamic range for colorbar
+    dynamic_range = lambda vals: (
+        np.round(np.nanmedian(vals) / 25.0) * 25 - 25,
+        np.round(np.nanmedian(vals) / 25.0) * 25 + 25,
+    )
     # Plot observations
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+    xch4_min, xch4_max = dynamic_range(ds["xch4"].values)
     plot_field(
         ax,
         ds["xch4"],
         cmap="Spectral_r",
         plot_type="pcolormesh",
-        vmin=1800,
-        vmax=1850,
+        vmin=xch4_min,
+        vmax=xch4_max,
         lon_bounds=None,
         lat_bounds=None,
         title="TROPOMI $X_{CH4}$",
@@ -318,10 +330,10 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    
+
     # plot state vector
     num_colors = state_vector_labels.where(mask).max().item()
-    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors),3))
+    sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors), 3))
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
@@ -341,7 +353,7 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    
+
     # plot estimated averaging kernel sensitivities
     sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
@@ -363,7 +375,7 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
-    
+
     # calculate expected DOFS
     expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
@@ -416,6 +428,9 @@ def estimate_averaging_kernel(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
     )
 
+    # Whether to use observations over water?
+    use_water_obs = config["UseWaterObs"] if "UseWaterObs" in config.keys() else False
+
     # Define mask for ROI, to be used below
     mask = state_vector_labels <= last_ROI_element
 
@@ -430,7 +445,7 @@ def estimate_averaging_kernel(
     prior_cache = os.path.expandvars(
         os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
     )
-    
+
     # adjustments for when performing for dynamic kf clustering
     if kf_index is not None:
         # use different date range for KF inversion if kf_index is not None
@@ -445,7 +460,7 @@ def estimate_averaging_kernel(
         prior_ds = get_posterior_emissions(prior_ds, sf)
     else:
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
-        
+
     prior = prior_ds["EmisCH4_Total"]
 
     # Compute total emissions in the region of interest
@@ -499,7 +514,13 @@ def estimate_averaging_kernel(
     # Read in and filter tropomi observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
         delayed(get_TROPOMI_data)(
-            file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64
+            file_path,
+            BlendedTROPOMI,
+            xlim,
+            ylim,
+            startdate_np64,
+            enddate_np64,
+            use_water_obs,
         )
         for file_path in tropomi_paths
     )
@@ -586,13 +607,17 @@ def estimate_averaging_kernel(
         startday_dt = datetime.datetime.strptime(startday, "%Y%m%d")
         endday_dt = datetime.datetime.strptime(endday, "%Y%m%d")
         if not config["MakePeriodsCSV"]:
-            rundir_path = preview_dir.split("preview_run")[0]
+            rundir_path = preview_dir.split("preview")[0]
             periods = pd.read_csv(f"{rundir_path}periods.csv")
             n_periods = periods.iloc[-1]["period_number"]
-            m = ((endday_dt - startday_dt).days) / n_periods # average number of days in each inversion period
+            m = (
+                (endday_dt - startday_dt).days
+            ) / n_periods  # average number of days in each inversion period
         else:
-            n_periods = np.floor((endday_dt - startday_dt).days / config["UpdateFreqDays"])
-            m = config["UpdateFreqDays"]  # number of days in inversion period      
+            n_periods = np.floor(
+                (endday_dt - startday_dt).days / config["UpdateFreqDays"]
+            )
+            m = config["UpdateFreqDays"]  # number of days in inversion period
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
 
@@ -678,12 +703,19 @@ def add_observation_counts(df, state_vector, lat_step, lon_step):
 
 
 if __name__ == "__main__":
-    inversion_path = sys.argv[1]
-    config_path = sys.argv[2]
-    state_vector_path = sys.argv[3]
-    preview_dir = sys.argv[4]
-    tropomi_cache = sys.argv[5]
+    try:
+        inversion_path = sys.argv[1]
+        config_path = sys.argv[2]
+        state_vector_path = sys.argv[3]
+        preview_dir = sys.argv[4]
+        tropomi_cache = sys.argv[5]
 
-    imi_preview(
-        inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
-    )
+        imi_preview(
+            inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+        )
+    except Exception as err:
+        with open(".preview_error_status.txt", "w") as file1:
+            # Writing data to a file
+            file1.write("This file is used to tell the controlling script that the imi_preview failed")
+        print(err)
+        sys.exit(1)

@@ -16,6 +16,9 @@ SpinupMonths: 1
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
 BlendedTROPOMI: false
 
+## Use observations over water? Set to false to filter out water observations 
+UseWaterObs: false
+
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
 
@@ -45,6 +48,8 @@ LatMax: 33
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
+MakePeriodsCSV: true
+CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true

@@ -42,7 +42,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     hemco_emis = hemco_diags
     posterior_sf = xr.load_dataset(post_sf_path)
     posterior_emis_ds = get_posterior_emissions(hemco_emis, posterior_sf)
-    posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+    posterior_emis = posterior_emis_ds["EmisCH4_Total"]
     total_emis = sum_total_emissions(posterior_emis, areas, mask)
 
     # Print

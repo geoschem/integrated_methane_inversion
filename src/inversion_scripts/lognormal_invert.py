@@ -286,12 +286,13 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # Save (ungridded) inversion results
         dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
-        dataset.createDimension("nvar", num_sv_elems)
+        dataset.createDimension("nvar1", num_sv_elems)
+        dataset.createDimension("nvar2", num_sv_elems)
         dataset.createDimension("float", 1)
-        nc_xn = dataset.createVariable("xhat", np.float32, ("nvar"))
-        nc_lnxn = dataset.createVariable("lnxn", np.float32, ("nvar"))
-        nc_lnS_post = dataset.createVariable("S_post", np.float32, ("nvar", "nvar"))
-        nc_A = dataset.createVariable("A", np.float32, ("nvar", "nvar"))
+        nc_xn = dataset.createVariable("xhat", np.float32, ("nvar1"))
+        nc_lnxn = dataset.createVariable("lnxn", np.float32, ("nvar1"))
+        nc_lnS_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
+        nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
         nc_dofs = dataset.createVariable("DOFS", np.float32, ("float",))
         nc_Ja = dataset.createVariable("Ja", np.float32, ("float",))
         nc_xn[:] = xnmean.flatten()
