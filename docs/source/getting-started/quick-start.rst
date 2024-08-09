@@ -137,11 +137,11 @@ The "Network Settings" section can be left as the defaults. Proceed to "Configur
   :ref:`terminating your EC2 instance <shutdown-label>` to avoid continued storage fees.
 
 
-This next part is optional and only necessary if you completed step 3 and plan to use S3 for long-term storage of your inversion results.
-
-Expand the "Advance Details" section and select the IAM role you created in :ref:`step 3 <s3-permissions-label>` under "IAM Instance Profile".
+Expand the "Advanced Details" section and select the IAM role you created in :ref:`step 3 <s3-permissions-label>` under "IAM Instance Profile".
 This ensures that your EC2 instance has access to S3 (for uploading output data).
 All other config settings in "Advanced Details" can be left as the defaults.
+
+Note: Editing the advanced details is optional and only necessary if you completed step 3 and plan to use S3 for long-term storage of your inversion results.
 
 .. figure:: img/assign_iam_to_ec2.png
 
@@ -246,13 +246,13 @@ When you are ready to end your session, right-click on the instance in the AWS E
 
 .. image:: img/terminate.png
 
-There are two options for ending the session: "Stop" (temporary shutdown) or "Terminate" (permanent deletion):
+There are two options for ending the session: "Stop instance" (temporary shutdown) or "Terminate instance" (permanent deletion):
 
-- "Stop" will make the system inactive. 
+- "Stop instance" will make the system inactive. 
   You won't be charged for CPU time, but you will be charged a disk storage fee for the number of GB provisioned on your EC2 instance.
   You can restart the instance at any time and all files will be preserved.
   When an instance is stopped, you can also change its hardware type (right click on the instance -> "Instance Settings" -> "Change Instance Type").
-- "Terminate" will completely delete the instance so you will incur no further charges.
+- "Terminate instance" will completely delete the instance so you will incur no further charges.
   Unless you save the contents of your instance as an AMI or transfer the data to another storage service (like S3), you will lose all your data and software.
 
 

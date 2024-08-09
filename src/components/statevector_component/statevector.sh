@@ -79,6 +79,7 @@ reduce_dimension() {
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
     if "$UseSlurm"; then
+        rm -f .aggregation_error.txt
         chmod +x $aggregation_file
         sbatch --mem $RequestedMemory \
         -c $RequestedCPUs \
@@ -88,6 +89,8 @@ reduce_dimension() {
         -W "${python_args[@]}"; wait;
         cat imi_output.tmp >> ${InversionPath}/imi_output.log
         rm imi_output.tmp
+        # check for any errors
+        [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
     else
         python "${python_args[@]}"
     fi

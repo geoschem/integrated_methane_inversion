@@ -526,6 +526,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
+            agg_level = int(elements_left/clusters_left)
             print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0), clusters_left, mini_batch,
@@ -611,42 +612,49 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
 
 if __name__ == "__main__":
-    inversion_path = sys.argv[1]
-    config_path = sys.argv[2]
-    state_vector_path = sys.argv[3]
-    preview_dir = sys.argv[4]
-    tropomi_cache = sys.argv[5]
-    kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    try:
+        inversion_path = sys.argv[1]
+        config_path = sys.argv[2]
+        state_vector_path = sys.argv[3]
+        preview_dir = sys.argv[4]
+        tropomi_cache = sys.argv[5]
+        kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
+        config = yaml.load(open(config_path), Loader=yaml.FullLoader)
 
-    original_clusters = xr.open_dataset(state_vector_path)
-    sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
+        original_clusters = xr.open_dataset(state_vector_path)
+        sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
 
-    # dynamically generate sensitivities with only a
-    # subset of the data if kf_index is not None
-    if kf_index is not None:
-        print(f"Dynamically generating clusters for period: {kf_index}.")
-        sensitivity_args.append(kf_index)
+        # dynamically generate sensitivities with only a
+        # subset of the data if kf_index is not None
+        if kf_index is not None:
+            print(f"Dynamically generating clusters for period: {kf_index}.")
+            sensitivity_args.append(kf_index)
 
-    sensitivities = estimate_averaging_kernel(*sensitivity_args)
+        sensitivities = estimate_averaging_kernel(*sensitivity_args)
 
-    # force point sources to be high resolution by updating sensitivities
-    sensitivities = force_native_res_pixels(
-        config, original_clusters["StateVector"], sensitivities
-    )
-    print(
-        "Creating new clusters based on cluster pairings. "
-        + "Run time needed will vary with state vector size."
-        + "\nUsing ClusteringMethod: 'mini-batch-kmeans' will "
-        + "perform faster, but may reduce cluster accuracy."
-    
-    )
-    # generate multi resolution state vector
-    new_sv = update_sv_clusters(config, sensitivities, original_clusters)
-    original_clusters.close()
+        # force point sources to be high resolution by updating sensitivities
+        sensitivities = force_native_res_pixels(
+            config, original_clusters["StateVector"], sensitivities
+        )
+        print(
+            "Creating new clusters based on cluster pairings. "
+            + "Run time needed will vary with state vector size."
+            + "\nUsing ClusteringMethod: 'mini-batch-kmeans' will "
+            + "perform faster, but may reduce cluster accuracy."
+        
+        )
+        # generate multi resolution state vector
+        new_sv = update_sv_clusters(config, sensitivities, original_clusters)
+        original_clusters.close()
 
-    # replace original statevector file
-    new_sv.to_netcdf(
-        state_vector_path,
-        encoding={v: {"zlib": True, "complevel": 1} for v in new_sv.data_vars},
-    )
+        # replace original statevector file
+        new_sv.to_netcdf(
+            state_vector_path,
+            encoding={v: {"zlib": True, "complevel": 1} for v in new_sv.data_vars},
+        )
+    except Exception as err:
+        with open(".aggregation_error.txt", "w") as file1:
+            # Writing data to a file
+            file1.write("This file is used to tell the controlling script that state vector clustering failed")
+        print(err)
+        sys.exit(1)
