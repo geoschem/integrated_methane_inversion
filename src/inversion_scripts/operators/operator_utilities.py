@@ -198,7 +198,7 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
         if (is_OH_element or is_BC_element):
             keepvars = ['SpeciesConcVV_CH4']
 
-    elif baserun:
+    if baserun:
         keepvars = ['SpeciesConcVV_CH4']
 
     ds_concat = xr.concat([dsmf[v] for v in keepvars], 'element').rename('ch4')
