@@ -136,7 +136,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         # get OH base, run RunName_0000
         # it's always here whether OptimizeOH is true or not
         # so we can keep it here for convenience
-        ds_oh_base = concat_tracers('0000', gc_date, config, n_elements, [0])
+        ds_oh_base = concat_tracers('0000', gc_date, config, [0], n_elements)
         ds_oh_base.load()
         dat['oh_base_ch4'] = np.einsum('klji->ijlk', ds_oh_base['ch4'].values)
         
