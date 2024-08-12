@@ -300,7 +300,7 @@ def apply_tropomi_operator(
     gc_cache,
     build_jacobian,
     period_i,
-    config
+    config,
     use_water_obs=False,
 ):
     """
