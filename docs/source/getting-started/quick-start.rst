@@ -170,8 +170,8 @@ Select your instance and click on the "Connect" button (shown in the figure abov
 
   (1) ``cd`` to the directory where your Key Pair is stored. People often put the key in ``~/.ssh/`` but any directory will do.
   (2) Use ``chmod 400 your-key-name.pem`` to change the key pair's permission (also mentioned in the above figure; this only needs to be done once).
-  (3) Change the user name in the command from ``root`` to ``ubuntu`` so that the full command
-      looks like ``ssh -i "your-key-name.pem" ubuntu@ec2-##-###-##-##.compute-1.amazonaws.com``
+  (3) **Change the user name in the command from** ``root`` to ``ubuntu`` so that the full command
+      looks like ``ssh -i "/path/to/your-key-name.pem" ubuntu@ec2-##-###-##-##.compute-1.amazonaws.com``
 
 - On Windows, you can install `Git-BASH <https://gitforwindows.org>`_ to emulate a Linux terminal. 
   Simply accept all default options during installation, as the goal here is just to use Bash, not Git. 
