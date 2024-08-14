@@ -107,6 +107,27 @@ def count_obs_in_mask(mask, df):
     return n_obs
 
 
+def check_is_OH_element(sv_elem, nelements, opt_OH):
+    """
+    Determine if the current state vector element is the OH element
+    """
+    return opt_OH and (sv_elem == nelements)
+
+
+def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element):
+    """
+    Determine if the current state vector element is a boundary condition element
+    """
+    return (
+        not is_OH_element
+        and opt_BC
+        and (
+            (opt_OH and (sv_elem > (nelements - 5)))
+            or ((not opt_OH) and (sv_elem > (nelements - 4)))
+        )
+    )
+
+
 def plot_field(
     ax,
     field,
@@ -464,8 +485,8 @@ def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     Calculate the mean emissions for the specified kalman period.
     """
     period_df = pd.read_csv(periods_csv_path)
-    period_df = period_df[period_df['period_number'] == int(period)]
-    period_df.reset_index(drop=True, inplace=True)
+    period_df = period_df[period_df['period_number'].astype(int) == int(period)]
+    period_df = period_df.reset_index(drop=True)
     start_date = str(period_df.loc[0,"Starts"])
     end_date = str(period_df.loc[0,"Ends"])
     return get_mean_emissions(start_date, end_date, prior_cache_path)

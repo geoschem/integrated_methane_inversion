@@ -23,7 +23,7 @@ def make_unit_sf(state_vector_path, save_directory):
     save_path = os.path.join(save_directory, "unit_sf.nc")
     scale_factor.to_netcdf(
         save_path,
-        encoding={v: {"zlib": True, "complevel": 9} for v in scale_factor.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in scale_factor.data_vars},
     )
 
 
