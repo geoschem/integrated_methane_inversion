@@ -135,14 +135,14 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     save_path = os.path.join(base_directory, "ScaleFactors.nc")
     sf.to_netcdf(
         save_path,
-        encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in sf.data_vars},
     )
 
     # Archive scale factors
     archive_path = os.path.join(base_directory, "archive_sf")
     sf.to_netcdf(
         os.path.join(archive_path, f"prior_sf_period{period_number}.nc"),
-        encoding={v: {"zlib": True, "complevel": 9} for v in sf.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in sf.data_vars},
     )
 
 

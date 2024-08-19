@@ -1,18 +1,44 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
+import yaml
+from src.inversion_scripts.utils import (
+    check_is_OH_element,
+    check_is_BC_element
+)
+
+
+
 
 # common utilities for using different operators
+def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
+    """
+    Call readgeoschem() for multiple dates in a loop.
 
-def read_geoschem(date, gc_cache, build_jacobian=False, sensi_cache=None):
+    Arguments
+        all_strdate    [list, str] : Multiple date strings
+        gc_cache       [str]       : Path to GEOS-Chem output data
+        build_jacobian [log]       : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
+
+    Returns
+        dat            [dict]      : Dictionary of dictionaries. Each sub-dictionary is returned by read_geoschem()
+    """
+
+    dat = {}
+    for strdate in all_strdate:
+        dat[strdate] = read_geoschem(strdate, gc_cache, n_elements, config, build_jacobian)
+
+    return dat
+
+
+def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     """
     Read GEOS-Chem data and save important variables to dictionary.
 
     Arguments
-        date           [str]   : Date of interest
+        date           [str]   : Date of interest, format "YYYYMMDD_HH"
         gc_cache       [str]   : Path to GEOS-Chem output data
         build_jacobian [log]   : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]   : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
 
     Returns
         dat            [dict]  : Dictionary of important variables from GEOS-Chem:
@@ -52,14 +78,137 @@ def read_geoschem(date, gc_cache, build_jacobian=False, sensi_cache=None):
 
     # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
     if build_jacobian:
-        sensitivity_data = xr.open_dataset(f"{sensi_cache}/sensi_{date}.nc")
-        sensitivities = sensitivity_data["Sensitivities"].values
+        
+        elements = range(n_elements)
+        ntracers = config['NumJacobianTracers']
+        opt_OH = config['OptimizeOH']
+        opt_BC = config['OptimizeBCs']
+
+        n_base_runs = (n_elements - int(opt_OH) - (int(opt_BC) * 4)) / ntracers
+        
+        nruns = (
+            np.ceil(n_base_runs).astype(int) +
+            int(opt_OH) +
+            (int(opt_BC) * 4)
+        )
+        
+        # Dictionary that stores mapping of state vector elements to
+        # perturbation simulation numbers
+        pert_simulations_dict = {}
+        for e in elements:
+            # State vector elements are numbered 1..nelements
+            sv_elem = e + 1
+        
+            is_OH_element = check_is_OH_element(sv_elem, n_elements, opt_OH)
+            # Determine which run directory to look in
+            if is_OH_element:
+                run_number = nruns
+            elif check_is_BC_element(sv_elem, n_elements, opt_OH, opt_BC, is_OH_element):
+                num_back = n_elements % sv_elem
+                run_number = nruns - num_back
+            else:
+                run_number = np.ceil(sv_elem / ntracers).astype(int)
+        
+            run_num = str(run_number).zfill(4)
+        
+            # add the element to the dictionary for the relevant simulation number
+            if run_num not in pert_simulations_dict:
+                pert_simulations_dict[run_num] = [sv_elem]
+            else:
+                pert_simulations_dict[run_num].append(sv_elem)
+                
+                
+        gc_date = pd.to_datetime(date, format='%Y%m%d_%H')
+        ds_all = [concat_tracers(k, gc_date, config, v, n_elements) for k,v in pert_simulations_dict.items()]
+        ds_sensi = xr.concat(ds_all, 'element')
+        ds_sensi.load()
+        
+        sensitivities = ds_sensi["ch4"].values
         # Reshape so the data have dimensions (lon, lat, lev, grid_element)
         sensitivities = np.einsum("klji->ijlk", sensitivities)
-        sensitivity_data.close()
-        dat["Sensitivities"] = sensitivities
+        dat["jacobian_ch4"] = sensitivities
+        
+        # get emis base, which is also BC base
+        ds_emis_base = concat_tracers('0001', gc_date, config, [0], n_elements, baserun=True)
+        ds_emis_base.load()
+        dat['emis_base_ch4'] = np.einsum('klji->ijlk', ds_emis_base['ch4'].values)
+        
+        # get OH base, run RunName_0000
+        # it's always here whether OptimizeOH is true or not
+        # so we can keep it here for convenience
+        ds_oh_base = concat_tracers('0000', gc_date, config, [0], n_elements, baserun=True)
+        ds_oh_base.load()
+        dat['oh_base_ch4'] = np.einsum('klji->ijlk', ds_oh_base['ch4'].values)
+        
 
     return dat
+
+
+def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False):
+    """
+    Concatenate CH4 tracers from all jacobian GEOS-Chem simulations.
+    Tracers are assigned a new dimension: "element"
+
+    Arguments
+        run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
+        gc_date    [pd.Datetime] : date object, specifies Ymd_h
+        config     [dict]        : dictionary of IMI config file
+        sv_elems   [list]        : list of state vector element tracers in this simulations
+        n_elements [int]         : number of state vector elements in this inversion
+        baserun    [bool]        : If True, only the base variable in the simulation will
+                                 be opened, and the function will just return this one
+                                 variable instead of concatenating all elements. Used to 
+                                 get the base for calculating the sensitivities.
+
+    Returns
+        ds_concat [xarray.Dataset] : dataset of all Jacobian CH4 at this timestep for 
+                                     all tracer runs. Has dimensions
+                                        - lat
+                                        - lon
+                                        - lev
+                                        - element
+                                    
+
+    """
+    prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
+    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
+    file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')
+    dsmf = xr.open_dataset(
+        '/'.join([j_dir,file_stub]),
+        chunks = 'auto'
+    )
+    keepvars = [f'SpeciesConcVV_CH4_{i:04}' for i in sv_elems]
+
+    if len(keepvars) == 1:
+
+        is_OH_element = check_is_OH_element(
+            sv_elems[0],
+            n_elements, 
+            config['OptimizeOH']
+        )
+        is_BC_element = check_is_BC_element(
+            sv_elems[0],
+            n_elements,
+            config['OptimizeOH'],
+            config['OptimizeBCs'],
+            is_OH_element
+        )
+
+        # for BC and OH elems, no number in var name
+        if (is_OH_element or is_BC_element):
+            keepvars = ['SpeciesConcVV_CH4']
+
+    if baserun:
+        keepvars = ['SpeciesConcVV_CH4']
+
+    ds_concat = xr.concat([dsmf[v] for v in keepvars], 'element').rename('ch4')
+    ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
+    ds_concat = ds_concat.isel(time=gc_date.hour, drop=True) #subset hour of interest
+    if not baserun:
+        ds_concat = ds_concat.assign_coords({'element':sv_elems})
+    return ds_concat
+
+
 
 def get_gridcell_list(lons, lats):
     """
@@ -125,26 +274,6 @@ def get_gc_lat_lon(gc_cache, start_date):
     gc_data.close()
     return gc_ll
 
-
-def read_all_geoschem(all_strdate, gc_cache, build_jacobian=False, sensi_cache=None):
-    """
-    Call readgeoschem() for multiple dates in a loop.
-
-    Arguments
-        all_strdate    [list, str] : Multiple date strings
-        gc_cache       [str]       : Path to GEOS-Chem output data
-        build_jacobian [log]       : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        sensi_cache    [str]       : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
-
-    Returns
-        dat            [dict]      : Dictionary of dictionaries. Each sub-dictionary is returned by read_geoschem()
-    """
-
-    dat = {}
-    for strdate in all_strdate:
-        dat[strdate] = read_geoschem(strdate, gc_cache, build_jacobian, sensi_cache)
-
-    return dat
 
 
 def merge_pressure_grids(p_sat, p_gc):

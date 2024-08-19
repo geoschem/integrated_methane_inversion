@@ -60,3 +60,6 @@ the following items in the inversion directory after completing an inversion:
          kernel matrix projected onto the 2-D inversion grid.
    * - ``visualization_notebook.ipynb``
      - | Jupyter notebook for quickly visualizing key results of the inversion.
+   * - ``visualization_notebook.html``
+     - | For convenience, we run the Jupyter notebook as part of the IMI and output the resultant notebook 
+         to an html file, which can be viewed and rendered by your browser.

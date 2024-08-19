@@ -650,7 +650,7 @@ if __name__ == "__main__":
         # replace original statevector file
         new_sv.to_netcdf(
             state_vector_path,
-            encoding={v: {"zlib": True, "complevel": 9} for v in new_sv.data_vars},
+            encoding={v: {"zlib": True, "complevel": 1} for v in new_sv.data_vars},
         )
     except Exception as err:
         with open(".aggregation_error.txt", "w") as file1:

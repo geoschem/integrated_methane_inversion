@@ -100,8 +100,10 @@ def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None)
     
     # Replace any values greater than the threshold to avoid issues 
     # with reaching infinity
+    # Replace any NaN values to 1.0
     max_sf_threshold = 15000000.0
     jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
+    jacobian_pert_sf = np.nan_to_num(jacobian_pert_sf, nan=1.0)
 
     # If we are using a kalman filter and have nudged prior emissions,
     # calculate the effective scale factors based on the nudged prior emissions

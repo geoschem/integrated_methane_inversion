@@ -7,6 +7,7 @@ import numpy as np
 import re
 import os
 import datetime
+import yaml
 from src.inversion_scripts.utils import save_obj
 from src.inversion_scripts.operators.TROPOMI_operator import (
     apply_average_tropomi_operator,
@@ -15,7 +16,7 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
 from joblib import Parallel, delayed
 
 
-def apply_operator(operator, params):
+def apply_operator(operator, params, config):
     """
     Run the chosen operator based on selected instrument
 
@@ -43,7 +44,8 @@ def apply_operator(operator, params):
             params["ylim"],
             params["gc_cache"],
             params["build_jacobian"],
-            params["sensi_cache"],
+            params["period_i"],
+            config,
             params["use_water_obs"],
         )
     elif operator == "TROPOMI":
@@ -57,7 +59,8 @@ def apply_operator(operator, params):
             params["ylim"],
             params["gc_cache"],
             params["build_jacobian"],
-            params["sensi_cache"],
+            params["period_i"],
+            config,
             params["use_water_obs"],
         )
     else:
@@ -66,19 +69,21 @@ def apply_operator(operator, params):
 
 if __name__ == "__main__":
 
-    startday = sys.argv[1]
-    endday = sys.argv[2]
-    lonmin = float(sys.argv[3])
-    lonmax = float(sys.argv[4])
-    latmin = float(sys.argv[5])
-    latmax = float(sys.argv[6])
-    n_elements = int(sys.argv[7])
-    tropomi_cache = sys.argv[8]
-    BlendedTROPOMI = sys.argv[9].lower() == "true"
-    use_water_obs = sys.argv[10].lower() == "true"
-    isPost = sys.argv[11]
-    build_jacobian = sys.argv[12]
-    viz_prior = sys.argv[13]
+    config = yaml.load(open(sys.argv[1]), Loader=yaml.FullLoader)
+    startday = sys.argv[2]
+    endday = sys.argv[3]
+    lonmin = float(sys.argv[4])
+    lonmax = float(sys.argv[5])
+    latmin = float(sys.argv[6])
+    latmax = float(sys.argv[7])
+    n_elements = int(sys.argv[8])
+    tropomi_cache = sys.argv[9]
+    BlendedTROPOMI = sys.argv[10].lower() == "true"
+    use_water_obs = sys.argv[11].lower() == "true"
+    isPost = sys.argv[12]
+    period_i = int(sys.argv[13])
+    build_jacobian = sys.argv[14]
+    viz_prior = sys.argv[15]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -86,7 +91,6 @@ if __name__ == "__main__":
 
     # Configuration
     workdir = "."
-    sensi_cache = f"{workdir}/data_sensitivities"
     if build_jacobian.lower() == "true":
         build_jacobian = True
     else:
@@ -157,9 +161,10 @@ if __name__ == "__main__":
                     "ylim": ylim,
                     "gc_cache": gc_cache,
                     "build_jacobian": build_jacobian,
-                    "sensi_cache": sensi_cache,
+                    "period_i": period_i,
                     "use_water_obs": use_water_obs,
                 },
+                config
             )
 
             # we also save out the unaveraged tropomi operator for visualization purposes
@@ -175,9 +180,10 @@ if __name__ == "__main__":
                     "ylim": ylim,
                     "gc_cache": gc_cache,
                     "build_jacobian": False,
-                    "sensi_cache": sensi_cache,
+                    "period_i": period_i,
                     "use_water_obs": use_water_obs,
                 },
+                config
             )
             
             if output == None:
