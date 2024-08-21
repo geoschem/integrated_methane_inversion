@@ -1,7 +1,8 @@
+import os
+import yaml
 import numpy as np
 import xarray as xr
 import pandas as pd
-import yaml
 from src.inversion_scripts.utils import (
     check_is_OH_element,
     check_is_BC_element
@@ -171,7 +172,7 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
 
     """
     prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
-    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
+    j_dir = os.path.expandvars(f"{prefix}/{config['RunName']}_{run_id}/OutputDir")
     file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')
     dsmf = xr.open_dataset(
         '/'.join([j_dir,file_stub]),
