@@ -14,9 +14,9 @@ def get_hemco_grid_vars(sv):
     XEDGE = calc_edges(sv.lon)
     
     if option == "YMID":
-        print(" ".join([f"{num:.2f}" for num in YMID]))
+        print(" ".join([f"{num:.5f}" for num in YMID]))
     elif option == "YEDGE":
-        print(" ".join([f"{num:.3f}" for num in YEDGE]))
+        print(" ".join([f"{num:.5f}" for num in YEDGE]))
     elif option == "XMIN":
         XMIN = XEDGE[0]
         print(XMIN)
