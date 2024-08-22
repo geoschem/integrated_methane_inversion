@@ -289,7 +289,7 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``HourlyCH4``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
-     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <http://wiki.seas.harvard.edu/geos-chem/index.php/Planeflight_diagnostic>`_ documentation for details. Default value is ``false``.
+     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
    * - ``GOSAT``
      - Boolean to turn on the GOSAT observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
    * - ``TCCON``

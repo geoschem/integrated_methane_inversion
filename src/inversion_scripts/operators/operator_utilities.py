@@ -2,7 +2,6 @@ import os
 import numpy as np
 import xarray as xr
 import pandas as pd
-import yaml
 from src.inversion_scripts.utils import (
     check_is_OH_element,
     check_is_BC_element
