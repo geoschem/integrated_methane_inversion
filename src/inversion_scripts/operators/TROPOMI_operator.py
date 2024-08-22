@@ -216,12 +216,12 @@ def apply_average_tropomi_operator(
                 # booleans for whether this element is a
                 # BC element or OH element
                 is_OH_element = check_is_OH_element(
-                    i_elem, n_elements, config['OptimizeOH']
+                    i_elem, n_elements, config['OptimizeOH'], config['isRegional']
                 )
 
                 is_BC_element = check_is_BC_element(
                     i_elem, n_elements, config['OptimizeOH'],
-                    config['OptimizeBCs'], is_OH_element
+                    config['OptimizeBCs'], is_OH_element, config['isRegional']
                 )
                 
                 is_oh[e] = is_OH_element
