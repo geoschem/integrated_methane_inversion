@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -182,7 +183,9 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
                                     
 
     """
-    prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
+    prefix = os.path.expandvars(
+        config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
+    )
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')
     dsmf = xr.open_dataset(

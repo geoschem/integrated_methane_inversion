@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -102,7 +103,7 @@ def apply_average_tropomi_operator(
         jacobian_K = np.zeros([n_gridcells, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
         
-        pertf = (
+        pertf = os.path.expandvars(
             f'{config["OutputPath"]}/{config["RunName"]}/'
             f'archive_perturbation_sfs/pert_sf_{period_i}.npz'
         )
