@@ -36,7 +36,6 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     read_blended,
 )
 
-warnings.filterwarnings("ignore", message="PROJ: proj_create_from_database")
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
@@ -67,7 +66,7 @@ def get_TROPOMI_data(
             dictionary of the extracted values
     """
     # tropomi data dictionary
-    tropomi_data = {"lat": [], "lon": [], "xch4": [], "swir_albedo": []}
+    tropomi_data = {"lat": [], "lon": [], "xch4": [], "swir_albedo": [], "time": []}
 
     # Load the TROPOMI data
     assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
@@ -535,6 +534,7 @@ def estimate_averaging_kernel(
         lon.extend(obs_dict["lon"])
         xch4.extend(obs_dict["xch4"])
         albedo.extend(obs_dict["swir_albedo"])
+        trtime.extend(obs_dict["time"])
 
     # Assemble in dataframe
     df = pd.DataFrame()
@@ -543,6 +543,7 @@ def estimate_averaging_kernel(
     df["obs_count"] = np.ones(len(lat))
     df["swir_albedo"] = albedo
     df["xch4"] = xch4
+    df["time"] = trtime
 
     # Set resolution specific variables
     # L_native = Rough length scale of native state vector element [m]
@@ -587,7 +588,7 @@ def estimate_averaging_kernel(
         state_vector
     ])
     # replace NaNs with 0s to avoid issues with summing
-    daily_observation_counts.values = np.where(np.isnan(daily_observation_counts),0,1)
+    daily_observation_counts["obs_count"].values = np.where(np.isnan(daily_observation_counts["obs_count"].values),0,1)
 
     # parallel processing function
     def process(i):
@@ -599,9 +600,9 @@ def estimate_averaging_kernel(
         # append the calculated length scale of element
         L_temp = L_native * size_temp
         # append the number of obs in each element
-        num_obs_temp = np.nansum(observation_counts.where(mask).values)
+        num_obs_temp = np.nansum(observation_counts["obs_count"].where(mask).values)
         # append the number of successful obs days
-        n_success_obs_days = np.nansum(daily_observation_counts.where(mask)).item()
+        n_success_obs_days = np.nansum(daily_observation_counts["obs_count"].where(mask).values).item()
         return emissions_temp, L_temp, size_temp, num_obs_temp, n_success_obs_days
 
     # in parallel, create lists of emissions, number of observations,
@@ -668,12 +669,9 @@ def estimate_averaging_kernel(
     sO = config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
-    # from P observations per grid cell = number of observations per grid cell / m_superi observation days
+    # from P observations per grid cell = number of observations per grid cell / number of super-observations
     # P is number of observations per grid cell (native state vector element)
-    # Note: to account for clustering we divide num_obs by the number of 
-    # native state vector elements. This assumes observations within a statevector element 
-    # are distributed evenly amongst constituent grid cells
-    P = np.array(num_obs) / num_native_elements / m_superi
+    P = np.array(num_obs) / m_superi
     s_superO_1 = calculate_superobservation_error(
         sO, 1
     )  # for handling cells with 0 observations (avoid divide by 0)
@@ -696,7 +694,7 @@ def estimate_averaging_kernel(
     a = np.where(
         np.equal(m_superi, 0),
         float(0),
-        sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi * num_native_elements))
+        sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
     )
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
