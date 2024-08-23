@@ -36,6 +36,7 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     read_blended,
 )
 
+warnings.filterwarnings("ignore", message="PROJ: proj_create_from_database")
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
