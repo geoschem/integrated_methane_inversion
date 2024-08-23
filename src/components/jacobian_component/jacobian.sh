@@ -293,19 +293,18 @@ create_simulation_dir() {
     sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
     sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
 
+    # Initialize previous lines to search
+    GcPrevLine='- CH4'
+    HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
+    HcoPrevLine2='1 500'
+    HcoPrevLine3='Perturbations.txt - - - xy count 1'
+    HcoPrevLine4='\* BC_CH4'
+    PertPrevLine='DEFAULT    0     0.0'
+
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
     if is_number "$x"; then
-        if [ $x -gt 0 ]; then
-
-	    # Initialize previous lines to search
-	    GcPrevLine='- CH4'
-	    HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
-	    HcoPrevLine2='1 500'
-	    HcoPrevLine3='Perturbations.txt - - - xy count 1'
-	    HcoPrevLine4='\* BC_CH4'
-	    PertPrevLine='DEFAULT    0     0.0'
-
+        if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
             done
@@ -331,7 +330,7 @@ add_new_tracer() {
 
     # by default remove all emissions except for in the prior simulation
     # and the OH perturbation simulation
-    if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+    if [ $x -gt 0 ]; then
         sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
     fi
 
@@ -374,7 +373,7 @@ add_new_tracer() {
 
     # Add new Perturbations.txt and update for non prior runs
     cp Perturbations.txt Perturbations_${istr}.txt
-    if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+    if [ $x -gt 0 ]; then
         PertNewLine='\
 ELEM_'$istr'  '$i'     '0.0''
         sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt

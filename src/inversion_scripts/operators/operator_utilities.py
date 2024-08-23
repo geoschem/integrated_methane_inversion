@@ -193,6 +193,25 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     )
     keepvars = [f'SpeciesConcVV_CH4_{i:04}' for i in sv_elems]
 
+    if len(keepvars) == 1:
+
+        is_OH_element = check_is_OH_element(
+            sv_elems[0],
+            n_elements, 
+            config['OptimizeOH']
+        )
+        is_BC_element = check_is_BC_element(
+            sv_elems[0],
+            n_elements,
+            config['OptimizeOH'],
+            config['OptimizeBCs'],
+            is_OH_element
+        )
+
+        # for BC and OH elems, no number in var name
+        if (is_OH_element or is_BC_element):
+            keepvars = ['SpeciesConcVV_CH4']
+    
     if baserun:
         keepvars = ['SpeciesConcVV_CH4']
 
