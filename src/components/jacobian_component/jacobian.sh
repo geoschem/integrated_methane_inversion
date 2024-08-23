@@ -192,13 +192,9 @@ create_simulation_dir() {
         activate_observations
     fi
 
-    # Turn off emissions diagnostics (except for prior run) to save disk space
+    # Turn off emissions diagnostics to save disk space
     # These should remain unchanged from hemco_prior_emis
     sed -i -e "s:EmisCH4:#EmisCH4:g" HEMCO_Diagn.rc
-    if [[ $x -eq 0 ]]; then
-	sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
-	sed -i -e "s:#EmisCH4_SoilAbsorb:EmisCH4_SoilAbsorb:g" HEMCO_Diagn.rc
-    fi
 
     if is_number "$x"; then
         ### Perform dry run if requested, only for base run

@@ -141,7 +141,11 @@ setup_imi() {
 	nElements=$((nElements+4))
     fi
     if "$OptimizeOH";then
-	nElements=$((nElements+2))
+        if "$isRegional"; then
+            nElements=$((nElements+1))
+        else
+            nElements=$((nElements+2))
+        fi
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
