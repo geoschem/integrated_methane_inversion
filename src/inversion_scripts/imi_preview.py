@@ -561,9 +561,8 @@ def estimate_averaging_kernel(
         L_native = 400 * 1000
         lat_step = 4.0
         lon_step = 5.0
-
+    
     # bin observations into gridcells and map onto statevector
-
     to_lon = lambda x: np.floor(x / lon_step) * lon_step
     to_lat = lambda x: np.floor(x / lat_step) * lat_step
 
@@ -572,6 +571,9 @@ def estimate_averaging_kernel(
     df_super["lat"] = to_lat(df_super.old_lat)
     df_super["lon"] = to_lon(df_super.old_lon)
     groups = df_super[['obs_count', 'lat', 'lon']].groupby(['lat', 'lon'])
+    
+    # also group by time to count how many successful observation 
+    # days there are in each grid cell
     tgroups = df_super[['obs_count','lat','lon','time']].groupby(['lat', 'lon', df_super.time.dt.date])
 
     observation_counts = xr.merge([
@@ -583,6 +585,7 @@ def estimate_averaging_kernel(
         tgroups.count().to_xarray(),
         state_vector
     ])
+    # replace NaNs with 0s to avoid issues with summing
     daily_observation_counts.values = np.where(np.isnan(daily_observation_counts),0,1)
 
     # parallel processing function
@@ -622,7 +625,7 @@ def estimate_averaging_kernel(
 
     # State vector, observations
     emissions = np.array(emissions)
-    m = np.array(num_days)  # Number of observation days
+    m_superi = np.array(m_superi)  # Number of successful observation days
     L = np.array(L)
     num_native_elements = np.array(num_native_elements)
 
@@ -634,14 +637,12 @@ def estimate_averaging_kernel(
             rundir_path = preview_dir.split("preview")[0]
             periods = pd.read_csv(f"{rundir_path}periods.csv")
             n_periods = periods.iloc[-1]["period_number"]
-            m = (
-                (endday_dt - startday_dt).days
-            ) / n_periods  # average number of days in each inversion period
         else:
             n_periods = np.floor(
                 (endday_dt - startday_dt).days / config["UpdateFreqDays"]
             )
-            m = config["UpdateFreqDays"]  # number of days in inversion period
+        # average number of successful observation days in each inversion period
+        m_superi = m_superi / n_periods  
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
 
@@ -666,10 +667,12 @@ def estimate_averaging_kernel(
     sO = config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
-    # from P observations per grid cell = number of observations per grid cell / m days
+    # from P observations per grid cell = number of observations per grid cell / m_superi observation days
     # P is number of observations per grid cell (native state vector element)
-    # Note: to account for clustering we do num_obs / num_native_elements / num_days
-    P = np.array(num_obs) / num_native_elements / num_days
+    # Note: to account for clustering we divide num_obs by the number of 
+    # native state vector elements. This assumes observations within a statevector element 
+    # are distributed evenly amongst constituent grid cells
+    P = np.array(num_obs) / num_native_elements / m_superi
     s_superO_1 = calculate_superobservation_error(
         sO, 1
     )  # for handling cells with 0 observations (avoid divide by 0)
@@ -686,13 +689,13 @@ def estimate_averaging_kernel(
     # Note: m_superi is the number of superobservations,
     # defined as sum of days in each grid cell with >0 successful obs
     # in the state vector element
-    # a set to 0 where m_superi is 0
+    # a is set to 0 where m_superi is 0
     m_superi = np.array(m_superi)
     k = alpha * (Mair * L * g / (Mch4 * U * p))
     a = np.where(
         np.equal(m_superi, 0),
         float(0),
-        sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
+        sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi * num_native_elements))
     )
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
