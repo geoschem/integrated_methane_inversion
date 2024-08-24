@@ -50,7 +50,8 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
         ylim = [-90, 90],
         gc_cache = os.path.join(config["workDir"], "gc_run", "OutputDir"),
         build_jacobian = False, # Not relevant
-        sensi_cache = False) # Not relevant
+        period_i = False, # Not relevant
+        config = False) # Not relevant
     
     return result["obs_GC"],filename
 
