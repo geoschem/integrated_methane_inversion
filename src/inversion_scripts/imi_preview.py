@@ -572,24 +572,22 @@ def estimate_averaging_kernel(
 
     df_super["lat"] = to_lat(df_super.old_lat)
     df_super["lon"] = to_lon(df_super.old_lon)
-    groups = df_super[['obs_count', 'lat', 'lon']].groupby(['lat', 'lon'])
     
-    # also group by time to count how many successful observation 
-    # days there are in each grid cell
-    tgroups = df_super[['obs_count','lat','lon','time']].groupby(['lat', 'lon', df_super.time.dt.date])
+    # extract relevant fields and group by lat, lon, date
+    df_super = df_super[["lat", "lon", "time", "obs_count"]].copy()
+    df_super['date'] = df_super['time'].dt.floor('D')
+    grouped = df_super.groupby(['lat', 'lon', 'date']).size().reset_index(name='obs_count')
 
-    observation_counts = xr.merge([
-        groups.count().to_xarray(),
-        state_vector
-    ])
+    # convert the grouped DataFrame to an xarray Dataset
+    daily_observation_counts = grouped.set_index(['lat', 'lon', 'date']).to_xarray()
 
-    daily_observation_counts = xr.merge([
-        tgroups.count().to_xarray(),
-        state_vector
-    ])
-    # replace NaNs with 0s to avoid issues with summing
-    daily_observation_counts["obs_count"].values = np.where(np.isnan(daily_observation_counts["obs_count"].values),0,1)
-
+    # create a daily superobservation count as well
+    daily_observation_counts["superobs_count"] = daily_observation_counts["obs_count"]
+    
+    # set the nans to 0 if there are no observations. For superobs each day is 1 superob
+    daily_observation_counts["superobs_count"].values = np.where(np.isnan(daily_observation_counts["superobs_count"].values),0,1)
+    daily_observation_counts["obs_count"].values = np.nan_to_num(daily_observation_counts["obs_count"].values)
+    
     # parallel processing function
     def process(i):
         mask = state_vector_labels == i
@@ -600,9 +598,9 @@ def estimate_averaging_kernel(
         # append the calculated length scale of element
         L_temp = L_native * size_temp
         # append the number of obs in each element
-        num_obs_temp = np.nansum(observation_counts["obs_count"].where(mask).values)
+        num_obs_temp = np.nansum(daily_observation_counts["obs_count"].where(mask).values)
         # append the number of successful obs days
-        n_success_obs_days = np.nansum(daily_observation_counts["obs_count"].where(mask).values).item()
+        n_success_obs_days = np.nansum(daily_observation_counts["superobs_count"].where(mask).values).item()
         return emissions_temp, L_temp, size_temp, num_obs_temp, n_success_obs_days
 
     # in parallel, create lists of emissions, number of observations,
@@ -672,6 +670,7 @@ def estimate_averaging_kernel(
     # from P observations per grid cell = number of observations per grid cell / number of super-observations
     # P is number of observations per grid cell (native state vector element)
     P = np.array(num_obs) / m_superi
+    P = np.nan_to_num(P) # replace nan with 0
     s_superO_1 = calculate_superobservation_error(
         sO, 1
     )  # for handling cells with 0 observations (avoid divide by 0)
