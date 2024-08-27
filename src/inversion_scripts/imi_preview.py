@@ -736,7 +736,7 @@ def estimate_averaging_kernel(
         outstrings = (
             f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
         )
-        return a, df, num_days, prior, outstrings
+        return a, df.drop(columns=["time"]), num_days, prior, outstrings
     else:
         return a
 
