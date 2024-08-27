@@ -22,7 +22,6 @@ from joblib import Parallel, delayed
 from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.utils import (
     sum_total_emissions,
-    count_obs_in_mask,
     plot_field,
     filter_tropomi,
     filter_blended,
@@ -142,13 +141,6 @@ def imi_preview(
         kf_index=None,
     )
     mask = state_vector_labels <= last_ROI_element
-
-    # Count the number of observations in the region of interest
-    num_obs = count_obs_in_mask(mask, df)
-    if num_obs < 1:
-        sys.exit("Error: No observations found in region of interest")
-    outstring2 = f"Found {num_obs} observations in the region of interest"
-    print("\n" + outstring2)
 
     # ----------------------------------
     # Estimate dollar cost
@@ -641,6 +633,7 @@ def estimate_averaging_kernel(
     if np.sum(num_obs) < 1:
         sys.exit("Error: No observations found in region of interest")
     outstring2 = f"Found {np.sum(num_obs)} observations in the region of interest"
+    print("\n" + outstring2)
 
     # ----------------------------------
     # Estimate information content
