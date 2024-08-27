@@ -200,7 +200,6 @@ def imi_preview(
 
     # Write preview diagnostics to text file
     outputtextfile = open(os.path.join(preview_dir, "preview_diagnostics.txt"), "w+")
-    outputtextfile.write("##" + outstring2 + "\n")
     outputtextfile.write("##" + outstring6 + "\n")
     outputtextfile.write("##" + outstring7 + "\n")
     outputtextfile.write(outstrings)
@@ -710,7 +709,7 @@ def estimate_averaging_kernel(
     m_superi = np.array(m_superi)
     k = alpha * (Mair * L * g / (Mch4 * U * p))
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
-    
+
     # Places with 0 superobs should be 0
     a = np.where(np.equal(m_superi, 0), float(0), a)
 
@@ -727,7 +726,11 @@ def estimate_averaging_kernel(
 
     if preview:
         outstrings = (
-            f"##{outstring1}\n" + f"##{outstring3}\n" + f"##{outstring4}\n" + outstring5
+            f"##{outstring1}\n"
+            + f"##{outstring2}\n"
+            + f"##{outstring3}\n"
+            + f"##{outstring4}\n"
+            + outstring5
         )
         return a, df.drop(columns=["time"]), num_days, prior, outstrings
     else:
