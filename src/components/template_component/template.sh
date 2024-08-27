@@ -109,6 +109,9 @@ setup_template() {
     # By default, only output emissions at the end of the simulation
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
+    # Add a new ZERO scale factor for use in jacobian simulations
+    sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" HEMCO_Config.rc
+
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
 
