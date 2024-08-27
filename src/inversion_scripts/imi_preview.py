@@ -599,8 +599,8 @@ def estimate_averaging_kernel(
     def process(i):
         mask = state_vector_labels == i
 
-        # Following eqn. 11 of Nesser et al., 2021 we increase the mask 
-        # size by adding concentric rings to mimic transport/diffusion 
+        # Following eqn. 11 of Nesser et al., 2021 we increase the mask
+        # size by adding concentric rings to mimic transport/diffusion
         # when counting observations. We use 2 concentric rings based on
         # empirical evidence -- Nesser et al used 3.
         structure = np.ones((5, 5))
@@ -716,11 +716,10 @@ def estimate_averaging_kernel(
     # a is set to 0 where m_superi is 0
     m_superi = np.array(m_superi)
     k = alpha * (Mair * L * g / (Mch4 * U * p))
-    a = np.where(
-        np.equal(m_superi, 0),
-        float(0),
-        sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi)),
-    )
+    a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
+    
+    # Places with 0 superobs should be 0
+    a = np.where(np.equal(m_superi, 0), float(0), a)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
