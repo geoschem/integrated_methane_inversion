@@ -20,6 +20,7 @@ def do_inversion(
     jacobian_sf=None,
     prior_err_bc=0.0,
     prior_err_oh=0.0,
+    is_Regional=True
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -38,6 +39,7 @@ def do_inversion(
         jacobian_sf  [str]   : Path to Jacobian scale factors file if using precomputed K
         prior_err_bc [float] : Prior error standard deviation (default 0.0)
         prior_err_oh [float] : Prior error standard deviation (default 0.0)
+        is_Regional  [bool]  : Is this a regional simulation?
 
     Returns
         xhat         [float] : Posterior scaling factors
@@ -220,13 +222,17 @@ def do_inversion(
 
     # If optimizing OH, adjust for it in the inversion
     if oh_optimization:
-        # Add prior error for OH as the last element of the diagonal
+        # Add prior error for OH as the last element(s) of the diagonal
         # Following Masakkers et al. (2019, ACP) weight the OH term by the
         # ratio of the number of elements (n_OH_elements/n_emission_elements)
-        # Currently n_OH_elements=1
-        OH_weight = 1/(n_elements-1)
-        Sa_diag[-1:] = OH_weight*prior_err_oh**2
-        scale_factor_idx -= 1
+        if is_Regional:
+            OH_weight = 1/(n_elements-1)
+            Sa_diag[-1:] = OH_weight*prior_err_oh**2
+            scale_factor_idx -= 1
+        else:
+            OH_weight = 2/(n_elements-2)
+            Sa_diag[-2:] = OH_weight*prior_err_oh**2
+            scale_factor_idx -= 2
         
     # If optimizing boundary conditions, adjust for it in the inversion
     if bc_optimization:
@@ -234,7 +240,10 @@ def do_inversion(
 
         # add prior error for BCs as the last 4 elements of the diagonal
         if oh_optimization:
-            Sa_diag[-5:-1] = prior_err_bc**2
+            if is_Regional:
+                Sa_diag[-5:-1] = prior_err_bc**2
+            else:
+                Sa_diag[-6:-1] = prior_err_bc**2
         else:
             Sa_diag[-4:] = prior_err_bc**2
 
@@ -242,7 +251,10 @@ def do_inversion(
 
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
-    
+
+    print(f"n elements={n_elements}")
+    print(f"sf idx={scale_factor_idx}")
+
     # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + ratio
     # Notes:
@@ -252,8 +264,12 @@ def do_inversion(
     xhat = ratio.copy()
     xhat[:scale_factor_idx] += 1
     if oh_optimization:
-        xhat[-1] += 1
-        print(f"xhat[OH] = {xhat[-1]}")
+        if is_Regional:
+            xhat[-1] += 1
+            print(f"xhat[OH] = {xhat[-1]}")
+        else:
+            xhat[-2:] += 1
+            print(f"xhat[OH] = {xhat[-2:]}")
         
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
@@ -292,6 +308,7 @@ if __name__ == "__main__":
     jacobian_sf = sys.argv[12]
     prior_err_BC = float(sys.argv[13])
     prior_err_OH = float(sys.argv[14])
+    is_Regional = sys.argv[15].lower() == 'true'
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -312,6 +329,7 @@ if __name__ == "__main__":
         jacobian_sf,
         prior_err_BC,
         prior_err_OH,
+        is_Regional
     )
     xhat = out[0]
     ratio = out[1]
