@@ -48,7 +48,7 @@ setup_imi() {
     if "$RestartDownload"; then
         RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
         if [ ! -f "$RestartFile" ]; then
-            aws s3 cp --no-sign-request s3://imi-boundary-conditions/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+            aws s3 cp --no-sign-request s3://imi-boundary-conditions/${BCversion}/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
         fi
     fi
 
