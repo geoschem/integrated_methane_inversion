@@ -252,9 +252,6 @@ def do_inversion(
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
 
-    print(f"n elements={n_elements}")
-    print(f"sf idx={scale_factor_idx}")
-
     # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + ratio
     # Notes:
