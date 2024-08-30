@@ -1,5 +1,4 @@
 import os
-import yaml
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -84,13 +83,20 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         ntracers = config['NumJacobianTracers']
         opt_OH = config['OptimizeOH']
         opt_BC = config['OptimizeBCs']
+        is_Regional = config['isRegional']
 
-        n_base_runs = (n_elements - int(opt_OH) - (int(opt_BC) * 4)) / ntracers
+        num_BC = 4
+        if is_Regional:
+            num_OH = 1
+        else:
+            num_OH = 2
+
+        n_base_runs = (n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)) / ntracers
         
         nruns = (
             np.ceil(n_base_runs).astype(int) +
-            int(opt_OH) +
-            (int(opt_BC) * 4)
+            (int(opt_OH) * num_OH) +
+            (int(opt_BC) * num_BC)
         )
         
         # Dictionary that stores mapping of state vector elements to
@@ -100,11 +106,16 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
             # State vector elements are numbered 1..nelements
             sv_elem = e + 1
         
-            is_OH_element = check_is_OH_element(sv_elem, n_elements, opt_OH)
+            is_OH_element = check_is_OH_element(sv_elem, n_elements, opt_OH, is_Regional)
+            is_BC_element = check_is_BC_element(sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional)
             # Determine which run directory to look in
             if is_OH_element:
-                run_number = nruns
-            elif check_is_BC_element(sv_elem, n_elements, opt_OH, opt_BC, is_OH_element):
+                if is_Regional:
+                    run_number = nruns                    
+                else:
+                    num_back = n_elements % sv_elem
+                    run_number = nruns - num_back
+            elif is_BC_element:
                 num_back = n_elements % sv_elem
                 run_number = nruns - num_back
             else:
@@ -171,34 +182,39 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
                                     
 
     """
-    prefix = config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
-    j_dir = os.path.expandvars(f"{prefix}/{config['RunName']}_{run_id}/OutputDir")
+    prefix = os.path.expandvars(
+        config['OutputPath'] + '/' + config['RunName'] + '/jacobian_runs'
+    )
+    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime('GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4')
     dsmf = xr.open_dataset(
         '/'.join([j_dir,file_stub]),
         chunks = 'auto'
     )
     keepvars = [f'SpeciesConcVV_CH4_{i:04}' for i in sv_elems]
+    is_Regional = config['isRegional']
 
     if len(keepvars) == 1:
 
         is_OH_element = check_is_OH_element(
             sv_elems[0],
             n_elements, 
-            config['OptimizeOH']
+            config['OptimizeOH'],
+            is_Regional
         )
         is_BC_element = check_is_BC_element(
             sv_elems[0],
             n_elements,
             config['OptimizeOH'],
             config['OptimizeBCs'],
-            is_OH_element
+            is_OH_element,
+            is_Regional
         )
 
         # for BC and OH elems, no number in var name
         if (is_OH_element or is_BC_element):
             keepvars = ['SpeciesConcVV_CH4']
-
+    
     if baserun:
         keepvars = ['SpeciesConcVV_CH4']
 

@@ -107,14 +107,19 @@ def count_obs_in_mask(mask, df):
     return n_obs
 
 
-def check_is_OH_element(sv_elem, nelements, opt_OH):
+def check_is_OH_element(sv_elem, nelements, opt_OH, is_regional):
     """
     Determine if the current state vector element is the OH element
     """
-    return opt_OH and (sv_elem == nelements)
+    return (
+        opt_OH
+        and (
+            ((not is_regional) and (sv_elem > (nelements - 2)))
+            or ( is_regional and (sv_elem == nelements))
+        )
+    )
 
-
-def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element):
+def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_regional ):
     """
     Determine if the current state vector element is a boundary condition element
     """
@@ -122,7 +127,8 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element):
         not is_OH_element
         and opt_BC
         and (
-            (opt_OH and (sv_elem > (nelements - 5)))
+            (opt_OH and (sv_elem > (nelements - 6)))
+            or ( opt_OH and is_regional and (sv_elem > (nelements - 5)))
             or ((not opt_OH) and (sv_elem > (nelements - 4)))
         )
     )
