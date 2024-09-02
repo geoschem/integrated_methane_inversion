@@ -2,6 +2,8 @@ name: Deploy to ECR
 on:
   push:
     branches: [ dev ]
+    tags:
+      - '*'
 
 jobs:
   
@@ -31,12 +33,21 @@ jobs:
     - name: Check disk usage before build
       run: df -h
 
+    - name: Set IMAGE_TAG
+      id: image_tag
+      run: |
+        if [ "${{ github.event_name }}" == "push" ] && [ -n "${{ github.ref_name }}" ]; then
+          echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+        else
+          echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+        fi
+
     - name: Build, tag, and push al2 image to Amazon ECR
       env:
         REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
         REGISTRY_ALIAS: w1q7j9l2
         REPOSITORY: imi-al2-docker-image
-        IMAGE_TAG: latest
+        IMAGE_TAG: ${{ env.IMAGE_TAG }}
       run: |
         docker build -f resources/containers/al2/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
@@ -51,7 +62,7 @@ jobs:
         REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
         REGISTRY_ALIAS: w1q7j9l2
         REPOSITORY: imi-ubuntu-docker-image
-        IMAGE_TAG: latest
+        IMAGE_TAG: ${{ env.IMAGE_TAG }}
       run: |
         docker build -f resources/containers/ubuntu/Dockerfile -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG . --platform=linux/amd64
         docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
