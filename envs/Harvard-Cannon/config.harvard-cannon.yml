@@ -129,6 +129,8 @@ DOFSThreshold: 0
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 32
 RequestedMemory: 32000
+InversionCPUs: 32
+InversionMemory: 64000
 RequestedTime: "0-24:00"
 SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 

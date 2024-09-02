@@ -127,8 +127,10 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-RequestedCPUs: 32
-RequestedMemory: 32000
+RequestedCPUs: 8
+RequestedMemory: 10000
+InversionCPUs: 32
+InversionMemory: 32000
 RequestedTime: "0-24:00"
 SchedulerPartition: "debug"
 
