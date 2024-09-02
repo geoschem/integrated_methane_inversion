@@ -250,7 +250,9 @@ IMI preview
 Job Resource Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
-Note: some python scripts are also deployed using slurm and default to using the ``RequestedCPUs`` and ``RequestedMemory`` settings.
+Note: some python scripts are also deployed using slurm and default to using the ``RequestedCPUs`` and ``RequestedMemory`` settings. 
+If the inversion step requires more resources than the rest of the IMI workflow, using the optional ``InversionCPUs`` and ``InversionMemory`` 
+variables can be convenient.
 
 .. list-table::
    :widths: 30, 70
@@ -262,6 +264,12 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Amount of memory to allocate to each in series simulation (in MB).
    * - ``RequestedTime``
      - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
+   * - ``InversionCPUs``
+     - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
+   * - ``InversionMemory``
+     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
+   * - ``InversionTime``
+     - Optional Variable. Amount of memory to allocate to the inversion job (in MB) if different from ``RequestedMemory``.
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
