@@ -68,7 +68,7 @@ def get_point_source_coordinates(config):
 
         # List of datasources
         ps_datasets = copy(config["PointSourceDatasets"])
-            
+
         if len(ps_datasets) > 0:
 
             observers = []
@@ -76,25 +76,24 @@ def get_point_source_coordinates(config):
                 # instantiate plume observer object
                 # using its string name from config file
                 observer = getattr(imiplumes, plume_dataset)
-                observers.append( observer(config, usecached = True) )
-                
+                observers.append(observer(config, usecached=True))
+
             gf = GeoFilter(config)
             ps = PointSources(gf, observers)
             plumes += ps.get_gridded_coords(
-                emission_rate_filter = int(config['EmissionRateFilter']),
-                plume_count_filter = int(config['PlumeCountFilter'])
-            ) 
+                emission_rate_filter=int(config["EmissionRateFilter"]),
+                plume_count_filter=int(config["PlumeCountFilter"]),
+            )
             msg = (
-                f'Found {len(plumes)} grid cells with plumes '
-                f'using {[ob.myname for ob in observers]}'
+                f"Found {len(plumes)} grid cells with plumes "
+                f"using {[ob.myname for ob in observers]}"
             )
             print(msg, flush=True)
             got_plumes = True
 
-
         if not got_plumes:
             print(
-                'No valid external point source datasets specified. '
+                "No valid external point source datasets specified. "
                 'Valid values are: "SRON", "CarbonMapper", "IMEO"'
             )
 
@@ -102,5 +101,3 @@ def get_point_source_coordinates(config):
     coords = coords + plumes
 
     return coords
-
-

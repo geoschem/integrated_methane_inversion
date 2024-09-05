@@ -218,5 +218,7 @@ if __name__ == "__main__":
             + " from the top level IMI directory. This happens automatically on new pull"
             + " requests via Github Actions\n\n"
         )
-        file.write("Note: This does not include variables defined in python scripts.\n\n")
+        file.write(
+            "Note: This does not include variables defined in python scripts.\n\n"
+        )
         file.write(markdown_table)

@@ -8,10 +8,10 @@ import xarray as xr
 
 def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, config_path):
     """
-    Running sensitivity inversions with pre-constructed Jacobian may require scaling the 
+    Running sensitivity inversions with pre-constructed Jacobian may require scaling the
     Jacobian to match updated prior estimates. This is because the Jacobian is defined
     by a relative (50%) perturbation of emissions, so that the sensitivities depend on
-    the magnitude of emissions in the prior inventory. 
+    the magnitude of emissions in the prior inventory.
 
     This function generates scale factors to perform that scaling.
 
@@ -20,7 +20,7 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, confi
         inv_directory [str]    : The base directory for the inversion, where e.g., "preview_sim/" resides
         ref_directory  [str]   : The base directory for the reference inversion
         config_path    [str]   : Path to yaml config file
-    
+
     Returns
         sf_K           [float] : Scale factors to be applied to the Jacobian matrix
     """
@@ -42,8 +42,8 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, confi
     statevector_path = os.path.join(inv_directory, "StateVector.nc")
     statevector = xr.load_dataset(statevector_path)["StateVector"]
     n_elements = int(np.nanmax(statevector.data))
-    sf = sf.where(statevector <= n_elements - n_buff) # Replace buffers with nan
-    sf = sf.fillna(1) # Fill nan with 1
+    sf = sf.where(statevector <= n_elements - n_buff)  # Replace buffers with nan
+    sf = sf.fillna(1)  # Fill nan with 1
 
     # Get HEMCO diagnostics for current inversion and reference inversion
     #  The HEMCO diags emissions are needed to calculate Jacobian scale
@@ -62,13 +62,17 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, confi
     ref_hemco_list.sort()
     pth = os.path.join(prior_sim, hemco_list[period_number - 1])
     ref_pth = os.path.join(ref_prior_sim, ref_hemco_list[period_number - 1])
-    
+
     hemco_emis_ds = xr.load_dataset(pth)
     ref_hemco_emis_ds = xr.load_dataset(ref_pth)
-    # remove soil sink from this calculation since 
+    # remove soil sink from this calculation since
     # it is not optimized in the inversion
-    hemco_emis = (hemco_emis_ds["EmisCH4_Total"] - hemco_emis_ds["EmisCH4_SoilAbsorb"]).isel(time=0, drop=True)
-    ref_hemco_emis = (ref_hemco_emis_ds["EmisCH4_Total"] - ref_hemco_emis_ds["EmisCH4_SoilAbsorb"]).isel(time=0, drop=True)
+    hemco_emis = (
+        hemco_emis_ds["EmisCH4_Total"] - hemco_emis_ds["EmisCH4_SoilAbsorb"]
+    ).isel(time=0, drop=True)
+    ref_hemco_emis = (
+        ref_hemco_emis_ds["EmisCH4_Total"] - ref_hemco_emis_ds["EmisCH4_SoilAbsorb"]
+    ).isel(time=0, drop=True)
 
     # Get scale factors to apply to the Jacobian matrix K
     statevector_path = os.path.join(inv_directory, "StateVector.nc")
@@ -99,7 +103,9 @@ if __name__ == "__main__":
     config_path = sys.argv[4]
 
     # Get the scale factors
-    out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory, config_path)
+    out = get_jacobian_scalefactors(
+        period_number, inv_directory, ref_directory, config_path
+    )
 
     # Save them
     save_path_1 = os.path.join(

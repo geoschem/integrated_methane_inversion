@@ -1,10 +1,11 @@
 import sys
 import xarray as xr
 
+
 def get_posterior_emissions(prior, scale):
     """
-    Function to calculate the posterior emissions from the prior 
-    and the scale factors. Properly accounting for no optimization 
+    Function to calculate the posterior emissions from the prior
+    and the scale factors. Properly accounting for no optimization
     of the soil sink.
     Args:
         prior  : xarray dataset
@@ -16,30 +17,31 @@ def get_posterior_emissions(prior, scale):
     """
     # keep attributes of data even when arithmetic operations applied
     xr.set_options(keep_attrs=True)
-    
-    # we do not optimize soil absorbtion in the inversion. This 
-    # means that we need to keep the soil sink constant and properly 
+
+    # we do not optimize soil absorbtion in the inversion. This
+    # means that we need to keep the soil sink constant and properly
     # account for it in the posterior emissions calculation.
     # To do this, we:
-    
+
     # make a copy of the original soil sink
     prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
-    
+
     # remove the soil sink from the prior total before applying scale factors
     prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
-    
+
     # scale the prior emissions for all sectors using the scale factors
     posterior = prior.copy()
     for ds_var in list(prior.keys()):
         if "EmisCH4" in ds_var:
             posterior[ds_var] = prior[ds_var] * scale["ScaleFactor"]
-    
+
     # But reset the soil sink to the original value
     posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
-    
+
     # Add the original soil sink back to the total emissions
     posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
     return posterior
+
 
 if __name__ == "__main__":
     prior = xr.load_dataset(sys.argv[1])

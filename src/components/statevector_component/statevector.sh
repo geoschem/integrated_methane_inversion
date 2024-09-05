@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - create_statevector 
+#   - create_statevector
 #   - reduce_dimension
 
 # Description: Create a native resolution state vector
@@ -9,17 +9,17 @@
 #   create_statevector
 create_statevector() {
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
-    
+
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
     else
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
-    
+
     # Use archived HEMCO standalone emissions output
     HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-	
+
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
         s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
@@ -77,17 +77,18 @@ reduce_dimension() {
     fi
 
     # if running end to end script with sbatch then use
-    # sbatch to take advantage of multiple cores 
+    # sbatch to take advantage of multiple cores
     if "$UseSlurm"; then
         rm -f .aggregation_error.txt
         chmod +x $aggregation_file
         sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -o imi_output.tmp \
-        -W "${python_args[@]}"; wait;
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W "${python_args[@]}"
+        wait
+        cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         # check for any errors
         [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
@@ -102,13 +103,13 @@ reduce_dimension() {
     fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     if "$OptimizeBCs"; then
-	nElements=$((nElements+4))
+        nElements=$((nElements + 4))
     fi
-    if "$OptimizeOH";then
+    if "$OptimizeOH"; then
         if "$isRegional"; then
-            nElements=$((nElements+1))
+            nElements=$((nElements + 1))
         else
-            nElements=$((nElements+2))
+            nElements=$((nElements + 2))
         fi
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
