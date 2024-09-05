@@ -23,6 +23,7 @@ from shapely.geometry import Polygon
 import cartopy.crs as ccrs
 
 import functools
+
 print = functools.partial(print, flush=True)
 
 
@@ -62,9 +63,9 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
     if cluster_by_country:
         centroids = get_country_centroids(data, valid_indices)
         if centroids is not None:
-            Cy = centroids[:,:,0].flatten()[valid_indices]
-            Cx = centroids[:,:,1].flatten()[valid_indices]
-    
+            Cy = centroids[:, :, 0].flatten()[valid_indices]
+            Cx = centroids[:, :, 1].flatten()[valid_indices]
+
             # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
             features = np.column_stack((X, Y, Z, Cx, Cy))
         else:
@@ -96,15 +97,15 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
 def get_highest_labels_threshold(labels, sensitivities, threshold):
     """
     Description:
-        Get labels with sensitivity above the threshold. 
+        Get labels with sensitivity above the threshold.
         Returned in descending order.
     arguments:
         labels          [][]  ndarray : state vector labels
         sensitivities   [][]dataarray : xarrray sensitivity data
         threshold               float : number between 0 and 1
-    Returns: ([], int, [], []) : tuple with highest sensitivity labels, 
-                                  number of labels(n), number of elements 
-                                  contained in labels, and list of 
+    Returns: ([], int, [], []) : tuple with highest sensitivity labels,
+                                  number of labels(n), number of elements
+                                  contained in labels, and list of
                                   sensitivity values
     """
     sensitivity_dict = {}
@@ -167,12 +168,13 @@ def scale_buffer_elements(scale_number, buffer):
 
     return buffer
 
+
 def get_max_cluster_size(config, sensitivities, desired_element_num):
     """
     Description:
         Returns the maximum number of elements allowed in a single cluster
-        based on the number of desired elements and the resolution. 
-        By default, if there are enough elements we default to using a max 
+        based on the number of desired elements and the resolution.
+        By default, if there are enough elements we default to using a max
         cluster size of 64 elements.
     arguments:
         config             {dict} : imi config file
@@ -189,19 +191,21 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
     elif config["Res"] == "4.0x5.0":
         max_aggregation_level = 8
 
-    max_cluster_size = config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else max_aggregation_level
-    
+    max_cluster_size = (
+        config["MaxClusterSize"]
+        if "MaxClusterSize" in config.keys()
+        else max_aggregation_level
+    )
+
     background_elements_needed = np.ceil(len(sensitivities) / max_cluster_size)
     if background_elements_needed > desired_element_num:
         raise Exception(
             "Error: too few clusters to have background state vector elements\n"
             + f"aggregating {max_cluster_size} native resolution elements.\n"
             + "More state vector elements recommended. Alternatively, raise the\n"
-            + "\"MaxClusterSize\" allowed for the region of interest."
+            + '"MaxClusterSize" allowed for the region of interest.'
         )
-    print(
-        f"MaxClusterSize set to: {max_cluster_size} elements in a cluster"
-    )
+    print(f"MaxClusterSize set to: {max_cluster_size} elements in a cluster")
     return max_cluster_size
 
 
@@ -217,14 +221,14 @@ def force_native_res_pixels(config, clusters, sensitivities):
         cluster_pairs    [(tuple)]: cluster pairings
     Returns:             [double] : updated sensitivities
     """
-    
+
     # make sure elements are native res by asserting higher sensitivity
     # than clustering threshold
     if "ClusteringThreshold" in config.keys():
         dofs_max = float(config["ClusteringThreshold"]) + 0.1
     else:
         dofs_max = 1.1
-        
+
     coords = get_point_source_coordinates(config)
     if len(coords) == 0:
         # No forced pixels inputted
@@ -276,7 +280,7 @@ def force_native_res_pixels(config, clusters, sensitivities):
 
 
 def get_country_centroids(grid_data, valid_indices):
-    '''
+    """
     Description:
         Gets the centroid lat/lon of the country containing the grid cell for
         each native resolution state vector element. For grid cells overlapping
@@ -287,12 +291,12 @@ def get_country_centroids(grid_data, valid_indices):
         grid_data         dataarray : state vector grid with lat/lon coord information
 
     returns:
-        centroids     [][][]ndarray : country centroids (lat, lon) at the native 
+        centroids     [][][]ndarray : country centroids (lat, lon) at the native
                                       state vector elements
 
-    '''
+    """
     dssv = grid_data.copy()
-    
+
     # make geodataframe of the state vector elements
     dlon = np.median(np.diff(dssv.lon.values))
     dlat = np.median(np.diff(dssv.lat.values))
@@ -300,43 +304,52 @@ def get_country_centroids(grid_data, valid_indices):
     lat = dssv.lat.values
 
     # grid cell corners lat/lon, only valid elements
-    X,Y = np.meshgrid(lon, lat)
+    X, Y = np.meshgrid(lon, lat)
     valid_lon = X.flatten()[valid_indices]
     valid_lat = Y.flatten()[valid_indices]
 
-    coords = np.stack([
-        np.column_stack([valid_lon - dlon / 2, valid_lat + dlat / 2]),  # top-left
-        np.column_stack([valid_lon + dlon / 2, valid_lat + dlat / 2]),  # top-right
-        np.column_stack([valid_lon + dlon / 2, valid_lat - dlat / 2]),  # bottom-right
-        np.column_stack([valid_lon - dlon / 2, valid_lat - dlat / 2])   # bottom-left
-    ], axis=1)
+    coords = np.stack(
+        [
+            np.column_stack([valid_lon - dlon / 2, valid_lat + dlat / 2]),  # top-left
+            np.column_stack([valid_lon + dlon / 2, valid_lat + dlat / 2]),  # top-right
+            np.column_stack(
+                [valid_lon + dlon / 2, valid_lat - dlat / 2]
+            ),  # bottom-right
+            np.column_stack(
+                [valid_lon - dlon / 2, valid_lat - dlat / 2]
+            ),  # bottom-left
+        ],
+        axis=1,
+    )
 
     # grid cell geometry on lat/lon coordinate system
-    gdf_grid = gpd.GeoDataFrame(geometry = [Polygon(coord) for coord in coords], crs = 'EPSG:4326')
+    gdf_grid = gpd.GeoDataFrame(
+        geometry=[Polygon(coord) for coord in coords], crs="EPSG:4326"
+    )
 
     # geodataframe of countries of the world
-    gdf_world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+    gdf_world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
     # put geometry onto projection
     # Robinson is not best but need one that will be reasonably valid wherever you are on the globe
-    crs = ccrs.Robinson()  
+    crs = ccrs.Robinson()
     crs_proj4 = crs.proj4_init
     gdf_world_crs = gdf_world.to_crs(crs_proj4)
     gdf_grid_crs = gdf_grid.to_crs(crs_proj4)
-    
+
     # original grid cell indices
-    gdf_grid_crs['cell_idx'] = np.arange(gdf_grid_crs.shape[0])
-    
+    gdf_grid_crs["cell_idx"] = np.arange(gdf_grid_crs.shape[0])
+
     # nearest country to each grid cell
     # if grid cell on border, both countries returned
     try:
         gdf_comb = gpd.sjoin_nearest(gdf_grid_crs, gdf_world_crs)
     except NotImplementedError as e:
         msg = (
-            'Your python environment does not contain the libraries '
-            'needed to support geospatial operation. Please install '
-            'pyGEOS. Continuing state vector aggregation WITHOUT '
-            'grid cell country as a clustering feature.'
+            "Your python environment does not contain the libraries "
+            "needed to support geospatial operation. Please install "
+            "pyGEOS. Continuing state vector aggregation WITHOUT "
+            "grid cell country as a clustering feature."
         )
         print(msg)
         print(e)
@@ -345,69 +358,67 @@ def get_country_centroids(grid_data, valid_indices):
     # Get a list (dataframe) of country centroids
     centroids = gdf_world_crs.centroid
     dfcentroid = pd.concat([gdf_world_crs.name, centroids], axis=1)
-    dfcentroid = dfcentroid.rename({0:'centroid'}, axis=1)
+    dfcentroid = dfcentroid.rename({0: "centroid"}, axis=1)
 
     # handle grid cells overlapping borders
-    gdf_dup = gdf_comb[gdf_comb.duplicated('geometry', keep=False)].copy()[['geometry', 'cell_idx']]
+    gdf_dup = gdf_comb[gdf_comb.duplicated("geometry", keep=False)].copy()[
+        ["geometry", "cell_idx"]
+    ]
     gdf_dup_intersect = gdf_dup.overlay(gdf_world_crs)
-    gdf_dup_intersect['area'] = gdf_dup_intersect.area
-    # for each cell overlapping a country border, name of 
+    gdf_dup_intersect["area"] = gdf_dup_intersect.area
+    # for each cell overlapping a country border, name of
     # country to assign that cell to
     dfcountry = (
-        gdf_dup_intersect
-        .sort_values('area', ascending=False)
-        .groupby('cell_idx')
+        gdf_dup_intersect.sort_values("area", ascending=False)
+        .groupby("cell_idx")
         .first()
-        .reset_index()
-        [['cell_idx','name']]
+        .reset_index()[["cell_idx", "name"]]
     )
 
     # handle fatal error where cell is considered
     # overlap by sjoin but not overlay
     # seen to affects 0 or 1 cell in some regional cases
     if (~gdf_dup.cell_idx.isin(dfcountry.cell_idx)).any():
-        missing_idx = (
-            gdf_dup
-            [(~gdf_dup.cell_idx.isin(dfcountry.cell_idx))]
-            .cell_idx.unique()
-        )
-        dfcountry = (
-            dfcountry
-            .merge(
-                (
-                    gdf_comb[gdf_comb.cell_idx.isin(missing_idx)]
-                    .groupby('cell_idx')
-                    .first()
-                    .reset_index()
-                    [['cell_idx', 'name']]
-                ),
-                'outer'
-            ).reset_index()
-        )
+        missing_idx = gdf_dup[
+            (~gdf_dup.cell_idx.isin(dfcountry.cell_idx))
+        ].cell_idx.unique()
+        dfcountry = dfcountry.merge(
+            (
+                gdf_comb[gdf_comb.cell_idx.isin(missing_idx)]
+                .groupby("cell_idx")
+                .first()
+                .reset_index()[["cell_idx", "name"]]
+            ),
+            "outer",
+        ).reset_index()
 
     # re-merge df of grid cells, now without duplicated cells
     # geometry and country name of cells on borders
-    df1 = gdf_comb[['geometry','cell_idx','name']].merge(dfcountry, on=['cell_idx','name'])
+    df1 = gdf_comb[["geometry", "cell_idx", "name"]].merge(
+        dfcountry, on=["cell_idx", "name"]
+    )
     # merge it with geometry and country name of cells not overlapping a border
-    df_final = gdf_comb[~gdf_comb.duplicated('geometry',keep=False)][['geometry','cell_idx','name']].merge(df1,how='outer')
+    df_final = gdf_comb[~gdf_comb.duplicated("geometry", keep=False)][
+        ["geometry", "cell_idx", "name"]
+    ].merge(df1, how="outer")
 
     # assign centroid on lat/lon crs of countries to each grid cell
-    gdfcentroid = gpd.GeoDataFrame(dfcentroid['name'], geometry=dfcentroid['centroid'], crs=crs_proj4)
+    gdfcentroid = gpd.GeoDataFrame(
+        dfcentroid["name"], geometry=dfcentroid["centroid"], crs=crs_proj4
+    )
     gdf_merge = gpd.GeoDataFrame(
-        df_final[['cell_idx','name']].merge(gdfcentroid.to_crs('EPSG:4326'), on='name')
+        df_final[["cell_idx", "name"]].merge(gdfcentroid.to_crs("EPSG:4326"), on="name")
     )
 
     # to state vector grid
     clon = np.full(dssv.shape, np.nan)
     clat = np.full(dssv.shape, np.nan)
-    clon.ravel()[valid_indices] = gdf_merge.sort_values('cell_idx').geometry.x.values
-    clat.ravel()[valid_indices] = gdf_merge.sort_values('cell_idx').geometry.y.values
-    
-    centroids_array = np.stack((clat, clon), axis=-1)
-    
-    return centroids_array
+    clon.ravel()[valid_indices] = gdf_merge.sort_values("cell_idx").geometry.x.values
+    clat.ravel()[valid_indices] = gdf_merge.sort_values("cell_idx").geometry.y.values
 
-    
+    centroids_array = np.stack((clat, clon), axis=-1)
+
+    return centroids_array
 
 
 def update_sv_clusters(config, flat_sensi, orig_sv):
@@ -443,12 +454,12 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
         if dofs_threshold > 1:
             msg = (
-                f'Estimated dofs per element too high ({dofs_threshold}), '
-                'resetting ClusteringThreshold to 1'
+                f"Estimated dofs per element too high ({dofs_threshold}), "
+                "resetting ClusteringThreshold to 1"
             )
             print(msg)
             dofs_threshold = 1
-    
+
     print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
 
     # max cluster size based on user preferences
@@ -458,17 +469,16 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     max_cluster_size = get_max_cluster_size(config, flat_sensi, desired_num_labels)
 
     try:
-        cluster_by_country = config['GroupByCountry'] 
+        cluster_by_country = config["GroupByCountry"]
     except KeyError:
         msg = (
             '"GroupByCountry" not found in config file. '
-            'Please add to config file if you wish to cluster by '
-            'country or update to the latest version of IMI.\n'
-            'Continuing aggregation without clustering by country.'
+            "Please add to config file if you wish to cluster by "
+            "country or update to the latest version of IMI.\n"
+            "Continuing aggregation without clustering by country."
         )
         warnings.warn(msg)
         cluster_by_country = False
-        
 
     # copy original sv for updating at end
     new_sv = orig_sv.copy()
@@ -489,14 +499,14 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     labels = xr.where(buffer_labels == 0, buffer_labels, np.nan)
 
     # get list of different aggregateion levels
-    # where an aggregation level is (roughly) the number of 
+    # where an aggregation level is (roughly) the number of
     # elements in a cluster
     cluster_pairs = np.arange(1, max_cluster_size + 1)
-    
-    # boolean for whether to evenly fill the grid with the 
+
+    # boolean for whether to evenly fill the grid with the
     # remaining cluster elements
     fill_grid = False
-    
+
     print(f"Reducing to {desired_num_labels} elements")
 
     # total sensitivities of clusters added to the state vector
@@ -507,10 +517,10 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         # fill grid if we are on the final round of clusters
         if agg_level == max_cluster_size:
             fill_grid = True
-            
+
         # number of unassigned native resolution elements
         elements_left = np.count_nonzero(labels.values == 0)
-        
+
         # check if no more clustering to do, exit the loop
         if elements_left == 0:
             break
@@ -526,11 +536,13 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
-            agg_level = int(elements_left/clusters_left)
+            agg_level = int(elements_left / clusters_left)
             print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
-                sensi["Sensitivities"].where(labels == 0), clusters_left, mini_batch,
-                cluster_by_country
+                sensi["Sensitivities"].where(labels == 0),
+                clusters_left,
+                mini_batch,
+                cluster_by_country,
             )
         # clustering for agg_level 1 is just the state vector
         elif agg_level == 1:
@@ -541,20 +553,20 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
                 sensi["Sensitivities"].where(labels == 0),
                 int(np.round(elements_left / agg_level)),
                 mini_batch,
-                cluster_by_country
+                cluster_by_country,
             )
-            
+
         # assign all remaining clusters if filling the grid
         # by assigning dofs_threshold to artificially low value
         if fill_grid:
             dofs_threshold = -1
 
-        # get the n_highes labels with sensitivities above the 
+        # get the n_highes labels with sensitivities above the
         # dofs threshold and how many elements these labels contain
         n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
             out_labels, sensi["Sensitivities"], dofs_threshold
         )
-        
+
         # if too many labels to assign, then we need to assign
         # only some of them and leave enough labels to fill
         # the grid with the max_cluster_size clusters
@@ -564,7 +576,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             n_max_labels = n_max_labels[:n_ind]
             num_elements = num_elements[:n_ind]
 
-        # protects against possibility of too few elements left to 
+        # protects against possibility of too few elements left to
         # achieve desired number of clusters
         if not fill_grid:
             total_elements = 0
@@ -575,7 +587,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
                     n_max_labels = n_max_labels[:n_ind]
                     num_elements = num_elements[:n_ind]
                     break
-                
+
         # informational output
         if len(n_max_labels) > 0:
             print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
@@ -622,7 +634,13 @@ if __name__ == "__main__":
         config = yaml.load(open(config_path), Loader=yaml.FullLoader)
 
         original_clusters = xr.open_dataset(state_vector_path)
-        sensitivity_args = [config, state_vector_path, preview_dir, tropomi_cache, False]
+        sensitivity_args = [
+            config,
+            state_vector_path,
+            preview_dir,
+            tropomi_cache,
+            False,
+        ]
 
         # dynamically generate sensitivities with only a
         # subset of the data if kf_index is not None
@@ -641,7 +659,6 @@ if __name__ == "__main__":
             + "Run time needed will vary with state vector size."
             + "\nUsing ClusteringMethod: 'mini-batch-kmeans' will "
             + "perform faster, but may reduce cluster accuracy."
-        
         )
         # generate multi resolution state vector
         new_sv = update_sv_clusters(config, sensitivities, original_clusters)
@@ -655,6 +672,8 @@ if __name__ == "__main__":
     except Exception as err:
         with open(".aggregation_error.txt", "w") as file1:
             # Writing data to a file
-            file1.write("This file is used to tell the controlling script that state vector clustering failed")
+            file1.write(
+                "This file is used to tell the controlling script that state vector clustering failed"
+            )
         print(err)
         sys.exit(1)

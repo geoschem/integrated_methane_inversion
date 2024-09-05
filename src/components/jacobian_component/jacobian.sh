@@ -29,7 +29,7 @@ setup_jacobian() {
     mkdir -p -v jacobian_runs
 
     if [ $NumJacobianTracers -gt 1 ]; then
-        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional )
+        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
 
         # Determine approx. number of CH4 tracers per Jacobian run
         printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
@@ -137,7 +137,7 @@ create_simulation_dir() {
     bcThreshold=$nElements
     if "$OptimizeBCs"; then
         if "$OptimizeOH"; then
-	    if "$isRegional"; then
+            if "$isRegional"; then
                 bcThreshold=$(($nElements - 5))
             else
                 bcThreshold=$(($nElements - 6))
@@ -233,7 +233,7 @@ create_simulation_dir() {
                 # Add and edit perturbations txt file
                 cp Perturbations.txt PerturbationsOH.txt
                 sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
-                if [ $start_element -eq $((ohThreshold+1)) ]; then
+                if [ $start_element -eq $((ohThreshold + 1)) ]; then
                     OHPertNewLine="N_HEMIS    1     ${PerturbValueOH}"
                 else
                     OHPertNewLine="S_HEMIS    2     ${PerturbValueOH}"
@@ -249,7 +249,7 @@ create_simulation_dir() {
 '
                 sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
             fi
-	fi
+        fi
 
         # If the current state vector element is one of the BC state vector elements, then
         # turn on BC optimization for the corresponding edge
