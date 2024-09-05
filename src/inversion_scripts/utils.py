@@ -152,7 +152,7 @@ def plot_field(
     state_vector_labels=None,
     last_ROI_element=None,
     is_regional=True,
-    save_path="./plots",
+    save_path="",
     clean_title="",
 ):
     """
