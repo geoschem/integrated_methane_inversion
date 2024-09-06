@@ -1,6 +1,6 @@
 """
 Description: Calculate the perturbations for each state vector element and update the perturbation files.
-Usage: python make_perturbation_sf.py <config.yml> <period_number>
+Usage: python make_perturbation_sf.py <config.yml> <period_number> <perturb_value>
 Note: period_number is the kalman filter period number for which to calculate the perturbations.
       If not using a kalman filter, set period_number to 1.
 """
@@ -138,6 +138,10 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     """
     Calculate the perturbations for each state vector element and update the perturbation files.
     Write out an archive of the flat scale factors for later use in sensitivity calculations.
+    Args:
+        config            [dict] : dictionary of configuration settings
+        period_number      [int] : the period number for which to calculate the perturbations
+        perturb_value    [float] : the target emission value to perturb each state vector element by
     """
     # make base directory if not already present
     base_directory = os.path.expandvars(

@@ -399,20 +399,21 @@ run_jacobian() {
 
     popd
 
-    if ! "$PrecomputedJacobian"; then
-        jacobian_start=$(date +%s)
-        if "$KalmanMode"; then
-            jacobian_period=${period_i}
-        else
-            jacobian_period=1
-        fi
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+    else
+        jacobian_period=1
+    fi
 
-        set -e
-        # update perturbation values before running jacobian simulations
-        printf "\n=== UPDATING PERTURBATION SFs ===\n"
-        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+    set -e
+    # update perturbation values before running jacobian simulations
+    printf "\n=== UPDATING PERTURBATION SFs ===\n"
+    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+
+    if ! "$PrecomputedJacobian"; then
 
         cd ${RunDirs}/jacobian_runs
+        jacobian_start=$(date +%s)
 
         # create 1ppb restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
@@ -443,6 +444,7 @@ run_jacobian() {
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
     else
+        set +e
         # Add symlink pointing to jacobian matrix files from the reference
         # inversion w/ precomputed Jacobian
         if "$KalmanMode"; then
@@ -489,7 +491,7 @@ run_jacobian() {
         fi
 
         # Get Jacobian scale factors
-        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir $ConfigPath
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $jacobian_period $RunDirs $ReferenceRunDir
         wait
         printf "Got Jacobian scale factors\n"
     fi
