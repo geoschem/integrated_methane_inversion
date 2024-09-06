@@ -129,6 +129,7 @@ def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None)
     perturbation_dict = {
         "effective_pert_sf": effective_pert_sf,
         "jacobian_pert_sf": jacobian_pert_sf,
+        "target_emission": target_emission,
     }
 
     return perturbation_dict

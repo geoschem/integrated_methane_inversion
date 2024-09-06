@@ -37,12 +37,19 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     pert_sf = pert_sf_dict["effective_pert_sf"]
     ref_pert_sf = ref_pert_sf_dict["effective_pert_sf"]
 
+    # Get the ratio of the targetted emissions in the target and reference inversions
+    # TODO: check if this is should ref/target or target/ref
+    target_emis_ratio = pert_sf_dict["target_emission"] / ref_pert_sf_dict["target_emission"]
+    
     # Note: This line assumes the spatial dist of emissions is the same within each state
     # vector element. Be careful switching prior emission inventories (especially if grid
     # cells are clustered). For this to work we need to use the same state vector in both the
     # target and reference inversions.
-    sf_K = pert_sf / ref_pert_sf
-
+    sf_K = pert_sf / ref_pert_sf # TODO: check if this is should ref/target or target/ref
+    
+    # Apply the target_emis_ratio to the scale factors
+    sf_K = sf_K * target_emis_ratio
+    
     return np.asarray(sf_K)
 
 
