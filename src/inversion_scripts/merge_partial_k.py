@@ -88,7 +88,7 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_err, precomp_K):
         )
         # scale error variance by gP value following Chen et al. 2023
         gP = s_superO_p**2 / s_superO_1**2
-        obs_error = obs_error ** 2
+        obs_error = obs_error**2
         obs_error = gP * obs_error
 
         # check to make sure obs_err isn't negative, set 1 as default value

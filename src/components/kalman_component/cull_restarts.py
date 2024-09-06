@@ -37,7 +37,7 @@ def cull_restarts(jacobian_runs_dir, posterior_dir, start_day, end_day):
             if date_dt > start and date_dt < end:
                 delete_path = os.path.join(direc, restart)
                 os.system(f"rm {delete_path}")
-    
+
     print("Culled extra daily restart files")
 
 

@@ -13,7 +13,7 @@
 # (6) $ exit # to exit root user access
 
 # sleep for a few seconds to give slurmd time to startup
-sleep 3
+sleep 9
 
 # configure slurm
 cp /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/base_slurm.conf /home/ubuntu/integrated_methane_inversion/envs/aws/slurm/new_slurm.conf

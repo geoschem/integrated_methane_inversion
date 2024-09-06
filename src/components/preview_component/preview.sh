@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - run_preview 
+#   - run_preview
 
 # Description: Run the IMI Preview
 #   The IMI Preview estimates the quality and cost given the set config file
@@ -41,12 +41,13 @@ run_preview() {
         rm -f .preview_error_status.txt
         chmod +x $preview_file
         sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -o imi_output.tmp \
-        -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache; wait;
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
+        wait
+        cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         # check for any errors
         [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
@@ -61,4 +62,3 @@ run_preview() {
     # Navigate back to top-level directory
     cd ..
 }
-

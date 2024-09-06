@@ -143,7 +143,7 @@ run_hemco_sa() {
     # replace start and end times in HEMCO_sa_Time.rc
     sed -i -e "s|START.*|START: ${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
         -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 00:00:00|g" HEMCO_sa_Time.rc
-    
+
     rm -f .error_status_file.txt
     # Submit job to job scheduler
     sbatch --mem $RequestedMemory \

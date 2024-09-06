@@ -52,11 +52,17 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
             LevelEdgeDiags_save_pth = f"{gc_destination_path}/GEOSChem.LevelEdgeDiags.{d}_{zero_pad_num_hour(h)}00z.nc4"
             SpeciesConc_for_hour.to_netcdf(
                 SpeciesConc_save_pth,
-                encoding={v: {"zlib": True, "complevel": 1} for v in SpeciesConc_for_hour.data_vars},
+                encoding={
+                    v: {"zlib": True, "complevel": 1}
+                    for v in SpeciesConc_for_hour.data_vars
+                },
             )
             LevelEdgeDiags_for_hour.to_netcdf(
                 LevelEdgeDiags_save_pth,
-                encoding={v: {"zlib": True, "complevel": 1} for v in LevelEdgeDiags_for_hour.data_vars},
+                encoding={
+                    v: {"zlib": True, "complevel": 1}
+                    for v in LevelEdgeDiags_for_hour.data_vars
+                },
             )
 
     results = Parallel(n_jobs=-1)(delayed(process)(day) for day in days)
