@@ -53,11 +53,11 @@ run_kf() {
 
     if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
 
-        # First run the Preview if necessary to get prior emissions
+        # First run the HEMCO standalone if necessary to get prior emissions
         # needed for prepare_sf.py
-        if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
-            printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for Kalman Mode.\n"
-            run_prior
+        if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
+            printf "\hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for Kalman Mode.\n"
+            run_hemco_prior_emis
         fi
         # Key directories
         JacobianRunsDir="${RunDirs}/jacobian_runs"
@@ -105,7 +105,7 @@ run_period() {
     echo "Start, End: $StartDate_i, $EndDate_i"
 
     # check if precomputed prior emissions for this period exists already
-    if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
+    if [[ ! -f ${RunDirs}/hemco_prior_emis/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
         printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
         run_hemco_sa $StartDate_i $EndDate_i
     fi

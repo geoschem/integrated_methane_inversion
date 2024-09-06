@@ -114,7 +114,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-DoPriorEmis: true
+DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -211,7 +211,7 @@ BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-PriorDryRun: true
+HemcoPriorEmisDryRun: true
 SpinupDryrun: true
 ProductionDryRun: true
 PosteriorDryRun: true

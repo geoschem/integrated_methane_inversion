@@ -114,7 +114,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-DoPriorEmis: true
+DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -220,7 +220,7 @@ BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled
-PriorDryRun: false
+HemcoPriorEmisDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false
 PosteriorDryRun: false

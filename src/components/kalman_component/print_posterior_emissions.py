@@ -24,7 +24,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     post_sf_path = os.path.join(
         sf_archive_path, f"posterior_sf_period{period_number}.nc"
     )
-    prior_cache_path = os.path.join(base_directory, "prior_run/OutputDir")
+    prior_cache_path = os.path.join(base_directory, "hemco_prior_emis/OutputDir")
     periods_csv_path = os.path.join(base_directory, "periods.csv")
     hemco_diags = get_period_mean_emissions(
         prior_cache_path, period_number, periods_csv_path

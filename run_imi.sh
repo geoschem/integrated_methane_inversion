@@ -17,7 +17,7 @@ source src/utilities/common.sh
 source src/components/setup_component/setup.sh
 source src/components/template_component/template.sh
 source src/components/statevector_component/statevector.sh
-source src/components/prior_component/prior.sh
+source src/components/hemco_prior_emis_component/hemco_prior_emis.sh
 source src/components/preview_component/preview.sh
 source src/components/spinup_component/spinup.sh
 source src/components/jacobian_component/jacobian.sh

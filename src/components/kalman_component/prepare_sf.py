@@ -19,7 +19,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
     Arguments
         period_number   [int]   : What period are we on? For the first period, period_number = 1
-        base_directory  [str]   : The base directory for the inversion, where e.g., "prior_run/" resides
+        base_directory  [str]   : The base directory for the inversion, where e.g., "hemco_prior_emis/" resides
         nudge_factor    [float] : Weight applied to original prior when nudging (default = 0.1)
     """
 
@@ -32,7 +32,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     # Define some useful paths
     unit_sf_path = os.path.join(base_directory, "unit_sf.nc")
     statevector_path = os.path.join(base_directory, "StateVector.nc")
-    original_prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
+    original_prior_cache = os.path.join(base_directory, "hemco_prior_emis/OutputDir")
     
     # Get the original emissions for the first inversion period
     periods_csv_path = os.path.join(base_directory, "periods.csv")
