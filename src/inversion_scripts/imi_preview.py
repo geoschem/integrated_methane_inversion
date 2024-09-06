@@ -436,7 +436,7 @@ def estimate_averaging_kernel(
 
     # Prior emissions
     prior_cache = os.path.expandvars(
-        os.path.join(config["OutputPath"], config["RunName"], "prior_run/OutputDir")
+        os.path.join(config["OutputPath"], config["RunName"], "hemco_prior_emis/OutputDir")
     )
 
     # adjustments for when performing for dynamic kf clustering

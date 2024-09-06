@@ -173,10 +173,10 @@ setup_imi() {
     fi
 
     ##=======================================================================
-    ## Generate Prior Emissions
+    ## Generate Prior Emissions using a HEMCO standalone run
     ##=======================================================================
-    if "$DoPriorEmis"; then
-        run_prior
+    if "$DoHemcoPriorEmis"; then
+        run_hemco_prior_emis
     fi
 
     ##=======================================================================

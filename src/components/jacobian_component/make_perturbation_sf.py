@@ -152,7 +152,7 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     jacobian_dir = os.path.join(base_directory, "jacobian_runs")
 
     # find the hemco emissions file for the period
-    prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
+    prior_cache = os.path.join(base_directory, "hemco_prior_emis/OutputDir")
     if config["KalmanMode"]:
         hemco_emis = get_period_mean_emissions(
             prior_cache, period_number, os.path.join(base_directory, "periods.csv")
