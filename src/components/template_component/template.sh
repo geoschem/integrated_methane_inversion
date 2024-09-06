@@ -118,6 +118,10 @@ setup_template() {
     # If reading total prior emissions (as in the jacobian and posterior), read a new file each month
     sed -i -e "s|EmisCH4_Total \$YYYY/\$MM/\$DD/0|EmisCH4_Total 1900-2050/1-12/1-31/0|g" HEMCO_Config.rc
 
+    # Temporary fix: Modify path to HEMCO prior emissions (the path is currently
+    # hardcoded in the template HEMCO config file in GEOS-Chem)
+    sed -i -e "s|prior_run|hemco_prior_emis|g" HEMCO_Config.rc
+    
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
     sed -i -e "s:'CH4':#'CH4':g" \
            -e "s:'Metrics:#'Metrics:g" \
