@@ -40,10 +40,13 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     # Get the ratio of the targetted emissions in the target and reference inversions
     target_emis_ratio = pert_sf_dict["target_emission"] / ref_pert_sf_dict["target_emission"]
     
-    # Note: This line assumes the spatial dist of emissions is the same within each state
+    # Note 1: This line assumes the spatial dist of emissions is the same within each state
     # vector element. Be careful switching prior emission inventories (especially if grid
     # cells are clustered). For this to work we need to use the same state vector in both the
     # target and reference inversions.
+    # Note 2: This also assumes that the temporal variabily of the swapped emissions is the same.
+    # If the temporal variability is different, there will be error associated with scaling
+    # the Jacobian.
     sf_K = pert_sf / ref_pert_sf
     
     # Apply the target_emis_ratio to the scale factors
