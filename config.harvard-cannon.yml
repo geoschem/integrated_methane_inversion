@@ -107,19 +107,19 @@ Met: "GEOSFP"
 ##   Turn on/off different steps in setting up the inversion 
 RunSetup: true
 SetupTemplateRundir: true
-SetupSpinupRun: false
-SetupJacobianRuns: false
-SetupInversion: false
-SetupPosteriorRun: false
+SetupSpinupRun: true
+SetupJacobianRuns: true
+SetupInversion: true
+SetupPosteriorRun: true
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
 DoPriorEmis: true
-DoSpinup: false
-DoJacobian: false
-ReDoJacobian: false
-DoInversion: false
-DoPosterior: false
+DoSpinup: true
+DoJacobian: true
+ReDoJacobian: true
+DoInversion: true
+DoPosterior: true
 
 ## IMI preview
 ##   NOTE: RunSetup must be true to run preview
