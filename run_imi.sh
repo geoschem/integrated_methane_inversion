@@ -1,6 +1,7 @@
 #!/bin/bash
 
 #SBATCH -N 1
+#SBATCH -c 1
 #SBATCH --mem=2000
 #SBATCH -o "imi_output.log"
 
