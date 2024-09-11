@@ -153,7 +153,7 @@ def plot_field(
     last_ROI_element=None,
     is_regional=True,
     save_path="",
-    clean_title="",
+    clean_title=None,
 ):
     """
     Function to plot inversion results.
@@ -248,13 +248,13 @@ def plot_field(
         os.makedirs(save_path, exist_ok=True)
 
         # Replace spaces in the title or clean title with underscores
-        if not clean_title:
-            sanitized_title = title.replace(" ", "_") + ".png"
-        else:
+        if clean_title:
             sanitized_title = clean_title.replace(" ", "_") + ".png"
+        else:
+            sanitized_title = title.replace(" ", "_") + ".png"
     
         # Construct the full file path
-        full_save_path = os.path.join(save_path, sanitized_title)
+        full_save_path = os.path.join(save_path, sanitized_title.lower())
         
         # Save the plot
         plt.savefig(full_save_path, format="png", bbox_inches='tight')
