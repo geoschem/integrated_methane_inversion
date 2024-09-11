@@ -111,15 +111,13 @@ def check_is_OH_element(sv_elem, nelements, opt_OH, is_regional):
     """
     Determine if the current state vector element is the OH element
     """
-    return (
-        opt_OH
-        and (
-            ((not is_regional) and (sv_elem > (nelements - 2)))
-            or ( is_regional and (sv_elem == nelements))
-        )
+    return opt_OH and (
+        ((not is_regional) and (sv_elem > (nelements - 2)))
+        or (is_regional and (sv_elem == nelements))
     )
 
-def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_regional ):
+
+def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_regional):
     """
     Determine if the current state vector element is a boundary condition element
     """
@@ -128,7 +126,7 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         and opt_BC
         and (
             (opt_OH and (sv_elem > (nelements - 6)))
-            or ( opt_OH and is_regional and (sv_elem > (nelements - 5)))
+            or (opt_OH and is_regional and (sv_elem > (nelements - 5)))
             or ((not opt_OH) and (sv_elem > (nelements - 4)))
         )
     )
@@ -152,7 +150,7 @@ def plot_field(
     state_vector_labels=None,
     last_ROI_element=None,
     is_regional=True,
-    save_path="",
+    save_path=None,
     clean_title=None,
 ):
     """
@@ -189,7 +187,7 @@ def plot_field(
         ax.add_feature(lakes_50m, facecolor="none", edgecolor="black")
         ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
     else:
-        ax.coastlines(resolution='110m')
+        ax.coastlines(resolution="110m")
 
     # Show only ROI values?
     if only_ROI:
@@ -234,12 +232,21 @@ def plot_field(
     # Title
     if title:
         ax.set_title(title)
-    
+
     # Marks any specified high-resolution coordinates on the preview observation density map
     if point_sources:
         for coord in point_sources:
             ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
-        point = Line2D([0], [0], label='point source', marker='x', markersize=10, markeredgecolor='black', markerfacecolor='k', linestyle='')
+        point = Line2D(
+            [0],
+            [0],
+            label="point source",
+            marker="x",
+            markersize=10,
+            markeredgecolor="black",
+            markerfacecolor="k",
+            linestyle="",
+        )
         ax.legend(handles=[point])
 
     # Save plot
@@ -341,20 +348,23 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
-    valid_idx = ((tropomi_data["longitude"] > xlim[0])
-              & (tropomi_data["longitude"] < xlim[1])
-              & (tropomi_data["latitude"] > ylim[0])
-              & (tropomi_data["latitude"] < ylim[1])
-              & (tropomi_data["time"] >= startdate)
-              & (tropomi_data["time"] <= enddate)
-              & (tropomi_data["qa_value"] >= 0.5)
-              & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
-              & (tropomi_data["latitude"] > -60))
+    valid_idx = (
+        (tropomi_data["longitude"] > xlim[0])
+        & (tropomi_data["longitude"] < xlim[1])
+        & (tropomi_data["latitude"] > ylim[0])
+        & (tropomi_data["latitude"] < ylim[1])
+        & (tropomi_data["time"] >= startdate)
+        & (tropomi_data["time"] <= enddate)
+        & (tropomi_data["qa_value"] >= 0.5)
+        & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
+        & (tropomi_data["latitude"] > -60)
+    )
 
     if use_water_obs:
         return np.where(valid_idx)
     else:
         return np.where(valid_idx & (tropomi_data["surface_classification"] != 1))
+
 
 def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=False):
     """
@@ -363,27 +373,36 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
         criteria: We only consider data within lat/lon/time bounds,
         that don't cross the antimeridian, and we filter out all
         coastal pixels (surface classification 3) and inland water
-        pixels with a poor fit (surface classifcation 2, 
+        pixels with a poor fit (surface classifcation 2,
         SWIR chi-2 > 20000) (recommendation from Balasus et al. 2023).
         Also, we filter out pixels south of 60S and (optionally) over water.
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
 
-    valid_idx = ((blended_data["longitude"] > xlim[0])
-              & (blended_data["longitude"] < xlim[1])
-              & (blended_data["latitude"] > ylim[0])
-              & (blended_data["latitude"] < ylim[1])
-              & (blended_data["time"] >= startdate)
-              & (blended_data["time"] <= enddate)
-              & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
-              & ~((blended_data["surface_classification"] == 3) | ((blended_data["surface_classification"] == 2) & (blended_data["chi_square_SWIR"][:] > 20000)))
-              & (blended_data["latitude"] > -60))
-    
+    valid_idx = (
+        (blended_data["longitude"] > xlim[0])
+        & (blended_data["longitude"] < xlim[1])
+        & (blended_data["latitude"] > ylim[0])
+        & (blended_data["latitude"] < ylim[1])
+        & (blended_data["time"] >= startdate)
+        & (blended_data["time"] <= enddate)
+        & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
+        & ~(
+            (blended_data["surface_classification"] == 3)
+            | (
+                (blended_data["surface_classification"] == 2)
+                & (blended_data["chi_square_SWIR"][:] > 20000)
+            )
+        )
+        & (blended_data["latitude"] > -60)
+    )
+
     if use_water_obs:
         return np.where(valid_idx)
     else:
         return np.where(valid_idx & (blended_data["surface_classification"] != 1))
+
 
 def calculate_area_in_km(coordinate_list):
     """
@@ -403,6 +422,7 @@ def calculate_area_in_km(coordinate_list):
 
     return abs(poly_area) * 1e-6
 
+
 def calculate_superobservation_error(sO, p):
     """
     Returns the estimated observational error accounting for superobservations.
@@ -419,15 +439,14 @@ def calculate_superobservation_error(sO, p):
     # values from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504
     r_retrieval = 0.55
     s_transport = 4.5
-    s_super = np.sqrt(
-        sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2
-    )
+    s_super = np.sqrt(sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2)
     return s_super
+
 
 def get_posterior_emissions(prior, scale):
     """
-    Function to calculate the posterior emissions from the prior 
-    and the scale factors. Properly accounting for no optimization 
+    Function to calculate the posterior emissions from the prior
+    and the scale factors. Properly accounting for no optimization
     of the soil sink.
     Args:
         prior  : xarray dataset
@@ -439,30 +458,31 @@ def get_posterior_emissions(prior, scale):
     """
     # keep attributes of data even when arithmetic operations applied
     xr.set_options(keep_attrs=True)
-    
-    # we do not optimize soil absorbtion in the inversion. This 
-    # means that we need to keep the soil sink constant and properly 
+
+    # we do not optimize soil absorbtion in the inversion. This
+    # means that we need to keep the soil sink constant and properly
     # account for it in the posterior emissions calculation.
     # To do this, we:
-    
+
     # make a copy of the original soil sink
     prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
-    
+
     # remove the soil sink from the prior total before applying scale factors
     prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
-    
+
     # scale the prior emissions for all sectors using the scale factors
     posterior = prior.copy()
     for ds_var in list(prior.keys()):
         if "EmisCH4" in ds_var:
             posterior[ds_var] = prior[ds_var] * scale["ScaleFactor"]
-    
+
     # But reset the soil sink to the original value
     posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
-    
+
     # Add the original soil sink back to the total emissions
     posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
     return posterior
+
 
 def get_strdate(current_time, date_threshold):
     # round observation time to nearest hour
@@ -470,7 +490,7 @@ def get_strdate(current_time, date_threshold):
     # Unless it equals the date threshold (hour 00 after the inversion period)
     if strdate == date_threshold:
         strdate = current_time.floor("60min").strftime("%Y%m%d_%H")
- 
+
     return strdate
 
 
@@ -485,37 +505,42 @@ def filter_prior_files(filenames, start_date, end_date):
     filtered_files = []
     for file in filenames:
         # Extract the date part from the filename
-        date_str = file.split('.')[1]
+        date_str = file.split(".")[1]
         file_date = datetime.strptime(date_str, "%Y%m%d%H%M")
 
         # Check if the file date is within the specified range
         if start_date <= file_date <= end_date:
             filtered_files.append(file)
-    
+
     return filtered_files
-    
+
+
 def get_mean_emissions(start_date, end_date, prior_cache_path):
     """
     Calculate the mean emissions for the specified date range.
     """
     # find all prior files in the specified date range
-    prior_files = [f for f in os.listdir(prior_cache_path) if "HEMCO_sa_diagnostics" in f]
+    prior_files = [
+        f for f in os.listdir(prior_cache_path) if "HEMCO_sa_diagnostics" in f
+    ]
     prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
-    hemco_diags = [xr.load_dataset(os.path.join(prior_cache_path, f)) for f in prior_files]
-    
-    # concatenate all datasets and aggregate into the mean prior 
+    hemco_diags = [
+        xr.load_dataset(os.path.join(prior_cache_path, f)) for f in prior_files
+    ]
+
+    # concatenate all datasets and aggregate into the mean prior
     # emissions for the specified date range
     prior_ds = xr.concat(hemco_diags, dim="time")
     return prior_ds.mean(dim=["time"])
+
 
 def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     """
     Calculate the mean emissions for the specified kalman period.
     """
     period_df = pd.read_csv(periods_csv_path)
-    period_df = period_df[period_df['period_number'].astype(int) == int(period)]
+    period_df = period_df[period_df["period_number"].astype(int) == int(period)]
     period_df = period_df.reset_index(drop=True)
-    start_date = str(period_df.loc[0,"Starts"])
-    end_date = str(period_df.loc[0,"Ends"])
+    start_date = str(period_df.loc[0, "Starts"])
+    end_date = str(period_df.loc[0, "Ends"])
     return get_mean_emissions(start_date, end_date, prior_cache_path)
-    

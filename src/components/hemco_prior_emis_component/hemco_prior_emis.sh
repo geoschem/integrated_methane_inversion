@@ -1,24 +1,26 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - run_prior
+#   - run_hemco_prior_emis
 #   - exclude_soil_sink
 
 # Description: Run a HEMCO standalone simulation to generate prior emissions
 #
 # Usage:
-#   run_prior
-run_prior() {
-    prior_start=$(date +%s)
-    if [[ -d ${RunDirs}/prior_run ]]; then
-        printf "\nERROR: ${RunDirs}/prior_run already exists. Please remove or set 'DoPriorEmis: false' in config.yml.\n"
+#   run_hemco_prior_emis
+run_hemco_prior_emis() {
+    hemco_prior_emis_start=$(date +%s)
+    
+    HEMCOdir="hemco_prior_emis"
+    if [[ -d ${RunDirs}/${HEMCOdir} ]]; then
+        printf "\nERROR: ${RunDirs}/${HEMCOdir} already exists. Please remove or set 'DoHemcoPriorEmis: false' in config.yml.\n"
         exit 9999
     fi
 
     ### Perform dry run if requested
-    if "$PriorDryRun"; then
+    if "$HemcoPriorEmisDryRun"; then
         pushd ${RunDirs}/template_run
-        printf "\nExecuting dry-run for prior run...\n"
+        printf "\nExecuting dry-run for HEMCO prior emissions run...\n"
         ../GEOSChem_build/gcclassic --dryrun &> log.dryrun
         # prevent restart file from getting downloaded
         sed -i '/GEOSChem.Restart/d' log.dryrun
@@ -28,7 +30,7 @@ run_prior() {
         popd
     fi
 
-    printf "\n=== GENERATING PRIOR EMISSIONS ===\n"
+    printf "\n=== GENERATING PRIOR EMISSIONS WITH HEMCO STANDALONE ===\n"
 
     cd ${GCClassicPath}/src/HEMCO/run
 
@@ -58,15 +60,13 @@ run_prior() {
     fi
     HEMCOconfig=${RunTemplate}/HEMCO_Config.rc
 
-    priorDir="prior_run"
-    cmd="${metNum}\n${resnum}\n${HEMCOconfig}\n${RunDirs}\n${priorDir}\nn\n"
-
     # Create HEMCO standalone directory
+    cmd="${metNum}\n${resnum}\n${HEMCOconfig}\n${RunDirs}\n${HEMCOdir}\nn\n"
     printf ${cmd} | ./createRunDir.sh >>createHemcoDir.log 2>&1
     rm -f createHemcoDir.log
-    printf "\nCreated ${RunDirs}/prior_run\n"
+    printf "\nCreated ${RunDirs}/${HEMCOdir}\n"
 
-    cd ${RunDirs}/prior_run
+    cd ${RunDirs}/${HEMCOdir}
 
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
@@ -82,18 +82,18 @@ retVal=$?\
 if [ $retVal -ne 0 ]; then\
     rm -f .error_status_file.txt\
     echo "Error Status: $retVal" > .error_status_file.txt\
-    echo "prior run exited with error code: $retVal"\
+    echo "HEMCO prior emis run exited with error code: $retVal"\
     exit $retVal\
 fi' runHEMCO.sh
 
-    sa_XMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMIN)
-    sa_XMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMAX)
-    sa_YMIN=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMIN)
-    sa_YMAX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMAX)
-    sa_NX=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc NX)
-    sa_NY=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc NY)
-    sa_YEDGE=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YEDGE)
-    sa_YMID=$(python ${InversionPath}/src/components/prior_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMID)
+    sa_XMIN=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMIN)
+    sa_XMAX=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc XMAX)
+    sa_YMIN=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMIN)
+    sa_YMAX=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMAX)
+    sa_NX=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc NX)
+    sa_NY=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc NY)
+    sa_YEDGE=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YEDGE)
+    sa_YMID=$(python ${InversionPath}/src/components/hemco_prior_emis_component/get_hemco_grid_vars.py ${RunDirs}/StateVector.nc YMID)
     sed -i -e "s/XMIN.*/XMIN: ${sa_XMIN}/" \
         -e "s/XMAX.*/XMAX: ${sa_XMAX}/" \
         -e "s/YMIN.*/YMIN: ${sa_YMIN}/" \
@@ -102,7 +102,7 @@ fi' runHEMCO.sh
         -e "s/NY.*/NY: ${sa_NY}/" \
         -e "s/YEDGE.*/YEDGE: ${sa_YEDGE}/" \
         -e "s/YMID.*/YMID: ${sa_YMID}/" HEMCO_sa_Grid.${gridFile}.rc
-    mv runHEMCO.sh ${RunName}_Prior.run
+    mv runHEMCO.sh ${RunName}_HEMCO_Prior_Emis.run
 
     # Compile HEMCO and store executable in template run directory
     printf "\nCompiling HEMCO...\n"
@@ -119,16 +119,16 @@ fi' runHEMCO.sh
         printf "\nHEMCO build failed! \n\nSee ${RunTemplate}/build/build_hemco.log for details\n"
         exit 999
     fi
-    printf "\nDone compiling HEMCO \n\nSee ${RunDirs}/prior_run/HEMCO_build_info for details\n\n"
+    printf "\nDone compiling HEMCO \n\nSee ${RunDirs}/${HEMCOdir}/HEMCO_build_info for details\n\n"
 
-    printf "\nSubmitting prior emissions hemco simulation\n\n"
+    printf "\nSubmitting HEMCO prior emissions simulation\n\n"
 
     run_hemco_sa $StartDate $EndDate
 
-    printf "\nDone prior emissions hemco simulation\n\n"
+    printf "\nDone HEMCO prior emissions simulation\n\n"
 
-    printf "\n=== DONE GENERATING PRIOR EMISSIONS ===\n"
-    prior_end=$(date +%s)
+    printf "\n=== DONE GENERATING PRIOR EMISSIONS WITH HEMCO STANDALONE ===\n"
+    hemco_prior_emis_end=$(date +%s)
 }
 
 # Description: Run HEMCO standalone simulation
@@ -139,19 +139,19 @@ run_hemco_sa() {
     hemco_end=$2
     set -e
 
-    pushd ${RunDirs}/prior_run
+    pushd ${RunDirs}/${HEMCOdir}
     # replace start and end times in HEMCO_sa_Time.rc
     sed -i -e "s|START.*|START: ${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \
         -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 00:00:00|g" HEMCO_sa_Time.rc
-    
+
     rm -f .error_status_file.txt
     # Submit job to job scheduler
     sbatch --mem $RequestedMemory \
         -c $RequestedCPUs \
         -t $RequestedTime \
-        -o ${RunName}_Prior.log \
+        -o ${RunName}_HEMCO_Prior_Emis.log \
         -p $SchedulerPartition \
-        -W ${RunName}_Prior.run
+        -W ${RunName}_HEMCO_Prior_Emis.run
     wait
 
     # check if exited with non-zero exit code

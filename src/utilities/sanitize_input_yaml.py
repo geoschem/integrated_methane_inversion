@@ -56,7 +56,7 @@ config_required = [
     "SetupJacobianRuns",
     "SetupInversion",
     "SetupPosteriorRun",
-    "DoPriorEmis",
+    "DoHemcoPriorEmis",
     "DoSpinup",
     "ReDoJacobian",
     "DoJacobian",
@@ -84,7 +84,7 @@ config_required = [
     "RestartFilePrefix",
     "BCpath",
     "BCversion",
-    "PriorDryRun",
+    "HemcoPriorEmisDryRun",
     "SpinupDryrun",
     "ProductionDryRun",
     "PosteriorDryRun",
@@ -94,20 +94,20 @@ config_required = [
     "UseWaterObs",
 ]
 
-# dict of variables that are required if another variable is set to true 
+# dict of variables that are required if another variable is set to true
 # For example UpdateFreqDays is only required if KalmanMode is set to true
 conditional_dict = {}
 conditional_dict["KalmanMode"] = [
     "UpdateFreqDays",
     "NudgeFactor",
-    "DynamicKFClustering"
+    "DynamicKFClustering",
 ]
 conditional_dict["ReducedDimensionStateVector"] = [
     "ClusteringMethod",
     "NumberOfElements",
     "EmissionRateFilter",
     "PlumeCountFilter",
-    "GroupByCountry"
+    "GroupByCountry",
 ]
 conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
 conditional_dict["S3Upload"] = [
@@ -118,10 +118,11 @@ conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
 conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
 
+
 def raise_error_message(var):
     """
     Description: raise an error message about missing config variable
-    """    
+    """
     message = (
         "Error: Missing input variable: "
         + var

@@ -128,7 +128,7 @@ run_posterior() {
             -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
 
         printf "\n--- BC OPTIMIZATION ---\n"
-	printf "BC optimized perturbation values for NSEW set to: ${PerturbBCValues}\n"
+        printf "BC optimized perturbation values for NSEW set to: ${PerturbBCValues}\n"
     fi
 
     if "$OptimizeOH"; then
@@ -143,10 +143,10 @@ run_posterior() {
 
         printf "\n=== OH OPTIMIZATION ===\n"
         if "$isRegional"; then
-	    # Apply single OH scale factor to entire region
-	    sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbOHValue}|g" HEMCO_Config.rc
-	    printf "OH optimized perturbation value set to: ${PerturbOHValue}\n"
-	else
+            # Apply single OH scale factor to entire region
+            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbOHValue}|g" HEMCO_Config.rc
+            printf "OH optimized perturbation value set to: ${PerturbOHValue}\n"
+        else
             # Apply hemispheric OH perturbation values using mask file
             oh_sfs=($PerturbOHValue)
             cp Perturbations.txt PerturbationsOH.txt
@@ -225,7 +225,8 @@ run_posterior() {
     kf_period=1
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI   $UseWaterObs $isPost $kf_period $buildJacobian False; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $UseWaterObs $isPost $kf_period $buildJacobian False
+    wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 

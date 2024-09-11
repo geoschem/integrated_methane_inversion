@@ -40,8 +40,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # We only solve using lognormal errors for state vector elements
     # within the domain of interest, not the buffer elements, the
-    # BC elements, or OH optimization. So, to do this we split K into 
-    # two matrices, one for the lognormal elements, and one for the 
+    # BC elements, or OH optimization. So, to do this we split K into
+    # two matrices, one for the lognormal elements, and one for the
     # normal elements.
     optimize_bcs = config["OptimizeBCs"]
     optimize_oh = config["OptimizeOH"]
@@ -60,18 +60,20 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         scale_factors = np.load(jacobian_sf)
         # apply unit scaling for BC elements and OH elements if using
         if optimize_bcs or optimize_oh:
-            scale_factors = np.append(scale_factors, np.ones(BC_element_num + OH_element_num))
+            scale_factors = np.append(
+                scale_factors, np.ones(BC_element_num + OH_element_num)
+            )
         reps = K_temp.shape[0]
         scaling_matrix = np.tile(scale_factors, (reps, 1))
         K_temp *= scaling_matrix
 
-    # The levenberg-marquardt method assumes that the prior emissions is 
+    # The levenberg-marquardt method assumes that the prior emissions is
     # the median prior emissions, but typically priors are the mean emission.
-    # To account for this we convert xa to a median. This can be done by 
+    # To account for this we convert xa to a median. This can be done by
     # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
     # Here, we calculate this scaling factor
-    prior_scale = 1/np.exp((np.log(float(config["PriorError"]))**2)/2)
-    
+    prior_scale = 1 / np.exp((np.log(float(config["PriorError"])) ** 2) / 2)
+
     # split K based on whether we are solving for lognormal or normal elements
     # K_ROI is the matrix for the lognormal elements (the region of interest)
     # the lognormal part of K gets scaled by prior_scale to convert to median
@@ -107,7 +109,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # Create inverted So matrix
     Soinv = spdiags(1 / so, 0, m, m)
-    
+
     # Define Sa, gamma, and Sa_bc values to iterate through
     prior_errors = [float(config["PriorError"])]
     sa_buffer_elems = [float(config["PriorErrorBufferElements"])]
@@ -118,7 +120,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # iterate through different combination of gamma, lnsa, and sa_bc
     # TODO: for now we will only allow one value for each of these
     # TODO: parallelize this once we allow vectorization of these values
-    combinations = list(product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems, sa_oh_vals))
+    combinations = list(
+        product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems, sa_oh_vals)
+    )
     for gamma, sa, sa_bc, sa_buffer, sa_oh in combinations:
         lnsa_val = np.log(sa)
         results_save_path = f"inversion_result_ln.nc"
@@ -127,16 +131,17 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # lnsa = lnsa_val**2 * np.ones((n, 1))
         lnsa = lnsa_val**2 * np.ones((n, 1))
 
-        
         # For the buffer elems, BCs, and OH elements
         # we apply a different Sa value
         # In the most basic we only generate Sa for buffer elements
-        sa_normal = sa_buffer**2 * np.ones((num_normal_elems - (BC_element_num + OH_element_num), 1))
-        
+        sa_normal = sa_buffer**2 * np.ones(
+            (num_normal_elems - (BC_element_num + OH_element_num), 1)
+        )
+
         # conditionally add BC and OH elements
         if optimize_bcs:
             bc_errors = sa_bc**2 * np.ones((BC_element_num, 1))
-            sa_normal = np.concatenate((sa_normal, bc_errors), axis=0)   
+            sa_normal = np.concatenate((sa_normal, bc_errors), axis=0)
         if optimize_oh:
             oh_errors = sa_oh**2 * np.ones((OH_element_num, 1))
             sa_normal = np.concatenate((sa_normal, oh_errors), axis=0)
@@ -154,7 +159,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # start with arbitrary value for xn_iteration_pct_diff above .05%
         xn_iteration_pct_diff = 1
-        
+
         # Iterate for calculation of ln(xn) until convergence threshold is met (5e-3)
         # We decompose eqn 2 from chen et al into 4 terms
         # term 1: gamma*K'.T@inv(So)@K'
@@ -166,18 +171,20 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # where x(n-1) is the previous iteration of xn until convergence
         print("Status: Iterating to calculate ln(xn)")
         while xn_iteration_pct_diff >= convergence_threshold:
-            
+
             # we need to transform lnxn to xn to calculate K_prime
             xn = np.concatenate(
                 (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]),
                 axis=0,
             )
             # K_prime is the updated jacobian using the new xn from the previous iteration
-            K_prime = np.concatenate((K_ROI * xn[:-num_normal_elems].T, K_normal), axis=1)
-            
+            K_prime = np.concatenate(
+                (K_ROI * xn[:-num_normal_elems].T, K_normal), axis=1
+            )
+
             # commonly used term for term1 and term3
             gamma_K_prime_transpose_Soinv = gamma * K_prime.T @ Soinv
-            
+
             # Compute the next xn_update
             term1 = gamma_K_prime_transpose_Soinv @ K_prime
             term2 = (1 + kappa) * invlnsa
@@ -188,7 +195,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
             # put it all together to calculate lnxn_update
             lnxn_update = lnxn + inv_term @ (term3 - term4)
-            
+
             # Check for convergence
             xn_iteration_pct_diff = max(
                 abs(
@@ -217,7 +224,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
         xnmean = np.concatenate(
             (
-                xn[:-num_normal_elems] * np.expand_dims(np.exp(dlns * (0.5)) * prior_scale, axis=1),
+                xn[:-num_normal_elems]
+                * np.expand_dims(np.exp(dlns * (0.5)) * prior_scale, axis=1),
                 xn[-num_normal_elems:],
             )
         )

@@ -2,17 +2,19 @@ import sys
 import xarray as xr
 import numpy as np
 
+
 def calc_edges(da):
-    diff = (da[1].item()-da[0].item())/2
+    diff = (da[1].item() - da[0].item()) / 2
     edges = list(da.values - diff)
     edges.append(da[-1].item() + diff)
     return edges
+
 
 def get_hemco_grid_vars(sv):
     YMID = list(sv.lat.values)
     YEDGE = calc_edges(sv.lat)
     XEDGE = calc_edges(sv.lon)
-    
+
     if option == "YMID":
         print(" ".join([f"{num:.5f}" for num in YMID]))
     elif option == "YEDGE":
@@ -37,12 +39,12 @@ def get_hemco_grid_vars(sv):
         print(NY)
     else:
         raise ValueError(f"Option '{option}' not recognized.")
-    
+
 
 if __name__ == "__main__":
     sv_path = sys.argv[1]
     option = sys.argv[2]
     sv = xr.load_dataset(sv_path)
-    
+
     # print out relevant grid information
     get_hemco_grid_vars(sv)

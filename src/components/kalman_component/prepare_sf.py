@@ -19,7 +19,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
     Arguments
         period_number   [int]   : What period are we on? For the first period, period_number = 1
-        base_directory  [str]   : The base directory for the inversion, where e.g., "prior_run/" resides
+        base_directory  [str]   : The base directory for the inversion, where e.g., "hemco_prior_emis/" resides
         nudge_factor    [float] : Weight applied to original prior when nudging (default = 0.1)
     """
 
@@ -32,11 +32,13 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     # Define some useful paths
     unit_sf_path = os.path.join(base_directory, "unit_sf.nc")
     statevector_path = os.path.join(base_directory, "StateVector.nc")
-    original_prior_cache = os.path.join(base_directory, "prior_run/OutputDir")
-    
+    original_prior_cache = os.path.join(base_directory, "hemco_prior_emis/OutputDir")
+
     # Get the original emissions for the first inversion period
     periods_csv_path = os.path.join(base_directory, "periods.csv")
-    original_emis_ds = get_period_mean_emissions(original_prior_cache, 1, periods_csv_path)
+    original_emis_ds = get_period_mean_emissions(
+        original_prior_cache, 1, periods_csv_path
+    )
 
     # Get state vector, grid-cell areas, mask
     statevector = xr.load_dataset(statevector_path)
@@ -63,7 +65,9 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             # Get the original HEMCO emissions for period p
             # Note: we remove soil absorption from the prior for our nudging operations
             # since it is not optimized in the inversion.
-            original_emis_ds = get_period_mean_emissions(original_prior_cache, p, periods_csv_path)
+            original_emis_ds = get_period_mean_emissions(
+                original_prior_cache, p, periods_csv_path
+            )
             original_emis = original_emis_ds["EmisCH4_Total_ExclSoilAbs"]
 
             # Get the gridded posterior for period p
@@ -82,10 +86,12 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
                 posterior_p["ScaleFactor"] * sf["ScaleFactor"]
             )
             current_posterior_emis = original_emis * posterior_scale_ds["ScaleFactor"]
-            
-            # Set areas with negative emissions to 0. 
+
+            # Set areas with negative emissions to 0.
             # These areas will be repopulated with the nudge prior emissions
-            current_positive_posterior_emis = current_posterior_emis.where(current_posterior_emis > 0, 0)
+            current_positive_posterior_emis = current_posterior_emis.where(
+                current_posterior_emis > 0, 0
+            )
 
             nudged_posterior_emis = (
                 nudge_factor * original_emis

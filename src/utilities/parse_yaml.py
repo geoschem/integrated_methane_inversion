@@ -11,18 +11,19 @@ import sys
 #   $ eval $(python parse_yaml.py config.yml)
 
 
-def parse_yaml(file_path, prefix=''):
+def parse_yaml(file_path, prefix=""):
     """
     Parse yaml file and convert to shell variable format
     Arguments
         file_path [str] : path to yaml file
         prefix    [str] : prefix for shell variables
     """
-    with open(file_path, 'r') as stream:
+    with open(file_path, "r") as stream:
         data = yaml.safe_load(stream)
         return yaml_to_shell_variables(data, prefix)
 
-def yaml_to_shell_variables(data, prefix=''):
+
+def yaml_to_shell_variables(data, prefix=""):
     """
     Traverse dictionary data and convert to shell variables
     Arguments
@@ -30,7 +31,7 @@ def yaml_to_shell_variables(data, prefix=''):
         prefix [str]  : prefix for shell variables
     """
     shell_vars = []
-    
+
     def recurse(data, current_prefix):
         if isinstance(data, dict):
             for key, value in data.items():
@@ -43,15 +44,18 @@ def yaml_to_shell_variables(data, prefix=''):
                 else:
                     array_elements.append(f'"{value}"')
             if array_elements:
-                array_declaration = f"{current_prefix[:-1]}=({' '.join(array_elements)})"
+                array_declaration = (
+                    f"{current_prefix[:-1]}=({' '.join(array_elements)})"
+                )
                 shell_vars.append(array_declaration)
         elif isinstance(data, bool):
             shell_vars.append(f'{current_prefix[:-1]}="{str(data).lower()}"')
         else:
             shell_vars.append(f'{current_prefix[:-1]}="{data}"')
-    
+
     recurse(data, prefix)
     return shell_vars
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
