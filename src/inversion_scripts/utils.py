@@ -150,6 +150,8 @@ def plot_field(
     state_vector_labels=None,
     last_ROI_element=None,
     is_regional=True,
+    save_path=None,
+    clean_title=None,
 ):
     """
     Function to plot inversion results.
@@ -169,6 +171,8 @@ def plot_field(
         cbar_label : colorbar label
         mask       : mask for region of interest, boolean dataarray
         only_ROI   : zero out data outside the region of interest, true or false
+        save_path  : path to save the plot
+        clean_title: title without special characters
     """
 
     # Select map features
@@ -244,6 +248,24 @@ def plot_field(
             linestyle="",
         )
         ax.legend(handles=[point])
+
+    # Save plot
+    if save_path:
+        # Ensure the directory exists
+        os.makedirs(save_path, exist_ok=True)
+
+        # Replace spaces in the title or clean title with underscores
+        if clean_title:
+            sanitized_title = clean_title.replace(" ", "_") + ".png"
+        else:
+            sanitized_title = title.replace(" ", "_") + ".png"
+    
+        # Construct the full file path
+        full_save_path = os.path.join(save_path, sanitized_title.lower())
+        
+        # Save the plot
+        plt.savefig(full_save_path, format="png", bbox_inches='tight')
+        print(f"Plot saved to {full_save_path}")
 
 
 def plot_time_series(
