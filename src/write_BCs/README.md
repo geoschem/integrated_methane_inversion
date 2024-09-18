@@ -32,4 +32,4 @@
 2. **Before deleting your `workDir`**, in `workDir/gc_run/Restarts/`, copy the restart file from > 30 days before the next day you will need boundary conditions to a persistent storage location.
    - example: `GEOSChem.Restart.20230401_0000z.nc4`.
 3. When the satellite data and met fields become available, generate boundary conditions up until your new end date, but start with a little overlap to check for consistency.
-   - example: `startDate: 20230501_0000z.nc4`, `endDate: 20230630_0000z.nc4` (using `GEOSChem.Restart.20230401_0000z.nc4`), then check consistency between your new and previously generated boundary conditions for `20230501` until `20230531`.
+   - example: `startDate: 20230501`, `endDate: 20230630` (using `GEOSChem.Restart.20230401_0000z.nc4`), then check consistency between your new and previously generated boundary conditions for `20230501` until `20230531` before using the new `20230601` to `20230630` boundary conditions.
