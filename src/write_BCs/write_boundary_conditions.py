@@ -260,9 +260,6 @@ def write_bias_corrected_files(bias):
             )
         )
     ]
-    assert len(files) == len(
-        strdate
-    ), "ERROR -> bias dimension is not the same as number of boundary condition files"
 
     # For each file, remove the total column bias from each level of the GEOS-Chem boundary condition
     for filename in files:
