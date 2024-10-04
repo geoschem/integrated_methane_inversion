@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - setup_spinup 
-#   - run_spinup 
+#   - setup_spinup
+#   - run_spinup
 
 # Description: Setup Spinup Directory
 # Usage:
@@ -10,14 +10,14 @@
 setup_spinup() {
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
-        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n" 
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n"
         exit 9999
     fi
 
     printf "\n=== CREATING SPINUP RUN DIRECTORY ===\n"
-    
+
     cd ${RunDirs}
-    
+
     # Define the run directory name
     SpinupName="${RunName}_Spinup"
 
@@ -26,7 +26,7 @@ setup_spinup() {
     mkdir -p -v ${runDir}
 
     # Copy run directory files
-    cp -r ${RunTemplate}/*  ${runDir}
+    cp -r ${RunTemplate}/* ${runDir}
     cd $runDir
 
     # Link to GEOS-Chem executable
@@ -37,37 +37,37 @@ setup_spinup() {
     ln -s $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
         sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-	    printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n" 
+        printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
     fi
-    
+
     # Update settings in geoschem_config.yml
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
-           -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
+        -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-               -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-               -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-               -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
     fi
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
-        -e "s:##:#:g" ch4_run.template > ${SpinupName}.run
+        -e "s:##:#:g" ch4_run.template >${SpinupName}.run
     chmod 755 ${SpinupName}.run
     rm -f ch4_run.template
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
         printf "\nExecuting dry-run for spinup run...\n"
-        ./gcclassic --dryrun &> log.dryrun
+        ./gcclassic --dryrun &>log.dryrun
         # prevent restart file from getting downloaded since
         # we don't want to overwrite the one we link to above
         sed -i '/GEOSChem.Restart/d' log.dryrun
         ./download_data.py log.dryrun aws
     fi
-    
+
     # Navigate back to top-level directory
     cd ..
 
@@ -85,10 +85,11 @@ run_spinup() {
 
     # Submit job to job scheduler
     sbatch --mem $RequestedMemory \
-    -c $RequestedCPUs \
-    -t $RequestedTime \
-    -p $SchedulerPartition \
-    -W ${RunName}_Spinup.run; wait;
+        -c $RequestedCPUs \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W ${RunName}_Spinup.run
+    wait
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

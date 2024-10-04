@@ -17,7 +17,7 @@ When finished you can tag it and push it to the relevant remote repository (exam
 ```
 # login to ecr repository
 $ aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/w1q7j9l2
-$ docker tag imi-base-image:latest public.ecr.aws/w1q7j9l2/imi-al2-base-image:latest
+$ docker tag imi-al2-base-image:latest public.ecr.aws/w1q7j9l2/imi-al2-base-image:latest
 $ docker push public.ecr.aws/w1q7j9l2/imi-al2-base-image:latest
 ```
 ## Running the image
@@ -40,5 +40,3 @@ The spack dependencies are built using spack environments, which package a set o
 The IMI uses the slurm scheduler to manage jobs and is specifically useful for allocating resources amongst the jacobian simulations. However, slurm and docker compatability is complicated. Slurm requires the processes of munge, slurmd, and slurmctld to be run in the background to function. Best practices with docker is to setup a separated docker container for each process and share filesystems and pass messages as needed between containers. For simplicity, and to maximize use of available hardware resources, we run everything in a single container. The current slurm installation ~works~ but it is possible that the configuration could be improved.
 ## Modifying version numbers for spack dependencies
 The spack dependency list for installation are contained in the install-scripts/geoschem_deps-gnu-openmpi-102.yaml file. You can modify the version numbers in this configuration file and rebuild the docker container to install the modified versions.
-
-

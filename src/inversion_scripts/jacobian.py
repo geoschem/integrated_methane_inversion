@@ -7,6 +7,7 @@ import numpy as np
 import re
 import os
 import datetime
+import yaml
 from src.inversion_scripts.utils import save_obj
 from src.inversion_scripts.operators.TROPOMI_operator import (
     apply_average_tropomi_operator,
@@ -15,7 +16,7 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
 from joblib import Parallel, delayed
 
 
-def apply_operator(operator, params):
+def apply_operator(operator, params, config):
     """
     Run the chosen operator based on selected instrument
 
@@ -43,7 +44,9 @@ def apply_operator(operator, params):
             params["ylim"],
             params["gc_cache"],
             params["build_jacobian"],
-            params["sensi_cache"],
+            params["period_i"],
+            config,
+            params["use_water_obs"],
         )
     elif operator == "TROPOMI":
         return apply_tropomi_operator(
@@ -56,7 +59,9 @@ def apply_operator(operator, params):
             params["ylim"],
             params["gc_cache"],
             params["build_jacobian"],
-            params["sensi_cache"],
+            params["period_i"],
+            config,
+            params["use_water_obs"],
         )
     else:
         raise ValueError("Error: invalid operator selected.")
@@ -64,18 +69,21 @@ def apply_operator(operator, params):
 
 if __name__ == "__main__":
 
-    startday = sys.argv[1]
-    endday = sys.argv[2]
-    lonmin = float(sys.argv[3])
-    lonmax = float(sys.argv[4])
-    latmin = float(sys.argv[5])
-    latmax = float(sys.argv[6])
-    n_elements = int(sys.argv[7])
-    tropomi_cache = sys.argv[8]
-    BlendedTROPOMI = sys.argv[9] == "true"
-    isPost = sys.argv[10]
-    build_jacobian = sys.argv[11]
-    viz_prior = sys.argv[12]
+    config = yaml.load(open(sys.argv[1]), Loader=yaml.FullLoader)
+    startday = sys.argv[2]
+    endday = sys.argv[3]
+    lonmin = float(sys.argv[4])
+    lonmax = float(sys.argv[5])
+    latmin = float(sys.argv[6])
+    latmax = float(sys.argv[7])
+    n_elements = int(sys.argv[8])
+    tropomi_cache = sys.argv[9]
+    BlendedTROPOMI = sys.argv[10].lower() == "true"
+    use_water_obs = sys.argv[11].lower() == "true"
+    isPost = sys.argv[12]
+    period_i = int(sys.argv[13])
+    build_jacobian = sys.argv[14]
+    viz_prior = sys.argv[15]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
@@ -83,7 +91,6 @@ if __name__ == "__main__":
 
     # Configuration
     workdir = "."
-    sensi_cache = f"{workdir}/data_sensitivities"
     if build_jacobian.lower() == "true":
         build_jacobian = True
     else:
@@ -92,14 +99,14 @@ if __name__ == "__main__":
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
         vizdir = f"{workdir}/data_visualization"
-        
-        # for lognormal, we also sample the prior simulation in a 
+
+        # for lognormal, we also sample the prior simulation in a
         # separate call to jacobian.py solely for visualization purposes
         if viz_prior.lower() == "true":
             gc_cache = f"{gc_cache}_prior"
             outputdir = f"{outputdir}_prior"
             vizdir = f"{vizdir}_prior"
-             
+
     else:  # if sampling posterior simulation
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
@@ -119,9 +126,9 @@ if __name__ == "__main__":
     sat_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        shortname = re.split("\/", filename)[-1]
-        shortname = re.split("\.", shortname)[0]
-        strdate = re.split("\.|_+|T", shortname)[4]
+        shortname = re.split(r"\/", filename)[-1]
+        shortname = re.split(r"\.", shortname)[0]
+        strdate = re.split(r"\.|_+|T", shortname)[4]
         strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
         if (strdate >= gc_startdate) and (strdate <= gc_enddate):
             sat_files.append(filename)
@@ -134,9 +141,9 @@ if __name__ == "__main__":
 
         # Check if TROPOMI file has already been processed
         print("========================")
-        shortname = re.split("\/", filename)[-1]
+        shortname = re.split(r"\/", filename)[-1]
         print(shortname)
-        date = re.split("\.", shortname)[0]
+        date = re.split(r"\.", shortname)[0]
 
         # If not yet processed, run apply_average_tropomi_operator()
         if not os.path.isfile(f"{outputdir}/{date}_GCtoTROPOMI.pkl"):
@@ -154,8 +161,10 @@ if __name__ == "__main__":
                     "ylim": ylim,
                     "gc_cache": gc_cache,
                     "build_jacobian": build_jacobian,
-                    "sensi_cache": sensi_cache,
+                    "period_i": period_i,
+                    "use_water_obs": use_water_obs,
                 },
+                config,
             )
 
             # we also save out the unaveraged tropomi operator for visualization purposes
@@ -171,10 +180,12 @@ if __name__ == "__main__":
                     "ylim": ylim,
                     "gc_cache": gc_cache,
                     "build_jacobian": False,
-                    "sensi_cache": sensi_cache,
+                    "period_i": period_i,
+                    "use_water_obs": use_water_obs,
                 },
+                config,
             )
-            
+
             if output == None:
                 return 0
         else:

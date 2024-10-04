@@ -29,7 +29,7 @@ setup_jacobian() {
     mkdir -p -v jacobian_runs
 
     if [ $NumJacobianTracers -gt 1 ]; then
-        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH)
+        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
 
         # Determine approx. number of CH4 tracers per Jacobian run
         printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
@@ -127,7 +127,6 @@ create_simulation_dir() {
     # and use total emissions (without soil absorption) saved out from prior
     # emissions simulation instead. For the prior and OH sims we add soil
     # absorption back in below
-    printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
     sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
         -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
         -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
@@ -138,7 +137,11 @@ create_simulation_dir() {
     bcThreshold=$nElements
     if "$OptimizeBCs"; then
         if "$OptimizeOH"; then
-            bcThreshold=$(($nElements - 5))
+            if "$isRegional"; then
+                bcThreshold=$(($nElements - 5))
+            else
+                bcThreshold=$(($nElements - 6))
+            fi
         else
             bcThreshold=$(($nElements - 4))
         fi
@@ -148,7 +151,11 @@ create_simulation_dir() {
     OH_elem=false
     ohThreshold=$nElements
     if "$OptimizeOH"; then
-        ohThreshold=$(($nElements - 1))
+        if "$isRegional"; then
+            ohThreshold=$(($nElements - 1))
+        else
+            ohThreshold=$(($nElements - 2))
+        fi
     fi
 
     # Update settings in HISTORY.rc
@@ -185,11 +192,9 @@ create_simulation_dir() {
         activate_observations
     fi
 
-    # Turn off sectoral emissions diagnostics since total emissions are
-    # read in for jacobian runs
+    # Turn off emissions diagnostics to save disk space
+    # These should remain unchanged from hemco_prior_emis
     sed -i -e "s:EmisCH4:#EmisCH4:g" HEMCO_Diagn.rc
-    sed -i -e "s:#EmisCH4_Total:EmisCH4_Total:g" HEMCO_Diagn.rc
-    sed -i -e "s:#EmisCH4_SoilAbsorb:EmisCH4_SoilAbsorb:g" HEMCO_Diagn.rc
 
     if is_number "$x"; then
         ### Perform dry run if requested, only for base run
@@ -217,10 +222,33 @@ create_simulation_dir() {
             end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
         fi
 
-        # Perturb OH if this is the OH perturbations simulation
+        # Perturb OH if this is an OH state vector element
         if [ $start_element -gt $ohThreshold ]; then
             OH_elem=true
-            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbValueOH}|g" HEMCO_Config.rc
+            if "$isRegional"; then
+                # Perturb OH everywhere if this is a reginoal simulation
+                sed -i -e "s| OH_pert_factor 1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
+            else
+                # Perturb OH by hemisphere if this is a global simulation
+                # Add and edit perturbations txt file
+                cp Perturbations.txt PerturbationsOH.txt
+                sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
+                if [ $start_element -eq $((ohThreshold + 1)) ]; then
+                    OHPertNewLine="N_HEMIS    1     ${PerturbValueOH}"
+                else
+                    OHPertNewLine="S_HEMIS    2     ${PerturbValueOH}"
+                fi
+                OHPertPrevLine='DEFAULT    0     1.0'
+                sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
+
+                # Modify OH scale factor in HEMCO config
+                sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
+
+                HcoPrevLineMask='CH4_STATE_VECTOR'
+                HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
+'
+                sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+            fi
         fi
 
         # If the current state vector element is one of the BC state vector elements, then
@@ -255,9 +283,8 @@ create_simulation_dir() {
         sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
         # create symlink to 1ppb restart file
         ln -sf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-        # Also, set emissions to zero for default CH4 tracer by applying new ZERO scale factor
-        sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
-            -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
+        # Also, set emissions to zero for default CH4 tracer by applying ZERO scale factor (id 5)
+        sed -i -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
     # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
@@ -268,7 +295,7 @@ create_simulation_dir() {
     # Initialize previous lines to search
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
-    HcoPrevLine2='CH4 5 1 500'
+    HcoPrevLine2='1 500'
     HcoPrevLine3='Perturbations.txt - - - xy count 1'
     HcoPrevLine4='\* BC_CH4'
     PertPrevLine='DEFAULT    0     0.0'
@@ -372,20 +399,21 @@ run_jacobian() {
 
     popd
 
-    if ! "$PrecomputedJacobian"; then
-        jacobian_start=$(date +%s)
-        if "$KalmanMode"; then
-            jacobian_period=${period_i}
-        else
-            jacobian_period=1
-        fi
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+    else
+        jacobian_period=1
+    fi
 
-        set -e
-        # update perturbation values before running jacobian simulations
-        printf "\n=== UPDATING PERTURBATION SFs ===\n"
-        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+    set -e
+    # update perturbation values before running jacobian simulations
+    printf "\n=== UPDATING PERTURBATION SFs ===\n"
+    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+
+    if ! "$PrecomputedJacobian"; then
 
         cd ${RunDirs}/jacobian_runs
+        jacobian_start=$(date +%s)
 
         # create 1ppb restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
@@ -416,6 +444,7 @@ run_jacobian() {
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
     else
+        set +e
         # Add symlink pointing to jacobian matrix files from the reference
         # inversion w/ precomputed Jacobian
         if "$KalmanMode"; then
@@ -442,6 +471,9 @@ run_jacobian() {
         wait
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
+        # check if prior simulation exited with non-zero exit code
+        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Run the background simulation if lognormal errors enabled
@@ -453,11 +485,13 @@ run_jacobian() {
                 -p $SchedulerPartition \
                 -W run_bkgd_simulation.sh
             wait
+            # check if background simulation exited with non-zero exit code
+            [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
             printf "=== DONE BACKGROUND SIMULATION ===\n"
         fi
 
         # Get Jacobian scale factors
-        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $period_i $RunDirs $ReferenceRunDir $ConfigPath
+        python ${InversionPath}/src/inversion_scripts/get_jacobian_scalefactors.py $jacobian_period $RunDirs $ReferenceRunDir
         wait
         printf "Got Jacobian scale factors\n"
     fi
@@ -519,15 +553,19 @@ nTracers = int(sys.argv[1])
 nElements = int(sys.argv[2])
 bcOptimized = sys.argv[3].lower() == 'true'
 ohOptimized = sys.argv[4].lower() == 'true'
+isRegional = sys.argv[5].lower() == 'true'
 numStandaloneRuns = 0
 if bcOptimized:
     numStandaloneRuns += 4
 if ohOptimized:
-    numStandaloneRuns += 1
+    if isRegional:
+        numStandaloneRuns += 1
+    else:
+        numStandaloneRuns += 2
 nRuns = math.ceil((nElements - numStandaloneRuns) / nTracers)
 nRuns += numStandaloneRuns
 print(nRuns)
-" $1 $2 $3 $4
+" $1 $2 $3 $4 $5
 }
 
 is_number() {

@@ -20,6 +20,7 @@ def do_inversion(
     jacobian_sf=None,
     prior_err_bc=0.0,
     prior_err_oh=0.0,
+    is_Regional=True,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -38,6 +39,7 @@ def do_inversion(
         jacobian_sf  [str]   : Path to Jacobian scale factors file if using precomputed K
         prior_err_bc [float] : Prior error standard deviation (default 0.0)
         prior_err_oh [float] : Prior error standard deviation (default 0.0)
+        is_Regional  [bool]  : Is this a regional simulation?
 
     Returns
         xhat         [float] : Posterior scaling factors
@@ -51,7 +53,7 @@ def do_inversion(
     # boolean for whether we are optimizing boundary conditions
     bc_optimization = prior_err_bc > 0.0
     oh_optimization = prior_err_oh > 0.0
-    
+
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
@@ -180,7 +182,7 @@ def do_inversion(
             if bc_optimization:
                 # add (unit) scale factors for BCs
                 # as the last 4 elements of the scaling matrix
-                scale_factors = np.append(scale_factors, np.ones(4)) 
+                scale_factors = np.append(scale_factors, np.ones(4))
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
             K *= scaling_matrix
@@ -223,21 +225,28 @@ def do_inversion(
 
     # If optimizing OH, adjust for it in the inversion
     if oh_optimization:
-        # Add prior error for OH as the last element of the diagonal
+        # Add prior error for OH as the last element(s) of the diagonal
         # Following Masakkers et al. (2019, ACP) weight the OH term by the
         # ratio of the number of elements (n_OH_elements/n_emission_elements)
-        # Currently n_OH_elements=1
-        OH_weight = 1/(n_elements-1)
-        Sa_diag[-1:] = OH_weight*prior_err_oh**2
-        scale_factor_idx -= 1
-        
+        if is_Regional:
+            OH_weight = 1 / (n_elements - 1)
+            Sa_diag[-1:] = OH_weight * prior_err_oh**2
+            scale_factor_idx -= 1
+        else:
+            OH_weight = 2 / (n_elements - 2)
+            Sa_diag[-2:] = OH_weight * prior_err_oh**2
+            scale_factor_idx -= 2
+
     # If optimizing boundary conditions, adjust for it in the inversion
     if bc_optimization:
         scale_factor_idx -= 4
 
         # add prior error for BCs as the last 4 elements of the diagonal
         if oh_optimization:
-            Sa_diag[-5:-1] = prior_err_bc**2
+            if is_Regional:
+                Sa_diag[-5:-1] = prior_err_bc**2
+            else:
+                Sa_diag[-6:-1] = prior_err_bc**2
         else:
             Sa_diag[-4:] = prior_err_bc**2
 
@@ -245,7 +254,7 @@ def do_inversion(
 
     # Solve for posterior scale factors xhat
     ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
-    
+
     # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + ratio
     # Notes:
@@ -255,25 +264,38 @@ def do_inversion(
     xhat = ratio.copy()
     xhat[:scale_factor_idx] += 1
     if oh_optimization:
-        xhat[-1] += 1
-        print(f"xhat[OH] = {xhat[-1]}")
-        
+        if is_Regional:
+            xhat[-1] += 1
+            print(f"xhat[OH] = {xhat[-1]}")
+        else:
+            xhat[-2:] += 1
+            print(f"xhat[OH] = {xhat[-2:]}")
+
     # Posterior error covariance matrix
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
 
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
-    
+
     # Calculate J_A, where ratio = xhat - xA
     # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
     ratioT = ratio.transpose()
     J_A = ratioT @ inv_Sa @ ratio
     J_A_normalized = J_A / n_elements
-    
+
     # Print some statistics
-    print(f'gamma: {gamma}')
-    print(f'Normalized J_A: {J_A_normalized}') # ideal gamma is where this is close to 1
-    print("Min:", xhat[:scale_factor_idx].min(), "Mean:", xhat[:scale_factor_idx].mean(), "Max", xhat[:scale_factor_idx].max())
+    print(f"gamma: {gamma}")
+    print(
+        f"Normalized J_A: {J_A_normalized}"
+    )  # ideal gamma is where this is close to 1
+    print(
+        "Min:",
+        xhat[:scale_factor_idx].min(),
+        "Mean:",
+        xhat[:scale_factor_idx].mean(),
+        "Max",
+        xhat[:scale_factor_idx].max(),
+    )
 
     return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
@@ -295,6 +317,7 @@ if __name__ == "__main__":
     jacobian_sf = sys.argv[12]
     prior_err_BC = float(sys.argv[13])
     prior_err_OH = float(sys.argv[14])
+    is_Regional = sys.argv[15].lower() == "true"
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -315,6 +338,7 @@ if __name__ == "__main__":
         jacobian_sf,
         prior_err_BC,
         prior_err_OH,
+        is_Regional,
     )
     xhat = out[0]
     ratio = out[1]
@@ -325,13 +349,14 @@ if __name__ == "__main__":
 
     # Save results
     dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")
-    nvar = dataset.createDimension("nvar", n_elements)
-    nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar", "nvar"))
-    nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar"))
-    nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar"))
-    nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar"))
-    nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar", "nvar"))
-    nc_A = dataset.createVariable("A", np.float32, ("nvar", "nvar"))
+    nvar1 = dataset.createDimension("nvar1", n_elements)
+    nvar2 = dataset.createDimension("nvar2", n_elements)
+    nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar1", "nvar2"))
+    nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar1"))
+    nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar1"))
+    nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar1"))
+    nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
+    nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
     nc_KTinvSoK[:, :] = KTinvSoK
     nc_KTinvSoyKxA[:] = KTinvSoyKxA
     nc_ratio[:] = ratio

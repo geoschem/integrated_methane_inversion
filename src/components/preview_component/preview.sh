@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - run_preview 
+#   - run_preview
 
 # Description: Run the IMI Preview
 #   The IMI Preview estimates the quality and cost given the set config file
@@ -9,11 +9,11 @@
 #   run_preview
 run_preview() {
 
-    # First generate the prior emissions if not available yet
+    # First run the HEMCO standalone if necessary to get prior emissions
     # needed for prepare_sf.py
-    if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
-        printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
-        run_prior
+    if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
+        printf "\hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
+        run_hemco_prior_emis
     fi
 
     # Make the preview directory
@@ -33,26 +33,24 @@ run_preview() {
     tropomi_cache=${RunDirs}/satellite_data
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
-    # Define custom Kalman filter periods for preview calculations
-    if ! "$MakePeriodsCSV"; then
-        printf "Copying custom periods.csv to the run directory.\n"
-        cp $CustomPeriodsCSV ${RunDirs}/
-    fi
-
     # Run preview script
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
+        rm -f .preview_error_status.txt
         chmod +x $preview_file
         sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -o imi_output.tmp \
-        -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache; wait;
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
+        wait
+        cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
+        # check for any errors
+        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
     else
         python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi
@@ -64,4 +62,3 @@ run_preview() {
     # Navigate back to top-level directory
     cd ..
 }
-

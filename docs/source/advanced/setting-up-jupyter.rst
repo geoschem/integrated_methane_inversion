@@ -32,7 +32,7 @@ This will start a jupyter server on port 8080 and will print out a link with an 
 
 Then in a new **local** terminal (or GIT-Bash) window run the following command::
 
-  $ ssh -NL 8080:localhost:8080 -i /path/to/private_key
+  $ ssh -NL 8080:localhost:8080 -i /path/to/private_key ubuntu@<host-name>
 
 This creates an ssh tunnel from your ec2 instance to your local computer over port 8080, which will allow you to view your jupyter 
 notebooks from your browser. Go to the link outputted from your remote serve command above (eg. http://localhost:8080/?token=7a7ae708966c68e631bc76ba9eae7b1d287e4747cf7072e7).

@@ -24,7 +24,7 @@ module load cdo/1.9.4-fasrc02
 ##############################################################################
 
 # Create a 2-letter region ID (e.g. NA=North America, EU=Europe, AS=Asia)
-RegionID="SA"  # South America
+RegionID="SA" # South America
 
 # Bounds of the cropped domain
 LonMin=-88.0
@@ -55,10 +55,10 @@ EndMonth=1
 ##############################################################################
 
 # Create directories if they don't already exist
-if [[ ! -d $GlobalDir/$Year ]] ; then
+if [[ ! -d $GlobalDir/$Year ]]; then
     mkdir -p -v $GlobalDir
 fi
-if [[ ! -d $RegionalDir/$Year ]] ; then
+if [[ ! -d $RegionalDir/$Year ]]; then
     mkdir -p -v $RegionalDir/$Year
 fi
 
@@ -71,52 +71,52 @@ if "$ProcessConstantFields"; then
 fi
 
 # Loop over months
-for (( Month=$StartMonth; Month<=$EndMonth; Month++)); do
+for ((Month = $StartMonth; Month <= $EndMonth; Month++)); do
 
     # Set mm string
-    if (( $Month < 10 )); then
+    if (($Month < 10)); then
         mm="0${Month}"
     else
         mm="${Month}"
     fi
-    
+
     printf "Processing month $mm\n"
 
     # Download global meteorology fields for this month
     if "$DownloadGlobalMet"; then
-	printf "Downloading global meteorology files for ${Year}/${mm}\n"
-	wget -r -nH --cut-dirs=3 -e robots=off -nv -o "download_met.log" -P "${GlobalDir}" -A "*.nc" "http://geoschemdata.wustl.edu/ExtData/GEOS_0.25x0.3125/GEOS_FP/${Year}/${mm}/"
-	printf "Done downloading global meteorology files\n"
+        printf "Downloading global meteorology files for ${Year}/${mm}\n"
+        wget -r -nH --cut-dirs=3 -e robots=off -nv -o "download_met.log" -P "${GlobalDir}" -A "*.nc" "http://geoschemdata.wustl.edu/ExtData/GEOS_0.25x0.3125/GEOS_FP/${Year}/${mm}/"
+        printf "Done downloading global meteorology files\n"
     fi
     # Path to global files
     InPath="${GlobalDir}/${Year}/${mm}"
 
     # Create directory if it doesn't exist
     if [[ ! -d $RegionalDir/$Year/$mm ]]; then
-	mkdir -p -v $RegionalDir/$Year/$mm
+        mkdir -p -v $RegionalDir/$Year/$mm
     fi
 
     for file in $InPath/*.nc*; do
 
-	# Output filename
-	fOut=${file##*/}                   # Remove input path
-	fOut=${fOut%.*}                    # Remove file suffix
-	fOut=${fOut}.${RegionID}.nc        # Append region ID
-	fOut=$RegionalDir/$Year/$mm/$fOut  # Prepend output file path
+        # Output filename
+        fOut=${file##*/}                  # Remove input path
+        fOut=${fOut%.*}                   # Remove file suffix
+        fOut=${fOut}.${RegionID}.nc       # Append region ID
+        fOut=$RegionalDir/$Year/$mm/$fOut # Prepend output file path
 
-	echo $fOut
+        echo $fOut
 
-	# Crop global files
-	cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax $file $fOut 
+        # Crop global files
+        cdo --no_history sellonlatbox,$LonMin,$LonMax,$LatMin,$LatMax $file $fOut
 
-	# Chunk and compress (deflate level=5) files
-	nc_chunk.pl $fOut 5
-	
+        # Chunk and compress (deflate level=5) files
+        nc_chunk.pl $fOut 5
+
     done
 
     # Download global met fields for this month
     if "$RemoveGlobalMet"; then
-	rm -rf $InPath
+        rm -rf $InPath
     fi
-    
+
 done
