@@ -133,7 +133,6 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         gc_date = pd.to_datetime(date, format='%Y%m%d_%H')
         ds_all = [concat_tracers(k, gc_date, config, v, n_elements) for k,v in pert_simulations_dict.items()]
         ds_sensi = xr.concat(ds_all, 'element')
-        #ds_sensi.load()
         
         sensitivities = ds_sensi["ch4"].values
         # Reshape so the data have dimensions (lon, lat, lev, grid_element)
@@ -142,14 +141,12 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         
         # get emis base, which is also BC base
         ds_emis_base = concat_tracers('0001', gc_date, config, [0], n_elements, baserun=True)
-        #ds_emis_base.load()
         dat['emis_base_ch4'] = np.einsum('klji->ijlk', ds_emis_base['ch4'].values)
         
         # get OH base, run RunName_0000
         # it's always here whether OptimizeOH is true or not
         # so we can keep it here for convenience
         ds_oh_base = concat_tracers('0000', gc_date, config, [0], n_elements, baserun=True)
-        #ds_oh_base.load()
         dat['oh_base_ch4'] = np.einsum('klji->ijlk', ds_oh_base['ch4'].values)
         
 
