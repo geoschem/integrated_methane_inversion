@@ -14,7 +14,7 @@ source ${condaFile}
 conda activate ${condaEnv}
 eval $(python ../../src/utilities/parse_yaml.py config_boundary_conditions.yml)
 source ${geosChemEnv}
-echo "Environment file  --> ${geosChemEnv}" >> "${cwd}/boundary_conditions.log"
+echo "Environment file  --> ${geosChemEnv}" >>"${cwd}/boundary_conditions.log"
 
 # Information needed for GEOS-Chem simulations
 export GC_USER_REGISTERED=true
@@ -22,11 +22,11 @@ export GC_DATA_ROOT="${geosChemDataPath}"
 
 # As long as it doesn't exist, make the working directory and go to it
 if [[ -d "${workDir}" ]]; then
-    echo "ERROR             --> Directory ${workDir} exists." >> "${cwd}/boundary_conditions.log"
+    echo "ERROR             --> Directory ${workDir} exists." >>"${cwd}/boundary_conditions.log"
     exit 1
 fi
 mkdir -p "${workDir}"
-echo "Working directory --> ${workDir}" >> "${cwd}/boundary_conditions.log"
+echo "Working directory --> ${workDir}" >>"${cwd}/boundary_conditions.log"
 mkdir -p "${workDir}/tropomi-boundary-conditions"
 mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
@@ -79,23 +79,23 @@ fi
 gcEndDate=$(date -d "$endDate +1 days" +%Y%m%d)
 sed -i -e "s|start_date: \[20190101, 000000\]|start_date: [${gcStartDate}, 000000]|g" \
     -e "s|end_date: \[20190201, 000000\]|end_date: [${gcEndDate}, 000000]|g" geoschem_config.yml
-echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00" >> "${cwd}/boundary_conditions.log"
+echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00" >>"${cwd}/boundary_conditions.log"
 
 # Prepare the restart file
 rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
 if [[ ${gcStartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
     cp "${cwd}/GEOSChem.Restart.20180401_0000z.nc4" Restarts/
-else 
+else
     if [[ -e ${restartFilePath} ]]; then # use your own restart file
         restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
         if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
-            echo "ERROR             --> your restart file date (${restartFileDate}) doesn't match the simulation start date (${gcStartDate})" >> "${cwd}/boundary_conditions.log"
+            echo "ERROR             --> your restart file date (${restartFileDate}) doesn't match the simulation start date (${gcStartDate})" >>"${cwd}/boundary_conditions.log"
             exit 1
         else
             cp "${restartFilePath}" Restarts/
         fi
     else
-        echo "ERROR             --> the restart file does not exist!" >> "${cwd}/boundary_conditions.log"
+        echo "ERROR             --> the restart file does not exist!" >>"${cwd}/boundary_conditions.log"
         exit 1
     fi
 fi
@@ -109,14 +109,17 @@ fi
 cp runScriptSamples/operational_examples/harvard_cannon/geoschem.run .
 sed -i -e "s|sapphire,huce_cascade,seas_compute,shared|${partition}|g" \
     -e "s|--mem=15000|--mem=128000|g" \
-    -e "s|-t 0-12:00|-t 07-00:00|g"\
+    -e "s|-t 0-12:00|-t 07-00:00|g" \
     -e "s|-c 8|-c 48|g" geoschem.run
-sbatch -W geoschem.run; wait;
+sbatch -W geoschem.run
+wait
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py True $blendedDir $gcStartDate $gcEndDate"; wait; # run for Blended TROPOMI+GOSAT
-sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"; wait; # run for TROPOMI data
-echo "" >> "${cwd}/boundary_conditions.log"
-echo "Blended TROPOMI+GOSAT boundary conditions --> ${workDir}/blended-boundary-conditions" >> "${cwd}/boundary_conditions.log"
-echo "TROPOMI boundary conditions               --> ${workDir}/tropomi-boundary-conditions" >> "${cwd}/boundary_conditions.log"
+sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py True $blendedDir $gcStartDate $gcEndDate"
+wait # run for Blended TROPOMI+GOSAT
+sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"
+wait # run for TROPOMI data
+echo "" >>"${cwd}/boundary_conditions.log"
+echo "Blended TROPOMI+GOSAT boundary conditions --> ${workDir}/blended-boundary-conditions" >>"${cwd}/boundary_conditions.log"
+echo "TROPOMI boundary conditions               --> ${workDir}/tropomi-boundary-conditions" >>"${cwd}/boundary_conditions.log"

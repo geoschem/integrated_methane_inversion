@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Usage: ./find_corrupt_files.sh > corrupt.log
-# This shell script is used to verify the integrity of 
-# netcdf s3 datasets. It is meant to download the 
+# This shell script is used to verify the integrity of
+# netcdf s3 datasets. It is meant to download the
 # specified data from s3 and run an nccopy command to
-# verify the file is in the correct format. All corrupted 
+# verify the file is in the correct format. All corrupted
 # files are written out to a txt file
 
 # ************** Configuration **************************
@@ -28,13 +28,13 @@ download_aws_files() {
 
 # Usage: report errors from the corruption test
 report() {
-  corrupt=1
+    corrupt=1
 } >&2
 
 mkdir -p $DEST
 download_aws_files $S3_PATH $DEST
 
-# trap will automatically send any error exit codes to the 
+# trap will automatically send any error exit codes to the
 # report function which sets the corruption boolean to 1 (True)
 corrupt=0
 trap report ERR
@@ -43,19 +43,16 @@ trap report ERR
 FILE_LIST=$(find "${DEST}" -type f | sort)
 echo "starting file corruption testing"
 
-# Iterate through the list and test whether each file successfully 
+# Iterate through the list and test whether each file successfully
 # performs the nccopy command
 for file in $FILE_LIST; do
     echo "testing file: ${file}"
     nccopy $file testfile.nc
-    if [ $corrupt -gt 0 ]; then  
+    if [ $corrupt -gt 0 ]; then
         echo "$file is corrupt"
-        echo $file >> "corrupted_files${RESOLUTION}_${YEAR}.txt"
+        echo $file >>"corrupted_files${RESOLUTION}_${YEAR}.txt"
         corrupt=0
     fi
     rm -f testfile.nc
 done
 echo "Finished file corruption testing for specified data"
-
-
-

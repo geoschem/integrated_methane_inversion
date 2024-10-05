@@ -22,7 +22,7 @@ setup_imi() {
     SpinupEnd=${StartDate}
 
     # Use global boundary condition files for initial conditions
-    UseBCsForRestart=true    
+    UseBCsForRestart=true
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested
@@ -66,16 +66,16 @@ setup_imi() {
         constYr="2015"
         LandCoverFileExtension="nc4"
     else
-	printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
-	printf "\n Options are GEOSFP or MERRA2.\n"
-	exit 1
+        printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
+        printf "\n Options are GEOSFP or MERRA2.\n"
+        exit 1
     fi
 
     if [ "$Res" == "0.25x0.3125" ]; then
         gridDir="${Res}"
         gridFile="025x03125"
     elif [ "$Res" == "0.5x0.625" ]; then
-        gridDir="${Res}" 
+        gridDir="${Res}"
         gridFile="05x0625"
     elif [ "$Res" == "2.0x2.5" ]; then
         gridDir="2x2.5"
@@ -84,9 +84,9 @@ setup_imi() {
         gridDir="4x5"
         gridFile="4x5"
     else
-	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-	printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
-	exit 1
+        printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+        printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+        exit 1
     fi
     # Use cropped met for regional simulations instead of using global met
     if "$isRegional"; then
@@ -138,13 +138,13 @@ setup_imi() {
     # Determine number of elements in state vector file
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     if "$OptimizeBCs"; then
-	nElements=$((nElements+4))
+        nElements=$((nElements + 4))
     fi
-    if "$OptimizeOH";then
+    if "$OptimizeOH"; then
         if "$isRegional"; then
-            nElements=$((nElements+1))
+            nElements=$((nElements + 1))
         else
-            nElements=$((nElements+2))
+            nElements=$((nElements + 2))
         fi
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
@@ -173,10 +173,10 @@ setup_imi() {
     fi
 
     ##=======================================================================
-    ## Generate Prior Emissions
+    ## Generate Prior Emissions using a HEMCO standalone run
     ##=======================================================================
-    if "$DoPriorEmis"; then
-       run_prior
+    if "$DoHemcoPriorEmis"; then
+        run_hemco_prior_emis
     fi
 
     ##=======================================================================
@@ -185,27 +185,27 @@ setup_imi() {
     if "$ReducedDimensionStateVector"; then
         reduce_dimension
     fi
-    
+
     ##=======================================================================
     ##  Run the IMI preview
     ##=======================================================================
     preview_start=$(date +%s)
-    if  "$DoPreview"; then
+    if "$DoPreview"; then
         run_preview
-    fi 
+    fi
     preview_end=$(date +%s)
 
     ##=======================================================================
     ##  Set up spinup run directory
     ##=======================================================================
-    if  "$SetupSpinupRun"; then
+    if "$SetupSpinupRun"; then
         setup_spinup
     fi
 
     ##=======================================================================
     ##  Set up posterior run directory
     ##=======================================================================
-    if  "$SetupPosteriorRun"; then
+    if "$SetupPosteriorRun"; then
         setup_posterior
     fi
 
@@ -230,41 +230,41 @@ setup_imi() {
 
     # Run time
     echo "Statistics (setup):"
-    echo "Preview runtime (s): $(( $preview_end - $preview_start ))"
+    echo "Preview runtime (s): $(($preview_end - $preview_start))"
     echo "Note: this is part of the Setup runtime reported by run_imi.sh"
     printf "\n=== DONE RUNNING SETUP SCRIPT ===\n"
 }
 
 # Description: Turn on switches for extra observation operators
-#   Works on geoschem_config.yml file in the current directory  
+#   Works on geoschem_config.yml file in the current directory
 # Usage:
 #   activate_observations
 activate_observations() {
     if "$GOSAT"; then
-            OLD="GOSAT: false"
-            NEW="GOSAT: true"
-            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+        OLD="GOSAT: false"
+        NEW="GOSAT: true"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$TCCON"; then
-            OLD="TCCON: false"
-            NEW="TCCON: true"
-            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+        OLD="TCCON: false"
+        NEW="TCCON: true"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$AIRS"; then
-            OLD="AIR: false"
-            NEW="AIR: true"
-            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+        OLD="AIR: false"
+        NEW="AIR: true"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
     if "$PLANEFLIGHT"; then
-            mkdir -p Plane_Logs
-            sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
+        mkdir -p Plane_Logs
+        sed -i "/planeflight/{N;s/activate: false/activate: true/}" geoschem_config.yml
 
-            OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
-            NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
-            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
-            OLD="output_file: plane.log.YYYYMMDD"
-            NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
-            sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+        OLD="flight_track_file: Planeflight.dat.YYYYMMDD"
+        NEW="flight_track_file: Planeflights\/Planeflight.dat.YYYYMMDD"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
+        OLD="output_file: plane.log.YYYYMMDD"
+        NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
+        sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
 
 }

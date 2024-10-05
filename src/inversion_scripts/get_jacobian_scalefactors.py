@@ -6,88 +6,53 @@ import numpy as np
 import xarray as xr
 
 
-def get_jacobian_scalefactors(period_number, inv_directory, ref_directory, config_path):
+def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     """
-    Running sensitivity inversions with pre-constructed Jacobian may require scaling the 
+    Running sensitivity inversions with pre-constructed Jacobian may require scaling the
     Jacobian to match updated prior estimates. This is because the Jacobian is defined
-    by a relative (50%) perturbation of emissions, so that the sensitivities depend on
-    the magnitude of emissions in the prior inventory. 
+    by relative perturbations of emissions, so that the sensitivities depend on
+    the magnitude of emissions in the prior inventory.
 
     This function generates scale factors to perform that scaling.
 
     Arguments
         period_number  [int]   : Current inversion period, starting from 1
-        inv_directory [str]    : The base directory for the inversion, where e.g., "preview_sim/" resides
+        inv_directory  [str]   : The base directory for the inversion, where e.g., "preview/" resides
         ref_directory  [str]   : The base directory for the reference inversion
-        config_path    [str]   : Path to yaml config file
-    
+
     Returns
         sf_K           [float] : Scale factors to be applied to the Jacobian matrix
     """
 
-    # Get target and reference scale factors (prior) for current period
-    sf_archive = os.path.join(inv_directory, "archive_sf")
-    ref_archive = os.path.join(ref_directory, "archive_sf")
-    sf_path = os.path.join(sf_archive, f"prior_sf_period{period_number}.nc")
-    sf_path_ref = os.path.join(ref_archive, f"prior_sf_period{period_number}.nc")
-    sf = xr.load_dataset(sf_path)["ScaleFactor"]
-    sf_ref = xr.load_dataset(sf_path_ref)["ScaleFactor"]
-
-    # Reset buffer area to 1?
-    #   TODO Do we want this feature? See similar comment in prepare_sf.py
-    #        If we do, need to update prepare_sf.py and then uncomment lines here:
-    #        (untested)
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    n_buff = config["nBufferClusters"]
-    statevector_path = os.path.join(inv_directory, "StateVector.nc")
-    statevector = xr.load_dataset(statevector_path)["StateVector"]
-    n_elements = int(np.nanmax(statevector.data))
-    sf = sf.where(statevector <= n_elements - n_buff) # Replace buffers with nan
-    sf = sf.fillna(1) # Fill nan with 1
-
-    # Get HEMCO diagnostics for current inversion and reference inversion
-    #  The HEMCO diags emissions are needed to calculate Jacobian scale
-    #  factors for sensitivity inversions that change the prior inventory
-    run_name = inv_directory.split("/")[-1]
-    ref_run_name = ref_directory.split("/")[-1]
-    prior_sim = os.path.join(
-        inv_directory, "jacobian_runs", f"{run_name}_0000", "OutputDir"
+    # Get target and reference perturbation scale factors applied for jacobian calculation
+    # These are the perturbations applied in K = (perturbed_sim - base_sim) / perturbation
+    pert_sf_path = os.path.join(
+        inv_directory, "archive_perturbation_sfs", f"pert_sf_{period_number}.npz"
     )
-    ref_prior_sim = os.path.join(
-        ref_directory, "jacobian_runs", f"{ref_run_name}_0000", "OutputDir"
+    ref_pert_sf_path = os.path.join(
+        ref_directory, "archive_perturbation_sfs", f"pert_sf_{period_number}.npz"
     )
-    hemco_list = [f for f in os.listdir(prior_sim) if "HEMCO" in f]
-    hemco_list.sort()
-    ref_hemco_list = [f for f in os.listdir(ref_prior_sim) if "HEMCO" in f]
-    ref_hemco_list.sort()
-    pth = os.path.join(prior_sim, hemco_list[period_number - 1])
-    ref_pth = os.path.join(ref_prior_sim, ref_hemco_list[period_number - 1])
+    pert_sf_dict = np.load(pert_sf_path)
+    ref_pert_sf_dict = np.load(ref_pert_sf_path)
+    pert_sf = pert_sf_dict["effective_pert_sf"]
+    ref_pert_sf = ref_pert_sf_dict["effective_pert_sf"]
+
+    # Get the ratio of the targetted emissions in the target and reference inversions
+    target_emis_ratio = pert_sf_dict["target_emission"] / ref_pert_sf_dict["target_emission"]
     
-    hemco_emis_ds = xr.load_dataset(pth)
-    ref_hemco_emis_ds = xr.load_dataset(ref_pth)
-    # remove soil sink from this calculation since 
-    # it is not optimized in the inversion
-    hemco_emis = (hemco_emis_ds["EmisCH4_Total"] - hemco_emis_ds["EmisCH4_SoilAbsorb"]).isel(time=0, drop=True)
-    ref_hemco_emis = (ref_hemco_emis_ds["EmisCH4_Total"] - ref_hemco_emis_ds["EmisCH4_SoilAbsorb"]).isel(time=0, drop=True)
-
-    # Get scale factors to apply to the Jacobian matrix K
-    statevector_path = os.path.join(inv_directory, "StateVector.nc")
-    statevector = xr.load_dataset(statevector_path)["StateVector"]
-    n_elements = int(np.nanmax(statevector.data))
-    # TODO - This line assumes the spatial dist of emissions in the buffer elements is
-    #        the same in hemco_emis and ref_hemco_emis.... I think.
-    #        Should we be summing emissions in each buffer element and then dividing
-    #        the sums to get the appropriate scale factor?
-    sf_ratio = (sf * hemco_emis) / (sf_ref * ref_hemco_emis)
-    sf_K = []
-    for e in range(1, n_elements + 1):
-        # Get scale factor for state vector element e
-        sf_e = np.nanmean(sf_ratio.where(statevector == e).values)
-        # Append
-        sf_K.append(sf_e)
-    sf_K = np.asarray(sf_K)
-
-    return sf_K
+    # Note 1: This line assumes the spatial dist of emissions is the same within each state
+    # vector element. Be careful switching prior emission inventories (especially if grid
+    # cells are clustered). For this to work we need to use the same state vector in both the
+    # target and reference inversions.
+    # Note 2: This also assumes that the temporal variabily of the swapped emissions is the same.
+    # If the temporal variability is different, there will be error associated with scaling
+    # the Jacobian.
+    sf_K = pert_sf / ref_pert_sf
+    
+    # Apply the target_emis_ratio to the scale factors
+    sf_K = sf_K * target_emis_ratio
+    
+    return np.asarray(sf_K)
 
 
 if __name__ == "__main__":
@@ -96,10 +61,9 @@ if __name__ == "__main__":
     period_number = int(sys.argv[1])
     inv_directory = sys.argv[2]
     ref_directory = sys.argv[3]
-    config_path = sys.argv[4]
 
     # Get the scale factors
-    out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory, config_path)
+    out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory)
 
     # Save them
     save_path_1 = os.path.join(

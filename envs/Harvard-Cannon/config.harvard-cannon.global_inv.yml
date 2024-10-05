@@ -16,7 +16,7 @@ SpinupMonths: 1
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
 BlendedTROPOMI: false
 
-## Use observations over water? Set to false to filter out water observations 
+## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
 
 ## Is this a regional inversion? Set to false for global inversion
@@ -25,7 +25,7 @@ isRegional: false
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AF" : Africa ([-37,40], [-20,53])
-##     "AS" : Asia ([-11,55],[60,150]) 
+##     "AS" : Asia ([-11,55],[60,150])
 ##     "EU" : Europe ([33,61],[-30,70])
 ##     "ME" : Middle East ([12,50], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
@@ -69,7 +69,7 @@ ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 1000
-ForcedNativeResolutionElements: 
+ForcedNativeResolutionElements:
   - [31.5, -104]
 EmissionRateFilter: 2500
 PlumeCountFilter: 50
@@ -104,7 +104,7 @@ Res: "2.0x2.5"
 Met: "GEOSFP"
 
 ## Setup modules
-##   Turn on/off different steps in setting up the inversion 
+##   Turn on/off different steps in setting up the inversion
 RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
@@ -114,7 +114,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-DoPriorEmis: true
+DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -139,7 +139,7 @@ MaxSimultaneousRuns: -1
 
 ## Number of Jacobians tracers to use for each jacobian simulation
 ##   Specifying a value = 1 will submit a separate jacobian simulation for each
-##   state vector element. Specifying a value > 1 will combine state vector 
+##   state vector element. Specifying a value > 1 will combine state vector
 ##   elements into a single jacobian simulation.
 NumJacobianTracers: 5
 
@@ -159,8 +159,8 @@ NumJacobianTracers: 5
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the 
-## perturbation will be 1e-8 kg/m2/s 
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the
+## perturbation will be 1e-8 kg/m2/s
 ## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
 PerturbValue: 1.0
 PerturbValueOH: 1.1
@@ -220,7 +220,7 @@ BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled
-PriorDryRun: false
+HemcoPriorEmisDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false
 PosteriorDryRun: false

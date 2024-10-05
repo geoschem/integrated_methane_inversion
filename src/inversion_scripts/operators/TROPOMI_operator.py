@@ -9,7 +9,7 @@ from src.inversion_scripts.utils import (
     filter_blended,
     get_strdate,
     check_is_OH_element,
-    check_is_BC_element
+    check_is_BC_element,
 )
 
 from src.inversion_scripts.operators.operator_utilities import (
@@ -50,7 +50,7 @@ def apply_average_tropomi_operator(
         ylim           [float]      : Latitude bounds for simulation domain
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        period_i       [int]        : kalman filter period 
+        period_i       [int]        : kalman filter period
         config         [dict]       : dict of the config file
         use_water_obs  [bool]       : if True, use observations over water
 
@@ -77,10 +77,14 @@ def apply_average_tropomi_operator(
 
     if BlendedTROPOMI:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
+        sat_ind = filter_blended(
+            TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
     else:
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
+        sat_ind = filter_tropomi(
+            TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
@@ -90,34 +94,39 @@ def apply_average_tropomi_operator(
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
 
     # Define time threshold (hour 00 after the inversion period)
-    date_after_inversion = str(gc_enddate + np.timedelta64(1, 'D'))[:10].replace('-', '')
+    date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
+        "-", ""
+    )
     time_threshold = f"{date_after_inversion}_00"
 
     # map tropomi obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
-    obs_mapped_to_gc = average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold)
+    obs_mapped_to_gc = average_tropomi_observations(
+        TROPOMI, gc_lat_lon, sat_ind, time_threshold
+    )
     n_gridcells = len(obs_mapped_to_gc)
 
     if build_jacobian:
         # Initialize Jacobian K
         jacobian_K = np.zeros([n_gridcells, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
-        
+
         pertf = os.path.expandvars(
             f'{config["OutputPath"]}/{config["RunName"]}/'
-            f'archive_perturbation_sfs/pert_sf_{period_i}.npz'
+            f"archive_perturbation_sfs/pert_sf_{period_i}.npz"
         )
-        
-        emis_perturbations_dict = np.load(pertf)
-        emis_perturbations = emis_perturbations_dict['effective_pert_sf']
 
+        emis_perturbations_dict = np.load(pertf)
+        emis_perturbations = emis_perturbations_dict["effective_pert_sf"]
 
     # create list to store the dates/hour of each gridcell
     all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian)
+    all_date_gc = read_all_geoschem(
+        all_strdate, gc_cache, n_elements, config, build_jacobian
+    )
 
     # Initialize array with n_gridcells rows and 5 columns. Columns are
     # TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
@@ -161,17 +170,17 @@ def apply_average_tropomi_operator(
 
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:
-            
+
             # TODO: Eliminate redundant code mapping GC to
-            #       TROPOMI when build_jacobian=True 
-            
-            if config['OptimizeOH']:
-                vars_to_xch4 = ['jacobian_ch4', 'emis_base_ch4', 'oh_base_ch4']
+            #       TROPOMI when build_jacobian=True
+
+            if config["OptimizeOH"]:
+                vars_to_xch4 = ["jacobian_ch4", "emis_base_ch4", "oh_base_ch4"]
             else:
-                vars_to_xch4 = ['jacobian_ch4', 'emis_base_ch4']
-                
+                vars_to_xch4 = ["jacobian_ch4", "emis_base_ch4"]
+
             xch4 = {}
-                
+
             for v in vars_to_xch4:
                 # Get GEOS-Chem jacobian ch4 at this lat/lon, for all vertical levels and state vector elements
                 jacobian_lonlat = GEOSCHEM[v][
@@ -197,38 +206,41 @@ def apply_average_tropomi_operator(
                 ) / sum(
                     dry_air_subcolumns
                 )  # mixing ratio, unitless
-            
+
             # separate variables for convenience later
-            pert_jacobian_xch4 = xch4['jacobian_ch4']
-            emis_base_xch4 = xch4['emis_base_ch4']
-            if config['OptimizeOH']:
-                oh_base_xch4 = xch4['oh_base_ch4']
-            
-            
+            pert_jacobian_xch4 = xch4["jacobian_ch4"]
+            emis_base_xch4 = xch4["emis_base_ch4"]
+            if config["OptimizeOH"]:
+                oh_base_xch4 = xch4["oh_base_ch4"]
+
             # Calculate sensitivities and save in K matrix
             # determine which elements are for emis,
             # BCs, and OH
             is_oh = np.full(n_elements, False, dtype=bool)
             is_bc = np.full(n_elements, False, dtype=bool)
             is_emis = np.full(n_elements, False, dtype=bool)
-            
+
             for e in range(n_elements):
                 i_elem = e + 1
                 # booleans for whether this element is a
                 # BC element or OH element
                 is_OH_element = check_is_OH_element(
-                    i_elem, n_elements, config['OptimizeOH'], config['isRegional']
+                    i_elem, n_elements, config["OptimizeOH"], config["isRegional"]
                 )
 
                 is_BC_element = check_is_BC_element(
-                    i_elem, n_elements, config['OptimizeOH'],
-                    config['OptimizeBCs'], is_OH_element, config['isRegional']
+                    i_elem,
+                    n_elements,
+                    config["OptimizeOH"],
+                    config["OptimizeBCs"],
+                    is_OH_element,
+                    config["isRegional"],
                 )
-                
+
                 is_oh[e] = is_OH_element
                 is_bc[e] = is_BC_element
             is_emis = ~np.equal(is_oh | is_bc, True)
-            
+
             # fill pert base array with values
             # array contains 1 entry for each state vector element
             # fill array with nans
@@ -237,37 +249,36 @@ def apply_average_tropomi_operator(
             base_xch4 = np.where(is_emis, emis_base_xch4, base_xch4)
             # fill BC elements with the base value, which is same as emis value
             base_xch4 = np.where(is_bc, emis_base_xch4, base_xch4)
-            if config['OptimizeOH']:
+            if config["OptimizeOH"]:
                 # fill OH elements with the OH base value
                 base_xch4 = np.where(is_oh, oh_base_xch4, base_xch4)
-            
+
             # get perturbations and calculate sensitivities
             perturbations = np.full(n_elements, 1.0, dtype=float)
-            
-            if config['OptimizeOH']:
-                oh_perturbation = config['PerturbValueOH']
+
+            if config["OptimizeOH"]:
+                oh_perturbation = config["PerturbValueOH"]
             else:
                 oh_perturbation = 1.0
-            if config['OptimizeBCs']:
-                bc_perturbation = config['PerturbValueBCs']
+            if config["OptimizeBCs"]:
+                bc_perturbation = config["PerturbValueBCs"]
             else:
                 bc_perturbation = 1.0
-            
+
             # fill perturbation array with OH and BC perturbations
-            perturbations[0: is_emis.sum()] = emis_perturbations
+            perturbations[0 : is_emis.sum()] = emis_perturbations
             perturbations = np.where(is_oh, oh_perturbation, perturbations)
             perturbations = np.where(is_bc, bc_perturbation, perturbations)
-            
+
             # calculate difference
             delta_xch4 = pert_jacobian_xch4 - base_xch4
-            
+
             # calculate sensitivities
             sensi_xch4 = delta_xch4 / perturbations
-            
+
             # fill jacobian array
-            jacobian_K[i,:] = sensi_xch4
-            
-            
+            jacobian_K[i, :] = sensi_xch4
+
         # Save actual and virtual TROPOMI data
         obs_GC[i, 0] = gridcell_dict[
             "methane"
@@ -317,7 +328,7 @@ def apply_tropomi_operator(
         ylim           [float]      : Latitude bounds for simulation domain
         gc_cache       [str]        : Path to GEOS-Chem output data
         build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-        period_i       [int]        : kalman filter period 
+        period_i       [int]        : kalman filter period
         config         [dict]       : dict of the config file
         use_water_obs  [bool]       : if True, use observations over water
 
@@ -344,10 +355,14 @@ def apply_tropomi_operator(
 
     if BlendedTROPOMI:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
+        sat_ind = filter_blended(
+            TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
     else:
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs)
+        sat_ind = filter_tropomi(
+            TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
@@ -363,7 +378,9 @@ def apply_tropomi_operator(
     all_strdate = []
 
     # Define time threshold (hour 00 after the inversion period)
-    date_after_inversion = str(gc_enddate + np.timedelta64(1, 'D'))[:10].replace('-', '')
+    date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
+        "-", ""
+    )
     time_threshold = f"{date_after_inversion}_00"
 
     # For each TROPOMI observation
@@ -371,13 +388,15 @@ def apply_tropomi_operator(
         # Get the date and hour
         iSat = sat_ind[0][k]  # lat index
         jSat = sat_ind[1][k]  # lon index
-        time = pd.to_datetime(str(TROPOMI["time"][iSat,jSat]))
+        time = pd.to_datetime(str(TROPOMI["time"][iSat, jSat]))
         strdate = get_strdate(time, time_threshold)
         all_strdate.append(strdate)
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian)
+    all_date_gc = read_all_geoschem(
+        all_strdate, gc_cache, n_elements, config, build_jacobian
+    )
 
     # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
     obs_GC = np.zeros([n_obs, 6], dtype=np.float32)
@@ -393,11 +412,11 @@ def apply_tropomi_operator(
         dry_air_subcolumns = TROPOMI["dry_air_subcolumns"][iSat, jSat, :]  # mol m-2
         apriori = TROPOMI["methane_profile_apriori"][iSat, jSat, :]  # mol m-2
         avkern = TROPOMI["column_AK"][iSat, jSat, :]
-        time = pd.to_datetime(str(TROPOMI["time"][iSat,jSat]))
+        time = pd.to_datetime(str(TROPOMI["time"][iSat, jSat]))
         strdate = get_strdate(time, time_threshold)
         GEOSCHEM = all_date_gc[strdate]
-        dlon = np.median(np.diff(GEOSCHEM["lon"])) # GEOS-Chem lon resolution
-        dlat = np.median(np.diff(GEOSCHEM["lat"])) # GEOS-Chem lon resolution
+        dlon = np.median(np.diff(GEOSCHEM["lon"]))  # GEOS-Chem lon resolution
+        dlat = np.median(np.diff(GEOSCHEM["lat"]))  # GEOS-Chem lon resolution
 
         # Find GEOS-Chem lats & lons closest to the corners of the TROPOMI pixel
         longitude_bounds = TROPOMI["longitude_bounds"][iSat, jSat, :]
@@ -405,8 +424,12 @@ def apply_tropomi_operator(
         corners_lon_index = []
         corners_lat_index = []
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], GEOSCHEM["lon"], tolerance=max(dlon,0.5))
-            jGC = nearest_loc(latitude_bounds[l], GEOSCHEM["lat"], tolerance=max(dlat,0.5))
+            iGC = nearest_loc(
+                longitude_bounds[l], GEOSCHEM["lon"], tolerance=max(dlon, 0.5)
+            )
+            jGC = nearest_loc(
+                latitude_bounds[l], GEOSCHEM["lat"], tolerance=max(dlat, 0.5)
+            )
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
         # If the tolerance in nearest_loc() is not satisfied, skip the observation
@@ -438,7 +461,7 @@ def apply_tropomi_operator(
             ]
             # If this is a global 2.0 x 2.5 grid, extend the eastern-most grid cells to 180 degrees
             if (dlon == 2.5) & (coords[0] == 177.5):
-                for i in [1,2]:
+                for i in [1, 2]:
                     geoschem_corners_lon[i] += dlon / 2
 
             polygon_geoschem = Polygon(
@@ -544,7 +567,10 @@ def apply_tropomi_operator(
         # For global inversions, area of overlap should equal area of TROPOMI pixel
         # This is because the GEOS-Chem grid is continuous
         if dlon > 2.0:
-            assert abs(sum(overlap_area)-polygon_tropomi.area)/polygon_tropomi.area < 0.01, f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_tropomi.area})"
+            assert (
+                abs(sum(overlap_area) - polygon_tropomi.area) / polygon_tropomi.area
+                < 0.01
+            ), f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_tropomi.area})"
 
         # Save actual and virtual TROPOMI data
         obs_GC[k, 0] = TROPOMI["methane"][
@@ -609,26 +635,44 @@ def read_tropomi(filename):
     try:
         # Store methane, QA, lat, lon, and time
         with xr.open_dataset(filename, group="PRODUCT") as tropomi_data:
-            dat["methane"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
+            dat["methane"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[
+                0, :, :
+            ]
             dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
             dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
             dat["latitude"] = tropomi_data["latitude"].values[0, :, :]
 
-            utc_str = tropomi_data["time_utc"].values[0,:]
-            utc_str = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
-            dat["time"] = np.repeat(utc_str[:, np.newaxis], dat["methane"].shape[1], axis=1)
+            utc_str = tropomi_data["time_utc"].values[0, :]
+            utc_str = np.array([d.replace("Z", "") for d in utc_str]).astype(
+                "datetime64[ns]"
+            )
+            dat["time"] = np.repeat(
+                utc_str[:, np.newaxis], dat["methane"].shape[1], axis=1
+            )
 
         # Store column averaging kernel, SWIR and NIR surface albedo
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS") as tropomi_data:
-            dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[0, :, :, ::-1]
+        with xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS"
+        ) as tropomi_data:
+            dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[
+                0, :, :, ::-1
+            ]
             dat["swir_albedo"] = tropomi_data["surface_albedo_SWIR"].values[0, :, :]
             dat["nir_albedo"] = tropomi_data["surface_albedo_NIR"].values[0, :, :]
             dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
 
         # Store methane prior profile, dry air subcolumns
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
-            dat["methane_profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
-            dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
+        with xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA"
+        ) as tropomi_data:
+            dat["methane_profile_apriori"] = tropomi_data[
+                "methane_profile_apriori"
+            ].values[
+                0, :, :, ::-1
+            ]  # mol m-2
+            dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[
+                0, :, :, ::-1
+            ]  # mol m-2
 
             # Surface classification values of NaN will be filtered out
             # due to a low QA value. We can make sure by setting them to 5
@@ -641,17 +685,29 @@ def read_tropomi(filename):
             dat["surface_classification"] = sc
 
             # Also get pressure interval and surface pressure for use below
-            pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
-            surface_pressure = (tropomi_data["surface_pressure"].values[0, :, :] / 100)  # Pa -> hPa
+            pressure_interval = (
+                tropomi_data["pressure_interval"].values[0, :, :] / 100
+            )  # Pa -> hPa
+            surface_pressure = (
+                tropomi_data["surface_pressure"].values[0, :, :] / 100
+            )  # Pa -> hPa
 
         # Store latitude and longitude bounds for pixels
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS") as tropomi_data:
-            dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[0, :, :, :]
+        with xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS"
+        ) as tropomi_data:
+            dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[
+                0, :, :, :
+            ]
             dat["latitude_bounds"] = tropomi_data["latitude_bounds"].values[0, :, :, :]
 
         # Store vertical pressure profile
-        n1 = dat["methane"].shape[0]  # length of along-track dimension (scanline) of retrieval field
-        n2 = dat["methane"].shape[1]  # length of across-track dimension (ground_pixel) of retrieval field
+        n1 = dat["methane"].shape[
+            0
+        ]  # length of along-track dimension (scanline) of retrieval field
+        n2 = dat["methane"].shape[
+            1
+        ]  # length of across-track dimension (ground_pixel) of retrieval field
         pressures = np.full([n1, n2, 12 + 1], np.nan, dtype=np.float32)
         for i in range(12 + 1):
             pressures[:, :, i] = surface_pressure - i * pressure_interval
@@ -663,6 +719,7 @@ def read_tropomi(filename):
         return None
 
     return dat
+
 
 def read_blended(filename):
     """
@@ -687,7 +744,9 @@ def read_blended(filename):
                             - Chi-Square for SWIR
                             - Vertical pressure profile
     """
-    assert "BLND" in filename, f"BLND not in filename {filename}, but a blended function is being used"
+    assert (
+        "BLND" in filename
+    ), f"BLND not in filename {filename}, but a blended function is being used"
 
     try:
         # Initialize dictionary for Blended TROPOMI+GOSAT data
@@ -703,20 +762,32 @@ def read_blended(filename):
             dat["swir_albedo"] = blended_data["surface_albedo_SWIR"][:]
             dat["nir_albedo"] = blended_data["surface_albedo_NIR"].values[:]
             dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
-            dat["methane_profile_apriori"] = blended_data["methane_profile_apriori"].values[:, ::-1]
-            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[:, ::-1]
+            dat["methane_profile_apriori"] = blended_data[
+                "methane_profile_apriori"
+            ].values[:, ::-1]
+            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[
+                :, ::-1
+            ]
             dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
             dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
-            dat["surface_classification"] = (blended_data["surface_classification"].values[:].astype("uint8") & 0x03).astype(int)
+            dat["surface_classification"] = (
+                blended_data["surface_classification"].values[:].astype("uint8") & 0x03
+            ).astype(int)
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
 
             # Remove "Z" from time so that numpy doesn't throw a warning
             utc_str = blended_data["time_utc"].values[:]
-            dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
+            dat["time"] = np.array([d.replace("Z", "") for d in utc_str]).astype(
+                "datetime64[ns]"
+            )
 
             # Need to calculate the pressure for the 13 TROPOMI levels (12 layer edges)
-            pressure_interval = (blended_data["pressure_interval"].values[:] / 100)  # Pa -> hPa
-            surface_pressure = (blended_data["surface_pressure"].values[:] / 100)    # Pa -> hPa
+            pressure_interval = (
+                blended_data["pressure_interval"].values[:] / 100
+            )  # Pa -> hPa
+            surface_pressure = (
+                blended_data["surface_pressure"].values[:] / 100
+            )  # Pa -> hPa
             n = len(dat["methane"])
             pressures = np.full([n, 12 + 1], np.nan, dtype=np.float32)
             for i in range(12 + 1):
@@ -733,6 +804,7 @@ def read_blended(filename):
         return None
 
     return dat
+
 
 def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
     """
@@ -768,8 +840,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
     # print("Found", n_obs, "TROPOMI observations.")
     gc_lats = gc_lat_lon["lat"]
     gc_lons = gc_lat_lon["lon"]
-    dlon = np.median(np.diff(gc_lat_lon["lon"])) # GEOS-Chem lon resolution
-    dlat = np.median(np.diff(gc_lat_lon["lat"])) # GEOS-Chem lon resolution
+    dlon = np.median(np.diff(gc_lat_lon["lon"]))  # GEOS-Chem lon resolution
+    dlat = np.median(np.diff(gc_lat_lon["lat"]))  # GEOS-Chem lon resolution
     gridcell_dicts = get_gridcell_list(gc_lons, gc_lats)
 
     for k in range(n_obs):
@@ -783,8 +855,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
         corners_lat_index = []
 
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], gc_lons, tolerance=max(dlon,0.5))
-            jGC = nearest_loc(latitude_bounds[l], gc_lats, tolerance=max(dlat,0.5))
+            iGC = nearest_loc(longitude_bounds[l], gc_lons, tolerance=max(dlon, 0.5))
+            jGC = nearest_loc(latitude_bounds[l], gc_lats, tolerance=max(dlat, 0.5))
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
 
@@ -848,7 +920,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
                 gridcell_dict[
                     "time"
                 ].append(  # convert times to epoch time to make taking the mean easier
-                    int(pd.to_datetime(str(TROPOMI["time"][iSat,jSat])).strftime("%s"))
+                    int(pd.to_datetime(str(TROPOMI["time"][iSat, jSat])).strftime("%s"))
                 )
                 gridcell_dict["methane"].append(
                     TROPOMI["methane"][iSat, jSat]
@@ -867,21 +939,25 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
     # weighted average observation values for each gridcell
     for gridcell_dict in gridcell_dicts:
         gridcell_dict["lat_sat"] = np.average(
-            gridcell_dict["lat_sat"], weights=gridcell_dict["observation_weights"],
+            gridcell_dict["lat_sat"],
+            weights=gridcell_dict["observation_weights"],
         )
         gridcell_dict["lon_sat"] = np.average(
-            gridcell_dict["lon_sat"], weights=gridcell_dict["observation_weights"],
+            gridcell_dict["lon_sat"],
+            weights=gridcell_dict["observation_weights"],
         )
         gridcell_dict["overlap_area"] = np.average(
-            gridcell_dict["overlap_area"], weights=gridcell_dict["observation_weights"],
+            gridcell_dict["overlap_area"],
+            weights=gridcell_dict["observation_weights"],
         )
         gridcell_dict["methane"] = np.average(
-            gridcell_dict["methane"], weights=gridcell_dict["observation_weights"],
+            gridcell_dict["methane"],
+            weights=gridcell_dict["observation_weights"],
         )
         # take mean of epoch times and then convert gc filename time string
         time = pd.to_datetime(
-                datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))
-            )
+            datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))
+        )
         gridcell_dict["time"] = get_strdate(time, time_threshold)
         # for multi-dimensional arrays, we only take the average across the 0 axis
         gridcell_dict["p_sat"] = np.average(

@@ -1,4 +1,3 @@
-
 import xarray as xr
 import numpy as np
 import os
@@ -24,7 +23,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     post_sf_path = os.path.join(
         sf_archive_path, f"posterior_sf_period{period_number}.nc"
     )
-    prior_cache_path = os.path.join(base_directory, "prior_run/OutputDir")
+    prior_cache_path = os.path.join(base_directory, "hemco_prior_emis/OutputDir")
     periods_csv_path = os.path.join(base_directory, "periods.csv")
     hemco_diags = get_period_mean_emissions(
         prior_cache_path, period_number, periods_csv_path
@@ -43,7 +42,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     hemco_emis = hemco_diags
     posterior_sf = xr.load_dataset(post_sf_path)
     posterior_emis_ds = get_posterior_emissions(hemco_emis, posterior_sf)
-    if 'time' in posterior_emis_ds.dims:
+    if "time" in posterior_emis_ds.dims:
         posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
     else:
         posterior_emis = posterior_emis_ds["EmisCH4_Total"].squeeze(drop=True)

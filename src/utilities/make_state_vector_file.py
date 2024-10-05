@@ -44,6 +44,7 @@ def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth)
 
     return compatible
 
+
 def cluster_buffer_elements(data, num_clusters, offset):
     """
     Description:
@@ -54,30 +55,30 @@ def cluster_buffer_elements(data, num_clusters, offset):
         offset              bool : offset labels by this integer value
     Returns:       [][]dataarray : labeled data
     """
-    
+
     # if using 0 clusters, return data with buffer pixels
     # infilled with -9999
     if num_clusters == 0:
         return xr.where(data == 0, -9999, data)
-    
+
     # Get the latitude and longitude coordinates as separate arrays
     latitudes = data.coords["lat"].values
     longitudes = data.coords["lon"].values
-    
+
     data_copy = data.copy()
 
     # Get the sensitivity values as a 1D array
     Z = data.values.flatten()
     # labels shape for later
     # labels = np.zeros(Z.shape)
-    valid_indices = np.where(Z == 0)[0] 
+    valid_indices = np.where(Z == 0)[0]
 
     # Flatten the latitude and longitude arrays into a 2D grid
     # only keeping valid indices
     X, Y = np.meshgrid(longitudes, latitudes)
     X = X.flatten()[valid_indices]
     Y = Y.flatten()[valid_indices]
-    
+
     # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
     features = np.column_stack((X, Y))
 
@@ -127,18 +128,18 @@ def make_state_vector_file(
     lat_max = config["LatMax"]
     lon_min = config["LonMin"]
     lon_max = config["LonMax"]
-    is_regional=config["isRegional"]
+    is_regional = config["isRegional"]
     buffer_deg = config["BufferDeg"]
     land_threshold = config["LandThreshold"]
     emis_threshold = config["OffshoreEmisThreshold"]
     k_buffer_clust = config["nBufferClusters"]
     buffer_min_lat = 0
     buffer_min_lon = 0
-    
+
     # set minimum buffer degrees based on resolution
     if config["isRegional"]:
         if config["Res"] == "4.0x5.0":
-            deg_lat, deg_lon = 4.0, 5.0 
+            deg_lat, deg_lon = 4.0, 5.0
         elif config["Res"] == "2.0x2.5":
             deg_lat, deg_lon = 2.0, 2.5
         elif config["Res"] == "0.5x0.625":
@@ -148,11 +149,10 @@ def make_state_vector_file(
         buffer_min_lat = deg_lat * 3
         buffer_min_lon = deg_lon * 3
 
-    # set the buffer degrees to the maximum to ensure 
+    # set the buffer degrees to the maximum to ensure
     # that the buffer is at least the minimum (3 extra grid cells on each side)
     buffer_deg_lat = max(buffer_deg, buffer_min_lat)
     buffer_deg_lon = max(buffer_deg, buffer_min_lon)
-        
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
@@ -164,13 +164,13 @@ def make_state_vector_file(
 
     # Check compatibility of region of interest
     if is_regional:
-       compatible = check_grid_compatibility(
-           lat_min, lat_max, lon_min, lon_max, land_cover_pth
-       )
-       if not compatible:
-           raise ValueError(
-               "Region of interest not contained within selected RegionID; see config.yml)."
-           )
+        compatible = check_grid_compatibility(
+            lat_min, lat_max, lon_min, lon_max, land_cover_pth
+        )
+        if not compatible:
+            raise ValueError(
+                "Region of interest not contained within selected RegionID; see config.yml)."
+            )
 
     # For global inversions exclude Antarctica and limit max_lat to avoid
     # HEMCO error when reading netCDF file
@@ -200,7 +200,7 @@ def make_state_vector_file(
     if is_regional:
         statevector = lc.where(lc == -9999.0)
     else:
-        # if global, use hemco file 
+        # if global, use hemco file
         statevector = hd.where(hd == -9999.0)
 
     # Set pixels in buffer areas to 0
@@ -218,10 +218,12 @@ def make_state_vector_file(
             # global files are same shape but different lat
             # at poles in that case
             if (
-                np.not_equal(hd.lat.values, lc.lat.values).any() &
-                np.equal(hd.lat.shape, lc.lat.shape).all()
+                np.not_equal(hd.lat.values, lc.lat.values).any()
+                & np.equal(hd.lat.shape, lc.lat.shape).all()
             ):
-                land = lc.where((lc.values > land_threshold) | (hd.values > emis_threshold))
+                land = lc.where(
+                    (lc.values > land_threshold) | (hd.values > emis_threshold)
+                )
             else:
                 land = lc.where((lc > land_threshold) | (hd > emis_threshold))
 
@@ -235,7 +237,9 @@ def make_state_vector_file(
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
     if is_regional:
-        statevector = cluster_buffer_elements(statevector, k_buffer_clust, statevector.max().item())
+        statevector = cluster_buffer_elements(
+            statevector, k_buffer_clust, statevector.max().item()
+        )
 
     # Make dataset
     da_statevector = statevector.copy()
