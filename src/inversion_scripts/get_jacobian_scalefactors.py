@@ -38,8 +38,10 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     ref_pert_sf = ref_pert_sf_dict["effective_pert_sf"]
 
     # Get the ratio of the targetted emissions in the target and reference inversions
-    target_emis_ratio = pert_sf_dict["target_emission"] / ref_pert_sf_dict["target_emission"]
-    
+    target_emis_ratio = (
+        pert_sf_dict["target_emission"] / ref_pert_sf_dict["target_emission"]
+    )
+
     # Note 1: This line assumes the spatial dist of emissions is the same within each state
     # vector element. Be careful switching prior emission inventories (especially if grid
     # cells are clustered). For this to work we need to use the same state vector in both the
@@ -48,10 +50,10 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     # If the temporal variability is different, there will be error associated with scaling
     # the Jacobian.
     sf_K = pert_sf / ref_pert_sf
-    
+
     # Apply the target_emis_ratio to the scale factors
     sf_K = sf_K * target_emis_ratio
-    
+
     return np.asarray(sf_K)
 
 
@@ -61,6 +63,7 @@ if __name__ == "__main__":
     period_number = int(sys.argv[1])
     inv_directory = sys.argv[2]
     ref_directory = sys.argv[3]
+    kalman_mode = sys.argv[4].lower() == "true"
 
     # Get the scale factors
     out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory)
@@ -70,9 +73,10 @@ if __name__ == "__main__":
         os.path.join(inv_directory, "archive_sf"),
         f"jacobian_scale_factors_period{period_number}.npy",
     )
+    path_prefix = f"kf_inversions/period{period_number}" if kalman_mode else "inversion"
     save_path_2 = os.path.join(
         inv_directory,
-        f"kf_inversions/period{period_number}",
+        path_prefix,
         f"jacobian_scale_factors.npy",
     )
     np.save(save_path_1, out)
