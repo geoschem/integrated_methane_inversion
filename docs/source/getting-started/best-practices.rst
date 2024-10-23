@@ -15,7 +15,7 @@ Defining a region of interest
 * Setting latitude/longitude bounds for a rectangular domain.
 * Using a shapefile.
 * Interactively in the Integral Earth web user interface.
-* We recommend users select regions of interest larger than about 10,000 km2 (100x100 km2) to ensure there are enough satellite observations for a successful inversion.
+* We recommend users select regions of interest larger than about 10,000 km\ :sup:`2` (100x100 km\ :sup:`2`) to ensure there are enough satellite observations for a successful inversion.
 * Larger regions of interest require more computational resources. This can be mitigated by optimally reducing the effective resolution of the inversion via `smart state vector clustering <../advanced/using-clustering-options.html>`_.
 
 Configuring the inversion domain

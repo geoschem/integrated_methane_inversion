@@ -23,7 +23,7 @@ How do I cite the IMI?
 How much does it cost to use the IMI?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * Running the IMI on AWS incurs fees for using AWS compute resources. 
-* The typical cost for a 500x500 km2 domain (e.g., the Permian Basin) for 1 month is about $20. 
+* The typical cost for a 500x500 km\ :sup:`2` domain (e.g., the Permian Basin) for 1 month is about $20. 
 * Cost scales with duration and domain size. Costs for larger domains can be effectively mitigated using the smart clustering capability available through the IMI.
 
 Where is the IMI documented?
@@ -48,7 +48,7 @@ Does the IMI support use of custom prior emission inventories?
 
 Can I get information on individual point sources from the IMI?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-* No. The IMI gives you total emissions in 25x25 km2 grid cells, including all sources. However, it scrapes point source observations from other databases to improve the prior estimate (optional) and to put the total emission results in context.
+* No. The IMI gives you total emissions in 25x25 km\ :sup:`2` grid cells, including all sources. However, it scrapes point source observations from other databases to improve the prior estimate (optional) and to put the total emission results in context.
 
 Can I get sectoral information from the IMI?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
