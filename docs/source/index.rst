@@ -31,6 +31,9 @@ local compute cluster either manually building the environment or using a docker
    getting-started/imi-config-file.rst
    getting-started/imi-preview.rst
    getting-started/minimizing-cost-tips.rst
+   getting-started/best-practices.rst
+   getting-started/IMI-glossary.rst
+   getting-started/faqs.rst
 
 .. toctree::
    :maxdepth: 1
