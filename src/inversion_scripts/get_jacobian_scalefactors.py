@@ -49,7 +49,7 @@ def get_jacobian_scalefactors(period_number, inv_directory, ref_directory):
     # Note 2: This also assumes that the temporal variabily of the swapped emissions is the same.
     # If the temporal variability is different, there will be error associated with scaling
     # the Jacobian.
-    sf_K = ref_pert_sf / pert_sf
+    sf_K = pert_sf / ref_pert_sf
 
     # Apply the target_emis_ratio to the scale factors
     sf_K = sf_K * target_emis_ratio
