@@ -11,13 +11,14 @@ from botocore import UNSIGNED
 from botocore.client import Config
 
 # Description: Download TROPOMI data from meeo S3 bucket for desired dates.
-#              Function can be called from another script or run as a 
-#              directly as a script.               
+#              Function can be called from another script or run as a
+#              directly as a script.
 # Example Usage as a script:
 #     $ python download_TROPOMI.py 20190101 20190214 TROPOMI_data
 
 s3 = None
 VALID_TROPOMI_PROCESSOR_VERSIONS = ["020400", "020500", "020600"]
+
 
 def initialize_boto3():
     """
@@ -25,6 +26,7 @@ def initialize_boto3():
     """
     global s3
     s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
+
 
 def download_from_s3(args):
     """
@@ -44,6 +46,7 @@ def download_from_s3(args):
     else:
         print(f"File {local_file_path} already exists locally. Skipping download.")
 
+
 def get_s3_paths(start_date, end_date, bucket):
     """
     Gets s3 paths for download.
@@ -54,7 +57,7 @@ def get_s3_paths(start_date, end_date, bucket):
     Returns
         s3_paths   [list] : list of s3 paths for download
     """
-    
+
     # Make a list of all possible dates in our date range
     years, months, days = [], [], []
     current_date = start_date
@@ -73,8 +76,7 @@ def get_s3_paths(start_date, end_date, bucket):
     names, prefixes = [], []
     for type in ["RPRO", "OFFL"]:
         for i in range(len(days)):
-            Prefix=(f"{type}/L2__CH4___/"
-                    f"{years[i]}/{months[i]}/{days[i]}/")
+            Prefix = f"{type}/L2__CH4___/" f"{years[i]}/{months[i]}/{days[i]}/"
             response = s3.list_objects(Bucket=bucket, Prefix=Prefix)
             if "Contents" in response:
                 for key in s3.list_objects(Bucket=bucket, Prefix=Prefix)["Contents"]:
@@ -85,16 +87,16 @@ def get_s3_paths(start_date, end_date, bucket):
     df = pd.DataFrame()
     df["Name"] = names
     df["Prefix"] = prefixes
-    df["ProcessorVersion"] = df["Name"].str.extract(r'_(\d{6})_')
-    df["ProcessingMode"] = df["Name"].str.extract(r'_(\S{4})_')
-    df["OrbitNumber"] = df["Name"].str.extract(r'_(\d{5})_')
-    df["ModificationDate"] = df["Name"].str.extract(r'_\d{6}_(\d{8}T\d{6})')
-    df["CollectionNumber"] = df["Name"].str.extract(r'_(\d{2})_')
+    df["ProcessorVersion"] = df["Name"].str.extract(r"_(\d{6})_")
+    df["ProcessingMode"] = df["Name"].str.extract(r"_(\S{4})_")
+    df["OrbitNumber"] = df["Name"].str.extract(r"_(\d{5})_")
+    df["ModificationDate"] = df["Name"].str.extract(r"_\d{6}_(\d{8}T\d{6})")
+    df["CollectionNumber"] = df["Name"].str.extract(r"_(\d{2})_")
 
     # We only want files that are v02.04.00, v02.05.00, or v02.06.00.
     # Also make sure the collection number is 03 to account for some duplicates.
     df.loc[df["ProcessorVersion"].isin(VALID_TROPOMI_PROCESSOR_VERSIONS)]
-    df = df.drop_duplicates(subset=["Name","ModificationDate"])
+    df = df.drop_duplicates(subset=["Name", "ModificationDate"])
     df = df.loc[df["CollectionNumber"] == "03"].reset_index(drop=True)
 
     # Deal with duplicate orbit numbers.
@@ -105,7 +107,7 @@ def get_s3_paths(start_date, end_date, bucket):
         if len(subset) == 1:
             continue
         # If there is both RPRO and OFFL, keep RPRO.
-        elif len(subset["ProcessingMode"].unique()) > 1: 
+        elif len(subset["ProcessingMode"].unique()) > 1:
             index_to_drop = subset.loc[subset["ProcessingMode"] != "RPRO"].index
             df = df.drop(index_to_drop)
 
@@ -115,6 +117,7 @@ def get_s3_paths(start_date, end_date, bucket):
     s3_paths = sorted(df["S3Path"].to_list())
 
     return s3_paths
+
 
 def download_operational_TROPOMI(start_date, end_date, storage_dir):
     """
@@ -129,7 +132,7 @@ def download_operational_TROPOMI(start_date, end_date, storage_dir):
     bucket = "meeo-s5p"
     s3_paths = get_s3_paths(start_date, end_date, bucket)
     os.makedirs(storage_dir, exist_ok=True)
-    
+
     print("=============Downloading TROPOMI Operational Data=============")
     print(f"Downloading {len(s3_paths)} files - ({start_date},{end_date}].")
     # Download the files using multiple cores
@@ -143,10 +146,11 @@ def download_operational_TROPOMI(start_date, end_date, storage_dir):
 
     return s3_paths
 
+
 if __name__ == "__main__":
     start = sys.argv[1]
     end = sys.argv[2]
     Sat_datadir = sys.argv[3]
     start_date = datetime.datetime.strptime(start, "%Y%m%d")
     end_date = datetime.datetime.strptime(end, "%Y%m%d")
-    download_operational_TROPOMI(start_date,end_date,Sat_datadir)
+    download_operational_TROPOMI(start_date, end_date, Sat_datadir)

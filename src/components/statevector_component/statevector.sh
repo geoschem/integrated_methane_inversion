@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - create_statevector 
+#   - create_statevector
 #   - reduce_dimension
 
 # Description: Create a native resolution state vector
@@ -9,20 +9,22 @@
 #   create_statevector
 create_statevector() {
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
-    
+
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
     else
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
-    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
-	
+
+    # Use archived HEMCO standalone emissions output
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
         s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
         aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
+        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
         aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
     fi
 
@@ -47,12 +49,6 @@ create_statevector() {
 #   reduce_dimension
 reduce_dimension() {
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
-
-    # First run the Preview if necessary to get prior emissions
-    if [[ ! -d ${RunDirs}/preview_run/OutputDir ]]; then
-        printf "\nPreview Dir not detected. Running the IMI Preview as a prerequisite.\n"
-        run_preview
-    fi
 
     # set input variables
     state_vector_path=${RunDirs}/StateVector.nc
@@ -83,11 +79,14 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores 
-    if [[ $SchedulerType = "tmux" ]]; then
-        python "${python_args[@]}"
-    else
+    if [[ "$SchedulerType" = "slurm" || "$SchedulerType" = "PBS" ]]; then
+        rm -f .aggregation_error.txt
         chmod +x $aggregation_file
-        submit_job $SchedulerType true "${python_args[@]}"
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime "${python_args[@]}"
+        # check for any errors
+        [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
+    else
+        python "${python_args[@]}"
     fi
 
     # archive state vector file if using Kalman filter
@@ -97,10 +96,14 @@ reduce_dimension() {
     fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     if "$OptimizeBCs"; then
-	nElements=$((nElements+4))
+        nElements=$((nElements + 4))
     fi
-    if "$OptimizeOH";then
-	nElements=$((nElements+1))
+    if "$OptimizeOH"; then
+        if "$isRegional"; then
+            nElements=$((nElements + 1))
+        else
+            nElements=$((nElements + 2))
+        fi
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"

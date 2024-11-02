@@ -10,6 +10,7 @@ import sys
 import pandas as pd
 
 import yaml
+
 with open("config_boundary_conditions.yml", "r") as f:
     config = yaml.safe_load(f)
 
@@ -40,39 +41,65 @@ def apply_satellite_operator_to_one_satellite_file(filename, satellite_product, 
     """
     
     result = apply_satellite_operator(
-        filename = filename,
-        species = species,
-        satellite_product = satellite_product,
-        n_elements = False, # Not relevant
-        gc_startdate = start_time_of_interest,
-        gc_enddate = end_time_of_interest,
-        xlim = [-180, 180],
-        ylim = [-90, 90],
-        gc_cache = os.path.join(config["workDir"], "gc_run", "OutputDir"),
-        build_jacobian = False, # Not relevant
-        sensi_cache = False) # Not relevant
+        filename=filename,
+        species=species,
+        satellite_product=satellite_product,
+        n_elements=False, # Not relevant
+        gc_startdate=start_time_of_interest,
+        gc_enddate=end_time_of_interest,
+        xlim=[-180, 180],
+        ylim=[-90, 90],
+        gc_cache=os.path.join(config["workDir"], "gc_run", "OutputDir"),
+        build_jacobian=False, # Not relevant
+        sensi_cache=False) # Not relevant
     
     return result["obs_GC"],filename
 
 def create_daily_means(satelliteDir, satellite_product, species, start_time_of_interest, end_time_of_interest):
 
     # List of all satellite files that interesct our time period of interest
-    satellite_files = sorted([file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
-                            if (start_time_of_interest <= get_satellite_times(file)[0] <= end_time_of_interest)
-                            or (start_time_of_interest <= get_satellite_times(file)[1] <= end_time_of_interest)])
+    satellite_files = sorted(
+        [
+            file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
+            if (
+                start_time_of_interest 
+                <= get_satellite_times(file)[0] 
+                <= end_time_of_interest
+            )
+            or (
+                start_time_of_interest 
+                <= get_satellite_times(file)[1] 
+                <= end_time_of_interest
+            )
+        ]
+    )
     print(f"First satellite file -> {satellite_files[0]}")
     print(f"Last satellite file  -> {satellite_files[-1]}")
 
     # Using as many cores as you have, apply the satellite operator to each file
-    obsGC_and_filenames = Parallel(n_jobs=-1)(delayed(apply_satellite_operator_to_one_satellite_file)(filename, satellite_product, species) for filename in satellite_files)
+    obsGC_and_filenames = Parallel(n_jobs=-1)(
+        delayed(apply_satellite_operator_to_one_satellite_file)
+        (
+            filename, satellite_product, species
+        ) 
+        for filename in satellite_files
+    )
 
     # Read any of the GEOS-Chem files to get the lat/lon grid
-    with xr.open_dataset(glob.glob(os.path.join(config["workDir"], "gc_run", "OutputDir", "GEOSChem.SpeciesConc*.nc4"))[0]) as data:
+    with xr.open_dataset(
+        glob.glob(
+            os.path.join(
+                config["workDir"], "gc_run", "OutputDir", "GEOSChem.SpeciesConc*.nc4"
+            )
+        )[0]
+    ) as data:
         LON = data["lon"].values
         LAT = data["lat"].values
 
     # List of all days in our time range of interest
-    alldates = np.arange(start_time_of_interest, end_time_of_interest, dtype='datetime64[D]')
+    alldates = np.arange(
+        start_time_of_interest, end_time_of_interest, dtype="datetime64[D]"
+    )
     alldates = [day.astype(datetime.datetime).strftime("%Y%m%d") for day in alldates]
 
     # Initialize arrays for regridding
@@ -89,12 +116,16 @@ def create_daily_means(satelliteDir, satellite_product, species, start_time_of_i
 
         # For each satellite observation, assign it to a GEOS-Chem grid cell
         for iNN in range(NN):
-                
+
             # Which day are we on (this is not perfect right now because orbits can cross from one day to the next...
             # but it is the best we can do right now without changing apply_satellite_operator)
             file_times = re.search(r'(\d{8}T\d{6})_(\d{8}T\d{6})', filename)
-            assert file_times is not None, "check satellite filename - wasn't able to find start and end times in the filename"
-            date = datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
+            assert (
+                file_times is not None
+            ), "check satellite filename - wasn't able to find start and end times in the filename"
+            date = datetime.datetime.strptime(
+                file_times.group(1), "%Y%m%dT%H%M%S"
+            ).strftime("%Y%m%d")
             time_ind = alldates.index(date)
 
             c_satellite, c_GC, lon0, lat0 = obsGC[iNN, :4]
@@ -110,61 +141,73 @@ def create_daily_means(satelliteDir, satellite_product, species, start_time_of_i
     daily_GC = daily_GC / daily_count
 
     # Change dimensions
-    regrid_satellite = np.einsum("ijl->lji", daily_satellite) # (lon, lat, time) -> (time, lat, lon)
+    regrid_satellite = np.einsum(
+        "ijl->lji", daily_satellite
+    ) # (lon, lat, time) -> (time, lat, lon)
     regrid_GC = np.einsum("ijl->lji", daily_GC) # (lon, lat, time) -> (time, lat, lon)
 
     # Make a Dataset with variables of (satellite, GC) and dims of (lon, lat, time)
-    daily_means = xr.Dataset({
-                    'satellite': xr.DataArray(
-                        data = regrid_satellite,
-                        dims = ["time", "lat", "lon"],
-                        coords = {"time": alldates, "lat": LAT, "lon": LON}
-                        ),
-                    'GC': xr.DataArray(
-                        data = regrid_GC,
-                        dims = ["time", "lat", "lon"],
-                        coords = {"time": alldates, "lat": LAT, "lon": LON}
-                        ),
-                })
+    daily_means = xr.Dataset(
+        {
+            'satellite': xr.DataArray(
+                data=regrid_satellite,
+                dims=["time", "lat", "lon"],
+                coords={"time": alldates, "lat": LAT, "lon": LON}
+            ),
+            'GC': xr.DataArray(
+                data=regrid_GC,
+                dims=["time", "lat", "lon"],
+                coords={"time": alldates, "lat": LAT, "lon": LON}
+            ),
+        }
+    )
 
     return daily_means
+
 
 def calculate_bias(daily_means):
 
     bias = daily_means["GC"] - daily_means["satellite"]
 
     # Smooth spatially
-    bias = bias.rolling(lat=5,              # five lat grid boxes (10 degrees)
-                        lon=5,              # five lon grid boxes (12.5 degrees)
-                        center=True,        # five boxes includes the one we are cented on
-                        min_periods=25/2    # half (13) of the grid cells have a value to not output NaN
-                        ).mean(skipna=True)
+    bias = bias.rolling(
+        lat=5,  # five lat grid boxes (10 degrees)
+        lon=5,  # five lon grid boxes (12.5 degrees)
+        center=True,  # five boxes includes the one we are cented on
+        min_periods=25
+        / 2,  # half (13) of the grid cells have a value to not output NaN
+    ).mean(skipna=True)
 
     # Smooth temporally
-    bias_15 = bias.rolling(time=15,            # average 15 days back in time (including the time we are centered on)
-                           min_periods=1,      # only one of the time values must have a value to not output NaN
-                          ).mean(skipna=True)
+    bias_15 = bias.rolling(
+        time=15,  # average 15 days back in time (including the time we are centered on)
+        min_periods=1,  # only one of the time values must have a value to not output NaN
+    ).mean(skipna=True)
 
-    bias_30 = bias.rolling(time=30,            # average 30 days back in time (including the time we are centered on)
-                           min_periods=1,      # only one of the time values must have a value to not output NaN
-                          ).mean(skipna=True)
-    
-    bias = bias_15.fillna(bias_30)             # fill in NaN values with the 30 day average
+    bias_30 = bias.rolling(
+        time=30,  # average 30 days back in time (including the time we are centered on)
+        min_periods=1,  # only one of the time values must have a value to not output NaN
+    ).mean(skipna=True)
+
+    bias = bias_15.fillna(bias_30)  # fill in NaN values with the 30 day average
 
     # Create a dataarray with latitudinal average for each time step
     # We will fill the NaN values in bias with these averages
     nan_value_filler_2d = bias.copy()
-    nan_value_filler_2d = (nan_value_filler_2d.where(nan_value_filler_2d.count("lon") >= 15) # there needs to be 15 grid boxes
-                                            .mean(dim=["lon"], skipna=True)                  #  at this lat to define a mean
-                                            .interpolate_na(dim="lat", method="linear")      # fill in "middle" NaN values
-                                            .bfill(dim="lat")                                # fill in NaN values towards -90 deg
-                                            .ffill(dim="lat")                                # fill in NaN values towards +90 deg
-                                        )
+    nan_value_filler_2d = (
+        nan_value_filler_2d.where(
+            nan_value_filler_2d.count("lon") >= 15
+        )  # there needs to be 15 grid boxes
+        .mean(dim=["lon"], skipna=True)  #  at this lat to define a mean
+        .interpolate_na(dim="lat", method="linear")  # fill in "middle" NaN values
+        .bfill(dim="lat")  # fill in NaN values towards -90 deg
+        .ffill(dim="lat")  # fill in NaN values towards +90 deg
+    )
 
     # Expand to 3 dimensions
     nan_value_filler_3d = bias.copy() * np.nan
     for i in range(len(daily_means["lon"].values)):
-        nan_value_filler_3d[:,:,i] = nan_value_filler_2d
+        nan_value_filler_3d[:, :, i] = nan_value_filler_2d
 
     # Use these values to fill NaNs
     bias = bias.fillna(nan_value_filler_3d)
@@ -173,9 +216,9 @@ def calculate_bias(daily_means):
 
     # If there are still NaNs (this will happen when satellite data is missing), use 0.0 ppb as the bias but warn the user
     for t in range(len(bias["time"].values)):
-        if np.any(np.isnan(bias[t,:,:].values)):
+        if np.any(np.isnan(bias[t, :, :].values)):
             print(f"WARNING -> using 0.0 ppb as bias for {bias['time'].values[t]}")
-            bias[t,:,:] = bias[t,:,:].fillna(0)
+            bias[t, :, :] = bias[t, :, :].fillna(0)
 
     return bias
 
@@ -186,21 +229,41 @@ def write_bias_corrected_files(bias, species, satellite_product):
     bias_mol_mol = bias.values / mixing_ratio_conv_factor(species)
 
     # Only write BCs for our date range
-    files = sorted(glob.glob(os.path.join(config["workDir"], "gc_run", "OutputDir", "GEOSChem.BoundaryConditions*.nc4")))
+    files = sorted(
+        glob.glob(
+            os.path.join(
+                config["workDir"],
+                "gc_run",
+                "OutputDir",
+                "GEOSChem.BoundaryConditions*.nc4",
+            )
+        )
+    )
     files = [
         f
         for f in files
         if (
-            (np.datetime64(re.search(r'(\d{8})_(\d{4}z)', f).group(1)) >= np.datetime64(config["startDate"]))
-            & (np.datetime64(re.search(r'(\d{8})_(\d{4}z)', f).group(1)) <= np.datetime64(config["endDate"]))
+            (
+                np.datetime64(re.search(r"(\d{8})_(\d{4}z)", f).group(1))
+                >= np.datetime64(config["startDate"])
+            )
+            & (
+                np.datetime64(re.search(r"(\d{8})_(\d{4}z)", f).group(1))
+                <= np.datetime64(config["endDate"])
+            )
         )
     ]
-    assert len(files) == len(strdate), "ERROR -> bias dimension is not the same as number of boundary condition files"
 
     # For each file, remove the total column bias from each level of the GEOS-Chem boundary condition
     for filename in files:
-        l = [index for index,date in enumerate(strdate) if date == re.search(r'(\d{8})_(\d{4}z)', filename).group(1)]
-        assert len(l) == 1, "ERROR -> there should only be bias per boundary condition file"
+        l = [
+            index
+            for index, date in enumerate(strdate)
+            if date == re.search(r"(\d{8})_(\d{4}z)", filename).group(1)
+        ]
+        assert (
+            len(l) == 1
+        ), "ERROR -> there should only be bias per boundary condition file"
         index = l[0]
         bias_for_this_boundary_condition_file = bias_mol_mol[index, :, :]
 
@@ -211,11 +274,27 @@ def write_bias_corrected_files(bias, species, satellite_product):
                     original_data[t, lev, :, :] -= bias_for_this_boundary_condition_file
             ds[f"SpeciesBC_{species}"].values = original_data
             if satellite_product == "BlendedTROPOMI":
-                print(f"Writing to {os.path.join(config['workDir'], 'blended-boundary-conditions', os.path.basename(filename))}")
-                ds.to_netcdf(os.path.join(config["workDir"], "blended-boundary-conditions", os.path.basename(filename)))
+                print(
+                     f"Writing to {os.path.join(config['workDir'], 'blended-boundary-conditions', os.path.basename(filename))}"
+                )
+                ds.to_netcdf(
+                     os.path.join(
+                        config["workDir"], 
+                        "blended-boundary-conditions", 
+                        os.path.basename(filename),
+                    )
+                )
             elif satellite_product == "TROPOMI":
-                print(f"Writing to {os.path.join(config['workDir'], 'tropomi-boundary-conditions', os.path.basename(filename))}")
-                ds.to_netcdf(os.path.join(config["workDir"], "tropomi-boundary-conditions", os.path.basename(filename)))
+                print(
+                    f"Writing to {os.path.join(config['workDir'], 'tropomi-boundary-conditions', os.path.basename(filename))}"
+                )
+                ds.to_netcdf(
+                    os.path.join(
+                        config["workDir"], 
+                        "tropomi-boundary-conditions", 
+                        os.path.basename(filename)
+                    )
+                )
             else:
                 print("Other data sources for boundary conditions are not currently supported --HON")
 
@@ -226,11 +305,15 @@ if __name__ == "__main__":
     satelliteDir = sys.argv[2] # where is the satellite data?
     species = sys.argv[3]
     # Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
-    start_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
+    start_time_of_interest = np.datetime64(
+        datetime.datetime.strptime(sys.argv[4], "%Y%m%d")
+    )
     if start_time_of_interest != np.datetime64("2018-04-01T00:00:00"):
         start_time_of_interest += np.timedelta64(1, "D")
     # End of GC output
-    end_time_of_interest = np.datetime64(datetime.datetime.strptime(sys.argv[5], "%Y%m%d"))
+    end_time_of_interest = np.datetime64(
+        datetime.datetime.strptime(sys.argv[5], "%Y%m%d")
+    )
     print(f"\nwrite_boundary_conditions.py output for {satellite_product}")
     print(f"Using files at {satelliteDir}")
 
@@ -250,6 +333,9 @@ if __name__ == "__main__":
         - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions
     """
 
-    daily_means = create_daily_means(satelliteDir, satellite_product, species, start_time_of_interest, end_time_of_interest)
+    daily_means = create_daily_means(
+        satelliteDir, satellite_product, species, 
+        start_time_of_interest, end_time_of_interest
+    )
     bias = calculate_bias(daily_means)
     write_bias_corrected_files(bias, species, satellite_product)

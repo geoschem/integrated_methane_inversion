@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 import os
 
+
 def make_periods_csv(first_day, last_day, stepsize_days, save_dir):
     """
     Create a csv file containing start and end dates for Kalman filter update periods.

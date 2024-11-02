@@ -15,7 +15,9 @@ ADD ./ /home/ubuntu/integrated_methane_inversion
 RUN sudo chown ubuntu:ubuntu -R /home/ubuntu/integrated_methane_inversion/
 
 # make imi run scripts executable
-RUN chmod -R +x /home/ubuntu/integrated_methane_inversion/
+RUN chmod +x /home/ubuntu/integrated_methane_inversion/run_imi.sh
+RUN chmod +x /home/ubuntu/integrated_methane_inversion/resources/containers/ubuntu/entrypoint.sh
+RUN cd /home/ubuntu/integrated_methane_inversion/ && git fetch --tags
 
 # update default config.yml file TODO remove
 RUN sed -i "s/v2024-03/v2023-06/g" ~/integrated_methane_inversion/config.yml

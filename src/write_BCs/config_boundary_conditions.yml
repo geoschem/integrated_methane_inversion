@@ -16,7 +16,7 @@ geosChemEnv: "../../envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 geosChemDataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
 partition: huce_cascade,seas_compute,huce_ice
 
-## A restart file for GEOS-Chem for your simulation start date (startdate - 16 days)
+## A restart file for GEOS-Chem for your simulation start date
 restartFilePath: "/path/to/restart/file"
 
 # Debug or not?

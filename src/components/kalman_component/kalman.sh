@@ -21,12 +21,15 @@ setup_kf() {
     cp ${InversionPath}/src/notebooks/kf_notebook.ipynb ${RunDirs}/kf_inversions/
     sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$ConfigPath'|g' ${RunDirs}/kf_inversions/kf_notebook.ipynb
 
-
     # Define Kalman filter update periods
-    python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs; wait
+    if "$MakePeriodsCSV"; then
+        python ${InversionPath}/src/components/kalman_component/make_periods_csv.py $StartDate $EndDate $UpdateFreqDays $RunDirs
+        wait
+    fi
 
     # Create unit scale factor file
-    python ${InversionPath}/src/components/kalman_component/make_unit_sf.py $StateVectorFile $RunDirs; wait
+    python ${InversionPath}/src/components/kalman_component/make_unit_sf.py $StateVectorFile $RunDirs
+    wait
 
     # Create directory to archive prior scale factors for each inversion period
     mkdir -p ${RunDirs}/archive_sf
@@ -34,10 +37,14 @@ setup_kf() {
     # Number of state vector elements
     nElements=$(ncmax StateVector ${StateVectorFile})
     if "$OptimizeBCs"; then
-	nElements=$((nElements+4))
+        nElements=$((nElements + 4))
     fi
-    if "$OptimizeOH";then
-	nElements=$((nElements+1))
+    if "$OptimizeOH"; then
+        if "$isRegional"; then
+            nElements=$((nElements + 1))
+        else
+            nElements=$((nElements + 2))
+        fi
     fi
 }
 
@@ -48,11 +55,11 @@ run_kf() {
 
     if ("$DoJacobian" && "$DoInversion" && "$DoPosterior"); then
 
-        # First run the Preview if necessary to get prior emissions
+        # First run the HEMCO standalone if necessary to get prior emissions
         # needed for prepare_sf.py
-        if [[ ! -d ${RunDirs}/prior_run/OutputDir ]]; then
-            printf "\Prior Dir not detected. Running HEMCO for prior emissions as a prerequisite for Kalman Mode.\n"
-            run_prior
+        if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
+            printf "\hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for Kalman Mode.\n"
+            run_hemco_prior_emis
         fi
         # Key directories
         JacobianRunsDir="${RunDirs}/jacobian_runs"
@@ -61,14 +68,14 @@ run_kf() {
         InversionDir="${RunDirs}/inversion_template"
 
         PeriodsFile="${RunDirs}/periods.csv"
-        nPeriods=$(($(wc -l < ${PeriodsFile}) - 1))
+        nPeriods=$(($(wc -l <${PeriodsFile}) - 1))
 
         # by default, start with period 1
         if [[ "x${FirstPeriod}" == "x" ]]; then
             FirstPeriod=1
         fi
         # run inversion for each period
-        for ((period_i=FirstPeriod;period_i<=nPeriods;period_i++)); do
+        for ((period_i = FirstPeriod; period_i <= nPeriods; period_i++)); do
             run_period
         done
     else
@@ -93,22 +100,23 @@ run_period() {
     sed -i -e "s:{PERIOD}:${period_i}:g" ${RunDirs}/kf_inversions/period${period_i}/run_inversion.sh
 
     # Get Start/End dates of current period from periods.csv
-    ithLine=$(sed "$((period_i+1))q;d" $PeriodsFile)
+    ithLine=$(sed "$((period_i + 1))q;d" $PeriodsFile)
     ithDates=(${ithLine//,/ })
     StartDate_i=${ithDates[0]}
     EndDate_i=${ithDates[1]}
     echo "Start, End: $StartDate_i, $EndDate_i"
 
     # check if precomputed prior emissions for this period exists already
-    if [[ ! -f ${RunDirs}/prior_run/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
+    if [[ ! -f ${RunDirs}/hemco_prior_emis/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
         printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
-        # TODO: switch to use enddate- this just computes the first hour of emissions
-        run_hemco_sa $StartDate_i $StartDate_i
+        run_hemco_sa $StartDate_i $EndDate_i
     fi
 
     # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs
-    python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir; wait
-    python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir; wait
+    python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $JacobianRunsDir
+    wait
+    python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir
+    wait
     echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
 
     # Prepare initial (prior) emission scale factors for the current period
@@ -119,11 +127,11 @@ run_period() {
     if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
         reduce_dimension
     fi
-    
+
     ##=======================================================================
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
-    
+
     # run jacobian simulation for the given period
     run_jacobian
 
@@ -132,11 +140,13 @@ run_period() {
 
     # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
     # NOTE: This also creates the posterior_sf_period{i}.nc file in archive_sf/
-    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $period_i ${RunDirs} $LognormalErrors; wait
+    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $period_i ${RunDirs} $LognormalErrors
+    wait
     echo "Multiplied posterior scale factors over record"
 
     # Print total posterior emissions
-    python ${InversionPath}/src/components/kalman_component/print_posterior_emissions.py $ConfigPath $period_i ${RunDirs}; wait
+    python ${InversionPath}/src/components/kalman_component/print_posterior_emissions.py $ConfigPath $period_i ${RunDirs}
+    wait
 
     run_posterior
 
@@ -150,7 +160,7 @@ run_period() {
     # and link to 1ppb restart file for perturbations
     python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
     rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
-    for ((idx=0;idx<=rundir_num;idx++)); do
+    for ((idx = 0; idx <= rundir_num; idx++)); do
         # Add zeros to string name
         if [ $idx -lt 10 ]; then
             idxstr="000${idx}"
@@ -168,7 +178,7 @@ run_period() {
         filename=$(basename "$target")
 
         # Check if the filename contains "1ppb". If so, use the 1ppb restart file
-        # Otherwise use the posterior simulation as the restart file 
+        # Otherwise use the posterior simulation as the restart file
         if [[ "$filename" == *1ppb* ]]; then
             ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
         else
@@ -180,8 +190,8 @@ run_period() {
     if "$LognormalErrors"; then
         ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
     fi
-    
-    echo "Copied posterior restart to $((x-1)) Jacobian run directories for next iteration"
+
+    echo "Copied posterior restart to $((x - 1)) Jacobian run directories for next iteration"
 
     cd ${InversionPath}
 

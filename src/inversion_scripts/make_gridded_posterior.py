@@ -60,14 +60,17 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     gridded_S_post = do_gridding(S_post, statevector)
     gridded_A = do_gridding(A, statevector)
 
+    # Fill nan in SF with 1 to prevent GEOS-Chem error
+    gridded_SF = gridded_SF.fillna(1)
+
     # Create dataset
     lat = gridded_SF["lat"].values
     lon = gridded_SF["lon"].values
     ds = xr.Dataset(
         {
-            "ScaleFactor": (["lat", "lon"], gridded_SF),
-            "S_post": (["lat", "lon"], gridded_S_post),
-            "A": (["lat", "lon"], gridded_A),
+            "ScaleFactor": (["lat", "lon"], gridded_SF.data),
+            "S_post": (["lat", "lon"], gridded_S_post.data),
+            "A": (["lat", "lon"], gridded_A.data),
         },
         coords={"lon": ("lon", lon), "lat": ("lat", lat)},
     )
@@ -83,7 +86,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
 
     # Create netcdf
     ds.to_netcdf(
-        save_path, encoding={v: {"zlib": True, "complevel": 9} for v in ds.data_vars}
+        save_path, encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )
 
     print(f"Saved gridded file to {save_path}")

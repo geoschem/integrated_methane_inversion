@@ -6,6 +6,7 @@ from src.inversion_scripts.utils import (
     mixing_ratio_conv_factor,
 )
 
+
 def check_path_and_get_file(path, pattern="*"):
     """
     Check if the path is a file or directory and return the first file
@@ -21,7 +22,9 @@ def check_path_and_get_file(path, pattern="*"):
             first_file = matching_files[0]
             return first_file
         else:
-            raise FileNotFoundError(f"No files matching pattern '{pattern}' found in the directory.")
+            raise FileNotFoundError(
+                f"No files matching pattern '{pattern}' found in the directory."
+            )
     elif os.path.isfile(path):
         return path
     else:
@@ -38,11 +41,11 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date, species):
     """
     # keep attributes of data variable when arithmetic operations applied
     xr.set_options(keep_attrs=True)
-    
+
     # read in the original restart/bc file
     orig = xr.load_dataset(original_file_path)
     new_restart = orig.copy()
-    
+
     # determine which data variable to change
     data_vars = list(orig.data_vars)
     if f"SpeciesBC_{species}" in data_vars:
@@ -59,7 +62,7 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date, species):
     new_restart[key] += 1/mixing_ratio_conv_factor(species)
         
     write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.nc4")
-    
+
     # write to new file path
     new_restart.to_netcdf(write_path)
 
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     original_file_path = sys.argv[1]
     new_file_path = sys.argv[2]
     file_date = sys.argv[3]
-    
+
     # default to getting the first file in the directory
     # or the file itself if it is a file
     file_path = check_path_and_get_file(original_file_path)

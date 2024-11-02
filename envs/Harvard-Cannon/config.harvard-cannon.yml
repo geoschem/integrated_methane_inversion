@@ -24,13 +24,16 @@ SpinupMonths: 1
 ## located under "Advanced settings" in this file.
 SatelliteProduct: "Other"
 
+## Use observations over water? Set to false to filter out water observations
+UseWaterObs: false
+
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AF" : Africa ([-37,40], [-20,53])
-##     "AS" : Asia ([-11,55],[60,150]) 
+##     "AS" : Asia ([-11,55],[60,150])
 ##     "EU" : Europe ([33,61],[-30,70])
 ##     "ME" : Middle East ([12,50], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
@@ -53,6 +56,8 @@ LatMax: 33
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
+MakePeriodsCSV: true
+CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -72,7 +77,7 @@ ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
-ForcedNativeResolutionElements: 
+ForcedNativeResolutionElements:
   - [31.5, -104]
 EmissionRateFilter: 2500
 PlumeCountFilter: 50
@@ -107,7 +112,7 @@ Res: "0.25x0.3125"
 Met: "GEOSFP"
 
 ## Setup modules
-##   Turn on/off different steps in setting up the inversion 
+##   Turn on/off different steps in setting up the inversion
 RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
@@ -117,8 +122,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-##   NOTE: DoPriorEmis must be true to run DoPriorEmis
-DoPriorEmis: true
+DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -133,6 +137,8 @@ DOFSThreshold: 0
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 32
 RequestedMemory: "32gb"
+InversionCPUs: 32
+InversionMemory: "64gb"
 RequestedTime: "24:00:00"
 SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 
@@ -141,7 +147,7 @@ MaxSimultaneousRuns: -1
 
 ## Number of Jacobians tracers to use for each jacobian simulation
 ##   Specifying a value = 1 will submit a separate jacobian simulation for each
-##   state vector element. Specifying a value > 1 will combine state vector 
+##   state vector element. Specifying a value > 1 will combine state vector
 ##   elements into a single jacobian simulation.
 NumJacobianTracers: 5
 
@@ -161,8 +167,8 @@ NumJacobianTracers: 5
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the 
-## perturbation will be 1e-8 kg/m2/s 
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the
+## perturbation will be 1e-8 kg/m2/s
 ## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
 PerturbValue: 1.0
 PerturbValueOH: 1.1
@@ -215,7 +221,6 @@ RestartDownload: false
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
 RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2024-06/GEOSChem.BoundaryConditions."
-RestartFilePreviewPrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2024-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
@@ -224,7 +229,7 @@ BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 ##   NOTE: Must have AWS CLI enabled
-PreviewDryRun: false
+HemcoPriorEmisDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false
 PosteriorDryRun: false

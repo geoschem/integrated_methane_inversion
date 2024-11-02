@@ -113,6 +113,8 @@ run_posterior() {
         inversion_result_filename="inversion_result.nc"
     fi
 
+    printf "\n=== SETTING UP POSTERIOR OPTIMIZATION ===\n"
+
     if "$OptimizeBCs"; then
         if "$KalmanMode"; then
             inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
@@ -125,7 +127,8 @@ run_posterior() {
         sed -i -e "s|CH4_boundary_condition_ppb_increase_NSEW:.*|CH4_boundary_condition_ppb_increase_NSEW: ${PerturbBCValues}|g" \
             -e "s|perturb_CH4_boundary_conditions: false|perturb_CH4_boundary_conditions: true|g" geoschem_config.yml
 
-        printf "\n=== BC OPTIMIZATION: BC optimized perturbation values for NSEW set to: ${PerturbBCValues} ===\n"
+        printf "\n--- BC OPTIMIZATION ---\n"
+        printf "BC optimized perturbation values for NSEW set to: ${PerturbBCValues}\n"
     fi
 
     if "$OptimizeOH"; then
@@ -134,16 +137,33 @@ run_posterior() {
         else
             inv_result_path="${RunDirs}/inversion/${inversion_result_filename}"
         fi
+
         # set OH optimal delta values
         PerturbOHValue=$(generate_optimized_OH_value $inv_result_path)
-        # add OH optimization delta to boundary condition edges
-        sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbOHValue}|g" HEMCO_Config.rc
-        printf "\n=== OH OPTIMIZATION: OH optimized perturbation value set to: ${PerturbOHValue} ===\n"
+
+        printf "\n=== OH OPTIMIZATION ===\n"
+        if "$isRegional"; then
+            # Apply single OH scale factor to entire region
+            sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor  ${PerturbOHValue}|g" HEMCO_Config.rc
+            printf "OH optimized perturbation value set to: ${PerturbOHValue}\n"
+        else
+            # Apply hemispheric OH perturbation values using mask file
+            oh_sfs=($PerturbOHValue)
+            cp Perturbations.txt PerturbationsOH.txt
+            sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
+            OHPertPrevLine='DEFAULT    0     1.0'
+            OHPertNewLine="N_HEMIS    1     ${oh_sfs[0]}\nS_HEMIS    2     ${oh_sfs[1]}"
+            sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
+            printf "OH optimized perturbation values set to:\n"
+            printf " ${oh_sfs[0]} for Northern Hemisphere\n"
+            printf " ${oh_sfs[1]} for Southern Hemisphere\n"
+        fi
+
     fi
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    submit_job $SchedulerType false ${RunName}_Posterior.run
+    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime ${RunName}_Posterior.run
     
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
@@ -195,9 +215,12 @@ run_posterior() {
     fi
     isPost="True"
     buildJacobian="False"
+    # fill kf_period with dummy number here
+    kf_period=1
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $isPost $buildJacobian False; wait
+    python ${InversionPath}/src/inversion_scripts/jacobian.py ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $kf_period $buildJacobian False
+    wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
 
@@ -210,13 +233,19 @@ run_posterior() {
 #   generate_optimized_BC_values <path-to-inversion-result> <bc-pert-value>
 generate_optimized_BC_values() {
     if $OptimizeOH; then
-        python -c "import sys; import xarray;\
-       xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-5:-1];\
-       print(xhat.tolist())" $1
+        if $isRegional; then
+            python -c "import sys; import xarray;\
+            xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-5:-1];\
+            print(xhat.tolist())" $1
+        else
+            python -c "import sys; import xarray;\
+            xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-6:-2];\
+            print(xhat.tolist())" $1
+        fi
     else
         python -c "import sys; import xarray;\
-       xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-4:];\
-       print(xhat.tolist())" $1
+        xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-4:];\
+        print(xhat.tolist())" $1
     fi
 }
 
@@ -224,7 +253,13 @@ generate_optimized_BC_values() {
 # Usage:
 #   generate_optimized_OH_values <path-to-inversion-result> <oh-pert-value>
 generate_optimized_OH_value() {
-    python -c "import sys; import xarray;\
-    xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-1:];\
-    print(xhat.tolist()[0])" $1
+    if $isRegional; then
+        python -c "import sys; import xarray;\
+        xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-1:];\
+        print(xhat.tolist()[0])" $1
+    else
+        python -c "import sys; import xarray;\
+        xhat = xarray.load_dataset(sys.argv[1])['xhat'].values[-2:];\
+        print(xhat.tolist()[0], ' ', xhat.tolist()[1])" $1
+    fi
 }

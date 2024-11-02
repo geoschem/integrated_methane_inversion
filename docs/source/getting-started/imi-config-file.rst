@@ -45,6 +45,8 @@ TROPOMI data type
 
    * - ``BlendedTROPOMI``
      - Boolean for if the Blended TROPOMI+GOSAT data should be used (``true``) or if the operational data should be used (``false``).
+   * - ``UseWaterObs``
+     - Boolean for whether to use observations over water (``true``) or not (``false``). Warning: if ``true``, user should inspect data for potential artifacts.
 
 Region of interest
 ~~~~~~~~~~~~~~~~~~
@@ -77,6 +79,10 @@ Kalman filter options
      - Number of days in each Kalman filter update cycle eg. ``7`` days. 
    * - ``NudgeFactor``
      - Fraction of original prior emissions to use in the prior for each Kalman filter update (eg. ``0.1``). See Kalman mode documentation for more details.
+   * - ``MakePeriodsCSV``
+     - Option to automatically create ``periods.csv`` based on the constant number of days in ``UpdateFreqDays``. Default is ``true``. If ``false``, a custom ``periods.csv`` will be used instead.
+   * - ``CustomPeriodsCSV``
+     - Path to custom ``periods.csv`` with user-defined start and end dates for each Kalman filter update period.
 
 State vector 
 ~~~~~~~~~~~~
@@ -219,6 +225,10 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
      - Boolean to run the spin-up simulation.
    * - ``DoJacobian``
      - Boolean to run the reference and sensitivity simulations.
+   * - ``ReDoJacobian``
+     - Boolean to only re-run sensitivity simulations that have not yet completed successfully. This is useful for resuming an interrupted inversion. ``false`` will re-run all sensitivity simulations.
+   * - ``DoJacobian``
+     - Boolean to specify whether the IMI should rerun all sensitivity simulation (``false``) or only rerun previously unsuccessful sensitivity simulations (``true``).
    * - ``DoInversion``
      - Boolean to run the inverse analysis code.
    * - ``DoPosterior``
@@ -239,7 +249,9 @@ IMI preview
 Job Resource Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are used to allocate resources (CPUs and Memory) to the different simulations needed to run the inversion.
-Note: some python scripts are also deployed using slurm and default to using the ``RequestedCPUs`` and ``RequestedMemory`` settings.
+Note: some python scripts are also deployed using slurm and default to using the ``RequestedCPUs`` and ``RequestedMemory`` settings. 
+If the inversion step requires more resources than the rest of the IMI workflow, using the optional ``InversionCPUs`` and ``InversionMemory`` 
+variables can be convenient.
 
 .. list-table::
    :widths: 30, 70
@@ -251,6 +263,12 @@ Note: some python scripts are also deployed using slurm and default to using the
      - Amount of memory to allocate to each in series simulation (in MB).
    * - ``RequestedTime``
      - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
+   * - ``InversionCPUs``
+     - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
+   * - ``InversionMemory``
+     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
+   * - ``InversionTime``
+     - Optional Variable. Amount of memory to allocate to the inversion job (in MB) if different from ``RequestedMemory``.
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
@@ -278,7 +296,7 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
-     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <http://wiki.seas.harvard.edu/geos-chem/index.php/Planeflight_diagnostic>`_ documentation for details. Default value is ``false``.
+     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
    * - ``GOSAT``
      - Boolean to turn on the GOSAT observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
    * - ``TCCON``

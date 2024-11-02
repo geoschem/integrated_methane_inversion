@@ -1,6 +1,5 @@
 #!/bin/bash
-
-git clone --depth=100 --branch=releases/v0.22 https://github.com/spack/spack.git ~/spack
+git clone --depth=100 --branch=v0.22.1 https://github.com/spack/spack.git ~/spack
 cd ~/spack
 
 # make etc/spack directory

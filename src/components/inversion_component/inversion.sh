@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # Functions available in this file include:
-#   - setup_inversion 
-#   - run_inversion 
-#   - run_notebooks 
+#   - setup_inversion
+#   - run_inversion
+#   - run_notebooks
 
 # Description: Setup inversion run directory
 # Usage:
 #   setup_inversion
 setup_inversion() {
     printf "\n=== SETTING UP INVERSION DIRECTORY ===\n"
-    
+
     cd ${OutputPath}/$RunName
     mkdir -p -v inversion
     mkdir -p inversion/data_converted
@@ -23,8 +23,7 @@ setup_inversion() {
         mkdir -p inversion/data_geoschem_prior
         mkdir -p inversion/data_visualization_prior
     fi
-    
-    cp ${InversionPath}/src/inversion_scripts/calc_sensi.py inversion/
+
     cp ${InversionPath}/src/inversion_scripts/invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/lognormal_invert.py inversion/
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
@@ -42,18 +41,18 @@ setup_inversion() {
     if [ -z "$KalmanMode" ] || [ "$KalmanMode" != true ]; then
         sed -i -e "s:{PERIOD}:1:g" inversion/run_inversion.sh
     fi
-    
+
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
-           -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
-           -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
-           -e "s:{NUM_JACOBIAN_TRACERS}:${NumJacobianTracers}:g" \
-           -e "s:{OUTPUT_PATH}:${OutputPath}:g" \
-           -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
-           -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
-           -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
-           -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
-           -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
-           -e "s:{RES}:${Res}:g" inversion/run_inversion.sh
+        -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
+        -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
+        -e "s:{NUM_JACOBIAN_TRACERS}:${NumJacobianTracers}:g" \
+        -e "s:{OUTPUT_PATH}:${OutputPath}:g" \
+        -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
+        -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
+        -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
+        -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
+        -e "s:{LAT_MAX}:${LatMaxInvDomain}:g" \
+        -e "s:{RES}:${Res}:g" inversion/run_inversion.sh
 
     if "$KalmanMode"; then
         # Rename inversion directory as template directory
@@ -74,19 +73,22 @@ run_inversion() {
         cd ${RunDirs}/kf_inversions/period${period_i}
         # Modify inversion driver script to reflect current inversion period
         sed -i "s|satellite_data\"|satellite_data\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
-        if (( period_i > 1 )); then
+        if ((period_i > 1)); then
             FirstSimSwitch=false
         fi
     else
         cd ${RunDirs}/inversion
     fi
 
+    # Set inversion memory, CPUs, and time
+    InvMem="${InversionMemory:-$RequestedMemory}"
+    InvCPU="${InversionCPUs:-$RequestedCPUs}"
+    InvTime="${InversionTime:-$RequestedTime}"
     # Execute inversion driver script
-    submit_job $SchedulerType false run_inversion.sh $FirstSimSwitch
-
+    submit_job $SchedulerType false $InvMem $InvCPU $InvTime run_inversion.sh $FirstSimSwitch
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
-        
+
     printf "\n=== DONE RUNNING INVERSION ===\n"
     inversion_end=$(date +%s)
 }

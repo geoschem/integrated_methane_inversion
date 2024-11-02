@@ -15,7 +15,7 @@ source src/utilities/common.sh
 source src/components/setup_component/setup.sh
 source src/components/template_component/template.sh
 source src/components/statevector_component/statevector.sh
-source src/components/prior_component/prior.sh
+source src/components/hemco_prior_emis_component/hemco_prior_emis.sh
 source src/components/preview_component/preview.sh
 source src/components/spinup_component/spinup.sh
 source src/components/jacobian_component/jacobian.sh
@@ -158,7 +158,7 @@ if "$isAWS"; then
         printf "$SatelliteProduct is not currently supported for download --HON"
     fi
 
-    submit_job $SchedulerType true $downloadScript $StartDate $EndDate $tropomiCache
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $tropomiCache
 
 else
     # use existing tropomi data and create a symlink to it
