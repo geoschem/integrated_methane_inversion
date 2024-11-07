@@ -66,10 +66,8 @@ setup_template() {
 
     cd ${RunTemplate}
 
-    if "$isAWS"; then
-        # Update GC data download to silence output from aws commands
-        sed -i "s/command: 'aws s3 cp '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
-    fi
+    # Update GC data download to silence output from aws commands and not require aws creds
+    sed -i "s/command: 'aws s3 cp '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
 
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
