@@ -69,8 +69,10 @@ if __name__ == "__main__":
     out = get_jacobian_scalefactors(period_number, inv_directory, ref_directory)
 
     # Save them
+    archive_dir = os.path.join(inv_directory, "archive_sf")
+    os.makedirs(archive_dir, exist_ok=True)
     save_path_1 = os.path.join(
-        os.path.join(inv_directory, "archive_sf"),
+        archive_dir,
         f"jacobian_scale_factors_period{period_number}.npy",
     )
     path_prefix = f"kf_inversions/period{period_number}" if kalman_mode else "inversion"
