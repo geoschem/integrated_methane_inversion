@@ -154,6 +154,16 @@ run_posterior() {
             OHPertPrevLine='DEFAULT    0     1.0'
             OHPertNewLine="N_HEMIS    1     ${oh_sfs[0]}\nS_HEMIS    2     ${oh_sfs[1]}"
             sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
+
+            # Modify OH scale factor in HEMCO config
+            sed -i -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" HEMCO_Config.rc
+            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
+
+            HcoPrevLineMask='CH4_STATE_VECTOR'
+            HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
+'
+            sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+
             printf "OH optimized perturbation values set to:\n"
             printf " ${oh_sfs[0]} for Northern Hemisphere\n"
             printf " ${oh_sfs[1]} for Southern Hemisphere\n"
