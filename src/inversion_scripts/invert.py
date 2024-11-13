@@ -182,7 +182,10 @@ def do_inversion(
                 scale_factors = np.append(scale_factors, np.ones(4))
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
-            K *= scaling_matrix
+            if oh_optimization:
+                K[:, :-2] *= scaling_matrix
+            else:
+                K *= scaling_matrix
 
         # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand

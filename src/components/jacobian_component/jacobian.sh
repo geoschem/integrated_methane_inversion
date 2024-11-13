@@ -28,13 +28,18 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    if [ $NumJacobianTracers -gt 1 ]; then
-        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
+    if ! "$PrecomputedJacobian"; then
+        if [ $NumJacobianTracers -gt 1 ]; then
+            nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
 
-        # Determine approx. number of CH4 tracers per Jacobian run
-        printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
-    else
-        nRuns=$nElements
+            # Determine approx. number of CH4 tracers per Jacobian run
+            printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
+        else
+            nRuns=$nElements
+        fi
+    else 
+        # only need to set up the prior run directory
+        nRuns=0
     fi
 
     # Copy run scripts
@@ -459,6 +464,7 @@ run_jacobian() {
         ln -s $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
+        JacobianRunsDir=${RunDirs}/jacobian_runs
         cd ${JacobianRunsDir}
 
         # Submit prior simulation to job scheduler
