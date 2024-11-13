@@ -89,7 +89,7 @@ setup_imi() {
         exit 1
     fi
     # Use cropped met for regional simulations instead of using global met
-    if "$isRegional"; then
+    if [ "$RegionID" != "" ]; then
         gridDir="${gridDir}_${RegionID}"
     fi
 
