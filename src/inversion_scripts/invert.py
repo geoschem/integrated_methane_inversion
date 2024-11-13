@@ -6,6 +6,8 @@ from netCDF4 import Dataset
 from src.inversion_scripts.utils import load_obj, calculate_superobservation_error
 from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
+from sklearn.model_selection import KFold
+
 
 def do_inversion(
     n_elements,
@@ -23,6 +25,8 @@ def do_inversion(
     prior_err_oh=0.0,
     is_Regional=True,
     train_test_split=False,
+    train_file_inds=None,
+    test_file_inds=None,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -110,18 +114,10 @@ def do_inversion(
         [n_elements], dtype=float
     )  # expression 2: K^T * inv(S_o) * (y-K*xA)
     
-    # decide which files to use for training and testing
-    split_loc = int(len(files)/5)
-    rng = np.random.RandomState(42)
-    indices = rng.permutation(np.arange(0,len(files), 1))
-    test_indices = indices[:split_loc]
-    
     test_prior_obs = np.array([]) # used only for train/test split
     test_tropomi_obs = np.array([]) # used only for train/test split
     train_prior_obs = np.array([]) # used only for train/test split
     train_tropomi_obs = np.array([]) # used only for train/test split
-    test_files = 0
-    train_files = 0
     test_superobs = 0
     train_superobs = 0
     # Initialize
@@ -151,17 +147,15 @@ def do_inversion(
 
         # Split data into training and testing sets if specified
         if train_test_split:
-            if file_ind in test_indices: 
+            if file_ind in test_file_inds: 
                 if jacobian_sf is not None:
                     raise ValueError("Cannot split data when using precomputed Jacobian")
                 test_tropomi_obs = np.concatenate([test_tropomi_obs, obs_GC[ind, 0]])
                 test_prior_obs = np.concatenate([test_prior_obs, obs_GC[ind, 1]])
-                test_files += test_files
                 test_superobs += len(ind)
             else:
                 train_tropomi_obs = np.concatenate([train_tropomi_obs, obs_GC[ind, 0]])
                 train_prior_obs = np.concatenate([train_prior_obs, obs_GC[ind, 1]])
-                train_files += train_files
                 train_superobs += len(ind)
             
         # TROPOMI and GEOS-Chem data within bounds
@@ -201,7 +195,7 @@ def do_inversion(
             
         K = 1e9 * K_dat[ind, :]
         if train_test_split:
-            if file_ind in test_indices:
+            if file_ind in train_file_inds:
                 if 'K_test' not in locals():
                     K_test = 1e9 * K_dat[ind, :]
                 else:
@@ -214,7 +208,8 @@ def do_inversion(
                     K_train = np.append(K_train, 1e9 * K_dat[ind, :], axis=0)  
             
         # Number of observations
-        print("Sum of Jacobian entries:", np.sum(K))
+        if not train_test_split:
+            print("Sum of Jacobian entries:", np.sum(K))
 
         # Apply scaling matrix if using precomputed Jacobian
         if jacobian_sf is not None:
@@ -338,7 +333,6 @@ def do_inversion(
     )
     if train_test_split:
         print(f"Number of superobservations train: {train_superobs}, test: {test_superobs}")
-        print(f"Number of files train: {train_files}, test: {test_files}")
         # return rmse
         xhat_ratio = xhat - 1
         rmse_test = np.sqrt(np.mean(((K_test@xhat_ratio) + test_prior_obs) - test_tropomi_obs) ** 2)
@@ -346,6 +340,81 @@ def do_inversion(
         return rmse_test, rmse_train
     else:
         return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
+
+def do_cross_validation(
+    n_elements,
+    jacobian_dir,
+    lon_min,
+    lon_max,
+    lat_min,
+    lat_max,
+    prior_err=0.5,
+    obs_err=15,
+    gamma_values=[0.25],
+    n_splits=5,
+    res="0.25x0.3125",
+    jacobian_sf=None,
+    prior_err_bc=0.0,
+    prior_err_oh=0.0,
+    is_Regional=True,
+    n_jobs=-1  # Number of jobs to run in parallel
+):
+    # Get list of files
+    files = glob.glob(f"{jacobian_dir}/*.pkl")
+    files.sort()
+    
+    # Set up k-fold cross-validation
+    kf = KFold(n_splits=n_splits, shuffle=False, random_state=42)
+    rmse_results = []
+
+    # Helper function for parallel execution of each fold
+    def evaluate_fold(gamma, train_index, test_index):
+
+        # Run inversion on training and test sets for this fold
+        rmse_test, rmse_train = do_inversion(
+            n_elements,
+            jacobian_dir,
+            lon_min,
+            lon_max,
+            lat_min,
+            lat_max,
+            prior_err,
+            obs_err,
+            gamma,
+            res,
+            jacobian_sf,
+            prior_err_bc,
+            prior_err_oh,
+            is_Regional,
+            train_test_split=True,
+            train_file_inds=train_index,
+            test_file_inds=test_index,
+        )
+        return rmse_train, rmse_test
+
+    # Loop over each gamma value and perform parallelized k-fold cross-validation
+    for gamma in gamma_values:
+        # For each gamma, run k-fold cross-validation in parallel
+        fold_results = Parallel(n_jobs=n_jobs)(
+            delayed(evaluate_fold)(gamma, train_index, test_index)
+            for train_index, test_index in kf.split(files)
+        )
+        print(f"Gamma: {gamma}, fold results: {fold_results}")
+
+        # Separate and calculate mean RMSE across folds for each gamma
+        train_rmse_folds, test_rmse_folds = zip(*fold_results)
+        avg_train_rmse = np.mean(train_rmse_folds)
+        avg_test_rmse = np.mean(test_rmse_folds)
+        rmse_results.append((gamma, avg_train_rmse, avg_test_rmse))
+
+    # Print results and return the best gamma
+    for gamma, train_rmse, test_rmse in rmse_results:
+        print(f"gamma: {gamma}, mean RMSE train: {train_rmse}, mean RMSE test: {test_rmse}")
+
+    # Find the gamma with the lowest test RMSE
+    best_gamma = min(rmse_results, key=lambda x: x[2])[0]
+    print(f"Optimal gamma based on cross-validation: {best_gamma}")
+    return best_gamma
 
 
 if __name__ == "__main__":
@@ -375,94 +444,109 @@ if __name__ == "__main__":
     optimize_gamma = True
     if optimize_gamma:
         print(f"Running gamma sensitivity analysis with train/test split")
-        # Define function to execute in parallel
-        def run_inversion(gamma):
-            rmse_test, rmse_train = do_inversion(
-                n_elements,
-                jacobian_dir,
-                lon_min,
-                lon_max,
-                lat_min,
-                lat_max,
-                prior_err,
-                obs_err,
-                gamma,
-                res,
-                jacobian_sf,
-                prior_err_BC,
-                prior_err_OH,
-                is_Regional,
-                train_test_split=True,
-            )
-            return rmse_test, rmse_train
-    
-        # generate a range of gamma values to test
-        gammas = [1e-06, 1e-05, 1e-04, 1e-03, 0.01, 0.1, 0.25, 0.5, 0.75, 1.0]
-        rmses = []
-        # Run the inversion code in parallel and collect results
-        results = Parallel(n_jobs=-1)(delayed(run_inversion)(gamma) for gamma in gammas)
+        # Call the cross-validation function
+        gamma_values = [1e-06, 1e-05, 1e-04, 1e-03, 0.01, 0.1, 0.25, 0.5, 0.75, 1.0, 10.0, 100.0]
+        best_gamma = do_cross_validation(
+            n_elements,
+            jacobian_dir,
+            lon_min,
+            lon_max,
+            lat_min,
+            lat_max,
+            prior_err=prior_err,
+            obs_err=obs_err,
+            gamma_values=gamma_values,
+            n_splits=5,
+            res=res,
+            jacobian_sf=jacobian_sf,
+            prior_err_bc=prior_err_BC,
+            prior_err_oh=prior_err_OH,
+            is_Regional=is_Regional,
+        )
+        # Call the cross-validation function
+        # gamma_values = [1e-06, 1e-05, 1e-04, 1e-03, 0.01, 0.1, 0.25, 0.5, 0.75, 1.0, 10.0, 100.0]
+        # best_gamma = do_cross_validation(
+        #     n_elements,
+        #     jacobian_dir,
+        #     lon_min,
+        #     lon_max,
+        #     lat_min,
+        #     lat_max,
+        #     prior_err=prior_err,
+        #     obs_err=obs_err,
+        #     gamma_values=gamma_values,
+        #     n_splits=5,
+        #     res=res,
+        #     jacobian_sf=jacobian_sf,
+        #     prior_err_bc=prior_err_BC,
+        #     prior_err_oh=prior_err_OH,
+        #     is_Regional=is_Regional,
+        # )
+        # # Run the inversion code in parallel and collect results
+        # results = Parallel(n_jobs=-1)(delayed(run_inversion)(gamma) for gamma in gammas)
 
-        # Separate results into test and train RMSEs
-        rmses = [result[0] for result in results]
-        rmses_train = [result[1] for result in results]
+        # # Separate results into test and train RMSEs
+        # rmses = [result[0] for result in results]
+        # rmses_train = [result[1] for result in results]
         
-        # print the optimal gamma
-        for i in range(len(rmses)):
-            print(f"gamma: {gammas[i]}, rmse test: {rmses[i]}, rmse train: {rmses_train[i]}")
-        print(f"Optimal gamma: {gammas[np.argmin(rmses)]}")
-        print(f"Running inversion with optimal gamma value")
-        gamma = gammas[np.argmin(rmses)]
-        fig, ax = plt.subplots(1, 1, figsize=(14, 6))
-        ax.plot(gammas, rmses, label= "RMSE Test")
-        ax.plot(gammas, rmses_train, label= "RMSE Train")
-        ax.legend()
-        ax.set_xscale("log")
-        ax.set_xlabel("Gammas")
-        ax.set_ylabel("RMSE")
-        plt.savefig("Test_vsTrain.png")
+        # # print the optimal gamma
+        # for i in range(len(rmses)):
+        #     print(f"gamma: {gammas[i]}, rmse test: {rmses[i]}, rmse train: {rmses_train[i]}")
+        # print(f"Optimal gamma: {gammas[np.argmin(rmses)]}")
+        # print(f"Running inversion with optimal gamma value")
+        # gamma = gammas[np.argmin(rmses)]
+        # fig, ax = plt.subplots(1, 1, figsize=(14, 6))
+        # ax.plot(gammas, rmses, label= "RMSE Test")
+        # ax.plot(gammas, rmses_train, label= "RMSE Train")
+        # ax.legend()
+        # ax.set_xscale("log")
+        # ax.set_xlabel("Gammas")
+        # ax.set_ylabel("RMSE")
+        # plt.savefig("Test_vsTrain.png")
         
         
     # do the actual inversion with specified gamma        
-    out = do_inversion(
-        n_elements,
-        jacobian_dir,
-        lon_min,
-        lon_max,
-        lat_min,
-        lat_max,
-        prior_err,
-        obs_err,
-        gamma,
-        res,
-        jacobian_sf,
-        prior_err_BC,
-        prior_err_OH,
-        is_Regional,
-    )
+    # out = do_inversion(
+    #     n_elements,
+    #     jacobian_dir,
+    #     lon_min,
+    #     lon_max,
+    #     lat_min,
+    #     lat_max,
+    #     prior_err,
+    #     obs_err,
+    #     gamma,
+    #     res,
+    #     jacobian_sf,
+    #     prior_err_BC,
+    #     prior_err_OH,
+    #     is_Regional,
+    # )
 
-    xhat = out[0]
-    ratio = out[1]
-    KTinvSoK = out[2]
-    KTinvSoyKxA = out[3]
-    S_post = out[4]
-    A = out[5]
+    # xhat = out[0]
+    # ratio = out[1]
+    # KTinvSoK = out[2]
+    # KTinvSoyKxA = out[3]
+    # S_post = out[4]
+    # A = out[5]
 
-    # Save results
-    dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")
-    nvar1 = dataset.createDimension("nvar1", n_elements)
-    nvar2 = dataset.createDimension("nvar2", n_elements)
-    nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar1", "nvar2"))
-    nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar1"))
-    nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar1"))
-    nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar1"))
-    nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
-    nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
-    nc_KTinvSoK[:, :] = KTinvSoK
-    nc_KTinvSoyKxA[:] = KTinvSoyKxA
-    nc_ratio[:] = ratio
-    nc_xhat[:] = xhat
-    nc_S_post[:, :] = S_post
-    nc_A[:, :] = A
-    dataset.close()
+    # # Save results
+    # dataset = Dataset(output_path, "w", format="NETCDF4_CLASSIC")
+    # nvar1 = dataset.createDimension("nvar1", n_elements)
+    # nvar2 = dataset.createDimension("nvar2", n_elements)
+    # nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar1", "nvar2"))
+    # nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar1"))
+    # nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar1"))
+    # nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar1"))
+    # nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
+    # nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
+    # nc_KTinvSoK[:, :] = KTinvSoK
+    # nc_KTinvSoyKxA[:] = KTinvSoyKxA
+    # nc_ratio[:] = ratio
+    # nc_xhat[:] = xhat
+    # nc_S_post[:, :] = S_post
+    # nc_A[:, :] = A
+    # dataset.close()
 
-    print(f"Saved results to {output_path}")
+    # print(f"Saved results to {output_path}")
+    
