@@ -335,9 +335,9 @@ def do_inversion(
         print(f"Number of superobservations train: {train_superobs}, test: {test_superobs}")
         # return rmse
         xhat_ratio = xhat - 1
-        rmse_test = np.sqrt(np.mean(((K_test@xhat_ratio) + test_prior_obs) - test_tropomi_obs) ** 2)
-        rmse_train = np.sqrt(np.mean(((K_train@xhat_ratio) + train_prior_obs) - train_tropomi_obs) ** 2)
-        return rmse_test, rmse_train
+        mean_bias_test = np.mean(((K_test@xhat_ratio) + test_prior_obs) - test_tropomi_obs)
+        mean_bias_train = np.mean(((K_train@xhat_ratio) + train_prior_obs) - train_tropomi_obs)
+        return mean_bias_test, mean_bias_train
     else:
         return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
