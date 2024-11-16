@@ -195,7 +195,7 @@ def do_inversion(
             
         K = 1e9 * K_dat[ind, :]
         if train_test_split:
-            if file_ind in train_file_inds:
+            if not file_ind in train_file_inds:
                 if 'K_test' not in locals():
                     K_test = 1e9 * K_dat[ind, :]
                 else:
@@ -364,7 +364,7 @@ def do_cross_validation(
     files.sort()
     
     # Set up k-fold cross-validation
-    kf = KFold(n_splits=n_splits, shuffle=False, random_state=42)
+    kf = KFold(n_splits=n_splits, shuffle=False)
     rmse_results = []
 
     # Helper function for parallel execution of each fold
