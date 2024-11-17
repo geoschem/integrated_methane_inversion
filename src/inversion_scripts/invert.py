@@ -337,7 +337,7 @@ def do_inversion(
         xhat_ratio = xhat - 1
         mean_bias_test = np.mean(((K_test@xhat_ratio) + test_prior_obs) - test_tropomi_obs)
         mean_bias_train = np.mean(((K_train@xhat_ratio) + train_prior_obs) - train_tropomi_obs)
-        return mean_bias_test, mean_bias_train
+        return mean_bias_test, mean_bias_train, J_A_normalized
     else:
         return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
 
@@ -365,13 +365,13 @@ def do_cross_validation(
     
     # Set up k-fold cross-validation
     kf = KFold(n_splits=n_splits, shuffle=False)
-    rmse_results = []
+    bias_results = []
 
     # Helper function for parallel execution of each fold
     def evaluate_fold(gamma, train_index, test_index):
 
         # Run inversion on training and test sets for this fold
-        rmse_test, rmse_train = do_inversion(
+        bias_test, bias_train, ja = do_inversion(
             n_elements,
             jacobian_dir,
             lon_min,
@@ -390,7 +390,7 @@ def do_cross_validation(
             train_file_inds=train_index,
             test_file_inds=test_index,
         )
-        return rmse_train, rmse_test
+        return bias_train, bias_test, ja
 
     # Loop over each gamma value and perform parallelized k-fold cross-validation
     for gamma in gamma_values:
@@ -402,17 +402,18 @@ def do_cross_validation(
         print(f"Gamma: {gamma}, fold results: {fold_results}")
 
         # Separate and calculate mean RMSE across folds for each gamma
-        train_rmse_folds, test_rmse_folds = zip(*fold_results)
-        avg_train_rmse = np.mean(train_rmse_folds)
-        avg_test_rmse = np.mean(test_rmse_folds)
-        rmse_results.append((gamma, avg_train_rmse, avg_test_rmse))
+        train_bias_folds, test_bias_folds, ja_folds = zip(*fold_results)
+        avg_train_bias = np.mean(train_bias_folds)
+        avg_test_bias = np.mean(test_bias_folds)
+        avg_test_ja = np.mean(ja_folds)
+        bias_results.append((gamma, avg_train_bias, avg_test_bias, avg_test_ja))
 
     # Print results and return the best gamma
-    for gamma, train_rmse, test_rmse in rmse_results:
-        print(f"gamma: {gamma}, mean RMSE train: {train_rmse}, mean RMSE test: {test_rmse}")
+    for gamma, train_bias, test_bias, ja in bias_results:
+        print("{" + f"\"Ja\": {ja}, \"gamma\": {gamma}, \"abs_mean_bias_train\": {train_bias}, \"abs_mean_bias_test\": {test_bias}" + "},")
 
     # Find the gamma with the lowest test RMSE
-    best_gamma = min(rmse_results, key=lambda x: x[2])[0]
+    best_gamma = min(bias_results, key=lambda x: x[2])[0]
     print(f"Optimal gamma based on cross-validation: {best_gamma}")
     return best_gamma
 
