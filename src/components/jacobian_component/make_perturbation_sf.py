@@ -124,6 +124,14 @@ def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None)
 
     # calculate the effective scale factors
     effective_pert_sf = jacobian_pert_sf / flat_prior_sf
+    
+    # subtract 1.0 from the effective scale factors to get the percent 
+    # change used in the inversion sensitivity calculations
+    # eg. 50% == 0.5
+    # This is is different from the jacobian simulations
+    # where we apply the "jacobian_pert_sf" in HEMCO.
+    # 50% perturbation is represented by SF of 1.5
+    effective_pert_sf = effective_pert_sf - 1.0
 
     # return dictionary of scale factor arrays
     perturbation_dict = {

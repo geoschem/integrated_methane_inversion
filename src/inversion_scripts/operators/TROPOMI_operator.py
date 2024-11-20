@@ -257,13 +257,13 @@ def apply_average_tropomi_operator(
             perturbations = np.full(n_elements, 1.0, dtype=float)
 
             if config["OptimizeOH"]:
-                oh_perturbation = config["PerturbValueOH"]
+                oh_perturbation = float(config["PerturbValueOH"]) - 1.0
             else:
-                oh_perturbation = 1.0
+                oh_perturbation = 1.0 # should these be 0.0?
             if config["OptimizeBCs"]:
                 bc_perturbation = config["PerturbValueBCs"]
             else:
-                bc_perturbation = 1.0
+                bc_perturbation = 1.0 # should these be 0.0?
 
             # fill perturbation array with OH and BC perturbations
             perturbations[0 : is_emis.sum()] = emis_perturbations
