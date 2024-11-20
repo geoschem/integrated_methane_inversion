@@ -12,7 +12,7 @@ create_statevector() {
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if [ "$RegionID" == "" ]; then
-        LandCoverSuffix="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     else
         LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
     fi
