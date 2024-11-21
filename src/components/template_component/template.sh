@@ -66,10 +66,8 @@ setup_template() {
 
     cd ${RunTemplate}
 
-    if "$isAWS"; then
-        # Update GC data download to silence output from aws commands
-        sed -i "s/command: 'aws s3 cp '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
-    fi
+    # Update GC data download to silence output from aws commands and not require aws creds
+    sed -i "s/command: 'aws s3 cp '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
 
     # Modify geoschem_config.yml based on settings in config.yml
     sed -i -e "s:20190101:${StartDate}:g" \
@@ -99,7 +97,7 @@ setup_template() {
 
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
-    if "$isRegional"; then
+    if [ "$RegionID" != "" ]; then
         sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
         sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields

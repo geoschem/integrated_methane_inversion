@@ -11,18 +11,19 @@ create_statevector() {
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    if "$isRegional"; then
-        LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+    if [ "$RegionID" == "" ]; then
+        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     else
-        LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
     fi
+    LandCoverFile="${DataPath}/${LandCoverSuffix}"
 
     # Use archived HEMCO standalone emissions output
     HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
 
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
-        s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        s3_lc_path="s3://gcgrid/${LandCoverSuffix}"
         aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
         s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
         aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}

@@ -43,7 +43,7 @@ def do_inversion(
 
     Returns
         xhat         [float] : Posterior scaling factors
-        ratio        [float] : Change from prior     [xhat = 1 + ratio]
+        delta_optimized        [float] : Change from prior     [xhat = 1 + delta_optimized]
         KTinvSoK     [float] : K^T*inv(S_o)*K        [part of inversion equation]
         KTinvSoyKxA  [float] : K^T*inv(S_o)*(y-K*xA) [part of inversion equation]
         S_post       [float] : Posterior error covariance matrix
@@ -92,8 +92,8 @@ def do_inversion(
     #
     # In the code below this becomes
     #   xhat = xA + inv(gamma*KTinvSoK + inv(S_a)) * gamma*KTinvSoyKxA
-    #        = xA + ratio
-    #        = 1  + ratio      [since xA=1 when optimizing scale factors]
+    #        = xA + delta_optimized
+    #        = 1  + delta_optimized      [since xA=1 when optimizing scale factors]
     #
     # We build KTinvSoK and KTinvSoyKxA "piece by piece", loading one jacobian .pkl file at a
     # time. This is so that we don't need to assemble or invert the full Jacobian matrix, which
@@ -182,7 +182,10 @@ def do_inversion(
                 scale_factors = np.append(scale_factors, np.ones(4))
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
-            K *= scaling_matrix
+            if oh_optimization:
+                K[:, :-2] *= scaling_matrix
+            else:
+                K *= scaling_matrix
 
         # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand
@@ -250,15 +253,15 @@ def do_inversion(
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
 
     # Solve for posterior scale factors xhat
-    ratio = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
+    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
 
     # Update scale factors by 1 to match what GEOS-Chem expects
-    # xhat = 1 + ratio
+    # xhat = 1 + delta_optimized
     # Notes:
     #  - If optimizing BCs, the last 4 elements are in concentration space,
     #    so we do not need to add 1
     #  - If optimizing OH, the last element also needs to be updated by 1
-    xhat = ratio.copy()
+    xhat = delta_optimized.copy()
     xhat[:scale_factor_idx] += 1
     if oh_optimization:
         if is_Regional:
@@ -274,10 +277,10 @@ def do_inversion(
     # Averaging kernel matrix
     A = np.identity(n_elements) - S_post @ inv_Sa
 
-    # Calculate J_A, where ratio = xhat - xA
+    # Calculate J_A, where delta_optimized = xhat - xA
     # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
-    ratioT = ratio.transpose()
-    J_A = ratioT @ inv_Sa @ ratio
+    delta_optimizedT = delta_optimized.transpose()
+    J_A = delta_optimizedT @ inv_Sa @ delta_optimized
     J_A_normalized = J_A / n_elements
 
     # Print some statistics
@@ -294,7 +297,7 @@ def do_inversion(
         xhat[:scale_factor_idx].max(),
     )
 
-    return xhat, ratio, KTinvSoK, KTinvSoyKxA, S_post, A
+    return xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A
 
 
 if __name__ == "__main__":
@@ -338,7 +341,7 @@ if __name__ == "__main__":
         is_Regional,
     )
     xhat = out[0]
-    ratio = out[1]
+    delta_optimized = out[1]
     KTinvSoK = out[2]
     KTinvSoyKxA = out[3]
     S_post = out[4]
@@ -350,13 +353,13 @@ if __name__ == "__main__":
     nvar2 = dataset.createDimension("nvar2", n_elements)
     nc_KTinvSoK = dataset.createVariable("KTinvSoK", np.float32, ("nvar1", "nvar2"))
     nc_KTinvSoyKxA = dataset.createVariable("KTinvSoyKxA", np.float32, ("nvar1"))
-    nc_ratio = dataset.createVariable("ratio", np.float32, ("nvar1"))
+    nc_delta_optimized = dataset.createVariable("ratio", np.float32, ("nvar1"))
     nc_xhat = dataset.createVariable("xhat", np.float32, ("nvar1"))
     nc_S_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
     nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
     nc_KTinvSoK[:, :] = KTinvSoK
     nc_KTinvSoyKxA[:] = KTinvSoyKxA
-    nc_ratio[:] = ratio
+    nc_delta_optimized[:] = delta_optimized
     nc_xhat[:] = xhat
     nc_S_post[:, :] = S_post
     nc_A[:, :] = A
