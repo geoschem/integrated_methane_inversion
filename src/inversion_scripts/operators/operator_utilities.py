@@ -222,7 +222,11 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
 
     ds_concat = xr.concat([dsmf[v] for v in keepvars], "element").rename("ch4")
     ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
-    ds_concat = ds_concat.isel(time=gc_date.hour, drop=True)  # subset hour of interest
+    try:
+        ds_concat = ds_concat.isel(time=gc_date.hour, drop=True)  # subset hour of interest
+    except Exception as e:
+        print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
+        raise e
     if not baserun:
         ds_concat = ds_concat.assign_coords({"element": sv_elems})
     return ds_concat
