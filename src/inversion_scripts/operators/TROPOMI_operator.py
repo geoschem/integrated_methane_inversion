@@ -241,34 +241,40 @@ def apply_average_tropomi_operator(
                 is_bc[e] = is_BC_element
             is_emis = ~np.equal(is_oh | is_bc, True)
 
+            # get perturbations and calculate sensitivities
+            perturbations = np.full(n_elements, 1.0, dtype=float)
+
             # fill pert base array with values
             # array contains 1 entry for each state vector element
             # fill array with nans
             base_xch4 = np.full(n_elements, np.nan)
             # fill emission elements with the base value
             base_xch4 = np.where(is_emis, emis_base_xch4, base_xch4)
-            # fill BC elements with the base value, which is same as emis value
-            base_xch4 = np.where(is_bc, emis_base_xch4, base_xch4)
+
+            # emissions perturbations
+            perturbations[0 : is_emis.sum()] = emis_perturbations
+
+            # OH perturbations
             if config["OptimizeOH"]:
                 # fill OH elements with the OH base value
                 base_xch4 = np.where(is_oh, oh_base_xch4, base_xch4)
-
-            # get perturbations and calculate sensitivities
-            perturbations = np.full(n_elements, 1.0, dtype=float)
-
-            if config["OptimizeOH"]:
+            
+                # compute BC perturbation for jacobian construction
                 oh_perturbation = float(config["PerturbValueOH"]) - 1.0
-            else:
-                oh_perturbation = 1.0 # should these be 0.0?
-            if config["OptimizeBCs"]:
-                bc_perturbation = config["PerturbValueBCs"]
-            else:
-                bc_perturbation = 1.0 # should these be 0.0?
 
-            # fill perturbation array with OH and BC perturbations
-            perturbations[0 : is_emis.sum()] = emis_perturbations
-            perturbations = np.where(is_oh, oh_perturbation, perturbations)
-            perturbations = np.where(is_bc, bc_perturbation, perturbations)
+                # update perturbations array to include OH perturbations
+                perturbations = np.where(is_oh, oh_perturbation, perturbations)
+
+            # BC perturbations
+            if config["OptimizeBCs"]:
+                # fill BC elements with the base value, which is same as emis value
+                base_xch4 = np.where(is_bc, emis_base_xch4, base_xch4)
+
+                # compute BC perturbation for jacobian construction
+                bc_perturbation = config["PerturbValueBCs"]
+
+                # update perturbations array to include OH perturbations
+                perturbations = np.where(is_bc, bc_perturbation, perturbations)
 
             # calculate difference
             delta_xch4 = pert_jacobian_xch4 - base_xch4
