@@ -17,7 +17,8 @@ from src.inversion_scripts.utils import get_mean_emissions, get_period_mean_emis
 
 def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_sf):
     """
-    Update the perturbation files in the jacobian run directories with the new scale factors.
+    Update the perturbation files in the jacobian run directories with the new
+    perturbation scale factors.
     """
     contents = os.listdir(jacobian_dir)
     jacobian_rundirs = [
@@ -27,9 +28,8 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
     ]
 
     # loop through each jacobian run directory and update the perturbation file
-    # with the new scale factors
+    # with the new perturbation SFs
     for jacobian_rundir in jacobian_rundirs:
-        dir_suffix = jacobian_rundir.split("/")[-1].split("_")[-1]
         perturbation_files = glob.glob(f"{jacobian_rundir}/Perturbations_*.txt")
         for perturbation_file in perturbation_files:
 
@@ -43,7 +43,7 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
                 sv_element = int(sv_label)
                 sv_idx = sv_element - 1
 
-                # make sure we only apply scale factors to emission elements
+                # make sure we only apply perturbation SFs to emission elements
                 if sv_element <= int(state_vector_labels.max().item()):
                     # add the right amount of padding
                     padding = "".ljust(4 - len(str(sv_element)))
@@ -65,44 +65,65 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
                         file.writelines(lines)
 
 
-def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None):
+def calculate_perturbation_sfs(
+    state_vector, emis_prior, target_emission=1e-8, prior_sf=None
+):
     """
-    Calculate the scale factors to perturb each state vector
-    element by based on the target_emission. Return a dictionary containing
-    two flat numpy arrays of perturbation scale factors indexed by state vector
-    element. The first array contains the perturbation scale factors to apply
-    to the state vector elements in jacobian simulations (based on the
-    original prior emissions). The second array contains the effective scale
-    factors (based on the nudged prior emissions for kalman mode) used in the
-    inversion to calculate the sensitivity of observations to the perturbation.
-    For a standalone inversion, the effective scale factors == jacobian scale factors.
-    """
-    # create a sf dataset with the same structure as the state vector
-    sf = state_vector.copy()
-    sf = sf.rename({"StateVector": "ScaleFactor"})
+    Calculate the perturbation scale factors to perturb each state vector element based on the
+    target_emission.
 
-    # Calculate scale factors such that applying them to the original emissions
-    # will result in a target_emission kg/m2/s2 emission.
-    sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+    Args:
+        state_vector [xr.Dataset] : the state vector dataset
+        emis_prior   [xr.Dataset] : the prior emissions dataset
+        target_emission [float]   : the target emission value to perturb each state vector element by
+        prior_sf     [xr.Dataset] : the prior scale factor dataset (for kalman mode)
+
+    Returns:
+        dictionary containing two flat numpy arrays of perturbation scale factors
+        indexed by state vector element. The dictionary arrays are as follows:
+
+        jacobian_pert_sf [array]: contains the perturbation scale factors to apply
+                                  to the state vector elements in jacobian simulations
+                                  (based on the original prior emissions). To accomodate
+                                  how perturbations are applied in HEMCO these are relative
+                                  to 1, so a 50% perturbation is represented as 1.5.
+
+        effective_pert_sf [array]: contains the perturbation scalefactors (based on the
+                                   nudged prior emissions for kalman mode) used in the
+                                   inversion to calculate the sensitivity of observations
+                                   to the perturbation. These are relative to 0, so a 50%
+                                   perturbation is represented as 0.5. For a standalone
+                                   inversion, effective_pert_sf + 1 == jacobian_pert_sf.
+
+        target_emission   [float]: the target emission value used to calculate the perturbation
+    """
+    # create a dataset with the same structure as the state vector for perturbation SFs
+    pert_sf = state_vector.copy()
+    pert_sf = pert_sf.rename({"StateVector": "ScaleFactor"})
+
+    # Calculate perturbation SFs such that applying them to the original
+    # emissions will result in a target_emission kg/m2/s2 emission.
+    pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
 
     # Extract state vector labels
     state_vector_labels = state_vector["StateVector"]
 
-    # Add state vector labels to sf Dataset
-    sf = sf.assign(StateVector=state_vector_labels)
+    # Add state vector labels to pert sf Dataset
+    pert_sf = pert_sf.assign(StateVector=state_vector_labels)
 
-    # Use groupby to find the median scale factor for each state vector label
-    max_sf_da = sf["ScaleFactor"].groupby(sf["StateVector"]).median()
+    # Use groupby to find the median perturbation scale factor for each state vector label
+    max_pert_sf_da = pert_sf["ScaleFactor"].groupby(pert_sf["StateVector"]).median()
 
     # get flat, numpy array by converting to dataframe and sorting based on
     # state vector element
-    max_sf_df = max_sf_da.to_dataframe().reset_index()
-    max_sf_df = max_sf_df[max_sf_df["StateVector"] > 0].sort_values(by="StateVector")
-    jacobian_pert_sf = max_sf_df["ScaleFactor"].values
+    max_pert_sf_df = max_pert_sf_da.to_dataframe().reset_index()
+    max_pert_sf_df = max_pert_sf_df[max_pert_sf_df["StateVector"] > 0].sort_values(
+        by="StateVector"
+    )
+    jacobian_pert_sf = max_pert_sf_df["ScaleFactor"].values
 
     # Replace any values greater than the threshold to avoid issues
-    # with reaching infinity
-    # Replace any NaN values to 1.0
+    # with reaching infinity. Replace any NaN values with 1.0
     max_sf_threshold = 15000000.0
     jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
     jacobian_pert_sf = np.nan_to_num(jacobian_pert_sf, nan=1.0)
@@ -122,18 +143,13 @@ def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None)
     else:
         flat_prior_sf = np.ones(len(jacobian_pert_sf))
 
-    # calculate the effective scale factors
+    # calculate the effective perturbation SFs
     effective_pert_sf = jacobian_pert_sf / flat_prior_sf
-    
-    # subtract 1.0 from the effective scale factors to get the percent 
-    # change used in the inversion sensitivity calculations
-    # eg. 50% == 0.5
-    # This is is different from the jacobian simulations
-    # where we apply the "jacobian_pert_sf" in HEMCO.
-    # 50% perturbation is represented by SF of 1.5
+
+    # make the effective perturbations relative to 0, as expected in the inversion
     effective_pert_sf = effective_pert_sf - 1.0
 
-    # return dictionary of scale factor arrays
+    # return dictionary of perturbation scale factor arrays
     perturbation_dict = {
         "effective_pert_sf": effective_pert_sf,
         "jacobian_pert_sf": jacobian_pert_sf,
@@ -146,7 +162,7 @@ def calculate_sfs(state_vector, emis_prior, target_emission=1e-8, prior_sf=None)
 def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     """
     Calculate the perturbations for each state vector element and update the perturbation files.
-    Write out an archive of the flat scale factors for later use in sensitivity calculations.
+    Write out an archive of the flat perturbation scale factors for later use in sensitivity calculations.
     Args:
         config            [dict] : dictionary of configuration settings
         period_number      [int] : the period number for which to calculate the perturbations
@@ -182,16 +198,18 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     # load the state vector dataset
     state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
 
-    # calculate the scale factors to perturb each state vector element by
-    perturbation_dict = calculate_sfs(state_vector, hemco_emis, perturb_value, prior_sf)
+    # calculate the perturbation scale factors we perturb each state vector element by
+    perturbation_dict = calculate_perturbation_sfs(
+        state_vector, hemco_emis, perturb_value, prior_sf
+    )
 
-    # update jacobian perturbation files with new scale factors
+    # update jacobian perturbation files with new perturbation scale factors
     # before we run the jacobian simulations
     update_jacobian_perturbation_files(
         jacobian_dir, state_vector["StateVector"], perturbation_dict["jacobian_pert_sf"]
     )
 
-    # archive npz file of scale factor dictionary for later calculation of sensitivity
+    # archive npz file of perturbation scale factor dictionary for later calculation of sensitivity
     archive_dir = os.path.join(base_directory, "archive_perturbation_sfs")
     os.makedirs(archive_dir, exist_ok=True)
     np.savez(
