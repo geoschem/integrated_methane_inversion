@@ -84,6 +84,8 @@ Kalman filter options
      - Option to automatically create ``periods.csv`` based on the constant number of days in ``UpdateFreqDays``. Default is ``true``. If ``false``, a custom ``periods.csv`` will be used instead.
    * - ``CustomPeriodsCSV``
      - Path to custom ``periods.csv`` with user-defined start and end dates for each Kalman filter update period.
+   * - ``FirstPeriod``
+     - Optional variable to specify which Kalman period to start on, if restarting an inversion. Default is ``1``.
 
 State vector 
 ~~~~~~~~~~~~
@@ -177,6 +179,8 @@ Inversion
      - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``ReferenceRunDir``
+     - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
 
 Grid
 ~~~~
@@ -219,7 +223,7 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    :widths: 30, 70
    :class: tight-table
 
-   * - ``DoPriorEmis``
+   * - ``DoHemcoPriorEmis``
      - Boolean to run a HEMCO standalone simulation to generate the
        prior emissions.
    * - ``DoSpinup``

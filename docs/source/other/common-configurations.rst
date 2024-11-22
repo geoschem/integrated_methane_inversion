@@ -21,7 +21,7 @@ compute the prior emissions with a HEMCO standalone run, run the preview, and th
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoPriorEmis: true
+    DoHemcoPriorEmis: true
     DoSpinup: false
     DoJacobian: false
     ReDoJacobian: true
@@ -55,7 +55,7 @@ If the preview is complete and the results are satisfactory, you can proceed wit
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoPriorEmis: false
+    DoHemcoPriorEmis: false
     DoSpinup: true
     DoJacobian: true
     ReDoJacobian: true
@@ -88,7 +88,7 @@ observational error (``ObsError``), or regularization parameter (``Gamma``). ::
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoPriorEmis: false
+    DoHemcoPriorEmis: false
     DoSpinup: false
     DoJacobian: false
     ReDoJacobian: false
@@ -121,7 +121,7 @@ freedom for signal (DOFS) to cancel the inversion; if the expected DOFS are belo
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoPriorEmis: true
+    DoHemcoPriorEmis: true
     DoSpinup: true
     DoJacobian: true
     ReDoJacobian: true
@@ -151,7 +151,7 @@ Modifying prior emission estimates
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoPriorEmis: false
+    DoHemcoPriorEmis: false
     DoSpinup: false
     DoJacobian: false
     ReDoJacobian: false
@@ -178,7 +178,7 @@ run the preview without setting up the template run directory. ::
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoPriorEmis: true
+    DoHemcoPriorEmis: true
     DoSpinup: false
     DoJacobian: false
     ReDoJacobian: false
