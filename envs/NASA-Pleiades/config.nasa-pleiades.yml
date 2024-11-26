@@ -2,16 +2,16 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_Permian_1week"
-Species: "CH4"
-isAWS: true
-SchedulerType: "slurm"
-SafeMode: true
+RunName: "Test_ICI_Global"
+Species: "CO2"
+isAWS: false
+SchedulerType: "PBS"
+SafeMode: false
 S3Upload: false
 
 ## Period of interest
-StartDate: 20180501
-EndDate: 20180508
+StartDate: 20221001
+EndDate: 20221003
 SpinupMonths: 1
 
 ## What satellite data product should be used? Current options are: 
@@ -25,16 +25,13 @@ SpinupMonths: 1
 SatelliteProduct: "Other"
 # BlendedTROPOMI: false
 
-## Use observations over water? Set to false to filter out water observations
-UseWaterObs: false
-
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: true
+isRegional: false
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AF" : Africa ([-37,40], [-20,53])
-##     "AS" : Asia ([-11,55],[60,150])
+##     "AS" : Asia ([-11,55],[60,150]) 
 ##     "EU" : Europe ([33,61],[-30,70])
 ##     "ME" : Middle East ([12,50], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
@@ -43,30 +40,28 @@ isRegional: true
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-RegionID: "NA"
+RegionID: ""
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -105
-LonMax: -103
-LatMin: 31
-LatMax: 33
+LonMin: -102.5
+LonMax: -87.5
+LatMin: 16
+LatMax: 24
 
 ## Kalman filter options
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
-MakePeriodsCSV: true
-CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 8
-BufferDeg: 5
+nBufferClusters: 
+BufferDeg: 0
+OptimizeBCs: false
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: true
 OptimizeOH: false
 
 ## Point source datasets
@@ -78,55 +73,44 @@ ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
 NumberOfElements: 45
-ForcedNativeResolutionElements:
+ForcedNativeResolutionElements: 
   - [31.5, -104]
-EmissionRateFilter: 2500
-PlumeCountFilter: 50
-GroupByCountry: false
 
 ## Custom state vector
-StateVectorFile: "/home/al2/integrated_methane_inversion/resources/statevectors/StateVector.nc"
-ShapeFile: "/home/al2/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
+StateVectorFile: "/path/to/StateVector.nc"
+ShapeFile: "None"
 
 ## Inversion
-## Notes:
-## - PriorError is a relative fraction (e.g. 0.5 = 50%)
-## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
-## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-## - PriorErrorBCs is in ppb
-## - PriorErrorBufferElements is only used if LognormalErrors is true
-LognormalErrors: false
+## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
+##  and PriorErrorBCs is in ppb
 PriorError: 0.5
 PriorErrorBCs: 10.0
-PriorErrorBufferElements: 0.5
-PriorErrorOH: 0.1
+PriorErrorOH: 0.5
 ObsError: 15
 Gamma: 1.0
 PrecomputedJacobian: false
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "0.25x0.3125"
+Res: "2.0x2.5"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
-Met: "GEOSFP"
+Met: "MERRA2"
 
 ## Setup modules
-##   Turn on/off different steps in setting up the inversion
-RunSetup: true
+##   Turn on/off different steps in setting up the inversion 
 SetupTemplateRundir: true
-SetupSpinupRun: false
-SetupJacobianRuns: false
+SetupSpinupRun: true
+SetupJacobianRuns: true
 SetupInversion: false
 SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-DoHemcoPriorEmis: true
-DoSpinup: false
-DoJacobian: false
-ReDoJacobian: true
+RunSetup: false
+DoSpinup: true
+DoJacobian: true
 DoInversion: false
 DoPosterior: false
 
@@ -136,21 +120,15 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-RequestedCPUs: 8
-RequestedMemory: "8gb"
-InversionCPUs: 16
-InversionMemory: "16gb"
-RequestedTime: "24:00:00"
+SimulationCPUs: 32
+SimulationMemory: "32gb"
+JacobianCPUs: 1
+JacobianMemory: 2000
+RequestedTime: "01:00:00"
 SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
-MaxSimultaneousRuns: -1
-
-## Number of Jacobians tracers to use for each jacobian simulation
-##   Specifying a value = 1 will submit a separate jacobian simulation for each
-##   state vector element. Specifying a value > 1 will combine state vector
-##   elements into a single jacobian simulation.
-NumJacobianTracers: 5
+MaxSimultaneousRuns: 50
 
 ##====================================================================
 ##
@@ -168,12 +146,15 @@ NumJacobianTracers: 5
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the
-## perturbation will be 1e-8 kg/m2/s
-## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
-PerturbValue: 1.0
-PerturbValueOH: 1.1
+## Note PerturbValue and PerturbValueOH are relative scale factors and 
+## PerturbValueBCs is in ppb
+PerturbValue: 1.5
+PerturbValueOH: 1.5
 PerturbValueBCs: 10.0
+
+## Apply scale factors from a previous inversion?
+UseEmisSF: false
+UseOHSF: false
 
 ## Save out hourly diagnostics from GEOS-Chem?
 ## For use in satellite operators via post-processing -- required for TROPOMI
@@ -200,30 +181,40 @@ UseBCsForRestart: False
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/home/al2/imi_output_dir"
+OutputPath: "/nobackupp27/$USER/IMI_demo"
 
 ## Path to GEOS-Chem input data
-DataPath: "/home/al2/ExtData"
+DataPath: "/nobackupp27/$USER/ExtData"
 
-## Conda environment file
-PythonEnv: "/home/ubuntu/integrated_methane_inversion/envs/aws/python.env"
+## Path to satellite data
+# DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
+DataPathObs: "/nobackupp27/$USER/IMI_demo/data_TROPOMI"
+
+## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
+##   NOTE: Copy your own file in the envs/ directory within the IMI
+GEOSChemEnv: "envs/NASA-Pleiades/gcclassic.pleiades.env"
+
+## Python environment file (this is normally one or two lines)
+PythonEnv: "envs/NASA-Pleiades/python.env"
 
 ## Download initial restart file from AWS S3?
-##  NOTE: Must have AWS CLI enabled
-RestartDownload: true
+##   NOTE: Must have AWS CLI enabled
+RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/al2/ExtData/BoundaryConditions/v2024-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/nobackup/$USER/CO2_inversion/restart_"
+RestartFilePreviewPrefix: "/nobackup/$USER/CO2_inversion/restart_"
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/home/al2/ExtData/BoundaryConditions"
-BCversion: "v2024-06"
+BCpath: "/nobackup/$USER"
+BCversion: "v2023-10"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-HemcoPriorEmisDryRun: true
-SpinupDryrun: true
-ProductionDryRun: true
-PosteriorDryRun: true
-BCdryrun: true
+##   NOTE: Must have AWS CLI enabled
+PreviewDryRun: false
+SpinupDryrun: false
+ProductionDryRun: false
+PosteriorDryRun: false
+BCdryrun: false

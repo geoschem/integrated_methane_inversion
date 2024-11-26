@@ -14,21 +14,22 @@ config_required_aws = []
 
 # variables only required by local cluster
 config_required_local_cluster = [
-    "DataPathTROPOMI",
+    "DataPathObs",
     "GEOSChemEnv",
 ]
 
 # variables required on all systems
 config_required = [
     "RunName",
+    "Species",
     "isAWS",
-    "UseSlurm",
+    "SchedulerType",
     "SafeMode",
     "S3Upload",
     "StartDate",
     "EndDate",
     "SpinupMonths",
-    "BlendedTROPOMI",
+    "SatelliteProduct",
     "isRegional",
     "RegionID",
     "LonMin",
@@ -71,15 +72,15 @@ config_required = [
     "MaxSimultaneousRuns",
     "NumJacobianTracers",
     "PerturbValue",
-    "HourlyCH4",
+    "HourlySpecies",
     "PLANEFLIGHT",
     "GOSAT",
     "TCCON",
     "AIRS",
+    "UseBCsForRestart",
     "OutputPath",
     "DataPath",
-    "CondaEnv",
-    "CondaFile",
+    "PythonEnv",
     "RestartDownload",
     "RestartFilePrefix",
     "BCpath",
@@ -145,10 +146,10 @@ if __name__ == "__main__":
         elif config[key]:
             config_required = config_required + conditional_dict[key]
 
-    # update required vars based on system
-    if config["isAWS"]:
-        required_vars = config_required + config_required_aws
-    else:
+    # # update required vars based on system
+    # if config["isAWS"]:
+    #     required_vars = config_required + config_required_aws
+    if not config["isAWS"]:
         required_vars = config_required + config_required_local_cluster
 
     missing_input_vars = [x for x in required_vars if x not in inputted_config]

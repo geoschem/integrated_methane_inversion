@@ -22,7 +22,10 @@ setup_imi() {
     SpinupEnd=${StartDate}
 
     # Use global boundary condition files for initial conditions
-    UseBCsForRestart=true
+    # HON: this won't work as smoothly for CO2.
+    if [[ $Species == "CH4" ]]; then
+        UseBCsForRestart=true
+    fi
 
     ##=======================================================================
     ## Download Boundary Conditions files if requested
@@ -126,7 +129,6 @@ setup_imi() {
     ##=======================================================================
     ## Create or copy state vector file
     ##=======================================================================
-
     if "$CreateAutomaticRectilinearStateVectorFile"; then
         create_statevector
     else

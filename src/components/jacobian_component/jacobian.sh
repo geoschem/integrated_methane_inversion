@@ -20,10 +20,12 @@ setup_jacobian() {
     cd ${RunDirs}
 
     # make dir for jacobian ics/bcs
-    mkdir -p jacobian_1ppb_ics_bcs/Restarts
-    mkdir -p jacobian_1ppb_ics_bcs/BCs
-    OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
+    mkdir -p jacobian_lowbg_ics_bcs/Restarts
+    if $isRegional; then
+        mkdir -p jacobian_lowbg_ics_bcs/BCs
+        OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_lowbg_ics_bcs/BCs $StartDate $Species
+    fi
 
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
@@ -166,7 +168,7 @@ create_simulation_dir() {
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
-        if "$HourlyCH4"; then
+        if "$HourlySpecies"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' \
                 -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
@@ -175,7 +177,7 @@ create_simulation_dir() {
         fi
     # For all other runs, just disable Restarts
     else
-        if "$HourlyCH4"; then
+        if "$HourlySpecies"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
         fi
     fi
@@ -188,8 +190,8 @@ create_simulation_dir() {
     fi
 
     # Create run script from template
-    sed -e "s:namename:${name}:g" ch4_run.template >${name}.run
-    rm -f ch4_run.template
+    sed -e "s:namename:${name}:g" run.template >${name}.run
+    rm -f run.template
     chmod 755 ${name}.run
 
     ### Turn on observation operators if requested, only for base run
@@ -280,13 +282,13 @@ create_simulation_dir() {
         fi
 
     else
-        # set 1ppb CH4 boundary conditions and restarts for all other perturbation simulations
+        # set lowbg boundary conditions and restarts for all other perturbation simulations
         # Note that we use the timecycle flag C to avoid having to make additional files
-        RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
-        BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
-        BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
-        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
-        # create symlink to 1ppb restart file
+        RestartFile=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
+        BCFilelowbg=${RunDirs}/jacobian_lowbg_ics_bcs/BCs/GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4
+        BCSettingslowbg="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
+        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFilelowbg} ${BCSettingslowbg}|g" HEMCO_Config.rc
+        # create symlink to lowbg restart file
         ln -sf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         # Also, set emissions to zero for default CH4 tracer by applying ZERO scale factor (id 5)
         sed -i -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
@@ -345,25 +347,32 @@ add_new_tracer() {
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
     GcNewLine='\
-      - CH4_'$istr
+      - ${Species}_'$istr
     sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
-    GcPrevLine='- CH4_'$istr
+    GcPrevLine='- ${Species}_'$istr
 
     # Add lines to species_database.yml
     SpcNextLine='CHBr3:'
-    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
+    if [[ $Species = "CH4" ]]; then
+        bg_vv="1.8e-6"
+        fullname="Methane"
+    elif [[ $Species = "CO2" ]]; then
+        bg_vv="4.0e-6"
+        fullname="Carbon dioxide"
+    fi
+    SpcNewLines='${Species}_'$istr':\n  << : *${Species}properties\n  Background_VV: ${bg_vv}\n  FullName: ${fullname}'
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
     # Add lines to HEMCO_Config.yml
     HcoNewLine1='\
-* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+* SPC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_CH4_'$istr
+    HcoPrevLine1='SPC_${Species}_'$istr
 
     HcoNewLine2='\
-0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
+0 ${Species}_Emis_Prior_'$istr' - - - - - - ${Species}_'$istr' '$SFnum' 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-    HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
+    HcoPrevLine2='${Species}_'$istr' '$SFnum' 1 500'
 
     HcoNewLine3='\
 '$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
@@ -371,9 +380,9 @@ add_new_tracer() {
     HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
 
     HcoNewLine4='\
-* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+* BC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-    HcoPrevLine4='BC_CH4_'$istr
+    HcoPrevLine4='BC_${Species}_'$istr
 
     # Add new Perturbations.txt and update for non prior runs
     cp Perturbations.txt Perturbations_${istr}.txt
@@ -420,12 +429,12 @@ run_jacobian() {
         cd ${RunDirs}/jacobian_runs
         jacobian_start=$(date +%s)
 
-        # create 1ppb restart file
+        # create lowbg restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
-        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
-        cd ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/
-        if [ -f GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 ]; then
-            mv GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate
+        cd ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/
+        if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
+            mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
         fi
         cd ${RunDirs}/jacobian_runs
         set +e
@@ -435,11 +444,7 @@ run_jacobian() {
         source submit_jacobian_simulations_array.sh
 
         if "$LognormalErrors"; then
-            sbatch --mem $RequestedMemory \
-                -c $RequestedCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W run_bkgd_simulation.sh
+            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime run_bkgd_simulation.sh
             wait
         fi
 
@@ -469,28 +474,14 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -W run_prior_simulation.sh
-        wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
-        rm imi_output.tmp
-        # check if prior simulation exited with non-zero exit code
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime run_prior_simulation.sh
         [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
-
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Run the background simulation if lognormal errors enabled
         if "$LognormalErrors"; then
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
-            sbatch --mem $RequestedMemory \
-                -c $RequestedCPUs \
-                -t $RequestedTime \
-                -p $SchedulerPartition \
-                -W run_bkgd_simulation.sh
-            wait
+            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime run_bkgd_simulation.sh
             # check if background simulation exited with non-zero exit code
             [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
             printf "=== DONE BACKGROUND SIMULATION ===\n"

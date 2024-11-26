@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
 
 ##=======================================================================
@@ -57,7 +56,7 @@ GCDir="./data_geoschem"
 GCVizDir="./data_geoschem_prior"
 JacobianDir="./data_converted"
 sensiCache="./data_sensitivities"
-tropomiCache="${OutputPath}/${RunName}/satellite_data"
+satelliteCache="${OutputPath}/${RunName}/satellite_data"
 period_i={PERIOD}
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
@@ -153,11 +152,11 @@ else
 
 fi
 
-python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $UseWaterObs $isPost $period_i $buildJacobian False; wait
+python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i $buildJacobian False; wait
 if "$LognormalErrors"; then
     # for lognormal error visualization of the prior we sample the prior run
     # without constructing the jacobian matrix
-    python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI  $UseWaterObs $isPost $period_i False True; wait
+    python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i False True; wait
 fi
 printf " DONE -- jacobian.py\n\n"
 

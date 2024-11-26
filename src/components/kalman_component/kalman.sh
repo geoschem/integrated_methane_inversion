@@ -121,8 +121,7 @@ run_period() {
 
     # Prepare initial (prior) emission scale factors for the current period
     echo "python path = $PYTHONPATH"
-    python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor
-    wait
+    python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor $Species; wait
 
     # Dynamically generate state vector for each period
     if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then

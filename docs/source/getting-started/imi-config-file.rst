@@ -12,10 +12,9 @@ General
      - Name for this inversion; will be used for directory names and prefixes.
    * - ``isAWS``
      - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
-   * - ``UseSlurm``
-     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
-       Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
-       Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
+   * - ``SchedulerType``
+     - String defining the type of scheduler used to run the IMI.
+        Currently supported options are "slurm" or "PBS".
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
    * - ``S3Upload``
@@ -298,7 +297,7 @@ These settings are intended for advanced users who wish to modify additional GEO
      - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``
      - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
-   * - ``HourlyCH4``
+   * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
      - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
@@ -322,12 +321,10 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Path for IMI runs and output.
    * - ``DataPath``
      - Path to GEOS-Chem input data.
-   * - ``DataPathTROPOMI``
-     - Path to TROPOMI input data.
-   * - ``CondaFile``
-     - Path to file containing Conda environment settings.
-   * - ``CondaEnv``
-     - Name of conda environment.
+   * - ``DataPathObs``
+     - Path to satellite input data.
+   * - ``PythonEnv``
+     - Path to file that activates the Python environment.
    * - ``RestartDownload``
      - Boolean for downloading an initial restart file from AWS S3. Default value is ``true``.
    * - ``RestartFilePrefix``

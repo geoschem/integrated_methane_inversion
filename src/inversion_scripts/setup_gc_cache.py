@@ -7,8 +7,8 @@ from src.inversion_scripts.utils import zero_pad_num_hour
 def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
     """
     This script sets up a directory containing hourly GEOS-Chem output diagnostics
-    files. The hourly files are convenient for computing virtual TROPOMI columns
-    from the GEOS-Chem simulated atmosphere (to compare with the real TROPOMI columns).
+    files. The hourly files are convenient for computing virtual satellite columns
+    from the GEOS-Chem simulated atmosphere (to compare with the real satellite columns).
 
     Arguments
         startday            [str] : First day of inversion period; formatted YYYYMMDD

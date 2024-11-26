@@ -8,7 +8,7 @@ from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emiss
 from src.inversion_scripts.utils import get_period_mean_emissions
 
 
-def prepare_sf(config_path, period_number, base_directory, nudge_factor):
+def prepare_sf(config_path, period_number, base_directory, nudge_factor, species):
     """
     Function to prepare scale factors for HEMCO emissions.
 
@@ -68,7 +68,10 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
             original_emis_ds = get_period_mean_emissions(
                 original_prior_cache, p, periods_csv_path
             )
-            original_emis = original_emis_ds["EmisCH4_Total_ExclSoilAbs"]
+            if species == "CH4":
+                original_emis = original_emis_ds["EmisCH4_Total_ExclSoilAbs"]
+            else:
+                original_emis = original_emis_ds[f"Emis{Species}_Total"]
 
             # Get the gridded posterior for period p
             gridded_posterior_filename = (
@@ -126,7 +129,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
         )
 
     # Print the current total emissions in the region of interest
-    emis = get_posterior_emissions(original_emis_ds, sf)["EmisCH4_Total"]
+    emis = get_posterior_emissions(original_emis_ds, sf, species)[f"Emis{species}_Total"]
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
 
@@ -157,5 +160,6 @@ if __name__ == "__main__":
     period_number = sys.argv[2]
     base_directory = sys.argv[3]
     nudge_factor = sys.argv[4]
+    species = sys.argv[5]
 
-    prepare_sf(config_path, period_number, base_directory, nudge_factor)
+    prepare_sf(config_path, period_number, base_directory, nudge_factor, species)

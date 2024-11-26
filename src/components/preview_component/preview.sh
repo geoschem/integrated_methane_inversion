@@ -30,25 +30,17 @@ run_preview() {
     config_path=${InversionPath}/${ConfigFile}
     state_vector_path=${RunDirs}/StateVector.nc
     preview_dir=${RunDirs}/${runDir}
-    tropomi_cache=${RunDirs}/satellite_data
+    satellite_cache=${RunDirs}/satellite_data
     preview_file=${InversionPath}/src/inversion_scripts/imi_preview.py
 
     # Run preview script
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
-    if "$UseSlurm"; then
+    if [[ "$SchedulerType" = "slurm" || "$SchedulerType" = "PBS" ]]; then
         rm -f .preview_error_status.txt
         chmod +x $preview_file
-        sbatch --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -o imi_output.tmp \
-            -W $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
-        wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
-        rm imi_output.tmp
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
         # check for any errors
         [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
     else

@@ -2,6 +2,9 @@ import os
 import sys
 import glob
 import xarray as xr
+from src.inversion_scripts.utils import (
+    mixing_ratio_conv_factor,
+)
 
 
 def check_path_and_get_file(path, pattern="*"):
@@ -27,12 +30,11 @@ def check_path_and_get_file(path, pattern="*"):
     else:
         raise FileNotFoundError(f"The path '{path}' is neither a file nor a directory.")
 
-
-def make_jacobian_icbc(original_file_path, new_file_path, file_date):
+def make_jacobian_icbc(original_file_path, new_file_path, file_date, species):
     """
-    This function takes a restart or boundary condition file and
-    sets the CH4 concentration to 1 ppb for use in the Jacobian
-    simulations.
+    This function takes a restart or boundary condition file and 
+    sets the species concentration to 1 mixing ratio unit for use in the 
+    Jacobian simulations.
     Arguments
         original_file_path [str]  : original restart/bc file path
         new_file_path      [str]  : new restart/bc file path
@@ -46,19 +48,19 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
 
     # determine which data variable to change
     data_vars = list(orig.data_vars)
-    if "SpeciesBC_CH4" in data_vars:
-        key = "SpeciesBC_CH4"
-        file_prefix = "GEOSChem.BoundaryConditions.1ppb."
-    elif "SpeciesRst_CH4" in data_vars:
-        key = "SpeciesRst_CH4"
-        file_prefix = "GEOSChem.Restart.1ppb."
+    if f"SpeciesBC_{species}" in data_vars:
+        key = f"SpeciesBC_{species}"
+        file_prefix = "GEOSChem.BoundaryConditions.lowbg."
+    elif f"SpeciesRst_{species}" in data_vars:
+        key = f"SpeciesRst_{species}"
+        file_prefix = f"GEOSChem.Restart.lowbg."
     else:
-        raise ValueError("No recognized CH4 species found in the file.")
-
-    # set all values to 1 ppb
+        raise ValueError(f"No recognized {species} species found in the file.") 
+    
+    # set all values to 1 mixing ratio unit, depending on the species
     new_restart[key] *= 0.0
-    new_restart[key] += 1e-9
-
+    new_restart[key] += 1/mixing_ratio_conv_factor(species)
+        
     write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.nc4")
 
     # write to new file path

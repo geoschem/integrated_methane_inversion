@@ -45,7 +45,7 @@ setup_spinup() {
         -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
 
     # Turn on LevelEdgeDiags output
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
             -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
             -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
@@ -54,9 +54,13 @@ setup_spinup() {
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
+<<<<<<< HEAD
+        -e "s:##:#:g" run.template > ${SpinupName}.run
+=======
         -e "s:##:#:g" ch4_run.template >${SpinupName}.run
+>>>>>>> imi-2.0.0
     chmod 755 ${SpinupName}.run
-    rm -f ch4_run.template
+    rm -f run.template
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
@@ -84,12 +88,7 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Spinup.run
-    wait
+    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime ${RunName}_Spinup.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

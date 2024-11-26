@@ -35,6 +35,7 @@ setup_template() {
         printf "\n Options are GEOSFP or MERRA2.\n"
         exit 1
     fi
+    
     if [ "$Res" = "4.0x5.0" ]; then
         cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
@@ -131,7 +132,7 @@ setup_template() {
         -e "s:'Met_PFLLSAN:#'Met_PFLLSAN:g" HISTORY.rc
 
     # If turned on, save out hourly CH4 concentrations to daily files
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
             -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
             -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
@@ -141,7 +142,7 @@ setup_template() {
     rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
-    cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
+    cp ${InversionPath}/src/geoschem_run_scripts/run.template .
 
     # Copy input file for applying emissions perturbations via HEMCO
     cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .

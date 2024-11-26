@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# SBATCH -N 1
-
 import os
 import sys
 import yaml
@@ -23,34 +21,31 @@ from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     plot_field,
-    filter_tropomi,
-    filter_blended,
+    read_and_filter_satellite,
     calculate_area_in_km,
     calculate_superobservation_error,
+    species_molar_mass,
+    mixing_ratio_conv_factor,
     get_mean_emissions,
     get_posterior_emissions,
 )
 from joblib import Parallel, delayed
-from src.inversion_scripts.operators.TROPOMI_operator import (
-    read_tropomi,
-    read_blended,
-)
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-
-def get_TROPOMI_data(
-    file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
+def get_satellite_data(
+    file_path, satellite_str, species, xlim, ylim, startdate_np64, enddate_np64,
+    use_water_obs
 ):
     """
-    Returns a dict with the lat, lon, xch4, and albedo_swir observations
-    extracted from the given tropomi file. Filters are applied to remove
+    Returns a dict with the lat, lon, xspecies, and albedo_swir observations
+    extracted from the given satellite file. Filters are applied to remove
     unsuitable observations
     Args:
         file_path : string
-            path to the tropomi file
-        BlendedTROPOMI : bool
-            if True, use blended TROPOMI+GOSAT data
+            path to the satellite file
+        satellite_product : str
+            name of satellite product
         xlim: list
             longitudinal bounds for region of interest
         ylim: list
@@ -62,54 +57,38 @@ def get_TROPOMI_data(
         use_water_obs: bool
             if True, use observations over water
     Returns:
-         tropomi_data: dict
+         satellite_data: dict
             dictionary of the extracted values
     """
-    # tropomi data dictionary
-    tropomi_data = {"lat": [], "lon": [], "xch4": [], "swir_albedo": [], "time": []}
+    # satellite data dictionary
+    satellite_data = {"lat": [], "lon": [], species: [], "swir_albedo": []}
 
-    # Load the TROPOMI data
-    assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
-    if BlendedTROPOMI:
-        TROPOMI = read_blended(file_path)
-    else:
-        TROPOMI = read_tropomi(file_path)
-    if TROPOMI == None:
-        print(f"Skipping {file_path} due to error")
-        return TROPOMI
-
-    if BlendedTROPOMI:
-        # Only going to consider data within lat/lon/time bounds and without problematic coastal pixels
-        sat_ind = filter_blended(
-            TROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
-        )
-    else:
-        # Only going to consider data within lat/lon/time bounds, with QA > 0.5, and with safe surface albedo values
-        sat_ind = filter_tropomi(
-            TROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
-        )
+    # Load the satellite data
+    satellite, sat_ind = read_and_filter_satellite(
+        file_path, satellite_str, startdate_np64, enddate_np64, xlim, ylim,
+        use_water_obs)
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
     for k in range(num_obs):
         lat_idx = sat_ind[0][k]
         lon_idx = sat_ind[1][k]
-        tropomi_data["lat"].append(TROPOMI["latitude"][lat_idx, lon_idx])
-        tropomi_data["lon"].append(TROPOMI["longitude"][lat_idx, lon_idx])
-        tropomi_data["xch4"].append(TROPOMI["methane"][lat_idx, lon_idx])
-        tropomi_data["swir_albedo"].append(TROPOMI["swir_albedo"][lat_idx, lon_idx])
-        tropomi_data["time"].append(TROPOMI["time"][lat_idx, lon_idx])
+        satellite_data["lat"].append(satellite["latitude"][lat_idx, lon_idx])
+        satellite_data["lon"].append(satellite["longitude"][lat_idx, lon_idx])
+        satellite_data[species].append(satellite[species][lat_idx, lon_idx])
+        satellite_data["swir_albedo"].append(satellite["swir_albedo"][lat_idx, lon_idx])
+        satellite_data["time"].append(satellite["time"][lat_idx, lon_idx])
 
-    return tropomi_data
+    return satellite_data
 
 
 def imi_preview(
-    inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+    inversion_path, config_path, state_vector_path, preview_dir, species, satellite_cache
 ):
     """
     Function to perform preview
     Requires preview simulation to have been run already (to generate HEMCO diags)
-    Requires TROPOMI data to have been downloaded already
+    Requires satellite data to have been downloaded already
     """
 
     # ----------------------------------
@@ -133,12 +112,12 @@ def imi_preview(
 
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
-        config,
-        state_vector_path,
-        preview_dir,
-        tropomi_cache,
-        preview=True,
-        kf_index=None,
+        config, 
+        state_vector_path, 
+        preview_dir, 
+        satellite_cache, 
+        preview=True, 
+        kf_index=None
     )
     mask = state_vector_labels <= last_ROI_element
 
@@ -216,7 +195,7 @@ def imi_preview(
     ds = df_means.to_xarray()
 
     # Prepare plot data for observation counts
-    df_counts = df.copy(deep=True).drop(["xch4", "swir_albedo"], axis=1)
+    df_counts = df.copy(deep=True).drop([species, "swir_albedo"], axis=1)
     df_counts["counts"] = 1
     df_counts["lat"] = np.round(df_counts["lat"], 1)  # Bin to 0.1x0.1 degrees
     df_counts["lon"] = np.round(df_counts["lon"], 1)
@@ -261,14 +240,14 @@ def imi_preview(
     xch4_min, xch4_max = dynamic_range(ds["xch4"].values)
     plot_field(
         ax,
-        ds["xch4"],
+        ds[species],
         cmap="Spectral_r",
         plot_type="pcolormesh",
         vmin=xch4_min,
         vmax=xch4_max,
         lon_bounds=None,
         lat_bounds=None,
-        title="TROPOMI $X_{CH4}$",
+        title=f"Satellite $X_{species}$",
         cbar_label="Column mixing ratio (ppb)",
         mask=mask if config["isRegional"] else None,
         only_ROI=False,
@@ -401,7 +380,7 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
 
 
 def estimate_averaging_kernel(
-    config, state_vector_path, preview_dir, tropomi_cache, preview=False, kf_index=None
+    config, species, state_vector_path, preview_dir, satellite_cache, preview=False, kf_index=None
 ):
     """
     Estimates the averaging kernel sensitivities using prior emissions
@@ -454,7 +433,7 @@ def estimate_averaging_kernel(
     else:
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
 
-    prior = prior_ds["EmisCH4_Total"]
+    prior = prior_ds[f"Emis{species}_Total"]
 
     # Compute total emissions in the region of interest
     areas = prior_ds["AREA"]
@@ -468,9 +447,9 @@ def estimate_averaging_kernel(
     # Observations in region of interest
     # ----------------------------------
 
-    # Paths to tropomi data files
-    tropomi_files = [f for f in os.listdir(tropomi_cache) if ".nc" in f]
-    tropomi_paths = [os.path.join(tropomi_cache, f) for f in tropomi_files]
+    # Paths to satellite data files
+    satellite_files = [f for f in os.listdir(satellite_cache) if ".nc" in f]
+    satellite_paths = [os.path.join(satellite_cache, f) for f in satellite_files]
 
     # Latitude/longitude bounds of the inversion domain
     xlim = [float(state_vector.lon.min()), float(state_vector.lon.max())]
@@ -486,46 +465,47 @@ def estimate_averaging_kernel(
         - datetime.timedelta(days=1)
     )
 
-    # Only consider tropomi files within date range (in case more are present)
-    tropomi_paths = [
+    # Only consider satellite files within date range (in case more are present)
+    satellite_paths = [
         p
-        for p in tropomi_paths
+        for p in satellite_paths
         if int(p.split("____")[1][0:8]) >= int(startday)
         and int(p.split("____")[1][0:8]) < int(endday)
     ]
-    tropomi_paths.sort()
+    satellite_paths.sort()
 
-    # Use blended TROPOMI+GOSAT data or operational TROPOMI data?
-    BlendedTROPOMI = config["BlendedTROPOMI"]
+    # What satellite data product to use?
+    satellite_str = config["SatelliteProduct"]
 
-    # Open tropomi files and filter data
+    # Open satellite files and filter data
     lat = []
     lon = []
-    xch4 = []
+    xspecies = []
     albedo = []
     trtime = []
 
-    # Read in and filter tropomi observations (uses parallel processing)
+    # Read in and filter satellite observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
-        delayed(get_TROPOMI_data)(
-            file_path,
-            BlendedTROPOMI,
-            xlim,
-            ylim,
-            startdate_np64,
+        delayed(get_satellite_data)(
+            file_path, 
+            satellite_str, 
+            species, 
+            xlim, 
+            ylim, 
+            startdate_np64, 
             enddate_np64,
-            use_water_obs,
+            use_water_obs
         )
-        for file_path in tropomi_paths
+        for file_path in satellite_paths
     )
     # Remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
 
-    for obs_dict in observation_dicts:
-        lat.extend(obs_dict["lat"])
-        lon.extend(obs_dict["lon"])
-        xch4.extend(obs_dict["xch4"])
-        albedo.extend(obs_dict["swir_albedo"])
+    for dict in observation_dicts:
+        lat.extend(dict["lat"])
+        lon.extend(dict["lon"])
+        xspecies.extend(dict[species])
+        albedo.extend(dict["swir_albedo"])
         trtime.extend(obs_dict["time"])
 
     # Assemble in dataframe
@@ -534,7 +514,7 @@ def estimate_averaging_kernel(
     df["lon"] = lon
     df["obs_count"] = np.ones(len(lat))
     df["swir_albedo"] = albedo
-    df["xch4"] = xch4
+    df[species] = xspecies
     df["time"] = trtime
 
     # Set resolution specific variables
@@ -671,11 +651,11 @@ def estimate_averaging_kernel(
     p = 101325  # Surface pressure [Pa = kg/m/s2]
     g = 9.8  # Gravity [m/s2]
     Mair = 0.029  # Molar mass of air [kg/mol]
-    Mch4 = 0.01604  # Molar mass of methane [kg/mol]
+    Mspecies = species_molar_mass(species)  # Molar mass of species [kg/mol]
     alpha = 0.4  # Simple parameterization of turbulence
 
     # Change units of total prior emissions
-    emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
+    emissions_kgs = emissions * mixing_ratio_conv_factor(species) / (3600 * 24 * 365)  # kg/s from Tg/y
     emissions_kgs_per_m2 = emissions_kgs / np.power(
         L, 2
     )  # kg/m2/s from kg/s, per element
@@ -698,7 +678,7 @@ def estimate_averaging_kernel(
         calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1
         for element in P
     ]
-    s_superO = np.array(s_superO_p) * 1e-9  # convert to ppb
+    s_superO = np.array(s_superO_p) / mixing_ratio_conv_factor(species) # convert to mixing ratio
 
     # TODO: add eqn number from Estrada et al. 2024 once published
     # Averaging kernel sensitivity for each grid element
@@ -707,7 +687,7 @@ def estimate_averaging_kernel(
     # in the state vector element
     # a is set to 0 where m_superi is 0
     m_superi = np.array(m_superi)
-    k = alpha * (Mair * L * g / (Mch4 * U * p))
+    k = alpha * (Mair * L * g / (Mspecies * U * p))
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
 
     # Places with 0 superobs should be 0
@@ -743,10 +723,11 @@ if __name__ == "__main__":
         config_path = sys.argv[2]
         state_vector_path = sys.argv[3]
         preview_dir = sys.argv[4]
-        tropomi_cache = sys.argv[5]
+        species = sys.argv[5]
+        satellite_cache = sys.argv[6]
 
         imi_preview(
-            inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+            inversion_path, config_path, state_vector_path, preview_dir, species, satellite_cache
         )
     except Exception as err:
         with open(".preview_error_status.txt", "w") as file1:
