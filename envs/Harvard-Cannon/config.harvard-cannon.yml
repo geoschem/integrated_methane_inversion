@@ -188,10 +188,10 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holyscratch01/jacob_lab/$USER"
+OutputPath: "/n/holylfs06/LABS/jacob_lab2/$USER"
 
 ## Path to GEOS-Chem input data
-DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
 DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
