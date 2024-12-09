@@ -1,7 +1,5 @@
-import datetime
-import xarray as xr
-import os
 import numpy as np
+import xarray as xr
 
 
 def do_gridding(vector, statevector):
@@ -50,28 +48,39 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     statevector = xr.load_dataset(state_vector_path)
     inv_results = xr.load_dataset(posterior_SF_path)
 
-    # Get the scale factors and the diagonals of the S_post and A matrices
-    SF = inv_results["xhat"].values
-    S_post = np.diagonal(inv_results["S_post"].values)
-    A = np.diagonal(inv_results["A"].values)
+    target_data_prefixes = ["xhat", "S_post", "A"]
+    data_vars = list(inv_results.data_vars)
 
-    # Do gridding
-    gridded_SF = do_gridding(SF, statevector)
-    gridded_S_post = do_gridding(S_post, statevector)
-    gridded_A = do_gridding(A, statevector)
+    # get all vars that match prefixes
+    target_data_vars = [
+        var
+        for var in data_vars
+        if any([var.startswith(prefix) for prefix in target_data_prefixes])
+    ]
 
-    # Fill nan in SF with 1 to prevent GEOS-Chem error
-    gridded_SF = gridded_SF.fillna(1)
+    # Do the gridding for each variable and store in a dictionary
+    data_dict = {}
+    for var in target_data_vars:
+        if var.startswith("A") or var.startswith("S_post"):
+            # get the diagonals of the S_post and A matrices
+            gridded_data = do_gridding(
+                np.diagonal(inv_results[var].values), statevector
+            )
+            data_dict[var] = (["lat", "lon"], gridded_data.data)
+        elif var.startswith("xhat"):
+            # get the scale factors
+            # fill nan in SF with 1 to prevent GEOS-Chem error
+            gridded_data = do_gridding(inv_results[var].values, statevector).fillna(1)
+            # change key to ScaleFactor to match HEMCO expectations
+            new_SF_key = f"ScaleFactor{var[len('xhat'):]}"
+            data_dict[new_SF_key] = (["lat", "lon"], gridded_data.data)
 
     # Create dataset
-    lat = gridded_SF["lat"].values
-    lon = gridded_SF["lon"].values
+    lat = statevector["lat"].values
+    lon = statevector["lon"].values
+
     ds = xr.Dataset(
-        {
-            "ScaleFactor": (["lat", "lon"], gridded_SF.data),
-            "S_post": (["lat", "lon"], gridded_S_post.data),
-            "A": (["lat", "lon"], gridded_A.data),
-        },
+        data_dict,
         coords={"lon": ("lon", lon), "lat": ("lat", lat)},
     )
 
