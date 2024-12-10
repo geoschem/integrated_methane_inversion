@@ -12,6 +12,7 @@ import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
 from scipy.sparse import spdiags
+from src.inversion_scripts.utils import ensure_float_list
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -25,6 +26,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         state_vector_filepath [String] : path to state vector netcdf file
         jacobian_sf           [String] : path to numpy array of scale factors
     """
+    results_save_path = f"inversion_result_ln.nc"
+
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector["StateVector"]
     lats, lons = state_vector_labels.lat, state_vector_labels.lon
@@ -67,24 +70,21 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         scaling_matrix = np.tile(scale_factors, (reps, 1))
         K_temp *= scaling_matrix
 
-    # The levenberg-marquardt method assumes that the prior emissions is
-    # the median prior emissions, but typically priors are the mean emission.
-    # To account for this we convert xa to a median. This can be done by
-    # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
-    # Here, we calculate this scaling factor
-    prior_scale = 1 / np.exp((np.log(float(config["PriorError"])) ** 2) / 2)
+    # Define Sa, gamma, So, and Sa_bc values to iterate through
+    prior_errors = ensure_float_list(float(config["PriorError"]))
+    sa_buffer_elems = ensure_float_list(float(config["PriorErrorBufferElements"]))
+    sa_bc_vals = (
+        ensure_float_list(float(config["PriorErrorBCs"])) if optimize_bcs else [None]
+    )
+    sa_oh_vals = (
+        ensure_float_list(float(config["PriorErrorOH"])) if optimize_oh else [None]
+    )
+    gamma_vals = ensure_float_list(float(config["Gamma"]))
+    obs_err_keys = [
+        f"so_{obs_err}" for obs_err in ensure_float_list(config["ObsError"])
+    ]
 
-    # split K based on whether we are solving for lognormal or normal elements
-    # K_ROI is the matrix for the lognormal elements (the region of interest)
-    # the lognormal part of K gets scaled by prior_scale to convert to median
-    K_ROI = K_temp[:, :-num_normal_elems]
-    K_ROI = prior_scale * K_ROI
-    K_normal = K_temp[:, -num_normal_elems:]
-    K_full = np.concatenate((K_ROI, K_normal), axis=1)
-
-    # get the So matrix
-    ds = np.load("so_super.npz")
-    so = ds["so"]
+    so_dict = np.load("so_super.npz")
 
     # Calculate the difference between tropomi and the background
     # simulation, which has no emissions
@@ -97,35 +97,53 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # fixed kappa of 10 following Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
     kappa = 10
-    m, n = np.shape(K_ROI)
-
-    # Create base xa and lnxa matrices
-    # Note: the resulting xa vector has lognormal elements until the final bc elements
-    xa = np.ones((n, 1)) * 1.0
-    lnxa = np.log(xa)
-    xa_normal = np.zeros((num_normal_elems, 1)) * 1.0
-    xa = np.concatenate((xa, xa_normal), axis=0)
-    lnxa = np.concatenate((lnxa, xa_normal), axis=0)
-
-    # Create inverted So matrix
-    Soinv = spdiags(1 / so, 0, m, m)
-
-    # Define Sa, gamma, and Sa_bc values to iterate through
-    prior_errors = [float(config["PriorError"])]
-    sa_buffer_elems = [float(config["PriorErrorBufferElements"])]
-    sa_bc_vals = [float(config["PriorErrorBCs"])] if optimize_bcs else [None]
-    sa_oh_vals = [float(config["PriorErrorOH"])] if optimize_oh else [None]
-    gamma_vals = [float(config["Gamma"])]
 
     # iterate through different combination of gamma, lnsa, and sa_bc
     # TODO: for now we will only allow one value for each of these
     # TODO: parallelize this once we allow vectorization of these values
     combinations = list(
-        product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems, sa_oh_vals)
+        product(
+            gamma_vals,
+            prior_errors,
+            obs_err_keys,
+            sa_bc_vals,
+            sa_buffer_elems,
+            sa_oh_vals,
+        )
     )
-    for gamma, sa, sa_bc, sa_buffer, sa_oh in combinations:
+    for gamma, sa, so_key, sa_bc, sa_buffer, sa_oh in combinations:
+        # The levenberg-marquardt method assumes that the prior emissions is
+        # the median prior emissions, but typically priors are the mean emission.
+        # To account for this we convert xa to a median. This can be done by
+        # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
+        # Here, we calculate this scaling factor
+        prior_scale = 1 / np.exp((np.log(float(sa)) ** 2) / 2)
+
+        # split K based on whether we are solving for lognormal or normal elements
+        # K_ROI is the matrix for the lognormal elements (the region of interest)
+        # the lognormal part of K gets scaled by prior_scale to convert to median
+        K_ROI = K_temp[:, :-num_normal_elems]
+        K_normal = K_temp[:, -num_normal_elems:]
+        K_ROI = prior_scale * K_ROI
+        K_full = np.concatenate((prior_scale * K_ROI, K_normal), axis=1)
+        
+        m, n = np.shape(K_ROI)
+
+        # Create base xa and lnxa matrices
+        # Note: the resulting xa vector has lognormal elements until the final bc elements
+        xa = np.ones((n, 1)) * 1.0
+        lnxa = np.log(xa)
+        xa_normal = np.zeros((num_normal_elems, 1)) * 1.0
+        xa = np.concatenate((xa, xa_normal), axis=0)
+        lnxa = np.concatenate((lnxa, xa_normal), axis=0)
+        # get the So matrix
+        so = so_dict[so_key]
+
+        # Create inverted So matrix
+        Soinv = spdiags(1 / so, 0, m, m)
+
+
         lnsa_val = np.log(sa)
-        results_save_path = f"inversion_result_ln.nc"
 
         # Create lnSa matrix
         # lnsa = lnsa_val**2 * np.ones((n, 1))

@@ -166,7 +166,7 @@ printf " DONE -- jacobian.py\n\n"
 #=======================================================================
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
-    python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError $PrecomputedJacobian
+    python merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian
 
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"

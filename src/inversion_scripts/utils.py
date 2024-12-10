@@ -544,3 +544,15 @@ def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     start_date = str(period_df.loc[0, "Starts"])
     end_date = str(period_df.loc[0, "Ends"])
     return get_mean_emissions(start_date, end_date, prior_cache_path)
+
+def ensure_float_list(variable):
+    """Make sure the variable is a list of floats."""
+    if isinstance(variable, list):
+        # Convert each item in the list to a float
+        return [float(item) for item in variable]
+    elif isinstance(variable, (str, float, int)):
+        # Wrap the variable in a list and convert it to float
+        return [float(variable)]
+    else:
+        raise TypeError("Variable must be a string, float, int, or list.")
+    

@@ -6,19 +6,11 @@ import numpy as np
 import xarray as xr
 from itertools import product
 from netCDF4 import Dataset
-from src.inversion_scripts.utils import load_obj, calculate_superobservation_error
-
-
-def ensure_float_list(variable):
-    """Make sure the variable is a list of floats."""
-    if isinstance(variable, list):
-        # Convert each item in the list to a float
-        return [float(item) for item in variable]
-    elif isinstance(variable, (str, float, int)):
-        # Wrap the variable in a list and convert it to float
-        return [float(variable)]
-    else:
-        raise TypeError("Variable must be a string, float, int, or list.")
+from src.inversion_scripts.utils import (
+    load_obj,
+    calculate_superobservation_error,
+    ensure_float_list,
+)
 
 
 def do_inversion(
@@ -357,9 +349,9 @@ def do_inversion_ensemble(
     for member in hyperparam_ensemble:
         prior_err, obs_err, gamma, prior_err_bc, prior_err_oh = member
         params = {
-            "prior_err": prior_err, 
-            "obs_err": obs_err,   
-            "gamma": gamma,     
+            "prior_err": prior_err,
+            "obs_err": obs_err,
+            "gamma": gamma,
             "prior_err_bc": prior_err_bc,
             "prior_err_oh": prior_err_oh,
         }
@@ -403,7 +395,9 @@ def do_inversion_ensemble(
     for key, values in results_dict.items():
         if key == "hyperparameters":
             continue  # Skip hyperparameters; used for attributes
-        for idx, (params, value) in enumerate(zip(results_dict["hyperparameters"], values)):
+        for idx, (params, value) in enumerate(
+            zip(results_dict["hyperparameters"], values)
+        ):
             if isinstance(value, np.ndarray) and value.ndim == 2:
                 dims = ("nvar1", "nvar2")
             elif isinstance(value, np.ndarray):
