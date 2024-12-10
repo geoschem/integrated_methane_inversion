@@ -352,7 +352,6 @@ def do_inversion_ensemble(
         "S_post": [],
         "A": [],
         "J_A_normalized": [],
-        "labels": [],
         "hyperparameters": [],
     }
     for member in hyperparam_ensemble:
@@ -364,12 +363,6 @@ def do_inversion_ensemble(
             "prior_err_bc": prior_err_bc,
             "prior_err_oh": prior_err_oh,
         }
-        # create a label for the output file variables
-        label = f"_prior_err_{prior_err}_obs_err_{obs_err}_gamma_{gamma}"
-        if prior_err_bc > 0:
-            label = label + f"_prior_err_bc_{prior_err_bc}"
-        if prior_err_oh > 0:
-            label = label + f"_prior_err_oh_{prior_err_oh}"
         xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, J_A_normalized = (
             do_inversion(
                 n_elements,
@@ -396,7 +389,6 @@ def do_inversion_ensemble(
         results_dict["S_post"].append(S_post)
         results_dict["A"].append(A)
         results_dict["J_A_normalized"].append(J_A_normalized)
-        results_dict["labels"].append(label)
         results_dict["hyperparameters"].append(params)
 
     # Find the ensemble member that is closest to 1 following Lu et al. (2021)
@@ -409,8 +401,8 @@ def do_inversion_ensemble(
     # Create an xarray.Dataset
     dataset = xr.Dataset()
     for key, values in results_dict.items():
-        if key == "labels" or key == "hyperparameters":
-            continue  # Skip labels; used only for naming variables
+        if key == "hyperparameters":
+            continue  # Skip hyperparameters; used for attributes
         for idx, (params, value) in enumerate(zip(results_dict["hyperparameters"], values)):
             if isinstance(value, np.ndarray) and value.ndim == 2:
                 dims = ("nvar1", "nvar2")
@@ -431,7 +423,6 @@ def do_inversion_ensemble(
 
     # reorder the variables, so the default vars are at the top
     best_vars = list(results_dict.keys())
-    best_vars.remove("labels")
     best_vars.remove("hyperparameters")
     ensemble_vars = [item for item in list(dataset.data_vars) if item not in best_vars]
 
