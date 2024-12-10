@@ -302,7 +302,10 @@ def do_inversion(
     J_A_normalized = J_A / n_elements
 
     # Print some statistics
-    print(f"gamma: {gamma}")
+    print(
+        f"hyperparameters: (prior_err: {prior_err}, obs_err: {obs_err}, gamma: {gamma}, "
+        + f"prior_err_bc: {prior_err_bc}, prior_err_oh: {prior_err_oh})"
+    )
     print(
         f"Normalized J_A: {J_A_normalized}"
     )  # ideal gamma is where this is close to 1
@@ -335,7 +338,7 @@ def do_inversion_ensemble(
     is_Regional,
 ):
     """
-    Run series of inversions with hyperparameter vectors and save out results.
+    Run series of inversions with hyperparameter vectors and save out the results.
     """
     hyperparam_ensemble = list(
         product(prior_errs, obs_errs, gammas, prior_errs_bc, prior_errs_oh)
@@ -350,9 +353,17 @@ def do_inversion_ensemble(
         "A": [],
         "J_A_normalized": [],
         "labels": [],
+        "hyperparameters": [],
     }
     for member in hyperparam_ensemble:
         prior_err, obs_err, gamma, prior_err_bc, prior_err_oh = member
+        params = {
+            "prior_err": prior_err, 
+            "obs_err": obs_err,   
+            "gamma": gamma,     
+            "prior_err_bc": prior_err_bc,
+            "prior_err_oh": prior_err_oh,
+        }
         # create a label for the output file variables
         label = f"_prior_err_{prior_err}_obs_err_{obs_err}_gamma_{gamma}"
         if prior_err_bc > 0:
@@ -386,6 +397,7 @@ def do_inversion_ensemble(
         results_dict["A"].append(A)
         results_dict["J_A_normalized"].append(J_A_normalized)
         results_dict["labels"].append(label)
+        results_dict["hyperparameters"].append(params)
 
     # Find the ensemble member that is closest to 1 following Lu et al. (2021)
     idx_best_Ja = np.argmin(np.abs(np.array(results_dict["J_A_normalized"]) - 1))
@@ -396,10 +408,10 @@ def do_inversion_ensemble(
 
     # Create an xarray.Dataset
     dataset = xr.Dataset()
-    for idx, key, values in enumerate(results_dict.items()):
+    for key, values in results_dict.items():
         if key == "labels":
             continue  # Skip labels; used only for naming variables
-        for label, value in zip(results_dict["labels"], values):
+        for idx, (label, value) in enumerate(zip(results_dict["labels"], values)):
             if isinstance(value, np.ndarray) and value.ndim == 2:
                 dims = ("nvar1", "nvar2")
             elif isinstance(value, np.ndarray):
@@ -408,10 +420,23 @@ def do_inversion_ensemble(
                 dims = ()  # Scalar
 
             dataset[f"{key}{label}"] = (dims, value)
-            
+
             # Use the best J_A as the default data variable values
             if idx == idx_best_Ja:
                 dataset[key] = (dims, value)
+
+    # reorder the variables, so the default vars are at the top
+    best_vars = list(results_dict.keys())
+    best_vars.remove("labels")
+    best_vars.remove("hyperparameters")
+    ensemble_vars = [item for item in list(dataset.data_vars) if item not in best_vars]
+
+    new_dataset = xr.Dataset(
+        {var: dataset[var] for var in best_vars + ensemble_vars},
+        coords=dataset.coords,
+    )
+
+    dataset = new_dataset
 
     return dataset
 
@@ -441,7 +466,7 @@ if __name__ == "__main__":
     gamma = ensure_float_list(config["Gamma"])
 
     # 0.0 if not optimizing BCs or OH
-    prior_err_BC = config["PriorErrorBC"] if config["OptimizeBCs"] else 0.0
+    prior_err_BC = config["PriorErrorBCs"] if config["OptimizeBCs"] else 0.0
     prior_err_OH = config["PriorErrorOH"] if config["OptimizeOH"] else 0.0
     prior_err_BC = ensure_float_list(prior_err_BC)
     prior_err_OH = ensure_float_list(prior_err_OH)
