@@ -409,21 +409,25 @@ def do_inversion_ensemble(
     # Create an xarray.Dataset
     dataset = xr.Dataset()
     for key, values in results_dict.items():
-        if key == "labels":
+        if key == "labels" or key == "hyperparameters":
             continue  # Skip labels; used only for naming variables
-        for idx, (label, value) in enumerate(zip(results_dict["labels"], values)):
+        for idx, (params, value) in enumerate(zip(results_dict["hyperparameters"], values)):
             if isinstance(value, np.ndarray) and value.ndim == 2:
                 dims = ("nvar1", "nvar2")
             elif isinstance(value, np.ndarray):
                 dims = ("nvar1",)
             else:
                 dims = ()  # Scalar
-
-            dataset[f"{key}{label}"] = (dims, value)
+            var_name = f"{key}_{idx + 1}_ensemble_member"
+            dataset[var_name] = (dims, value)
+            dataset[var_name].attrs = params
 
             # Use the best J_A as the default data variable values
             if idx == idx_best_Ja:
                 dataset[key] = (dims, value)
+                params_copy = params.copy()
+                params_copy["ensemble_member"] = idx + 1
+                dataset[key].attrs = params_copy
 
     # reorder the variables, so the default vars are at the top
     best_vars = list(results_dict.keys())

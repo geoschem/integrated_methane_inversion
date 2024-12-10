@@ -61,19 +61,19 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     # Do the gridding for each variable and store in a dictionary
     data_dict = {}
     for var in target_data_vars:
+        attrs = inv_results[var].attrs
+        attrs["units"] = "1"
         if var.startswith("A") or var.startswith("S_post"):
             # get the diagonals of the S_post and A matrices
-            gridded_data = do_gridding(
-                np.diagonal(inv_results[var].values), statevector
-            )
-            data_dict[var] = (["lat", "lon"], gridded_data.data)
+            gridded_data = do_gridding(np.diagonal(inv_results[var].values), statevector)
+            data_dict[var] = (["lat", "lon"], gridded_data.data, attrs)
         elif var.startswith("xhat"):
             # get the scale factors
             # fill nan in SF with 1 to prevent GEOS-Chem error
             gridded_data = do_gridding(inv_results[var].values, statevector).fillna(1)
             # change key to ScaleFactor to match HEMCO expectations
             new_SF_key = f"ScaleFactor{var[len('xhat'):]}"
-            data_dict[new_SF_key] = (["lat", "lon"], gridded_data.data)
+            data_dict[new_SF_key] = (["lat", "lon"], gridded_data.data, attrs)
 
     # Create dataset
     lat = statevector["lat"].values
@@ -84,14 +84,11 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         coords={"lon": ("lon", lon), "lat": ("lat", lat)},
     )
 
-    # Add attribute metadata
+    # Add attribute metadata for coordinates
     ds.lat.attrs["units"] = "degrees_north"
     ds.lat.attrs["long_name"] = "Latitude"
     ds.lon.attrs["units"] = "degrees_east"
     ds.lon.attrs["long_name"] = "Longitude"
-    ds.ScaleFactor.attrs["units"] = "1"
-    ds.S_post.attrs["units"] = "1"
-    ds.A.attrs["units"] = "1"
 
     # Create netcdf
     ds.to_netcdf(
