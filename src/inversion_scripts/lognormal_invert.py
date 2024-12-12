@@ -144,7 +144,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         K_ROI = K_temp[:, :-num_normal_elems]
         K_normal = K_temp[:, -num_normal_elems:]
         K_ROI = prior_scale * K_ROI
-        K_full = np.concatenate((prior_scale * K_ROI, K_normal), axis=1)
+        K_full = np.concatenate((K_ROI, K_normal), axis=1)
         
         m, n = np.shape(K_ROI)
 
