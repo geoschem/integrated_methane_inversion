@@ -130,6 +130,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             "gamma": gamma,
             "prior_err_bc": sa_bc,
             "prior_err_oh": sa_oh,
+            "prior_err_buffer": sa_buffer,
         }
         # The levenberg-marquardt method assumes that the prior emissions is
         # the median prior emissions, but typically priors are the mean emission.
