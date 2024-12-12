@@ -128,7 +128,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # Ensure obs_error is a list of floats
-    obs_errors = ensure_float_list(config["obs_error"])
+    obs_errors = ensure_float_list(config["ObsError"])
 
     # directory containing partial K matrices
     # Get observed and GEOS-Chem-simulated TROPOMI columns

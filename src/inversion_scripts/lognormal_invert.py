@@ -13,6 +13,7 @@ import xarray as xr
 from netCDF4 import Dataset
 from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
+from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -27,6 +28,16 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         jacobian_sf           [String] : path to numpy array of scale factors
     """
     results_save_path = f"inversion_result_ln.nc"
+    # dictionary to store inversion results
+    results_dict = {
+        "xhat": [],
+        "lnxn": [],
+        "S_post": [],
+        "A": [],
+        "DOFS": [],
+        "Ja_normalized": [],
+        "hyperparameters": [],
+    }
 
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector["StateVector"]
@@ -71,15 +82,15 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         K_temp *= scaling_matrix
 
     # Define Sa, gamma, So, and Sa_bc values to iterate through
-    prior_errors = ensure_float_list(float(config["PriorError"]))
-    sa_buffer_elems = ensure_float_list(float(config["PriorErrorBufferElements"]))
+    prior_errors = ensure_float_list(config["PriorError"])
+    sa_buffer_elems = ensure_float_list(config["PriorErrorBufferElements"])
     sa_bc_vals = (
-        ensure_float_list(float(config["PriorErrorBCs"])) if optimize_bcs else [None]
+        ensure_float_list(config["PriorErrorBCs"]) if optimize_bcs else [0.0]
     )
     sa_oh_vals = (
-        ensure_float_list(float(config["PriorErrorOH"])) if optimize_oh else [None]
+        ensure_float_list(config["PriorErrorOH"]) if optimize_oh else [0.0]
     )
-    gamma_vals = ensure_float_list(float(config["Gamma"]))
+    gamma_vals = ensure_float_list(config["Gamma"])
     obs_err_keys = [
         f"so_{obs_err}" for obs_err in ensure_float_list(config["ObsError"])
     ]
@@ -112,6 +123,14 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         )
     )
     for gamma, sa, so_key, sa_bc, sa_buffer, sa_oh in combinations:
+        # params dict to store hyperparameters
+        params = {
+            "prior_err": sa,
+            "obs_err": so_key.removeprefix("so_"),
+            "gamma": gamma,
+            "prior_err_bc": sa_bc,
+            "prior_err_oh": sa_oh,
+        }
         # The levenberg-marquardt method assumes that the prior emissions is
         # the median prior emissions, but typically priors are the mean emission.
         # To account for this we convert xa to a median. This can be done by
@@ -261,74 +280,61 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             + f"sa: {sa}, sa_bc: {sa_bc}, sa_oh: {sa_oh_vals} sa_buffer: {sa_buffer})"
         )
 
-        # Create gridded datarrays of S_post, xhat, and A
+        # Append results to results_dict
         xhat = xnmean
         print(f"xhat = {xhat.sum()}")
-        xhat_arr = np.zeros((len(lats), len(lons)))
-        ak_sensitivities = np.diagonal(ak)
-        ak_arr = np.zeros((len(lats), len(lons)))
-        lnS_post = np.diagonal(lns)
-        lnS_post_arr = np.zeros((len(lats), len(lons)))
-        for i in range(np.shape(xhat)[0]):
-            idx = np.where(state_vector_labels == float(i + 1))
-            xhat_arr[idx] = xhat[i]
-            ak_arr[idx] = ak_sensitivities[i]
-            lnS_post_arr[idx] = lnS_post[i]
+        results_dict["xhat"].append(xhat.flatten()),
+        results_dict["lnxn"].append(lnxn.flatten()),
+        results_dict["S_post"].append(lns),
+        results_dict["A"].append(ak),
+        results_dict["DOFS"].append(dofs),
+        results_dict["Ja_normalized"].append(Ja.item()/num_sv_elems),
+        results_dict["hyperparameters"].append(params)
 
-        # lambda function to make a DataArray from numpy array
-        make_dataArray = lambda arr: xr.DataArray(
-            data=arr,
-            dims=["lat", "lon"],
-            coords=dict(
-                lon=(["lon"], lons.values),
-                lat=(["lat"], lats.values),
-            ),
-        )
+    # Define the default data variables as those with normalized Ja closest to 1
+    idx_best_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
+    
+    # Create an xarray dataset to store inversion results
+    dataset = xr.Dataset()
+    for key, values in results_dict.items():
+        if key == "hyperparameters":
+            continue  # Skip hyperparameters; used for attributes
+        for idx, (params, value) in enumerate(
+            zip(results_dict["hyperparameters"], values)
+        ):
+            if isinstance(value, np.ndarray) and value.ndim == 2:
+                dims = ("nvar1", "nvar2")
+            elif isinstance(value, np.ndarray):
+                dims = ("nvar1",)
+            else:
+                dims = ()  # Scalar
+            var_name = f"{key}_{idx + 1}_ensemble_member"
+            dataset[var_name] = (dims, value)
+            dataset[var_name].attrs = params
 
-        # transform to data arrays
-        scale_factors = make_dataArray(xhat_arr)
-        ak_arr = make_dataArray(ak_arr)
-        lnS_post_arr = make_dataArray(lnS_post_arr)
+            # Use the best J_A as the default data variable values
+            if idx == idx_best_Ja:
+                dataset[key] = (dims, value)
+                params_copy = params.copy()
+                params_copy["ensemble_member"] = idx + 1
+                dataset[key].attrs = params_copy
+                
+    # reorder the variables, so the default vars are at the top
+    best_vars = list(results_dict.keys())
+    best_vars.remove("hyperparameters")
+    ensemble_vars = [item for item in list(dataset.data_vars) if item not in best_vars]
 
-        # create gridded posterior
-        ds = xr.Dataset(
-            {
-                "ScaleFactor": (["lat", "lon"], scale_factors.data),
-                "A": (["lat", "lon"], ak_arr.data),
-                "S_post": (["lat", "lon"], lnS_post_arr.data),
-            },
-            coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
-        )
+    new_dataset = xr.Dataset(
+        {var: dataset[var] for var in best_vars + ensemble_vars},
+        coords=dataset.coords,
+    )
 
-        # Add attribute metadata
-        ds.lat.attrs["units"] = "degrees_north"
-        ds.lat.attrs["long_name"] = "Latitude"
-        ds.lon.attrs["units"] = "degrees_east"
-        ds.lon.attrs["long_name"] = "Longitude"
-        ds.ScaleFactor.attrs["units"] = "1"
-
-        # save to netcdf file
-        ds.to_netcdf("gridded_posterior_ln.nc")
-
-        # Save (ungridded) inversion results
-        dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
-        dataset.createDimension("nvar1", num_sv_elems)
-        dataset.createDimension("nvar2", num_sv_elems)
-        dataset.createDimension("float", 1)
-        nc_xn = dataset.createVariable("xhat", np.float32, ("nvar1"))
-        nc_lnxn = dataset.createVariable("lnxn", np.float32, ("nvar1"))
-        nc_lnS_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
-        nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
-        nc_dofs = dataset.createVariable("DOFS", np.float32, ("float",))
-        nc_Ja = dataset.createVariable("Ja", np.float32, ("float",))
-        nc_xn[:] = xnmean.flatten()
-        nc_lnxn[:] = lnxn.flatten()
-        nc_lnS_post[:, :] = lns
-        nc_A[:, :] = ak
-        nc_dofs[0] = dofs
-        nc_Ja[0] = Ja
-        dataset.close()
-
+    dataset = new_dataset
+    dataset.to_netcdf(results_save_path)
+    
+    # make gridded posterior
+    make_gridded_posterior(results_save_path, state_vector_filepath, "gridded_posterior_ln.nc")
+    
 
 if __name__ == "__main__":
     config_path = sys.argv[1]

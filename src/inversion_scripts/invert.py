@@ -291,7 +291,7 @@ def do_inversion(
     # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
     delta_optimizedT = delta_optimized.transpose()
     J_A = delta_optimizedT @ inv_Sa @ delta_optimized
-    J_A_normalized = J_A / n_elements
+    Ja_normalized = J_A / n_elements
 
     # Print some statistics
     print(
@@ -299,7 +299,7 @@ def do_inversion(
         + f"prior_err_bc: {prior_err_bc}, prior_err_oh: {prior_err_oh})"
     )
     print(
-        f"Normalized J_A: {J_A_normalized}"
+        f"Normalized J_A: {Ja_normalized}"
     )  # ideal gamma is where this is close to 1
     print(
         "Min:",
@@ -310,7 +310,7 @@ def do_inversion(
         xhat[:scale_factor_idx].max(),
     )
 
-    return xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, J_A_normalized
+    return xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, Ja_normalized
 
 
 def do_inversion_ensemble(
@@ -343,7 +343,7 @@ def do_inversion_ensemble(
         "xhat": [],
         "S_post": [],
         "A": [],
-        "J_A_normalized": [],
+        "Ja_normalized": [],
         "hyperparameters": [],
     }
     for member in hyperparam_ensemble:
@@ -355,7 +355,7 @@ def do_inversion_ensemble(
             "prior_err_bc": prior_err_bc,
             "prior_err_oh": prior_err_oh,
         }
-        xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, J_A_normalized = (
+        xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, Ja_normalized = (
             do_inversion(
                 n_elements,
                 jacobian_dir,
@@ -380,13 +380,13 @@ def do_inversion_ensemble(
         results_dict["xhat"].append(xhat)
         results_dict["S_post"].append(S_post)
         results_dict["A"].append(A)
-        results_dict["J_A_normalized"].append(J_A_normalized)
+        results_dict["Ja_normalized"].append(Ja_normalized)
         results_dict["hyperparameters"].append(params)
 
     # Find the ensemble member that is closest to 1 following Lu et al. (2021)
-    idx_best_Ja = np.argmin(np.abs(np.array(results_dict["J_A_normalized"]) - 1))
+    idx_best_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
     print(
-        f"Best J_A: {results_dict['J_A_normalized'][idx_best_Ja]} with"
+        f"Best J_A: {results_dict['Ja_normalized'][idx_best_Ja]} with"
         + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_best_Ja]}"
     )
 
