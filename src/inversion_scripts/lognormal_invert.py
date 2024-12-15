@@ -84,12 +84,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # Define Sa, gamma, So, and Sa_bc values to iterate through
     prior_errors = ensure_float_list(config["PriorError"])
     sa_buffer_elems = ensure_float_list(config["PriorErrorBufferElements"])
-    sa_bc_vals = (
-        ensure_float_list(config["PriorErrorBCs"]) if optimize_bcs else [0.0]
-    )
-    sa_oh_vals = (
-        ensure_float_list(config["PriorErrorOH"]) if optimize_oh else [0.0]
-    )
+    sa_bc_vals = ensure_float_list(config["PriorErrorBCs"]) if optimize_bcs else [0.0]
+    sa_oh_vals = ensure_float_list(config["PriorErrorOH"]) if optimize_oh else [0.0]
     gamma_vals = ensure_float_list(config["Gamma"])
     obs_err_keys = [
         f"so_{obs_err}" for obs_err in ensure_float_list(config["ObsError"])
@@ -146,7 +142,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         K_normal = K_temp[:, -num_normal_elems:]
         K_ROI = prior_scale * K_ROI
         K_full = np.concatenate((K_ROI, K_normal), axis=1)
-        
+
         m, n = np.shape(K_ROI)
 
         # Create base xa and lnxa matrices
@@ -161,7 +157,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # Create inverted So matrix
         Soinv = spdiags(1 / so, 0, m, m)
-
 
         lnsa_val = np.log(sa)
 
@@ -289,12 +284,12 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         results_dict["S_post"].append(lns),
         results_dict["A"].append(ak),
         results_dict["DOFS"].append(dofs),
-        results_dict["Ja_normalized"].append(Ja.item()/num_sv_elems),
+        results_dict["Ja_normalized"].append(Ja.item() / num_sv_elems),
         results_dict["hyperparameters"].append(params)
 
     # Define the default data variables as those with normalized Ja closest to 1
     idx_best_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
-    
+
     # Create an xarray dataset to store inversion results
     dataset = xr.Dataset()
     for key, values in results_dict.items():
@@ -319,7 +314,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
                 params_copy = params.copy()
                 params_copy["ensemble_member"] = idx + 1
                 dataset[key].attrs = params_copy
-                
+
     # reorder the variables, so the default vars are at the top
     best_vars = list(results_dict.keys())
     best_vars.remove("hyperparameters")
@@ -331,11 +326,16 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     )
 
     dataset = new_dataset
-    dataset.to_netcdf(results_save_path)
-    
+    dataset.to_netcdf(
+        results_save_path,
+        encoding={v: {"zlib": True, "complevel": 1} for v in dataset.data_vars},
+    )
+
     # make gridded posterior
-    make_gridded_posterior(results_save_path, state_vector_filepath, "gridded_posterior_ln.nc")
-    
+    make_gridded_posterior(
+        results_save_path, state_vector_filepath, "gridded_posterior_ln.nc"
+    )
+
 
 if __name__ == "__main__":
     config_path = sys.argv[1]

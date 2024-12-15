@@ -298,9 +298,7 @@ def do_inversion(
         f"hyperparameters: (prior_err: {prior_err}, obs_err: {obs_err}, gamma: {gamma}, "
         + f"prior_err_bc: {prior_err_bc}, prior_err_oh: {prior_err_oh})"
     )
-    print(
-        f"Normalized J_A: {Ja_normalized}"
-    )  # ideal gamma is where this is close to 1
+    print(f"Normalized J_A: {Ja_normalized}")  # ideal gamma is where this is close to 1
     print(
         "Min:",
         xhat[:scale_factor_idx].min(),
@@ -483,5 +481,8 @@ if __name__ == "__main__":
     )
 
     # Save the results of the ensemble inversion
-    out_ds.to_netcdf(output_path)
+    out_ds.to_netcdf(
+        output_path,
+        encoding={v: {"zlib": True, "complevel": 1} for v in out_ds.data_vars},
+    )
     print(f"Saved results to {output_path}")
