@@ -271,9 +271,9 @@ variables can be convenient.
    * - ``InversionCPUs``
      - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
    * - ``InversionMemory``
-     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
+     - Optional Variable. Amount of memory to allocate to inversion sbatch job (in MB) if different from ``RequestedMemory``.
    * - ``InversionTime``
-     - Optional Variable. Amount of memory to allocate to the inversion job (in MB) if different from ``RequestedMemory``.
+     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
