@@ -447,7 +447,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # set parameters based on config file
-    is_Regional = ensure_float_list(config["isRegional"])
+    is_Regional = config["isRegional"]
     prior_err = ensure_float_list(config["PriorError"])
     obs_err = ensure_float_list(config["ObsError"])
     gamma = ensure_float_list(config["Gamma"])
