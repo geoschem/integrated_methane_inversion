@@ -131,6 +131,41 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         )
     )
 
+def plot_hyperparameter_analysis(axs, ensemble_attrs, ens_totals_posterior, xkeys):
+    """
+    Function to plot the sensitivity of the inversion to the hyperparameters
+    """
+    ens_totals_std = ens_totals_posterior.std()
+    ens_mean_emis = ens_totals_posterior.mean()
+
+    num_axes = len(xkeys)
+
+    # Only proceed if there are axes to plot
+    if num_axes > 0:
+        # Flatten axs in case of multiple subplots
+        axs = axs.flatten()
+
+        for i, key in enumerate(xkeys):
+            ax = axs[i]
+            ax.plot(
+                [float(item[key]) for item in ensemble_attrs],
+                ens_totals_posterior,
+                marker="o",
+                linestyle="",
+                label="Ensemble Member"
+            )
+            ax.axhline(y=ens_mean_emis, linestyle="-", label="Ensemble Mean")
+            ax.axhline(y=ens_mean_emis - ens_totals_std, linestyle="--", label="Ensemble Standard Deviation")
+            ax.axhline(y=ens_mean_emis + ens_totals_std, linestyle="--")
+            ax.set_title(f"Inversion sensitivity to {key}")
+            ax.set_ylabel("Total emissions (Tg/yr)")
+            ax.set_xlabel(key)
+            if i == 0:
+                ax.legend()
+
+        plt.tight_layout()
+    else:
+        print("Not enough ensemble members to plot")
 
 def plot_ensemble(
     ax,
