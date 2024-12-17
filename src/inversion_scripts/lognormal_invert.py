@@ -288,7 +288,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         results_dict["hyperparameters"].append(params)
 
     # Define the default data variables as those with normalized Ja closest to 1
-    idx_best_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
+    idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
 
     # Create an xarray dataset to store inversion results
     dataset = xr.Dataset()
@@ -308,20 +308,20 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             dataset[var_name] = (dims, value)
             dataset[var_name].attrs = params
 
-            # Use the best J_A as the default data variable values
-            if idx == idx_best_Ja:
+            # Use the ens member with J_A/n closest to 1 as the default data variable values
+            if idx == idx_default_Ja:
                 dataset[key] = (dims, value)
                 params_copy = params.copy()
                 params_copy["ensemble_member"] = idx + 1
                 dataset[key].attrs = params_copy
 
     # reorder the variables, so the default vars are at the top
-    best_vars = list(results_dict.keys())
-    best_vars.remove("hyperparameters")
-    ensemble_vars = [item for item in list(dataset.data_vars) if item not in best_vars]
+    default_vars = list(results_dict.keys())
+    default_vars.remove("hyperparameters")
+    ensemble_vars = [item for item in list(dataset.data_vars) if item not in default_vars]
 
     new_dataset = xr.Dataset(
-        {var: dataset[var] for var in best_vars + ensemble_vars},
+        {var: dataset[var] for var in default_vars + ensemble_vars},
         coords=dataset.coords,
     )
 
