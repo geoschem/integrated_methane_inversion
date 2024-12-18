@@ -26,6 +26,22 @@ The hyperparameters used for each ensemble member are saved in the attributes of
 closely matches the expected output of the chi-square distribution (:math:`J_a / n \approx 1`) (Lu et al., 2021), 
 where :math:`n` is the number of state vector elements.
 
+Choosing ensemble members:
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The IMI will generate all possible combinations of the hyperparameters specified in the configuration file regardless
+of whether some combinations are unrealistic. For example, if you tighten the prior error to a value that is
+very low (eg. 0.01) and weight the observations very highly via the regularization parameter (eg. :math:`Gamma > 1`), the inversion will 
+have little freedom to update the emissions and would return the prior emissions despite the heavy weighting of the observations.
+Therefore, it is important to carefully choose which ensemble members to include in the ensemble analysis. Several visualizations
+come built into the visualization notebook that can help users identify which ensemble members are realistic. Once identified, 
+unrealistic `ensemble_members` can be removed from the uncertainty analysis. Another metric that can be used to identify unrealistic
+ensemble members is the `chi-square` metric. This metric is saved in the inversion_results.nc file and is a measure of how well the
+inversion results match the expected output of the chi-square distribution (:math:`J_a / n \approx 1`). Ideally, this value should be
+close to 1. If the `chi-square` value is much greater (or less) than 1, it is likely that the inversion results are not realistic and the 
+ensemble member should be removed from the uncertainty analysis.
+
+
 2. **Manual ensemble generation**:
 In this scenario, you have already run your base inversion. You can then use the IMI to create an ensemble of inversions
 by specifying a new run directory that references the precomputed Jacobian matrix from the base run directory.
@@ -36,5 +52,4 @@ use the precomputed Jacobian if you swap out prior emissions inventories. This i
 emissions within individual state vector clusters may change, requiring a new Jacobian matrix to be computed.
 
 See the `Common configurations page <../other/common-configurations.html#running-a-sensitivity-inversion>`__ 
-for instructions on how to re-configure the IMI to use a pre-computed Jacobian in a new run directory. Then modify
-the values of ``PriorError``, ``ObsError``, and/or ``Gamma`` in the configuration file and re-run the inversion.
+for instructions on how to re-configure the IMI to use a pre-computed Jacobian in a new run directory.
