@@ -324,7 +324,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # make gridded posterior
     make_gridded_posterior(
-        results_save_path, state_vector_filepath, "gridded_posterior_ln_ensemble.nc"
+        results_save_path, state_vector_filepath, "gridded_posterior_ln.nc"
     )
 
 if __name__ == "__main__":
