@@ -36,7 +36,12 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         "A": [],
         "DOFS": [],
         "Ja_normalized": [],
-        "hyperparameters": [],
+        'prior_err': [],
+        'obs_err': [],
+        'gamma': [],
+        'prior_err_bc': [],
+        'prior_err_oh': []
+        #"hyperparameters": [],
     }
 
     state_vector = xr.load_dataset(state_vector_filepath)
@@ -106,7 +111,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     kappa = 10
 
     # iterate through different combination of gamma, lnsa, and sa_bc
-    # TODO: for now we will only allow one value for each of these
     # TODO: parallelize this once we allow vectorization of these values
     combinations = list(
         product(
@@ -285,55 +289,46 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         results_dict["A"].append(ak),
         results_dict["DOFS"].append(dofs),
         results_dict["Ja_normalized"].append(Ja.item() / num_sv_elems),
-        results_dict["hyperparameters"].append(params)
+        #results_dict["hyperparameters"].append(params)
+        for k,v in params.items():
+            results_dict[k].append(v)
 
     # Define the default data variables as those with normalized Ja closest to 1
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
 
     # Create an xarray dataset to store inversion results
     dataset = xr.Dataset()
-    for key, values in results_dict.items():
-        if key == "hyperparameters":
-            continue  # Skip hyperparameters; used for attributes
-        for idx, (params, value) in enumerate(
-            zip(results_dict["hyperparameters"], values)
-        ):
-            if isinstance(value, np.ndarray) and value.ndim == 2:
-                dims = ("nvar1", "nvar2")
-            elif isinstance(value, np.ndarray):
-                dims = ("nvar1",)
-            else:
-                dims = ()  # Scalar
-            var_name = f"{key}_{idx + 1}_ensemble_member"
-            dataset[var_name] = (dims, value)
-            dataset[var_name].attrs = params
+    for k, v in results_dict.items():
+        v = np.array(v)
+        dims = ['ensemble'] + [f'nvar{i}' for i in range(1, v.ndim)]
+        dataset[k] = (dims, v)
 
-            # Use the ens member with J_A/n closest to 1 as the default data variable values
-            if idx == idx_default_Ja:
-                dataset[key] = (dims, value)
-                params_copy = params.copy()
-                params_copy["ensemble_member"] = idx + 1
-                dataset[key].attrs = params_copy
+    # save index number of ens member with J_A/n
+    # closes to 1 as the default member
+    dataset.attrs = {'default_member_index': idx_default_Ja}
 
-    # reorder the variables, so the default vars are at the top
-    default_vars = list(results_dict.keys())
-    default_vars.remove("hyperparameters")
-    ensemble_vars = [item for item in list(dataset.data_vars) if item not in default_vars]
+    # ensemble dimension to end
+    dataset = dataset.transpose(..., 'ensemble')
 
-    new_dataset = xr.Dataset(
-        {var: dataset[var] for var in default_vars + ensemble_vars},
-        coords=dataset.coords,
+    dataset_default = dataset.isel(ensemble = idx_default_Ja)
+
+    dataset.to_netcdf(
+        results_save_path.replace('.nc', '_ensemble.nc'),
+        encoding={v: {"zlib": True, "complevel": 1} for v in dataset.data_vars},
     )
 
-    dataset = new_dataset
-    dataset.to_netcdf(
+    dataset_default.to_netcdf(
         results_save_path,
-        encoding={v: {"zlib": True, "complevel": 1} for v in dataset.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in dataset_default.data_vars},
     )
 
     # make gridded posterior
     make_gridded_posterior(
         results_save_path, state_vector_filepath, "gridded_posterior_ln.nc"
+    )
+
+    make_gridded_posterior(
+        results_save_path.replace('.nc', '_ensemble.nc'), state_vector_filepath, "gridded_posterior_ln_ensemble.nc"
     )
 
 

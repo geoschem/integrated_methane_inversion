@@ -10,21 +10,18 @@ def do_gridding(vector, statevector):
     """
 
     # Map the input vector (e.g., scale factors) to the state vector grid
-    nlat = len(statevector["lat"])
-    nlon = len(statevector["lon"])
-    target_array = np.empty(statevector["StateVector"].shape)
-    target_array[:] = np.nan
-    for ilat in range(nlat):
-        for ilon in range(nlon):
-            element_id = statevector["StateVector"].values[ilat, ilon]
-            if ~np.isnan(element_id):
-                target_array[ilat, ilon] = vector[int(element_id) - 1]
+    outarr = np.where(
+        np.isnan(statevector.StateVector.values)[:,:,None],
+        np.nan,
+        outarr
+    )
 
-    # Convert to data array
-    lat = statevector["lat"].values
-    lon = statevector["lon"].values
+    # to dataarray    
     target_array = xr.DataArray(
-        target_array, [("lat", list(lat)), ("lon", list(lon))], attrs={"units": "none"}
+        outarr,
+        dims = ('lat', 'lon', 'ensemble'),
+        coords = {'lat': statevector.lat.values, 'lon': statevector.lon.values},
+        attrs={"units": "none"}
     )
 
     return target_array
@@ -65,15 +62,15 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         attrs["units"] = "1"
         if var.startswith("A") or var.startswith("S_post"):
             # get the diagonals of the S_post and A matrices
-            gridded_data = do_gridding(np.diagonal(inv_results[var].values), statevector)
-            data_dict[var] = (["lat", "lon"], gridded_data.data, attrs)
+            gridded_data = do_gridding(np.diagonal(inv_results[var].values).transpose(), statevector)
+            data_dict[var] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
         elif var.startswith("xhat"):
             # get the scale factors
             # fill nan in SF with 1 to prevent GEOS-Chem error
             gridded_data = do_gridding(inv_results[var].values, statevector).fillna(1)
             # change key to ScaleFactor to match HEMCO expectations
             new_SF_key = f"ScaleFactor{var[len('xhat'):]}"
-            data_dict[new_SF_key] = (["lat", "lon"], gridded_data.data, attrs)
+            data_dict[new_SF_key] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
 
     # Create dataset
     lat = statevector["lat"].values

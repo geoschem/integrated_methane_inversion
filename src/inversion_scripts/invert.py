@@ -342,9 +342,13 @@ def do_inversion_ensemble(
         "S_post": [],
         "A": [],
         "Ja_normalized": [],
-        "hyperparameters": [],
+        'prior_err': [],
+        'obs_err': [],
+        'gamma': [],
+        'prior_err_bc': [],
+        'prior_err_oh': []
     }
-    for member in hyperparam_ensemble:
+    for imem,member in enumerate(hyperparam_ensemble):
         prior_err, obs_err, gamma, prior_err_bc, prior_err_oh = member
         params = {
             "prior_err": prior_err,
@@ -379,7 +383,8 @@ def do_inversion_ensemble(
         results_dict["S_post"].append(S_post)
         results_dict["A"].append(A)
         results_dict["Ja_normalized"].append(Ja_normalized)
-        results_dict["hyperparameters"].append(params)
+        for k, v in params.items():
+            results_dict[k].append(v)
 
     # Find the ensemble member that is closest to 1 following Lu et al. (2021)
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
@@ -388,44 +393,24 @@ def do_inversion_ensemble(
         + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_default_Ja]}"
     )
 
+
     # Create an xarray.Dataset
     dataset = xr.Dataset()
-    for key, values in results_dict.items():
-        if key == "hyperparameters":
-            continue  # Skip hyperparameters; used for attributes
-        for idx, (params, value) in enumerate(
-            zip(results_dict["hyperparameters"], values)
-        ):
-            if isinstance(value, np.ndarray) and value.ndim == 2:
-                dims = ("nvar1", "nvar2")
-            elif isinstance(value, np.ndarray):
-                dims = ("nvar1",)
-            else:
-                dims = ()  # Scalar
-            var_name = f"{key}_{idx + 1}_ensemble_member"
-            dataset[var_name] = (dims, value)
-            dataset[var_name].attrs = params
+    for k, v in results_dict.items():
+        v = np.array(v)
+        dims = ['ensemble'] + [f'nvar{i}' for i in range(1, v.ndim)]
+        dataset[k] = (dims, v)
+    
+    # save index number of ens member with J_A/n
+    # closes to 1 as the default member
+    dataset.attrs = {'default_member_index': idx_default_Ja}
 
-            # Use the ens member with J_A/n closest to 1 as the default data variable values
-            if idx == idx_default_Ja:
-                dataset[key] = (dims, value)
-                params_copy = params.copy()
-                params_copy["ensemble_member"] = idx + 1
-                dataset[key].attrs = params_copy
+    # ensemble dimension to end
+    dataset = dataset.transpose(..., 'ensemble')
 
-    # reorder the variables, so the default vars are at the top
-    default_vars = list(results_dict.keys())
-    default_vars.remove("hyperparameters")
-    ensemble_vars = [item for item in list(dataset.data_vars) if item not in default_vars]
+    dataset_default = dataset.isel(ensemble = idx_default_Ja)
 
-    new_dataset = xr.Dataset(
-        {var: dataset[var] for var in default_vars + ensemble_vars},
-        coords=dataset.coords,
-    )
-
-    dataset = new_dataset
-
-    return dataset
+    return dataset, dataset_default
 
 
 if __name__ == "__main__":
@@ -463,7 +448,7 @@ if __name__ == "__main__":
         jacobian_sf = None
 
     # Run the inversion code
-    out_ds = do_inversion_ensemble(
+    out_ds, out_ds_default = do_inversion_ensemble(
         n_elements,
         jacobian_dir,
         lon_min,
@@ -482,6 +467,11 @@ if __name__ == "__main__":
 
     # Save the results of the ensemble inversion
     out_ds.to_netcdf(
+        output_path.replace('.nc', '_ensemble.nc'),
+        encoding={v: {"zlib": True, "complevel": 1} for v in out_ds.data_vars},
+    )
+
+    out_ds_default.to_netcdf(
         output_path,
         encoding={v: {"zlib": True, "complevel": 1} for v in out_ds.data_vars},
     )
