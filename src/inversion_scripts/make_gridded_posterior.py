@@ -86,11 +86,21 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     ds.lat.attrs["long_name"] = "Latitude"
     ds.lon.attrs["units"] = "degrees_east"
     ds.lon.attrs["long_name"] = "Longitude"
+    ds.attrs = inv_results.attrs
 
-    # Create netcdf
+    # Create netcdf for ensemble results
     ds.to_netcdf(
-        save_path, encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
+        save_path.replace('.nc', '_ensemble.nc'),
+        encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )
+
+    # Create netcdf for default results
+    ds.isel(ensemble = ds.attrs['default_member_index']).to_netcdf(
+        save_path,
+        encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
+    )
+
+    ds.isel
 
     print(f"Saved gridded file to {save_path}")
 
