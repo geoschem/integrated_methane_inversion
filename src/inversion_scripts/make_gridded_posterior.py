@@ -100,8 +100,6 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )
 
-    ds.isel
-
     print(f"Saved gridded file to {save_path}")
 
 
