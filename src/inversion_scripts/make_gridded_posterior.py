@@ -10,6 +10,8 @@ def do_gridding(vector, statevector):
     """
 
     # Map the input vector (e.g., scale factors) to the state vector grid
+    sv_index = np.nan_to_num(statevector.StateVector.values, nan=0).astype(int)
+    outarr = vector[sv_index - 1]
     outarr = np.where(
         np.isnan(statevector.StateVector.values)[:,:,None],
         np.nan,
@@ -106,7 +108,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
 if __name__ == "__main__":
     import sys
 
-    posterior_SF_path = sys.argv[1]
+    posterior_SF_path = (sys.argv[1]).replace('.nc', '_ensemble.nc')
     state_vector_path = sys.argv[2]
     save_path = sys.argv[3]
 
