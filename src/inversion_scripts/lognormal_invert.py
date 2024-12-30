@@ -126,7 +126,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # params dict to store hyperparameters
         params = {
             "prior_err": sa,
-            "obs_err": so_key.removeprefix("so_"),
+            "obs_err": float(so_key.removeprefix("so_")),
             "gamma": gamma,
             "prior_err_bc": sa_bc,
             "prior_err_oh": sa_oh,
@@ -323,7 +323,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # make gridded posterior
     make_gridded_posterior(
-        results_save_path, state_vector_filepath, "gridded_posterior_ln.nc"
+        results_save_path.replace(".nc", "_ensemble.nc"), state_vector_filepath, "gridded_posterior_ln.nc"
     )
 
 
