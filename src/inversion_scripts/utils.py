@@ -131,24 +131,24 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         )
     )
 
-def plot_hyperparameter_analysis(axs, ensemble_attrs, ens_totals_posterior, xkeys):
+def plot_hyperparameter_analysis(axs, ens_totals_posterior, params_dict):
     """
     Function to plot the sensitivity of the inversion to the hyperparameters
     """
     ens_totals_std = ens_totals_posterior.std()
     ens_mean_emis = ens_totals_posterior.mean()
 
-    num_axes = len(xkeys)
+    num_axes = len(params_dict.keys())
 
     # Only proceed if there are axes to plot
     if num_axes > 0:
         # Flatten axs in case of multiple subplots
         axs = axs.flatten()
 
-        for i, key in enumerate(xkeys):
+        for i, key in enumerate(params_dict.keys()):
             ax = axs[i]
             ax.plot(
-                [float(item[key]) for item in ensemble_attrs],
+                params_dict[key],
                 ens_totals_posterior,
                 marker="o",
                 linestyle="",
