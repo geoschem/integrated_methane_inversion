@@ -342,13 +342,13 @@ def do_inversion_ensemble(
         "S_post": [],
         "A": [],
         "Ja_normalized": [],
-        'prior_err': [],
-        'obs_err': [],
-        'gamma': [],
-        'prior_err_bc': [],
-        'prior_err_oh': []
+        "prior_err": [],
+        "obs_err": [],
+        "gamma": [],
+        "prior_err_bc": [],
+        "prior_err_oh": [],
     }
-    for imem,member in enumerate(hyperparam_ensemble):
+    for member in hyperparam_ensemble:
         prior_err, obs_err, gamma, prior_err_bc, prior_err_oh = member
         params = {
             "prior_err": prior_err,
@@ -393,22 +393,21 @@ def do_inversion_ensemble(
         + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_default_Ja]}"
     )
 
-
     # Create an xarray.Dataset
     dataset = xr.Dataset()
     for k, v in results_dict.items():
         v = np.array(v)
-        dims = ['ensemble'] + [f'nvar{i}' for i in range(1, v.ndim)]
+        dims = ["ensemble"] + [f"nvar{i}" for i in range(1, v.ndim)]
         dataset[k] = (dims, v)
-    
+
     # save index number of ens member with J_A/n
-    # closes to 1 as the default member
-    dataset.attrs = {'default_member_index': idx_default_Ja}
+    # closest to 1 as the default member
+    dataset.attrs = {"default_member_index": idx_default_Ja}
 
     # ensemble dimension to end
-    dataset = dataset.transpose(..., 'ensemble')
+    dataset = dataset.transpose(..., "ensemble")
 
-    dataset_default = dataset.isel(ensemble = idx_default_Ja)
+    dataset_default = dataset.isel(ensemble=idx_default_Ja)
 
     return dataset, dataset_default
 
@@ -467,7 +466,7 @@ if __name__ == "__main__":
 
     # Save the results of the ensemble inversion
     out_ds.to_netcdf(
-        output_path.replace('.nc', '_ensemble.nc'),
+        output_path.replace(".nc", "_ensemble.nc"),
         encoding={v: {"zlib": True, "complevel": 1} for v in out_ds.data_vars},
     )
 
