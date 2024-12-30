@@ -41,6 +41,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         "gamma": [],
         "prior_err_bc": [],
         "prior_err_oh": [],
+        "prior_err_buffer": [],
     }
 
     state_vector = xr.load_dataset(state_vector_filepath)
