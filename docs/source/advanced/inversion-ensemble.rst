@@ -13,18 +13,31 @@ The IMI has multiple options for creating an inversion ensemble.
 
 The simplest way to generate an ensemble is to run the IMI a single time with
 a configuration file that specifies vectors of the desired range of hyperparameters (eg.`PriorError: [0.5, 0.75]`). 
-The IMI will then run multiple inversions with the various cominations of hyperparameter values. Each ensemble member is
-saved to the inversion_results.nc and gridded_posterior.nc. This method is useful for quickly generating an ensemble without
+The IMI will then run multiple inversions with the various combinations of hyperparameter values. Each ensemble member is
+saved to the `inversion_results_ensemble.nc` and `gridded_posterior_ensemble.nc` file. The ensemble member used for the posterior simulation
+is saved to the `inversion_results.nc` and `gridded_posterior.nc` files. This method is useful for quickly generating an ensemble without
 having to manually run the IMI multiple times with new run directories and configuration files. However, vectors can only be
 applied for the following hyperparameters: `PriorError`, `ObsError`, `Gamma`, `PriorErrorBCs`, `PriorErrorBufferElements`, 
 `PriorErrorOH`.
 
-In the result files (inversion_results.nc and gridded_posterior.nc), the data variables from the different
-ensemble members are distinguished by the data variable suffix(eg. `xhat_1_ensemble_member`, `xhat_2_ensemble_member`). 
-The hyperparameters used for each ensemble member are saved in the attributes of each data variable 
-(eg. `ds[xhat_1_ensemble_member].attrs`). The data variables without a suffix are from the ensemble member that most 
-closely matches the expected output of the chi-square distribution (:math:`J_a / n \approx 1`) (Lu et al., 2021), 
-where :math:`n` is the number of state vector elements.
+In the ensemble result files (`inversion_results_ensemble.nc` and `gridded_posterior_ensemble.nc`), an additional coordinate is included that
+allows selection of the inversion results for each ensemble member. In python, this can be done as follows:
+
+```python
+import xarray as xr
+ds = xr.open_dataset('inversion_results_ensemble.nc')
+# select the inversion results for ensemble member 2
+ensemble_member_2 = ds.sel(ensemble=2)
+
+# print the hyperparameters used for ensemble member 2
+params = ["prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh", "prior_err_buffer"]
+for param in params:
+    print(f"{param}: {ensemble_member_2[param]}")
+```
+The data variables in the default result files (`inversion_results.nc` and `gridded_posterior.nc`) are the inversion results
+from the ensemble member that most  closely matches the expected output of the chi-square distribution (:math:`J_a / n \approx 1`) (Lu et al., 2021), 
+where :math:`n` is the number of state vector elements. This result is used for the posterior simulation and, if using Kalman Mode, is the ensemble member 
+that propogates into the next inversion.
 
 Choosing ensemble members:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,6 +54,22 @@ inversion results match the expected output of the chi-square distribution (:mat
 close to 1. If the `chi-square` value is much greater (or less) than 1, it is likely that the inversion results are not realistic and the 
 ensemble member should be removed from the uncertainty analysis.
 
+The visualization notebook creates the following figures to analyze the ensemble spread and sensitivity of the inversion results to the hyperparameters:
+
+.. image:: img/ensemble_spread.png
+    :width: 500px
+    :align: center
+    :alt: Ensemble spread
+
+
+.. image:: img/ensemble_sensitivity.png
+    :width: 500px
+    :align: center
+    :alt: Ensemble sensitivity to hyperparameters
+
+In this example, you can see from the second figure that the inversion results are highly sensitive to the regularization parameter `Gamma`. As noted above, using a gamma that 
+is too low or too high can lead to unrealistic inversion results. Here, we see that the gamma value of 0.1 is too low, causing the inversion to return the prior emissions. 
+In this case, it would be reasonable to remove the ensemble members with low gamma from the uncertainty analysis.
 
 2. **Manual ensemble generation**:
 In this scenario, you have already run your base inversion. You can then use the IMI to create an ensemble of inversions
