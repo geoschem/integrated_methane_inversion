@@ -30,7 +30,7 @@ ds = xr.open_dataset('inversion_results_ensemble.nc')
 ensemble_member_2 = ds.sel(ensemble=2)
 
 # print the hyperparameters used for ensemble member 2
-params = ["prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh", "prior_err_buffer"]
+params = ["prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh"]
 for param in params:
     print(f"{param}: {ensemble_member_2[param]}")
 ```
