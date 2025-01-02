@@ -680,9 +680,11 @@ def estimate_averaging_kernel(
         L, 2
     )  # kg/m2/s from kg/s, per element
 
+    # Use the first element of the error list if multiple values are provided
+    sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
     # Error standard deviations with updated units
-    sA = config["PriorError"] * emissions_kgs_per_m2
-    sO = config["ObsError"]
+    sA = sigmaA * emissions_kgs_per_m2
+    sO = config["ObsError"][0] if isinstance(config["ObsError"], list) else config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
     # from P observations per grid cell = number of observations per grid cell / number of super-observations
