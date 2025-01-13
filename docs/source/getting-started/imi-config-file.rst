@@ -84,6 +84,8 @@ Kalman filter options
      - Option to automatically create ``periods.csv`` based on the constant number of days in ``UpdateFreqDays``. Default is ``true``. If ``false``, a custom ``periods.csv`` will be used instead.
    * - ``CustomPeriodsCSV``
      - Path to custom ``periods.csv`` with user-defined start and end dates for each Kalman filter update period.
+   * - ``FirstPeriod``
+     - Optional variable to specify which Kalman period to start on, if restarting an inversion. Default is ``1``.
 
 State vector 
 ~~~~~~~~~~~~
@@ -164,19 +166,21 @@ Inversion
    * - ``LognormalErrors``
      - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
-     - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
+     - Vector of errors in the prior estimates (1-sigma; relative). Default is ``[0.5]`` (50%) error.
    * - ``PriorErrorOH``
-     - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
+     - Vector of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
    * - ``PriorErrorBCs``
-     - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
+     - Vector of errors in the prior estimates (using ppb). Default is ``[10]`` ppb error.
    * - ``PriorErrorBufferElements``
-     - Error in the prior estimates for buffer elements (1-sigma; relative). Default is ``0.5`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
+     - Vector of errors in the prior estimates for buffer elements (1-sigma; relative). Default is ``[0.5]`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
    * - ``ObsError``
-     - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
+     - Vector of observational errors (1-sigma; absolute; ppb). Default value is ``[15]`` ppb error.
    * - ``Gamma``
-     - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
+     - Vector of regularization parameters; typically between 0 and 1. Default value is ``[1.0]``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``ReferenceRunDir``
+     - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
 
 Grid
 ~~~~
@@ -219,7 +223,7 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    :widths: 30, 70
    :class: tight-table
 
-   * - ``DoPriorEmis``
+   * - ``DoHemcoPriorEmis``
      - Boolean to run a HEMCO standalone simulation to generate the
        prior emissions.
    * - ``DoSpinup``
@@ -267,9 +271,9 @@ variables can be convenient.
    * - ``InversionCPUs``
      - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
    * - ``InversionMemory``
-     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
+     - Optional Variable. Amount of memory to allocate to inversion sbatch job (in MB) if different from ``RequestedMemory``.
    * - ``InversionTime``
-     - Optional Variable. Amount of memory to allocate to the inversion job (in MB) if different from ``RequestedMemory``.
+     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``

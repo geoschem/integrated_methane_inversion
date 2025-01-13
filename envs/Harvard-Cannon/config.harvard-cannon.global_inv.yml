@@ -87,12 +87,12 @@ ShapeFile: "None"
 ## - PriorErrorBCs is in ppb (not used for global)
 ## - PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
-PriorError: 0.5
-PriorErrorBCs: 10.0
-PriorErrorBufferElements: 0.5
-PriorErrorOH: 0.1
-ObsError: 15
-Gamma: 1.0
+PriorError: [0.5]
+PriorErrorBCs: [10.0]
+PriorErrorBufferElements: [0.5]
+PriorErrorOH: [0.1]
+ObsError: [15]
+Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
@@ -189,10 +189,10 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holyscratch01/jacob_lab/$USER"
+OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 
 ## Path to GEOS-Chem input data
-DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
 DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"

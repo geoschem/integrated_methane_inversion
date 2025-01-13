@@ -17,19 +17,18 @@ create_statevector() {
             HemcoDiagFile="/n/home00/xlwang/xlwang/Test_12km/gc_0125x015625_NA_47L_geosfp_CH4_emission/OutputDir/HEMCO_diagnostics.202205010000.nc"
         else
             LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
-            HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
         fi
     else
         LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
-        HemcoDiagFile="${DataPath}/HEMCO/CH4/v2023-04/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.20190101.nc"
     fi
+    LandCoverFile="${DataPath}/${LandCoverSuffix}"
 
     # Use archived HEMCO standalone emissions output
     HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
 
     if "$isAWS"; then
         # Download land cover and HEMCO diagnostics files
-        s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        s3_lc_path="s3://gcgrid/${LandCoverSuffix}"
         aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
         s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
         aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
