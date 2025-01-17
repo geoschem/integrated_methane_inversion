@@ -370,7 +370,6 @@ class PlumeObserver:
                     f'{self.config["OutputPath"]}/{self.config["RunName"]}'
                 )
                 infile = f"{basedir}/{self.myname}_plumes/plumes.geojson"
-                print(f'{infile = }')
             try:
                 gdf = gpd.read_file(infile)
                 if self.myname == 'IMEO':
