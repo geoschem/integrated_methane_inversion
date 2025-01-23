@@ -472,6 +472,7 @@ run_jacobian() {
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \
             -t $RequestedTime \
+            -o imi_output.tmp \
             -p $SchedulerPartition \
             -W run_prior_simulation.sh
         wait
