@@ -64,7 +64,14 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # normal elements.
     optimize_bcs = config["OptimizeBCs"]
     optimize_oh = config["OptimizeOH"]
-    OH_element_num = 1 if optimize_oh else 0
+    is_regional = config["isRegional"]
+    if optimize_oh:
+        if is_regional:
+            OH_element_num = 1
+        else:
+            OH_element_num = 2
+    else:
+        OH_element_num = 0
     BC_element_num = 4 if optimize_bcs else 0
     num_sv_elems = (
         int(state_vector_labels.max().item()) + OH_element_num + BC_element_num
