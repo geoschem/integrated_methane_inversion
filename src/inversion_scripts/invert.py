@@ -192,7 +192,7 @@ def do_inversion(
                 scale_factors = np.append(scale_factors, np.ones(4))
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
-            if optimize_oh
+            if optimize_oh:
                 if is_Regional:
                     K[:, :-1] *= scaling_matrix
                 else:
