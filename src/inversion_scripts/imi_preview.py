@@ -505,7 +505,7 @@ def estimate_averaging_kernel(
     # Add labels and title
     ax.set_xlabel("Emissions ($Tg\ a^{-1}$)")
     ax.set_ylabel("Sector")
-    ax.set_title("Sectoral emissions")
+    ax.set_title("Sectoral Emissions (Prior Inventory)")
     ax.set_yticks(ind)
     ax.set_yticklabels(positive_sectors)
 
