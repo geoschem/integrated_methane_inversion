@@ -2,9 +2,9 @@
 Intended to configure Slurm by editing slurm.conf with instance-specific info. 
 Should output to new_slurm.conf something similar to the following:
 
-NodeName=ip-172-31-6-14 CPUs=36 RealMemory=94432 CoresPerSocket=36 ThreadsPerCore=1 State=UNKNOWN
+ControlMachine=ip-172-31-6-14
+NodeName=ip-172-31-6-14 CPUs=36 SocketsPerBoard=1 CoresPerSocket=36 ThreadsPerCore=1 RealMemory=94432 State=UNKNOWN
 PartitionName=debug Nodes=ip-172-31-6-14 Default=YES MaxTime=INFINITE State=UP
-'ControlMachine=ip-172-31-6-14'
 """
 
 import subprocess
@@ -19,11 +19,13 @@ second_line = (
     " ".join(
         [
             "\n",
-            slurm_info[0],
-            slurm_info[1],
-            slurm_info[6],
-            "SocketsPerBoard" + slurm_info[1][4:],
-            "ThreadsPerCore=1 State=UNKNOWN",
+            slurm_info[0], # NodeName
+            slurm_info[1], # CPUs
+            slurm_info[3], # SocketsPerBoard
+            slurm_info[4], # CoresPerSocket
+            slurm_info[5], # ThreadsPerCore
+            slurm_info[6], # RealMemory
+            "State=UNKNOWN",
         ]
     )
     + "\n"
