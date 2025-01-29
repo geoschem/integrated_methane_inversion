@@ -453,7 +453,7 @@ def estimate_averaging_kernel(
 
         # use the nudged (prior) emissions for generating averaging kernel estimate
         sf = xr.load_dataset(f"{rundir_path}archive_sf/prior_sf_period{kf_index}.nc")
-        get_mean_emissions(startday, endday, prior_cache)
+        prior_ds = get_mean_emissions(startday, endday, prior_cache)
         prior_ds = get_posterior_emissions(prior_ds, sf)
     else:
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
