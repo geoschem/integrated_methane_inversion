@@ -54,7 +54,12 @@ setup_template() {
             cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
         fi
     elif [ "$Res" == "0.125x0.15625" ]; then
-        cmd="3\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
+        if "$isRegional"; then
+            # Use NA domain by default and adjust lat/lon below
+            cmd="9\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
+        else
+            cmd="9\n${metNum}\n5\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        fi
     else
         printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
         printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
@@ -97,22 +102,23 @@ setup_template() {
         sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
     fi
 
-    # Modify the METDIR for 0.125x0.15625 simulation
-    if [ "$Res" = "0.125x0.15625" ]; then
-        sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_0.25x0.3125_NA\/GEOS_FP:g" HEMCO_Config.rc.gmao_metfields_0125
-        OLD="/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData/GEOS_0.125x0.15625/GEOS_FP"
-        NEW="/n/holylfs05/LABS/jacob_lab/Users/xlwang/methane_inversion/InputData/GEOS_0.125x0.15625_NA/GEOS_FP_DerivedWinds"
-        sed -i "s|$OLD|$NEW|g" HEMCO_Config.rc.gmao_metfields_0125
-        sed -i '/METDIR/d' HEMCO_Config.rc
-    fi
-    
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
     if [ "$RegionID" != "" ]; then
-        sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
-        sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
-        sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
-    fi
+	if [ "$Res" != "0.125x0.15625" ]; then
+           sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
+           sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+           sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+        # Modify the METDIR for 0.125x0.15625 simulation
+        elif [ "$Res" = "0.125x0.15625" ]; then
+           sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_0.25x0.3125_NA\/GEOS_FP:g" HEMCO_Config.rc.gmao_metfields_0125
+	   OLD="GEOS_0.125x0.15625/GEOS_FP"
+           NEW="GEOS_0.125x0.15625_NA/GEOS_FP_DerivedWinds"
+	   sed -i "s|$OLD|$NEW|g" HEMCO_Config.rc.gmao_metfields_0125
+           sed -i '/METDIR/d' HEMCO_Config.rc
+	fi
+           
+   fi
 
     # By default, only output emissions at the end of the simulation
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
