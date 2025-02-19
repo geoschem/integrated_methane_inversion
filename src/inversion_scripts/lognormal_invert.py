@@ -74,10 +74,10 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         OH_element_num = 0
     BC_element_num = 4 if optimize_bcs else 0
     num_sv_elems = (
-        int(state_vector_labels.max().item()) + OH_element_num + BC_element_num
+        int(state_vector_labels.max().item()) + BC_element_num + OH_element_num
     )
     num_buffer_elems = int(config["nBufferClusters"])
-    num_normal_elems = num_buffer_elems + OH_element_num + BC_element_num
+    num_normal_elems = num_buffer_elems + BC_element_num + OH_element_num
     ds = np.load("full_jacobian_K.npz")
     K_temp = np.array(ds["K"]) * 1e9
 
@@ -157,12 +157,25 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         m, n = np.shape(K_ROI)
 
         # Create base xa and lnxa matrices
-        # Note: the resulting xa vector has lognormal elements until the final bc elements
+        # Note: the resulting xa vector has lognormal elements until the
+        # final Buffer, BCs, and OH elements
         xa = np.ones((n, 1)) * 1.0
         lnxa = np.log(xa)
-        xa_normal = np.zeros((num_normal_elems, 1)) * 1.0
+
+        # Create normal elements for buffer, BCs, and OH
+        # BC elements are relative to 0 because they are in concentration space
+        # Other elements are in scale factor space where 1 is the prior
+        xa_normal_buffer = np.ones((num_buffer_elems, 1)) * 1.0
+        xa_normal_BCs = np.ones((BC_element_num, 1)) * 0.0
+        xa_normal_OH = np.ones((OH_element_num, 1)) * 1.0
+        xa_normal = np.concatenate(
+            (xa_normal_buffer, xa_normal_BCs, xa_normal_OH), axis=0
+        )
+
+        # concatenate normal elements to xa and lnxa
         xa = np.concatenate((xa, xa_normal), axis=0)
         lnxa = np.concatenate((lnxa, xa_normal), axis=0)
+
         # get the So matrix
         so = so_dict[so_key]
 
@@ -330,7 +343,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # make gridded posterior
     make_gridded_posterior(
-        results_save_path.replace(".nc", "_ensemble.nc"), state_vector_filepath, "gridded_posterior_ln.nc"
+        results_save_path.replace(".nc", "_ensemble.nc"),
+        state_vector_filepath,
+        "gridded_posterior_ln.nc",
     )
 
 
