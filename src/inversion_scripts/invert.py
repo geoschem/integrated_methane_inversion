@@ -59,8 +59,8 @@ def do_inversion(
 
     """
     # boolean for whether we are optimizing boundary conditions
-    bc_optimization = prior_err_bc > 0.0
-    oh_optimization = prior_err_oh > 0.0
+    optimize_bc = prior_err_bc > 0.0
+    optimize_oh = prior_err_oh > 0.0
 
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
@@ -189,14 +189,17 @@ def do_inversion(
         # Apply scaling matrix if using precomputed Jacobian
         if jacobian_sf is not None:
             scale_factors = np.load(jacobian_sf)
-            if bc_optimization:
+            if optimize_bc:
                 # add (unit) scale factors for BCs
                 # as the last 4 elements of the scaling matrix
                 scale_factors = np.append(scale_factors, np.ones(4))
             reps = K.shape[0]
             scaling_matrix = np.tile(scale_factors, (reps, 1))
-            if oh_optimization:
-                K[:, :-2] *= scaling_matrix
+            if optimize_oh:
+                if is_Regional:
+                    K[:, :-1] *= scaling_matrix
+                else:
+                    K[:, :-2] *= scaling_matrix
             else:
                 K *= scaling_matrix
 
@@ -237,7 +240,7 @@ def do_inversion(
     scale_factor_idx = n_elements
 
     # If optimizing OH, adjust for it in the inversion
-    if oh_optimization:
+    if optimize_oh:
         # Add prior error for OH as the last element(s) of the diagonal
         # Following Masakkers et al. (2019, ACP) weight the OH term by the
         # ratio of the number of elements (n_OH_elements/n_emission_elements)
@@ -251,11 +254,11 @@ def do_inversion(
             scale_factor_idx -= 2
 
     # If optimizing boundary conditions, adjust for it in the inversion
-    if bc_optimization:
+    if optimize_bc:
         scale_factor_idx -= 4
 
         # add prior error for BCs as the last 4 elements of the diagonal
-        if oh_optimization:
+        if optimize_oh:
             if is_Regional:
                 Sa_diag[-5:-1] = prior_err_bc**2
             else:
@@ -276,7 +279,7 @@ def do_inversion(
     #  - If optimizing OH, the last element also needs to be updated by 1
     xhat = delta_optimized.copy()
     xhat[:scale_factor_idx] += 1
-    if oh_optimization:
+    if optimize_oh:
         if is_Regional:
             xhat[-1] += 1
             print(f"xhat[OH] = {xhat[-1]}")
