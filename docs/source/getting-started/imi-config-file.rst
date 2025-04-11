@@ -10,8 +10,6 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``isAWS``
-     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
        Select ``true`` to run the IMI with ``sbatch run_imi.sh``.

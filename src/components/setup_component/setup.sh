@@ -223,11 +223,6 @@ setup_imi() {
         setup_inversion
     fi
 
-    # Remove temporary files
-    if "$isAWS"; then
-        rm -f /home/ubuntu/foo.nc
-    fi
-
     # Run time
     echo "Statistics (setup):"
     echo "Preview runtime (s): $(($preview_end - $preview_start))"

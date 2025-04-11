@@ -3,7 +3,6 @@
 
 ## General
 RunName: "Test_IMI_Global"
-isAWS: false
 UseSlurm: true
 SafeMode: true
 S3Upload: false
