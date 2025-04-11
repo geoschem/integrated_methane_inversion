@@ -182,7 +182,9 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    if config["Res"] == "0.25x0.3125":
+    if config["Res"] == "0.125x0.15625":
+        max_aggregation_level = 128
+    elif config["Res"] == "0.25x0.3125":
         max_aggregation_level = 64
     elif config["Res"] == "0.5x0.625":
         max_aggregation_level = 32
@@ -237,7 +239,10 @@ def force_native_res_pixels(config, clusters, sensitivities):
         )
         return sensitivities
 
-    if config["Res"] == "0.25x0.3125":
+    if config["Res"] == "0.125x0.15625":
+        lat_step = 0.125
+        lon_step = 0.15625
+    elif config["Res"] == "0.25x0.3125":
         lat_step = 0.25
         lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":

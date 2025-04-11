@@ -43,7 +43,8 @@ setup_inversion() {
     fi
 
     sed -i -e "s:{INVERSION_PATH}:${InversionPath}:g" \
-        -e "s:{CONFIG_FILE}:${ConfigFile}:g" \
+        -e "s:{CONFIG_FILE}:config_${RunName}.yml:g" \
+        -e "s:{RUNDIRS}:${RunDirs}:g" \
         -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
         -e "s:{NUM_JACOBIAN_TRACERS}:${NumJacobianTracers}:g" \
         -e "s:{OUTPUT_PATH}:${OutputPath}:g" \

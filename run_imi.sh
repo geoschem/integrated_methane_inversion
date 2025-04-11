@@ -63,7 +63,7 @@ source $CondaFile
 
 # Activate Conda environment
 printf "\nActivating conda environment: ${CondaEnv}\n"
-conda activate ${CondaEnv}
+conda activate ${CondaEnv} 
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
@@ -128,7 +128,8 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
-ConfigPath=${InversionPath}/${ConfigFile}
+ConfigPath=${RunDirs}/config_${RunName}.yml
+
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
@@ -137,7 +138,7 @@ mkdir -p -v ${RunDirs}
 
 # Set/Collect information about the GEOS-Chem version, IMI version,
 # and TROPOMI processor version
-GEOSCHEM_VERSION=14.4.1
+GEOSCHEM_VERSION=14.5.1
 IMI_VERSION=$(git describe --tags)
 TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
     sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |
@@ -244,10 +245,6 @@ fi
 if [[ -f ${InversionPath}/imi_output.log ]]; then
     cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
-
-# copy config file to run directory
-cd $InversionPath
-cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
 if "$S3Upload"; then

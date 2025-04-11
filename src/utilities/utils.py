@@ -31,8 +31,11 @@ def download_landcover_files(config):
         gridDir = "0.5x0.625"
         gridFile = "05x0625"
     elif config["Res"] == "0.25x0.3125":
-        gridDir = "0.25x0.3125"
-        gridFile = "025x03125"
+        gridDir= "0.25x0.3125"
+        gridFile= "025x03125"
+    elif config["Res"] == "0.125x0.15625":
+        gridDir= "0.125x0.15625"
+        gridFile= "0125x015625"
 
     # determine the path to the landcover file
     if len(config["RegionID"]) == 2:

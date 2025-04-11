@@ -11,10 +11,15 @@ create_statevector() {
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    if [ "$RegionID" == "" ]; then
-        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+    if "$isRegional"; then
+        if [ "$Res" = "0.125x0.15625" ]; then
+            LandCoverFile="/n/home00/xlwang/xlwang/methane_inversion/InputData/land_cover/data/IMERG_land_sea_mask_0125x015625.nc"
+            HemcoDiagFile="/n/home00/xlwang/xlwang/Test_12km/gc_0125x015625_NA_47L_geosfp_CH4_emission/OutputDir/HEMCO_diagnostics.202205010000.nc"
+        else
+            LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        fi
     else
-        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
     LandCoverFile="${DataPath}/${LandCoverSuffix}"
 
