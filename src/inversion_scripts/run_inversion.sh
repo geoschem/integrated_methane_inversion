@@ -26,7 +26,7 @@ invPath={INVERSION_PATH}
 configFile={CONFIG_FILE}
 
 # Get configuration
-#  This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
+#  This defines $StartDate, $EndDate, $nBufferClusters, $RunName
 #  It also define $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
 #  Parsing the config file here facilitates generation of inversion ensembles
 #  All that needs to be done is to edit the config file for $PriorError,

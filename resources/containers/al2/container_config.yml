@@ -3,7 +3,6 @@
 
 ## General
 RunName: "Test_Permian_1week"
-isAWS: true
 UseSlurm: true
 SafeMode: true
 S3Upload: false

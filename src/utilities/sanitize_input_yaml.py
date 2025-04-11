@@ -9,19 +9,9 @@ Arguments
 """
 # ************ Add required config variables to the corresponding list **************
 
-# variables only required by AWS
-config_required_aws = []
-
-# variables only required by local cluster
-config_required_local_cluster = [
-    "DataPathTROPOMI",
-    "GEOSChemEnv",
-]
-
 # variables required on all systems
 config_required = [
     "RunName",
-    "isAWS",
     "UseSlurm",
     "SafeMode",
     "S3Upload",
@@ -145,13 +135,7 @@ if __name__ == "__main__":
         elif config[key]:
             config_required = config_required + conditional_dict[key]
 
-    # update required vars based on system
-    if config["isAWS"]:
-        required_vars = config_required + config_required_aws
-    else:
-        required_vars = config_required + config_required_local_cluster
-
-    missing_input_vars = [x for x in required_vars if x not in inputted_config]
+    missing_input_vars = [x for x in config_required if x not in inputted_config]
     for var in missing_input_vars:
         raise_error_message(var)
 
