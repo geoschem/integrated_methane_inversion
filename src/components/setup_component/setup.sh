@@ -261,5 +261,12 @@ activate_observations() {
         NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
         sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
+    if "$DoObsPackValidation"; then
+	sed -i "/obspack/{N;s/activate: false/activate: true/}" geoschem_config.yml
+	ln -s ${DataPath}/Observations/ObsPack ObsPack
+	OLD="input_file: .\/obspack_co2_1_OCO2MIP_2018-11-28.YYYYMMDD.nc"
+	NEW="input_file: .\/ObsPack\/CH4\/YYYY\/obspack_ch4.YYYYMMDD.nc"
+	sed -i "s|$OLD|$NEW|g" geoschem_config.yml
+    fi 
 
 }

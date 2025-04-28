@@ -125,6 +125,9 @@ DoPosterior: false
 DoPreview: true
 DOFSThreshold: 0
 
+## IMI validation
+DoObsPackValidation: true
+
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 8
 RequestedMemory: 10000

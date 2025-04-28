@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_IMI_Permian"
+RunName: "Test_Permian_1week"
 UseSlurm: true
 SafeMode: true
 S3Upload: false
@@ -124,6 +124,9 @@ DoPosterior: false
 ##   NOTE: RunSetup must be true to run preview
 DoPreview: true
 DOFSThreshold: 0
+
+## IMI validation
+DoObsPackValidation: true
 
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 32
