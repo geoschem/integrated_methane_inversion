@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_IMI_Global"
+RunName: "Test_Global_1day"
 UseSlurm: true
 SafeMode: true
 S3Upload: false
@@ -170,9 +170,13 @@ PerturbValueBCs: 10.0
 ## inversions
 HourlyCH4: true
 
+## IMI validation
+## Turn on ObsPack diagnostic in GEOS-Chem?
+DoObsPack: false
+
 ## Turn on planeflight diagnostic in GEOS-Chem?
 ## For use in comparing GEOS-Chem against planeflight data. The path
-## to those data must be specified in input.geos.
+## to those data must be specified in geoschem_config.yml.
 PLANEFLIGHT: false
 
 ## Turn on old observation operators in GEOS-Chem?
