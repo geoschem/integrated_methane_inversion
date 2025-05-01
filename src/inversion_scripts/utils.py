@@ -131,6 +131,112 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         )
     )
 
+def plot_hyperparameter_analysis(axs, ens_totals_posterior, params_dict):
+    """
+    Function to plot the sensitivity of the inversion to the hyperparameters
+    """
+    ens_totals_std = ens_totals_posterior.std()
+    ens_mean_emis = ens_totals_posterior.mean()
+
+    num_axes = len(params_dict.keys())
+
+    # Only proceed if there are axes to plot
+    if num_axes > 0:
+        # Flatten axs in case of multiple subplots
+        axs = axs.flatten()
+
+        for i, key in enumerate(params_dict.keys()):
+            ax = axs[i]
+            ax.plot(
+                params_dict[key],
+                ens_totals_posterior,
+                marker="o",
+                linestyle="",
+                label="Ensemble Member"
+            )
+            ax.axhline(y=ens_mean_emis, linestyle="-", label="Ensemble Mean")
+            ax.axhline(y=ens_mean_emis - ens_totals_std, linestyle="--", label="Ensemble Standard Deviation")
+            ax.axhline(y=ens_mean_emis + ens_totals_std, linestyle="--")
+            ax.set_title(f"Inversion sensitivity to {key}")
+            ax.set_ylabel("Total emissions (Tg/yr)")
+            ax.set_xlabel(key)
+            if i == 0:
+                ax.legend()
+
+        plt.tight_layout()
+    else:
+        print("Not enough ensemble members to plot")
+
+def plot_ensemble(
+    ax,
+    ens_posterior_totals,
+    total_prior_emissions,
+    default_emission_totals=None,
+    plot_save_path=None,
+):
+    """
+    Function to plot the total emissions from the ensemble members and the prior
+    emissions. Optionally, the default emission totals can be plotted as well.
+
+    Arguments
+        ax                      : matplotlib axis object
+        ens_posterior_totals    : list of total emissions from the ensemble members
+        total_prior_emissions   : total emissions from the prior
+        default_emission_totals : total emissions from the default member (optional)
+        plot_save_path          : path to save the plot (optional)
+    """
+    # calculate the mean and standard deviation of the ensemble posterior totals
+    ens_mean_emis = np.mean(ens_posterior_totals)
+    ens_totals_std = np.std(ens_posterior_totals)
+
+    # Plot the prior emissions
+    ax.bar(
+        0, total_prior_emissions, width=0.5, color="goldenrod", label="Prior", zorder=1
+    )
+    # Plot the ensemble mean and std error bars
+    ax.bar(
+        1, ens_mean_emis, width=0.5, color="steelblue", label="Ensemble mean", zorder=2
+    )
+    ax.errorbar(
+        1,
+        ens_mean_emis,
+        yerr=ens_totals_std,
+        fmt="none",
+        color="k",
+        capsize=4,
+        zorder=5,
+    )
+    # Plot the ensemble members
+    ax.plot(
+        np.ones(len(ens_posterior_totals)),
+        ens_posterior_totals,
+        marker="o",
+        linestyle="",
+        alpha=0.5,
+        color="darkblue",
+        label="Ensemble member",
+        zorder=3,
+    )
+    if default_emission_totals:
+        ax.plot(
+            1,
+            default_emission_totals,
+            marker="o",
+            linestyle="",
+            color="c",
+            label="Default member (Ja/n closest to 1)",
+            zorder=4,
+        )
+
+    # Labeling
+    ax.set_xticks([1, 0])
+    ax.set_xticklabels(["Posterior", "Prior"])
+    ax.set_ylabel("Emissions ($Tg\ a^{-1}$)")
+    ax.set_title("Total Emissions")
+    ax.legend()
+    if plot_save_path:
+        plt.savefig(os.path.join(plot_save_path, "total_emis_ensemble.png"))
+
 
 def plot_field(
     ax,
@@ -259,12 +365,12 @@ def plot_field(
             sanitized_title = clean_title.replace(" ", "_") + ".png"
         else:
             sanitized_title = title.replace(" ", "_") + ".png"
-    
+
         # Construct the full file path
         full_save_path = os.path.join(save_path, sanitized_title.lower())
-        
+
         # Save the plot
-        plt.savefig(full_save_path, format="png", bbox_inches='tight')
+        plt.savefig(full_save_path, format="png", bbox_inches="tight")
         print(f"Plot saved to {full_save_path}")
 
 
@@ -451,13 +557,26 @@ def get_posterior_emissions(prior, scale):
     Args:
         prior  : xarray dataset
             prior emissions
-        scales : xarray dataset scale factors
+        scales : xarray dataset or datarray of scale factors
     Returns:
         posterior : xarray dataset
             posterior emissions
     """
+    # Make copies to avoid modifying the original data
+    prior = prior.copy()
+    scale = scale.copy()
+
     # keep attributes of data even when arithmetic operations applied
     xr.set_options(keep_attrs=True)
+
+    # if xarray datarray
+    if isinstance(scale, xr.DataArray):
+        scale_factors = scale
+    # if xarray dataset
+    elif isinstance(scale, xr.Dataset):
+        scale_factors = scale["ScaleFactor"]
+    else:
+        raise ValueError("Scale factors must be an xarray DataArray or Dataset")
 
     # we do not optimize soil absorbtion in the inversion. This
     # means that we need to keep the soil sink constant and properly
@@ -474,7 +593,7 @@ def get_posterior_emissions(prior, scale):
     posterior = prior.copy()
     for ds_var in list(prior.keys()):
         if "EmisCH4" in ds_var:
-            posterior[ds_var] = prior[ds_var] * scale["ScaleFactor"]
+            posterior[ds_var] = prior[ds_var] * scale_factors
 
     # But reset the soil sink to the original value
     posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
@@ -544,3 +663,15 @@ def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     start_date = str(period_df.loc[0, "Starts"])
     end_date = str(period_df.loc[0, "Ends"])
     return get_mean_emissions(start_date, end_date, prior_cache_path)
+
+
+def ensure_float_list(variable):
+    """Make sure the variable is a list of floats."""
+    if isinstance(variable, list):
+        # Convert each item in the list to a float
+        return [float(item) for item in variable]
+    elif isinstance(variable, (str, float, int)):
+        # Wrap the variable in a list and convert it to float
+        return [float(variable)]
+    else:
+        raise TypeError("Variable must be a string, float, int, or list.")

@@ -35,8 +35,8 @@ Interpreting the IMI Preview
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * Examine the expected information content for the region and period of interest. This includes the map of expected averaging kernel sensitivities and the expected degrees of freedom for signal (DOFS).
     * The averaging kernel sensitivities should be higher where the prior emission estimates are higher and where more observations are available.
-    * DOFS > 0.5 is a bare minimum to achieve any solid information about emissions.
-    * DOFS < 2 is marginal for most applications.
+    * :math:`DOFS > 0.5` is a bare minimum to achieve any solid information about emissions.
+    * :math:`DOFS < 2` is marginal for most applications.
 * If the expected information content is low, consider:
     * Increasing the inversion period to incorporate more observations.
     * Increasing the prior error estimate.
@@ -48,3 +48,11 @@ Choosing the TROPOMI data product for the inversion
     * The Blended TROPOMI+GOSAT retrieval product developed by `Balasus et al. (2023) <https://amt.copernicus.org/articles/16/3787/2023/>`_ to mitigate retrieval artifacts in the operational product.
 * Choosing a product depends on the application. The operational product is updated every few days. The blended product is updated intermittently and is currently available through 2023.
 * We recommend using the blended product when available (currently until 2024-01-01) to mitigate retrieval artifacts.
+
+Creating an inversion ensemble
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* The IMI calculates the posterior error covariance matrix as part of the analytical solution. However,
+if the error covariance matrices are not well-conditioned, the posterior error covariance results may be unreliable.
+* The best practice for calculating uncertainty is to use the `ensemble generation feature <../advanced/inversion-ensemble.html>`_ 
+of the IMI, to create an ensemble of results based on realistic ranges of hyperparameters. The spread of the ensemble members can be 
+used to estimate the uncertainty in the inversion results.

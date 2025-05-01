@@ -280,6 +280,8 @@ def imi_preview(
         dpi=150,
     )
 
+   
+
     # Plot albedo
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
@@ -369,6 +371,8 @@ def imi_preview(
         dpi=150,
     )
 
+    
+
     # calculate expected DOFS
     expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
@@ -399,6 +403,65 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
 
     return s
 
+def get_sectoral_outputs(prior_ds, mask, preview_dir):
+    """
+    Get sectoral emissions from the prior dataset
+    """
+    # Plot sectoral emissions
+    sectors = [
+        var
+        for var in list(prior_ds.keys())
+        if "EmisCH4" in var and not ("Total" in var or "Excl" in var)
+    ]
+
+    # Calculate total emissions for each sector
+    prior_sector_vals = []
+    positive_sectors = []
+    for sector in sectors:
+        prior_val = sum_total_emissions(prior_ds[sector], prior_ds["AREA"], mask)
+        if prior_val > 0:
+            prior_sector_vals.append(prior_val)
+            positive_sectors.append(sector.replace("EmisCH4_", ""))
+
+    # Combine the lists into tuples and sort them based on prior_sector_vals
+    combined = list(zip(positive_sectors, prior_sector_vals))
+    combined_sorted = sorted(combined, key=lambda x: x[1])
+    positive_sectors, prior_sector_vals = zip(*combined_sorted)
+
+    # Plot bars for prior emissions
+    fig = plt.figure(figsize=(10, 5))
+    ax = fig.subplots(1, 1)
+    bar_height = 0.35
+    ind = np.arange(len(positive_sectors))
+    bars1 = ax.barh(
+        ind,
+        prior_sector_vals,
+        bar_height,
+        color="goldenrod",
+        label="Prior Emissions",
+    )
+
+    # Add labels and title
+    ax.set_xlabel("Emissions ($Tg\ a^{-1}$)")
+    ax.set_ylabel("Sector")
+    ax.set_title("Sectoral Emissions (Prior Inventory)")
+    ax.set_yticks(ind)
+    ax.set_yticklabels(positive_sectors)
+
+    plt.savefig(f"{preview_dir}/prior_sectoral_emissions.png", bbox_inches="tight")
+
+    sector_totals = {}
+
+    for item in combined_sorted:
+        category = item[0]
+        sector_prior = item[1]
+        sector_totals[f"{category}Prior"] = sector_prior
+
+    # Save the statistics to a file
+    stats_pd = pd.DataFrame(sector_totals, index=[0])
+    stats_pd.to_csv(f"{preview_dir}/prior_sectoral_statistics.csv", index=False)
+
+    return
 
 def estimate_averaging_kernel(
     config, state_vector_path, preview_dir, tropomi_cache, preview=False, kf_index=None
@@ -463,6 +526,11 @@ def estimate_averaging_kernel(
         f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y \n"
     )
     print(outstring1)
+    
+    
+    # calculate sectoral totals if running preview
+    if preview:
+        get_sectoral_outputs(prior_ds, mask, preview_dir)
 
     # ----------------------------------
     # Observations in region of interest
@@ -680,9 +748,11 @@ def estimate_averaging_kernel(
         L, 2
     )  # kg/m2/s from kg/s, per element
 
+    # Use the first element of the error list if multiple values are provided
+    sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
     # Error standard deviations with updated units
-    sA = config["PriorError"] * emissions_kgs_per_m2
-    sO = config["ObsError"]
+    sA = sigmaA * emissions_kgs_per_m2
+    sO = config["ObsError"][0] if isinstance(config["ObsError"], list) else config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
     # from P observations per grid cell = number of observations per grid cell / number of super-observations

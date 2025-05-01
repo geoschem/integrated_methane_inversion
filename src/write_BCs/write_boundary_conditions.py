@@ -129,10 +129,12 @@ def create_daily_means(satelliteDir, start_time_of_interest, end_time_of_interes
             assert (
                 file_times is not None
             ), "check TROPOMI filename - wasn't able to find start and end times in the filename"
-            date = datetime.datetime.strptime(
-                file_times.group(1), "%Y%m%dT%H%M%S"
-            ).strftime("%Y%m%d")
-            time_ind = alldates.index(date)
+            try:
+                date = datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
+                time_ind = alldates.index(date)
+            except:
+                date = datetime.datetime.strptime(file_times.group(2), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
+                time_ind = alldates.index(date)
 
             c_TROPOMI, c_GC, lon0, lat0 = obsGC[iNN, :4]
             ii = nearest_loc(lon0, LON, tolerance=5)

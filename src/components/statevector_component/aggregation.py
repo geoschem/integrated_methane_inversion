@@ -549,9 +549,16 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             out_labels = sv.values
         else:
             # generate clusters that are approximately agg_level in size
+            n_clusters = int(np.round(elements_left / agg_level))
+            
+            # if n_clusters is 0, skip to next agg_level
+            if n_clusters == 0:
+                continue
+            
+            # generate clusters that are approximately agg_level in size
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0),
-                int(np.round(elements_left / agg_level)),
+                n_clusters,
                 mini_batch,
                 cluster_by_country,
             )

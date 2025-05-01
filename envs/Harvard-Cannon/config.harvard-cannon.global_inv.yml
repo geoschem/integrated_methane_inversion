@@ -2,8 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_IMI_Global"
-isAWS: false
+RunName: "Test_Global_1day"
 UseSlurm: true
 SafeMode: true
 S3Upload: false
@@ -87,12 +86,12 @@ ShapeFile: "None"
 ## - PriorErrorBCs is in ppb (not used for global)
 ## - PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
-PriorError: 0.5
-PriorErrorBCs: 10.0
-PriorErrorBufferElements: 0.5
-PriorErrorOH: 0.1
-ObsError: 15
-Gamma: 1.0
+PriorError: [0.5]
+PriorErrorBCs: [10.0]
+PriorErrorBufferElements: [0.5]
+PriorErrorOH: [0.1]
+ObsError: [15]
+Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
@@ -171,9 +170,13 @@ PerturbValueBCs: 10.0
 ## inversions
 HourlyCH4: true
 
+## IMI validation
+## Turn on ObsPack diagnostic in GEOS-Chem?
+DoObsPack: false
+
 ## Turn on planeflight diagnostic in GEOS-Chem?
 ## For use in comparing GEOS-Chem against planeflight data. The path
-## to those data must be specified in input.geos.
+## to those data must be specified in geoschem_config.yml.
 PLANEFLIGHT: false
 
 ## Turn on old observation operators in GEOS-Chem?
@@ -188,10 +191,10 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holyscratch01/jacob_lab/$USER"
+OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 
 ## Path to GEOS-Chem input data
-DataPath: "/n/holyscratch01/external_repos/GEOS-CHEM/gcgrid/gcdata/ExtData"
+DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
 DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
