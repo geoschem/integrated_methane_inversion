@@ -26,7 +26,7 @@ run_hemco_prior_emis() {
         sed -i '/GEOSChem.Restart/d' log.dryrun
         # prevent download of GEOS met fields
         sed -i "/GEOS_${Res}/d" log.dryrun
-        ./download_data.py log.dryrun aws
+        ./download_gc_data.py log.dryrun aws
         popd
     fi
 
