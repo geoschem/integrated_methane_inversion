@@ -91,7 +91,7 @@ setup_posterior() {
         # prevent restart file from getting downloaded since
         # we don't want to overwrite the one we link to above
         sed -i '/GEOSChem.Restart/d' log.dryrun
-        ./download_gc_data.py log.dryrun aws
+        python download_gc_data.py log.dryrun aws
     fi
 
     # Navigate back to top-level directory

@@ -6,7 +6,9 @@ Description:
 This script reads a GEOS-Chem dry-run log and downloads missing data
 files from the S3 bucket `s3://gcgrid` using boto3.
 
-Replaces previous logic that generated a bash script with aws s3 cp commands.
+This script is based on the download_data.py script in GEOS-Chem, but
+it has been modified to download files from S3 using boto3 instead of
+using the `aws s3 cp` command. Boto3 is much faster than the aws cli.
 
 Requirements:
 -------------
