@@ -350,5 +350,3 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem boundary condition files. Default value is ``true``.
-
-Note for ``*DryRun`` options: If you are running on AWS, you will be charged if your ec2 instance is not in the us-east-1 region. If running on a local cluster you must have AWS CLI enabled or you can modify the ``./download_data.py`` commands in ``setup_imi.sh`` to use ``washu`` instead of ``aws``. See the `GEOS-Chem documentation <https://geos-chem.readthedocs.io/en/latest/inputs/dry-run.html>`_ for more details.
