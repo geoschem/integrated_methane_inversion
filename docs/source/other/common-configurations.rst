@@ -70,37 +70,44 @@ If the preview is complete and the results are satisfactory, you can proceed wit
 Running a sensitivity inversion
 -------------------------------
 
-You've completed an initial inversion. Use the following configuration to run a new inversion with modified prior error (``PriorError``), 
-observational error (``ObsError``), or regularization parameter (``Gamma``). ::
+You've completed an initial inversion. Use the following configuration to run a new inversion with modified 
+error statistics `Lognormal` or `modifying the prior emissions <#modifying-prior-emission-estimates>`_ without
+recomputing the jacobian matrix. Note that if you only wish to update the hyperparamaters, you can take advantage 
+of the `automatic inversion ensemble <../advanced/inversion-ensemble>` feature of the IMI.
+::
 
+    RunName: "sensitivity_inversion1" # new run name
     ## Inversion
     PrecomputedJacobian: true
+    # path to the run directory with your completed inversion
+    # the Jacobian matrix will be used to compute the new inversion
     ReferenceRunDir: "/path/to/your/run/dir"
 
     ## Setup modules
     ##   Turn on/off different steps in setting up the inversion 
-    RunSetup: false
-    SetupTemplateRundir: false
-    SetupSpinupRun: false
-    SetupJacobianRuns: false
-    SetupInversion: false
-    SetupPosteriorRun: false
+    RunSetup: true
+    SetupTemplateRundir: true
+    SetupSpinupRun: true
+    SetupJacobianRuns: true
+    SetupInversion: true
+    SetupPosteriorRun: true
 
     ## Run modules
     ##   Turn on/off different steps in performing the inversion
-    DoHemcoPriorEmis: false
-    DoSpinup: false
-    DoJacobian: false
-    ReDoJacobian: false
+    DoHemcoPriorEmis: true
+    DoSpinup: true
+    DoJacobian: true
     DoInversion: true
-    DoPosterior: false
+    DoPosterior: true
 
-    ## IMI preview
-    ##   NOTE: RunSetup must be true to run preview
-    DoPreview: false
+    ## Inversion
+    LognormalErrors: true
+    # geometric standard deviation when using lognormal errors (e.g. 2 = factor of 2 uncertainty)
+    # for normal errors, is a relative fraction (e.g. 0.5 = 50%)
+    PriorError: [2.0] 
 
-Note that the final results of the original inversion (``inversion_result.nc`` and ``gridded_posterior.nc``) 
-will be overwritten if not archived before running the sensitivity inversion.
+With PrecomputedJacobian set to true, the IMI will only run the simulations in each step necessary to recompute the inversion
+leveraging the Jacobian matrix from the reference run directory to reduce the computation necessary. 
 
 
 Running an inversion without the preview

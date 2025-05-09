@@ -10,8 +10,6 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``isAWS``
-     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
        Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
@@ -166,17 +164,17 @@ Inversion
    * - ``LognormalErrors``
      - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
-     - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
+     - Vector of errors in the prior estimates (1-sigma; relative). Default is ``[0.5]`` (50%) error.
    * - ``PriorErrorOH``
-     - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
+     - Vector of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
    * - ``PriorErrorBCs``
-     - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
+     - Vector of errors in the prior estimates (using ppb). Default is ``[10]`` ppb error.
    * - ``PriorErrorBufferElements``
-     - Error in the prior estimates for buffer elements (1-sigma; relative). Default is ``0.5`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
+     - Vector of errors in the prior estimates for buffer elements (1-sigma; relative). Default is ``[0.5]`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
    * - ``ObsError``
-     - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
+     - Vector of observational errors (1-sigma; absolute; ppb). Default value is ``[15]`` ppb error.
    * - ``Gamma``
-     - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
+     - Vector of regularization parameters; typically between 0 and 1. Default value is ``[1.0]``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
    * - ``ReferenceRunDir``
@@ -271,9 +269,9 @@ variables can be convenient.
    * - ``InversionCPUs``
      - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
    * - ``InversionMemory``
-     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
+     - Optional Variable. Amount of memory to allocate to inversion sbatch job (in MB) if different from ``RequestedMemory``.
    * - ``InversionTime``
-     - Optional Variable. Amount of memory to allocate to the inversion job (in MB) if different from ``RequestedMemory``.
+     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
@@ -301,7 +299,9 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``HourlyCH4``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
-     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
+     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in geoschem_config.yml. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
+   * - ``DoObsPack``
+     - Boolean to save out the ObsPack diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against NOAA ObsPack data. The path to those data must be specified in geoschem_config.yml. See the `ObsPack diagnostic <https://geos-chem.readthedocs.io/en/stable/gcclassic-user-guide/obspack.html>`_ documentation for details. Default value is ``false``. A sample python notebook for plotting GEOS-Chem against ObsPack can be found at ``src/notebooks/NOAA_ObsPack_MBL_compare.ipnyb``.
    * - ``GOSAT``
      - Boolean to turn on the GOSAT observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
    * - ``TCCON``
@@ -350,5 +350,3 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem boundary condition files. Default value is ``true``.
-
-Note for ``*DryRun`` options: If you are running on AWS, you will be charged if your ec2 instance is not in the us-east-1 region. If running on a local cluster you must have AWS CLI enabled or you can modify the ``./download_data.py`` commands in ``setup_imi.sh`` to use ``washu`` instead of ``aws``. See the `GEOS-Chem documentation <https://geos-chem.readthedocs.io/en/latest/inputs/dry-run.html>`_ for more details.

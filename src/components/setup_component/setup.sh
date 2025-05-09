@@ -48,7 +48,7 @@ setup_imi() {
     if "$RestartDownload"; then
         RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
         if [ ! -f "$RestartFile" ]; then
-            aws s3 cp --no-sign-request s3://imi-boundary-conditions/${BCversion}/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+            python src/utilities/download_aws_file.py s3://imi-boundary-conditions/${BCversion}/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
         fi
     fi
 
@@ -223,11 +223,6 @@ setup_imi() {
         setup_inversion
     fi
 
-    # Remove temporary files
-    if "$isAWS"; then
-        rm -f /home/ubuntu/foo.nc
-    fi
-
     # Run time
     echo "Statistics (setup):"
     echo "Preview runtime (s): $(($preview_end - $preview_start))"
@@ -266,5 +261,12 @@ activate_observations() {
         NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
         sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
+    if "$DoObsPackValidation"; then
+	sed -i "/obspack/{N;s/activate: false/activate: true/}" geoschem_config.yml
+	ln -s ${DataPath}/Observations/ObsPack ObsPack
+	OLD="input_file: .\/obspack_co2_1_OCO2MIP_2018-11-28.YYYYMMDD.nc"
+	NEW="input_file: .\/ObsPack\/CH4\/YYYY\/obspack_ch4.YYYYMMDD.nc"
+	sed -i "s|$OLD|$NEW|g" geoschem_config.yml
+    fi 
 
 }

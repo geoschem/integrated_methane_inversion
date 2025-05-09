@@ -20,13 +20,16 @@ create_statevector() {
 
     # Use archived HEMCO standalone emissions output
     HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-
-    if "$isAWS"; then
-        # Download land cover and HEMCO diagnostics files
+    
+    # Download land cover and HEMCO diagnostics files
+    # if the files do not exist
+    if [ ! -f "$LandCoverFile" ]; then
         s3_lc_path="s3://gcgrid/${LandCoverSuffix}"
-        aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
+        python ${InversionPath}/src/utilities/download_aws_file.py ${s3_lc_path} ${LandCoverFile}
+    fi
+    if [ ! -f "$HemcoDiagFile" ]; then
         s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-        aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
+        python ${InversionPath}/src/utilities/download_aws_file.py ${s3_hd_path} ${HemcoDiagFile}
     fi
 
     # Output path and filename for state vector file

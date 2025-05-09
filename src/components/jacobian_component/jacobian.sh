@@ -210,7 +210,7 @@ create_simulation_dir() {
                 # prevent restart file from getting downloaded since
                 # we don't want to overwrite the one we link to above
                 sed -i '/GEOSChem.Restart/d' log.dryrun
-                ./download_data.py log.dryrun aws
+                python download_gc_data.py log.dryrun aws
             fi
         fi
 
@@ -272,6 +272,13 @@ create_simulation_dir() {
         # Use MeMo soil absorption for the prior simulation
         sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
             -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+
+        # create a break in EMISSIONS logic block for MeMo in background simulation
+        if [[ "$x" = "background" ]]; then
+            sed -i -e "/(((MeMo_SOIL_ABSORPTION/i )))EMISSIONS" HEMCO_Config.rc
+            sed -i -e "/)))MeMo_SOIL_ABSORPTION/a (((EMISSIONS" HEMCO_Config.rc
+        fi
+
         if "$KalmanMode"; then
             # Use nudged scale factors for the prior simulation and OH simulation for kalman mode
             sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
@@ -472,6 +479,7 @@ run_jacobian() {
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \
             -t $RequestedTime \
+            -o imi_output.tmp \
             -p $SchedulerPartition \
             -W run_prior_simulation.sh
         wait

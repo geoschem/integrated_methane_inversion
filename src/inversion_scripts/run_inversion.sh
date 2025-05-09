@@ -26,7 +26,7 @@ invPath={INVERSION_PATH}
 configFile={CONFIG_FILE}
 
 # Get configuration
-#  This defines $StartDate, $EndDate, $nBufferClusters, $RunName, $isAWS
+#  This defines $StartDate, $EndDate, $nBufferClusters, $RunName
 #  It also define $PriorError, $ObsError, $Gamma, $PrecomputedJacobian
 #  Parsing the config file here facilitates generation of inversion ensembles
 #  All that needs to be done is to edit the config file for $PriorError,
@@ -164,29 +164,18 @@ printf " DONE -- jacobian.py\n\n"
 #=======================================================================
 # Do inversion
 #=======================================================================
-if "$OptimizeBCs"; then
-    ErrorBCs=$PriorErrorBCs
-else
-    ErrorBCs=0.0
-fi
-if "$OptimizeOH"; then
-    ErrorOH=$PriorErrorOH
-else
-    ErrorOH=0.0
-fi
-
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
-    python merge_partial_k.py $JacobianDir $StateVectorFile $ObsError $PrecomputedJacobian
+    python merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian
 
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
-    python lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
+    python lognormal_invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $StateVectorFile $jacobian_sf
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
-    python_args=(invert.py $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $PriorError $ObsError $Gamma $Res $jacobian_sf $ErrorBCs $ErrorOH $isRegional)
-
+    python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf)
+    
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- invert.py\n\n"
