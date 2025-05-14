@@ -22,6 +22,8 @@ import yaml
 import boto3
 import re
 from botocore.exceptions import ClientError
+from botocore import UNSIGNED
+from botocore.client import Config
 
 # Globals
 GEOSCHEM_INPUT_FILE = "./geoschem_config.yml"
@@ -130,7 +132,7 @@ def download_the_data(args):
         return
 
     print(f"Downloading data from S3 bucket: {S3_BUCKET}")
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
 
     for path in paths["missing"]:
         if "ExtData" not in path:
@@ -164,7 +166,7 @@ def download_the_data(args):
         else:
             download_file_from_s3(s3, S3_BUCKET, s3_key, local_path)
 
-    chem_dir = os.path.join(paths["local_prefix"], "CHEM_INPUTS")
+    chem_dir = os.path.join(paths["local_prefix"], "ExtData", "CHEM_INPUTS")
     os.makedirs(chem_dir, exist_ok=True)
 
 
