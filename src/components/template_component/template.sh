@@ -29,7 +29,8 @@ setup_template() {
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
-        metNum="2"
+	# Add y to metNum to skip prompt about GEOS-FP discontinuity
+        metNum="2\ny"
     else
         printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
         printf "\n Options are GEOSFP or MERRA2.\n"
