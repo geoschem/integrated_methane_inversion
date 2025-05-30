@@ -232,6 +232,7 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
+    Sa_diag_constraint = Sa_diag.copy() # constraint matrix to calculate the solution only
 
     # Number of elements to apply scale factor to
     scale_factor_idx = n_elements
@@ -241,32 +242,39 @@ def do_inversion(
         # Add prior error for OH as the last element(s) of the diagonal
         # Following Masakkers et al. (2019, ACP) weight the OH term by the
         # ratio of the number of elements (n_OH_elements/n_emission_elements)
+        # use this weighted constraint matrix to calculate the solution only
         if is_Regional:
             OH_weight = 1 / (n_elements - 1)
             Sa_diag[-1:] = OH_weight * prior_err_oh**2
             scale_factor_idx -= 1
         else:
             OH_weight = 2 / (n_elements - 2)
-            Sa_diag[-2:] = OH_weight * prior_err_oh**2
+            Sa_diag_constraint[-2:] = OH_weight * prior_err_oh**2 # weighted constraint matrix
+            Sa_diag[-2:] = prior_err_oh**2 # unweighted matrix
             scale_factor_idx -= 2
 
     # If optimizing boundary conditions, adjust for it in the inversion
     if optimize_bc:
         scale_factor_idx -= 4
 
-        # add prior error for BCs as the last 4 elements of the diagonal
+        # add prior error for BCs as the last 4 elements of the diagonal to both the unweighted (Sa_diag)
+        # and weighted constraint (Sa_diag)
         if optimize_oh:
             if is_Regional:
                 Sa_diag[-5:-1] = prior_err_bc**2
+                Sa_diag_constraint[-5:-1] = prior_err_bc**2
             else:
                 Sa_diag[-6:-1] = prior_err_bc**2
+                Sa_diag_constraint[-6:-2] = prior_err_bc**2
         else:
             Sa_diag[-4:] = prior_err_bc**2
+            Sa_diag_constraint[-4:] = prior_err_bc**2
 
-    inv_Sa = np.diag(1 / Sa_diag)  # Inverse of prior error covariance matrix
+    inv_Sa_constraint = np.diag(1 / Sa_diag_constraint)  # Inverse of weighted constraint matrix
+    inv_Sa = np.diag(1 / Sa_diag)  # Inverse of unweighted prior error covariance matrix
 
-    # Solve for posterior scale factors xhat
-    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa) @ (gamma * KTinvSoyKxA)
+    # Solve for posterior scale factors xhat using the weighted constraint matrix
+    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (gamma * KTinvSoyKxA)
 
     # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + delta_optimized
@@ -284,10 +292,10 @@ def do_inversion(
             xhat[-2:] += 1
             print(f"xhat[OH] = {xhat[-2:]}")
 
-    # Posterior error covariance matrix
+    # Posterior error covariance matrix (use unweighted Sa)
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
 
-    # Averaging kernel matrix
+    # Averaging kernel matrix (use unweighted Sa)
     A = np.identity(n_elements) - S_post @ inv_Sa
 
     # Calculate J_A, where delta_optimized = xhat - xA
