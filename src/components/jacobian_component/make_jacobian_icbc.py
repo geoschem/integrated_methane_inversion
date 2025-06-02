@@ -71,9 +71,10 @@ if __name__ == "__main__":
     original_file_path = sys.argv[1]
     new_file_path = sys.argv[2]
     file_date = sys.argv[3]
+    species = sys.argv[4]
 
     # default to getting the first file in the directory
     # or the file itself if it is a file
     file_path = check_path_and_get_file(original_file_path)
 
-    make_jacobian_icbc(file_path, new_file_path, file_date)
+    make_jacobian_icbc(file_path, new_file_path, file_date, species)
