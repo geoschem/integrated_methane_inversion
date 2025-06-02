@@ -25,6 +25,9 @@ SpinupMonths: 1
 SatelliteProduct: "Other"
 # BlendedTROPOMI: false
 
+## Use observations over water? Set to false to filter out water observations
+UseWaterObs: false
+
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: false
 
@@ -54,6 +57,8 @@ LatMax: 24
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
+MakePeriodsCSV: true
+CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
@@ -108,9 +113,10 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-RunSetup: false
-DoSpinup: true
-DoJacobian: true
+DoHemcoPriorEmis: true
+DoSpinup: false
+DoJacobian: false
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
@@ -181,14 +187,14 @@ UseBCsForRestart: False
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/nobackupp27/$USER/IMI_demo"
+OutputPath: "/nobackupnfs1/$USER/IMI_demo"
 
 ## Path to GEOS-Chem input data
-DataPath: "/nobackupp27/$USER/ExtData"
+DataPath: "/nobackupnfs1/$USER/ExtData"
 
 ## Path to satellite data
 # DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
-DataPathObs: "/nobackupp27/$USER/IMI_demo/data_TROPOMI"
+DataPathObs: "/nobackupnfs1/$USER/IMI_demo/data_TROPOMI"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
@@ -212,9 +218,8 @@ BCpath: "/nobackup/$USER"
 BCversion: "v2023-10"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: Must have AWS CLI enabled
-PreviewDryRun: false
-SpinupDryrun: false
-ProductionDryRun: false
-PosteriorDryRun: false
-BCdryrun: false
+HemcoPriorEmisDryRun: true
+SpinupDryrun: true
+ProductionDryRun: true
+PosteriorDryRun: true
+BCdryrun: true
