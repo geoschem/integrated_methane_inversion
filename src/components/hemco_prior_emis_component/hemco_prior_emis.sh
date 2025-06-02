@@ -68,6 +68,9 @@ run_hemco_prior_emis() {
 
     cd ${RunDirs}/${HEMCOdir}
 
+    # Convert residual SBATCH commands to PBS
+    convert_sbatch_to_pbs
+
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
         -e "/Negative values:     0/d" HEMCO_sa_Config.rc
@@ -145,14 +148,9 @@ run_hemco_sa() {
         -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 00:00:00|g" HEMCO_sa_Time.rc
 
     rm -f .error_status_file.txt
+    
     # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -o ${RunName}_HEMCO_Prior_Emis.log \
-        -p $SchedulerPartition \
-        -W ${RunName}_HEMCO_Prior_Emis.run
-    wait
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime ${RunDirs}/${HEMCOdir}/${RunName}_HEMCO_Prior_Emis.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
