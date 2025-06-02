@@ -54,13 +54,21 @@ setup_spinup() {
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
-<<<<<<< HEAD
         -e "s:##:#:g" run.template > ${SpinupName}.run
-=======
-        -e "s:##:#:g" ch4_run.template >${SpinupName}.run
->>>>>>> imi-2.0.0
+    # If PBS, we need to re-source the environment and cd into the directory
+    # (unlike the Harvard cluster, these variables are not remembered when a new
+    # job is submitted)
+    if [[ "$SchedulerType" == "PBS" ]]; then
+        sed -i "/#PBS -m/a \
+source ${InversionPath}/${GEOSChemEnv}\\
+cd ${RunDirs}/${runDir}/
+" ${SpinupName}.run
+    fi
     chmod 755 ${SpinupName}.run
     rm -f run.template
+
+    # Convert residual SBATCH commands to PBS
+    convert_sbatch_to_pbs
 
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
@@ -88,7 +96,7 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime ${RunName}_Spinup.run
+    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime ${RunDirs}/spinup_run/${RunName}_Spinup.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
