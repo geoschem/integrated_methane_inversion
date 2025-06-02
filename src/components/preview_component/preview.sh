@@ -37,15 +37,7 @@ run_preview() {
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
-    if [[ "$SchedulerType" = "slurm" || "$SchedulerType" = "PBS" ]]; then
-        rm -f .preview_error_status.txt
-        chmod +x $preview_file
-        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
-        # check for any errors
-        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
-    else
-        python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache
-    fi
+    python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
     # check if sbatch commands exited with non-zero exit code
