@@ -342,9 +342,9 @@ add_new_tracer() {
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
     GcNewLine='\
-      - ${Species}_'$istr
+      - '${Species}'_'$istr
     sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
-    GcPrevLine='- ${Species}_'$istr
+    GcPrevLine='- '${Species}'_'$istr
 
     # Add lines to species_database.yml
     SpcNextLine='CHBr3:'
@@ -355,19 +355,19 @@ add_new_tracer() {
         bg_vv="4.0e-6"
         fullname="Carbon dioxide"
     fi
-    SpcNewLines='${Species}_'$istr':\n  << : *${Species}properties\n  Background_VV: ${bg_vv}\n  FullName: ${fullname}'
+    SpcNewLines=${Species}'_'$istr':\n  << : *'${Species}'properties\n  Background_VV: '${bg_vv}'\n  FullName: '${fullname}
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
     # Add lines to HEMCO_Config.yml
     HcoNewLine1='\
-* SPC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
+* SPC_'${Species}'_'$istr' - - - - - - '${Species}'_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_${Species}_'$istr
+    HcoPrevLine1='SPC_'${Species}'_'$istr
 
     HcoNewLine2='\
-0 ${Species}_Emis_Prior_'$istr' - - - - - - ${Species}_'$istr' '$SFnum' 1 500'
+0 '${Species}'_Emis_Prior_'$istr' - - - - - - '${Species}'_'$istr' '$SFnum' 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-    HcoPrevLine2='${Species}_'$istr' '$SFnum' 1 500'
+    HcoPrevLine2=''${Species}'_'$istr' '$SFnum' 1 500'
 
     HcoNewLine3='\
 '$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
@@ -375,9 +375,9 @@ add_new_tracer() {
     HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
 
     HcoNewLine4='\
-* BC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
+* BC_'${Species}'_'$istr' - - - - - - '${Species}'_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-    HcoPrevLine4='BC_${Species}_'$istr
+    HcoPrevLine4='BC_'${Species}'_'$istr
 
     # Add new Perturbations.txt and update for non prior runs
     cp Perturbations.txt Perturbations_${istr}.txt
@@ -405,6 +405,13 @@ run_jacobian() {
         -e "s:{KalmanMode}:${KalmanMode}:g" \
         -e "s:{EndDate}:${EndDate}:g" \
         -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+    if [[ "$SchedulerType" == "PBS" ]]; then
+        sed -i "/pwd -P/a \
+source ${InversionPath}/${GEOSChemEnv}\\
+cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
+        sed -i -e "s:SLURM_ARRAY_TASK_ID:PBS_ARRAY_INDEX:g" \
+            -e "s:\$(pwd -P):${RunDirs}/jacobian_runs:g" jacobian_runs/run_jacobian_simulations.sh
+    fi
 
     popd
 
@@ -426,7 +433,7 @@ run_jacobian() {
 
         # create lowbg restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
-        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate $Species
         cd ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/
         if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
             mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
