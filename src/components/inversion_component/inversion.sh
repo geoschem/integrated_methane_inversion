@@ -18,6 +18,7 @@ setup_inversion() {
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
+    mkdir -p inversion/src
     if "$LognormalErrors"; then
         mkdir -p inversion/data_converted_prior
         mkdir -p inversion/data_geoschem_prior
@@ -47,7 +48,7 @@ setup_inversion() {
         -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
         -e "s:{NUM_JACOBIAN_TRACERS}:${NumJacobianTracers}:g" \
         -e "s:{OUTPUT_PATH}:${OutputPath}:g" \
-        -e "s:{STATE_VECTOR_PATH}:../StateVector.nc:g" \
+        -e "s:{STATE_VECTOR_PATH}:${InversionPath}/${RunName}/StateVector.nc:g" \
         -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
         -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
         -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \
@@ -85,7 +86,7 @@ run_inversion() {
     InvCPU="${InversionCPUs:-$RequestedCPUs}"
     InvTime="${InversionTime:-$RequestedTime}"
     # Execute inversion driver script
-    submit_job $SchedulerType false $InvMem $InvCPU $InvTime run_inversion.sh $FirstSimSwitch
+    submit_job $SchedulerType false $InvMem $InvCPU $InvTime ${RunDirs}/inversion/run_inversion.sh $FirstSimSwitch
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
