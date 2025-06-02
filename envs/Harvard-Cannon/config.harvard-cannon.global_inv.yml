@@ -229,8 +229,8 @@ BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
 BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-HemcoPriorEmisDryRun: true
-SpinupDryrun: true
-ProductionDryRun: true
-PosteriorDryRun: true
-BCdryrun: true
+HemcoPriorEmisDryRun: false
+SpinupDryrun: false
+ProductionDryRun: false
+PosteriorDryRun: false
+BCdryrun: false
