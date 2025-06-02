@@ -147,25 +147,23 @@ echo "# TROPOMI/blended processor version(s): ${TROPOMI_PROCESSOR_VERSION}" >>"$
 # Download TROPOMI or blended dataset from AWS
 mkdir -p -v ${RunDirs}
 satelliteCache=${RunDirs}/satellite_data
-if "$isAWS"; then
-    mkdir -p -v $satelliteCache
 
-    if [[ "$SatelliteProduct" == "BlendedTROPOMI" ]]; then
-        downloadScript=src/utilities/download_blended_TROPOMI.py
-    elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
-        downloadScript=src/utilities/download_TROPOMI.py
-    else
-        printf "$SatelliteProduct is not currently supported for download --HON"
-    fi
+mkdir -p -v $satelliteCache
 
-    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $tropomiCache
-
+if [[ "$SatelliteProduct" == "BlendedTROPOMI" ]]; then
+    downloadScript=src/utilities/download_blended_TROPOMI.py
+elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
+    downloadScript=src/utilities/download_TROPOMI.py
 else
-    # use existing tropomi data and create a symlink to it
-    if [[ ! -L $satelliteCache ]]; then
-        ln -s $DataPathObs $satelliteCache
-    fi
+    printf "$SatelliteProduct is not currently supported for download --HON"
 fi
+
+# submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $satelliteCache
+
+# # use existing tropomi data and create a symlink to it
+# if [[ ! -L $satelliteCache ]]; then
+#     ln -s $DataPathObs $satelliteCache
+# fi
 
 # Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
 python src/utilities/test_TROPOMI_dir.py $satelliteCache
