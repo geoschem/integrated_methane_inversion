@@ -71,29 +71,29 @@ def apply_operator(operator, params, config):
 
 if __name__ == "__main__":
 
-    config = yaml.load(open(sys.argv[1]), Loader=yaml.FullLoader)
-    startday = sys.argv[2]
-    endday = sys.argv[3]
-    lonmin = float(sys.argv[4])
-    lonmax = float(sys.argv[5])
-    latmin = float(sys.argv[6])
-    latmax = float(sys.argv[7])
-    n_elements = int(sys.argv[8])
-    species = sys.argv[9]
-    satellite_cache = sys.argv[10]
-    satellite_product = sys.argv[11]
-    use_water_obs = sys.argv[12]
-    isPost = sys.argv[13]
-    period_i = int(sys.argv[14])
-    build_jacobian = sys.argv[15]
-    viz_prior = sys.argv[16]
+    workdir = sys.argv[1]
+    config = yaml.load(open(sys.argv[2]), Loader=yaml.FullLoader)
+    startday = sys.argv[3]
+    endday = sys.argv[4]
+    lonmin = float(sys.argv[5])
+    lonmax = float(sys.argv[6])
+    latmin = float(sys.argv[7])
+    latmax = float(sys.argv[8])
+    n_elements = int(sys.argv[9])
+    species = sys.argv[10]
+    satellite_cache = sys.argv[11]
+    satellite_product = sys.argv[12]
+    use_water_obs = sys.argv[13]
+    isPost = sys.argv[14]
+    period_i = int(sys.argv[15])
+    build_jacobian = sys.argv[16]
+    viz_prior = sys.argv[17]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
 
     # Configuration
-    workdir = "."
     if build_jacobian.lower() == "true":
         build_jacobian = True
     else:
@@ -114,6 +114,7 @@ if __name__ == "__main__":
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
         vizdir = f"{workdir}/data_visualization_posterior"
+
     xlim = [lonmin, lonmax]
     ylim = [latmin, latmax]
     gc_startdate = np.datetime64(datetime.datetime.strptime(start, "%Y-%m-%d %H:%M:%S"))
