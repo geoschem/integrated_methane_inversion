@@ -42,15 +42,14 @@ submit_slurm_job() {
             -t $RequestedTime \
             -p $SchedulerPartition \
             -o imi_output.tmp \
-            -W ${@:2}; wait;
+            -W ${@:5}; wait;
     else
         sbatch -N 1 \
             --mem $RequestedMemory \
             -c $RequestedCPUs \
             -t $RequestedTime \
             -p $SchedulerPartition \
-            -o imi_output.tmp \
-            -W ${@:2}; wait;
+            -W ${@:5}; wait;
     fi
 }
 
@@ -63,11 +62,11 @@ submit_pbs_job() {
     if [[ $1 = "true" ]]; then
         qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
             -l walltime=$RequestedTime -q devel -o imi_output.tmp \
-            -Wblock=true -- ${@:2}; wait;
+            -Wblock=true -- ${@:5}; wait;
     else
         qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
             -l walltime=$RequestedTime -q devel \
-            -Wblock=true -- ${@:2}; wait;
+            -Wblock=true -- ${@:5}; wait;
     fi
 }
 
@@ -94,7 +93,7 @@ convert_sbatch_to_pbs() {
         echo "    ${f}"
 
         # First, insert needed sites at the top of every file
-        if grep -q "PBS -l site=needed" $file; then
+        if ! grep -q "PBS -l site=needed" $file; then
             awk -i inplace 'FNR==NR{ if (/^##SBATCH/) p=NR; next} 1; FNR==p{ print "##PBS -l site=needed='${SitesNeeded}'" }' ${f} ${f}
             awk -i inplace 'FNR==NR{ if (/^#SBATCH/) p=NR; next} 1; FNR==p{ print "#PBS -l site=needed='${SitesNeeded}'" }' ${f} ${f}
         fi
@@ -104,12 +103,19 @@ convert_sbatch_to_pbs() {
             -e "s/SBATCH -N /PBS -l nodes=/g" \
             -e "s/SBATCH -c /PBS -l ncpus=/g" \
             -e "s/SBATCH --mem /PBS -l mem=/g" \
+            -e "s/SBATCH --mem=/PBS -l mem=/g" \
             -e "s/SBATCH -t /PBS -l walltime=/g" \
             -e "s/SBATCH -n /PBS -l nodes=1:ppn=/g" \
             -e "s/SBATCH --ntasks-per-node/PBS -l nodes=1:ppn/g" \
             -e "s/SBATCH -p /PBS -q /g" \
             -e "s/SBATCH -o /PBS -o /g" \
             -e "s/SBATCH --mail-type=END/PBS -m e/g" ${f}
+    done
+
+    # Get files containing SLURM_CPUS
+    sed -i -e "s/SLURM_ARRAY_TASK_ID/PBS_ARRAY_INDEX/g" ${current_dir}/src/geoschem_run_scripts/run_jacobian_simulations.sh
+    sed -i '/^export OMP_NUM_THREADS=\$SLURM_CPUS_PER_TASK/s/^/# /' ${current_dir}/src/geoschem_run_scripts/run.template
+
     done
 }
 
