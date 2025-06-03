@@ -2,7 +2,11 @@ import os
 import numpy as np
 import xarray as xr
 import pandas as pd
-from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
+from src.inversion_scripts.utils import (
+    check_is_OH_element, 
+    check_is_BC_element,
+    mixing_ratio_conv_factor,
+)
 
 
 # common utilities for using different operators
@@ -54,9 +58,9 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     gc_data = xr.open_dataset(filename)
     LON = gc_data["lon"].values
     LAT = gc_data["lat"].values
-    CH4 = gc_data["SpeciesConcVV_CH4"].values[0, :, :, :]
-    CH4 = CH4 * 1e9  # Convert to ppb
-    CH4 = np.einsum("lij->jil", CH4)
+    species = gc_data[f"SpeciesConcVV_{config['Species']}"].values[0, :, :, :]
+    species = species * mixing_ratio_conv_factor(config["Species"])  # Convert to ppb
+    species = np.einsum("lij->jil", species)
     gc_data.close()
 
     # Read PEDGE from the LevelEdgeDiags collection
@@ -71,7 +75,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     dat["lon"] = LON
     dat["lat"] = LAT
     dat["PEDGE"] = PEDGE
-    dat["CH4"] = CH4
+    dat[config["Species"]] = species
 
     # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
     if build_jacobian:
@@ -140,17 +144,19 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         ds_sensi = xr.concat(ds_all, "element")
         ds_sensi.load()
 
-        sensitivities = ds_sensi["ch4"].values
+        sensitivities = ds_sensi[config["Species"]].values
         # Reshape so the data have dimensions (lon, lat, lev, grid_element)
         sensitivities = np.einsum("klji->ijlk", sensitivities)
-        dat["jacobian_ch4"] = sensitivities
+        dat["jacobian_species"] = sensitivities
 
         # get emis base, which is also BC base
         ds_emis_base = concat_tracers(
             "0001", gc_date, config, [0], n_elements, baserun=True
         )
         ds_emis_base.load()
-        dat["emis_base_ch4"] = np.einsum("klji->ijlk", ds_emis_base["ch4"].values)
+        dat["emis_base_species"] = np.einsum(
+            "klji->ijlk", ds_emis_base[config["Species"]].values
+        )
 
         # get OH base, run RunName_0000
         # it's always here whether OptimizeOH is true or not
@@ -159,7 +165,9 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
             "0000", gc_date, config, [0], n_elements, baserun=True
         )
         ds_oh_base.load()
-        dat["oh_base_ch4"] = np.einsum("klji->ijlk", ds_oh_base["ch4"].values)
+        dat["oh_base_species"] = np.einsum(
+            "klji->ijlk", ds_oh_base[config["Species"]].values
+        )
 
     return dat
 
@@ -220,7 +228,9 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     if baserun:
         keepvars = ["SpeciesConcVV_CH4"]
 
-    ds_concat = xr.concat([dsmf[v] for v in keepvars], "element").rename("ch4")
+    ds_concat = xr.concat(
+        [dsmf[v] for v in keepvars], "element"
+    ).rename(config["Species"])
     ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
     ds_concat = ds_concat.isel(time=gc_date.hour, drop=True)  # subset hour of interest
     if not baserun:
@@ -228,7 +238,7 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     return ds_concat
 
 
-def get_gridcell_list(lons, lats):
+def get_gridcell_list(lons, lats, species):
     """
     Create a 2d array of dictionaries, with each dictionary representing a GC gridcell.
     Dictionaries also initialize the fields necessary to store for tropomi data
@@ -251,7 +261,7 @@ def get_gridcell_list(lons, lats):
                     "lon": lons[i],
                     "iGC": i,
                     "jGC": j,
-                    "methane": [],
+                    species: [],
                     "p_sat": [],
                     "dry_air_subcolumns": [],
                     "apriori": [],
@@ -361,12 +371,12 @@ def merge_pressure_grids(p_sat, p_gc):
     return merged
 
 
-def remap(gc_CH4, data_type, p_merge, edge_index, first_gc_edge):
+def remap(gc_species, data_type, p_merge, edge_index, first_gc_edge):
     """
     Remap GEOS-Chem methane to the TROPOMI vertical grid.
 
     Arguments
-        gc_CH4        [float]   : Methane from GEOS-Chem
+        gc_species        [float]   : Methane from GEOS-Chem
         p_merge       [float]   : Merged TROPOMI + GEOS-Chem pressure levels, from merge_pressure_grids()
         data_type     [int]     : Labels for pressure edges of merged grid. 1=TROPOMI, 2=GEOS-Chem, from merge_pressure_grids()
         edge_index    [int]     : Indexes of pressure edges, from merge_pressure_grids()
@@ -377,32 +387,32 @@ def remap(gc_CH4, data_type, p_merge, edge_index, first_gc_edge):
     """
 
     # Define CH4 concentrations in the layers of the merged pressure grid
-    CH4 = np.zeros(
+    species = np.zeros(
         len(p_merge) - 1,
     )
-    CH4.fill(np.nan)
+    species.fill(np.nan)
     k = 0
     for i in range(first_gc_edge, len(p_merge) - 1):
-        CH4[i] = gc_CH4[k]
+        species[i] = gc_species[k]
         if data_type[i + 1] == 2:
             k = k + 1
     if first_gc_edge > 0:
-        CH4[:first_gc_edge] = CH4[first_gc_edge]
+        species[:first_gc_edge] = species[first_gc_edge]
 
     # Calculate the pressure-weighted mean methane for each TROPOMI layer
     delta_p = p_merge[:-1] - p_merge[1:]
-    sat_CH4 = np.zeros(12)
-    sat_CH4.fill(np.nan)
+    sat_species = np.zeros(12)
+    sat_species.fill(np.nan)
     for i in range(len(edge_index) - 1):
         start = edge_index[i]
         end = edge_index[i + 1]
-        sum_conc_times_pressure_weights = sum(CH4[start:end] * delta_p[start:end])
+        sum_conc_times_pressure_weights = sum(species[start:end] * delta_p[start:end])
         sum_pressure_weights = sum(delta_p[start:end])
-        sat_CH4[i] = (
+        sat_species[i] = (
             sum_conc_times_pressure_weights / sum_pressure_weights
         )  # pressure-weighted average
 
-    return sat_CH4
+    return sat_species
 
 
 def remap_sensitivities(sensi_lonlat, data_type, p_merge, edge_index, first_gc_edge):
@@ -417,38 +427,38 @@ def remap_sensitivities(sensi_lonlat, data_type, p_merge, edge_index, first_gc_e
         first_gc_edge [int]     : Index of first GEOS-Chem pressure edge in merged grid, from merge_pressure_grids()
 
     Returns
-        sat_deltaCH4  [float]   : GEOS-Chem methane sensitivities in TROPOMI pressure coordinates
+        sat_deltaspecies  [float]   : GEOS-Chem methane sensitivities in TROPOMI pressure coordinates
     """
 
     # Define DeltaCH4 in the layers of the merged pressure grid, for all perturbed state vector elements
     n_elem = sensi_lonlat.shape[1]
-    deltaCH4 = np.zeros((len(p_merge) - 1, n_elem))
-    deltaCH4.fill(np.nan)
+    deltaspecies = np.zeros((len(p_merge) - 1, n_elem))
+    deltaspecies.fill(np.nan)
     k = 0
     for i in range(first_gc_edge, len(p_merge) - 1):
-        deltaCH4[i, :] = sensi_lonlat[k, :]
+        deltaspecies[i, :] = sensi_lonlat[k, :]
         if data_type[i + 1] == 2:
             k = k + 1
     if first_gc_edge > 0:
-        deltaCH4[:first_gc_edge, :] = deltaCH4[first_gc_edge, :]
+        deltaspecies[:first_gc_edge, :] = deltaspecies[first_gc_edge, :]
 
     # Calculate the weighted mean DeltaCH4 for each layer, for all perturbed state vector elements
     delta_p = p_merge[:-1] - p_merge[1:]
     delta_ps = np.transpose(np.tile(delta_p, (n_elem, 1)))
-    sat_deltaCH4 = np.zeros((12, n_elem))
-    sat_deltaCH4.fill(np.nan)
+    sat_deltaspecies = np.zeros((12, n_elem))
+    sat_deltaspecies.fill(np.nan)
     for i in range(len(edge_index) - 1):
         start = edge_index[i]
         end = edge_index[i + 1]
         sum_conc_times_pressure_weights = np.sum(
-            deltaCH4[start:end, :] * delta_ps[start:end, :], 0
+            deltaspecies[start:end, :] * delta_ps[start:end, :], 0
         )
         sum_pressure_weights = np.sum(delta_p[start:end])
-        sat_deltaCH4[i, :] = (
+        sat_deltaspecies[i, :] = (
             sum_conc_times_pressure_weights / sum_pressure_weights
         )  # pressure-weighted average
 
-    return sat_deltaCH4
+    return sat_deltaspecies
 
 
 def nearest_loc(query_location, reference_grid, tolerance=0.5):
