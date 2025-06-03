@@ -126,7 +126,7 @@ DoPreview: false
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-# ewl: changed from defaults of 32, 32000, 32, 64000, "0-24:00", Cannon partitions
+# NOTE: may need to adjust
 RequestedCPUs: 24
 RequestedMemory: 16000
 InversionCPUs: 24
@@ -187,15 +187,14 @@ AIRS: false
 ## Settings for running on local cluster
 ##------------------------------------------------------------------
 
-## Path for IMI runs and output
-OutputPath: "/work/noaa/co2/ewlundgr/run/imi"
+## Path for IMI runs and output (customize to your own directory)
+OutputPath: "/path/to/your/imi/output/directory"
 
 ## Path to GEOS-Chem input data
-DataPath: "/work/noaa/co2/ewlundgr/data/ExtData"
+DataPath: "/work/noaa/co2/METEO/GEOS-Chem/ExtData"
 
 ## Path to TROPOMI Data
-#DataPathTROPOMI: "/work2/noaa/co2/input/TROPOMI_GOSAT_Blended_Product"
-DataPathTROPOMI: "/work/noaa/co2/ewlundgr/data/imi/ch4/tropomi/blended"
+DataPathTROPOMI: "/work/noaa/co2/METEO/IMI/CH4/blended"
 
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
@@ -204,7 +203,7 @@ CondaFile: "${HOME}/scripts/conda_load.sh"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
-GEOSChemEnv: "envs/MSSU-Orion/gcclassic.intel2022.orion.env"
+GEOSChemEnv: "envs/MSU-HPC_Orion/gcclassic.intel2022.orion.env"
 
 ## Download initial restart file from AWS S3?
 ##   NOTE: Must have AWS CLI enabled
