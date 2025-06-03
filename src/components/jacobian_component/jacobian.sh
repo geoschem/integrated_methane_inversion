@@ -409,8 +409,7 @@ run_jacobian() {
         sed -i "/pwd -P/a \
 source ${InversionPath}/${GEOSChemEnv}\\
 cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
-        sed -i -e "s:SLURM_ARRAY_TASK_ID:PBS_ARRAY_INDEX:g" \
-            -e "s:\$(pwd -P):${RunDirs}/jacobian_runs:g" jacobian_runs/run_jacobian_simulations.sh
+        sed -i -e "s:\$(pwd -P):${RunDirs}/jacobian_runs:g" jacobian_runs/run_jacobian_simulations.sh
     fi
 
     popd
