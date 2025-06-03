@@ -80,6 +80,15 @@ run_hemco_prior_emis() {
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
     sed -i -e "/#SBATCH --mem=15000/d" runHEMCO.sh
+    # If PBS, we need to re-source the environment and cd into the directory
+    # (unlike the Harvard cluster, these variables are not remembered when a new
+    # job is submitted)
+    if [[ "$SchedulerType" == "PBS" ]]; then
+        sed -i "/#PBS -l site=needed=/a\\
+source ${InversionPath}/${GEOSChemEnv}\\
+cd ${RunDirs}/${HEMCOdir}
+" runHEMCO.sh
+    fi
     sed -i '/.*hemco_standalone.*/a\
 retVal=$?\
 if [ $retVal -ne 0 ]; then\
