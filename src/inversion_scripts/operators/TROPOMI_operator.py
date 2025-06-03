@@ -23,9 +23,10 @@ from src.inversion_scripts.operators.operator_utilities import (
 )
 
 
-def apply_average_tropomi_operator(
+def apply_average_satellite_operator(
     filename,
-    BlendedTROPOMI,
+    species,
+    satellite_product,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -42,7 +43,7 @@ def apply_average_tropomi_operator(
 
     Arguments
         filename       [str]        : TROPOMI netcdf data file to read
-        BlendedTROPOMI [bool]       : if True, use blended TROPOMI+GOSAT data
+        satellite_product [bool]       : if True, use blended TROPOMI+GOSAT data
         n_elements     [int]        : Number of state vector elements
         gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and TROPOMI
         gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and TROPOMI
@@ -66,8 +67,8 @@ def apply_average_tropomi_operator(
     """
 
     # Read TROPOMI data
-    assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
-    if BlendedTROPOMI:
+    assert isinstance(satellite_product, bool), "satellite_product is not a bool"
+    if satellite_product:
         TROPOMI = read_blended(filename)
     else:
         TROPOMI = read_tropomi(filename)
@@ -75,7 +76,7 @@ def apply_average_tropomi_operator(
         print(f"Skipping {filename} due to file processing issue.")
         return TROPOMI
 
-    if BlendedTROPOMI:
+    if satellite_product:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
         sat_ind = filter_blended(
             TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
@@ -303,7 +304,7 @@ def apply_average_tropomi_operator(
 
 def apply_tropomi_operator(
     filename,
-    BlendedTROPOMI,
+    satellite_product,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -320,7 +321,7 @@ def apply_tropomi_operator(
 
     Arguments
         filename       [str]        : TROPOMI netcdf data file to read
-        BlendedTROPOMI [bool]       : if True, use blended TROPOMI+GOSAT data
+        satellite_product [bool]       : if True, use blended TROPOMI+GOSAT data
         n_elements     [int]        : Number of state vector elements
         gc_startdate   [datetime64] : First day of inversion period, for GEOS-Chem and TROPOMI
         gc_enddate     [datetime64] : Last day of inversion period, for GEOS-Chem and TROPOMI
@@ -344,8 +345,8 @@ def apply_tropomi_operator(
     """
 
     # Read TROPOMI data
-    assert isinstance(BlendedTROPOMI, bool), "BlendedTROPOMI is not a bool"
-    if BlendedTROPOMI:
+    assert isinstance(satellite_product, bool), "satellite_product is not a bool"
+    if satellite_product:
         TROPOMI = read_blended(filename)
     else:
         TROPOMI = read_tropomi(filename)
@@ -353,7 +354,7 @@ def apply_tropomi_operator(
         print(f"Skipping {filename} due to file processing issue.")
         return TROPOMI
 
-    if BlendedTROPOMI:
+    if satellite_product:
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
         sat_ind = filter_blended(
             TROPOMI, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
