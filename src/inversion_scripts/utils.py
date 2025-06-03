@@ -55,13 +55,12 @@ def mixing_ratio_conv_factor(species):
 
 def species_molar_mass(species):
     if species == "CH4":
-        M = 0.01604  # Molar mass of methane [kg/mol]
+        return 0.01604  # Molar mass of methane [kg/mol]
     elif species == "CO2":
-        M = 0.04401
+        return 0.04401 # Molar mass of CO2 [kg/mol]
     else:
         raise ValueError(f"{species} is not recognized. Please add a line to "
                          "species_molar_mass in src/inversion_scripts/utils.py")
-
 
 def sum_total_emissions(emissions, areas, mask):
     """
@@ -400,7 +399,6 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
-
     valid_idx = (
         (blended_data["longitude"] > xlim[0])
         & (blended_data["longitude"] < xlim[1])
@@ -566,14 +564,12 @@ def read_blended(filename):
                             - Vertical pressure profile
     """
     assert "BLND" in filename, f"BLND not in filename {filename}, but a blended function is being used"
-
     try:
         # Initialize dictionary for Blended TROPOMI+GOSAT data
         dat = {}
 
         # Extract data from netCDF file to our dictionary
         with xr.open_dataset(filename) as blended_data:
-
             dat["CH4"] = blended_data["methane_mixing_ratio_blended"].values[:]
             dat["longitude"] = blended_data["longitude"].values[:]
             dat["latitude"] = blended_data["latitude"].values[:]
@@ -587,7 +583,6 @@ def read_blended(filename):
             dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
             dat["surface_classification"] = (blended_data["surface_classification"].values[:].astype("uint8") & 0x03).astype(int)
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
-
             # Remove "Z" from time so that numpy doesn't throw a warning
             utc_str = blended_data["time_utc"].values[:]
             dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
@@ -622,6 +617,7 @@ def read_and_filter_satellite(
     ylim,
     use_water_obs
 ):
+
     # Read TROPOMI data
     assert satellite_str in ["BlendedTROPOMI", "TROPOMI", "Other"], "satellite_str  is not one of BlendedTROPOMI, TROPOMI, or Other"
     if satellite_str  == "BlendedTROPOMI":
@@ -646,6 +642,7 @@ def read_and_filter_satellite(
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
         sat_ind = filter_tropomi(satellite, xlim, ylim, 
                                  gc_startdate, gc_enddate, use_water_obs)
+
     else:
         print("Other data source filtering is not currently supported --HON")
         sys.exit(1)
