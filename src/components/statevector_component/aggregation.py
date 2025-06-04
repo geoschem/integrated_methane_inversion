@@ -14,6 +14,7 @@ from src.inversion_scripts.imi_preview import (
 )
 
 # clustering
+from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 # country centroids
@@ -60,6 +61,7 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
     Z = Z[valid_indices]
 
     # include country information
+    weights = [10, 10, 1]
     if cluster_by_country:
         centroids = get_country_centroids(data, valid_indices)
         if centroids is not None:
@@ -68,12 +70,19 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
 
             # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
             features = np.column_stack((X, Y, Z, Cx, Cy))
+            weights += [10, 10]
         else:
             # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
             features = np.column_stack((X, Y, Z))
     else:
         # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
         features = np.column_stack((X, Y, Z))
+    
+    # Normalize the features and apply weighting to give more weight 
+    # to latitude and longitude and less to sensitivity. This makes
+    # the clustering more spatially coherent
+    features_scaled = StandardScaler().fit_transform(features)    
+    features_weighted = features_scaled * np.array(weights)
 
     # Cluster the features using KMeans
     # Mini-Batch k-means is much faster, but with less accuracy
@@ -82,7 +91,7 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
     else:
         kmeans = KMeans(n_clusters=num_clusters, random_state=0)
 
-    cluster_labels = kmeans.fit_predict(features)
+    cluster_labels = kmeans.fit_predict(features_weighted)
 
     # fill labels on corresponding valid indices of label array
     # add 1 to labels so they start with 1
