@@ -31,10 +31,10 @@ mkdir -p "${workDir}/tropomi-boundary-conditions"
 mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
 
-# Get GCClassic v14.4.1 and create the run directory
+# Get GCClassic v14.6.1 and create the run directory
 git clone https://github.com/geoschem/GCClassic.git
 cd GCClassic
-git checkout 14.4.1
+git checkout 14.6.1
 git submodule update --init --recursive
 cd run
 runDir="gc_run"
