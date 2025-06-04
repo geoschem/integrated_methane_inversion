@@ -10,8 +10,6 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``isAWS``
-     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``UseSlurm``
      - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
        Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
@@ -301,7 +299,9 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``HourlyCH4``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
-     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
+     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in geoschem_config.yml. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
+   * - ``DoObsPack``
+     - Boolean to save out the ObsPack diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against NOAA ObsPack data. The path to those data must be specified in geoschem_config.yml. See the `ObsPack diagnostic <https://geos-chem.readthedocs.io/en/stable/gcclassic-user-guide/obspack.html>`_ documentation for details. Default value is ``false``. A sample python notebook for plotting GEOS-Chem against ObsPack can be found at ``src/notebooks/NOAA_ObsPack_MBL_compare.ipnyb``.
    * - ``GOSAT``
      - Boolean to turn on the GOSAT observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
    * - ``TCCON``
@@ -350,5 +350,3 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem boundary condition files. Default value is ``true``.
-
-Note for ``*DryRun`` options: If you are running on AWS, you will be charged if your ec2 instance is not in the us-east-1 region. If running on a local cluster you must have AWS CLI enabled or you can modify the ``./download_data.py`` commands in ``setup_imi.sh`` to use ``washu`` instead of ``aws``. See the `GEOS-Chem documentation <https://geos-chem.readthedocs.io/en/latest/inputs/dry-run.html>`_ for more details.

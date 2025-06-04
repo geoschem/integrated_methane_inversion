@@ -3,7 +3,6 @@
 
 ## General
 RunName: "Test_Permian_1week"
-isAWS: true
 UseSlurm: true
 SafeMode: true
 S3Upload: false
@@ -172,9 +171,13 @@ PerturbValueBCs: 10.0
 ## inversions
 HourlyCH4: true
 
+## IMI validation
+## Turn on ObsPack diagnostic in GEOS-Chem?
+DoObsPack: false
+
 ## Turn on planeflight diagnostic in GEOS-Chem?
 ## For use in comparing GEOS-Chem against planeflight data. The path
-## to those data must be specified in input.geos.
+## to those data must be specified in geoschem_config.yml.
 PLANEFLIGHT: false
 
 ## Turn on old observation operators in GEOS-Chem?

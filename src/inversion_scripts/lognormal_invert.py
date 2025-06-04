@@ -191,25 +191,37 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # For the buffer elems, BCs, and OH elements
         # we apply a different Sa value
         # In the most basic we only generate Sa for buffer elements
-        sa_normal = sa_buffer**2 * np.ones(
+        base_sa_normal = sa_buffer**2 * np.ones(
             (num_normal_elems - (BC_element_num + OH_element_num), 1)
         )
 
         # conditionally add BC and OH elements
         if optimize_bcs:
             bc_errors = sa_bc**2 * np.ones((BC_element_num, 1))
-            sa_normal = np.concatenate((sa_normal, bc_errors), axis=0)
+            base_sa_normal = np.concatenate((base_sa_normal, bc_errors), axis=0)
+            
         if optimize_oh:
             oh_errors = sa_oh**2 * np.ones((OH_element_num, 1))
-            sa_normal = np.concatenate((sa_normal, oh_errors), axis=0)
+            # weight the OH term(s) following Maasakkers et al. (2019)
+            oh_weight = OH_element_num / (num_normal_elems - OH_element_num) 
+            oh_errors_constraint = (oh_weight * sa_oh**2) * np.ones((OH_element_num, 1))
+            sa_normal = np.concatenate((base_sa_normal, oh_errors), axis=0) # unweighted Sa vector
+            sa_normal_constraint = np.concatenate((base_sa_normal, oh_errors_constraint), axis=0) # weighted Sa vector
+        else:
+            sa_normal = base_sa_normal.copy()
+            sa_normal_constraint = base_sa_normal.copy()
 
         # concatenate lognormal prior errors with normal prior errors
         lnsa_arr = np.concatenate((lnsa, sa_normal), axis=0)
+        lnsa_arr_constraint = np.concatenate((lnsa, sa_normal_constraint), axis=0)
 
-        # Create lnSa matrix
+        # Create two separate lnSa matrices
         lnsa = np.zeros((n + num_normal_elems, n + num_normal_elems))
-        np.fill_diagonal(lnsa, lnsa_arr)
+        lnsa_constraint = lnsa.copy()
+        np.fill_diagonal(lnsa, lnsa_arr) # unweighted
+        np.fill_diagonal(lnsa_constraint, lnsa_arr_constraint) # weighted
         invlnsa = np.linalg.inv(lnsa)
+        invlnsa_constraint = np.linalg.inv(lnsa_constraint)
 
         # we start with lnxa using the prior values (scale factors of ln(1))
         lnxn = lnxa
@@ -244,11 +256,11 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
             # Compute the next xn_update
             term1 = gamma_K_prime_transpose_Soinv @ K_prime
-            term2 = (1 + kappa) * invlnsa
+            term2 = (1 + kappa) * invlnsa_constraint
             inv_term = np.linalg.inv(term1 + term2)
 
             term3 = gamma_K_prime_transpose_Soinv @ (y_ybkg_diff - K_full @ xn)
-            term4 = invlnsa @ (lnxn - lnxa)
+            term4 = invlnsa_constraint @ (lnxn - lnxa)
 
             # put it all together to calculate lnxn_update
             lnxn_update = lnxn + inv_term @ (term3 - term4)
@@ -271,7 +283,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # Calculate averaging kernel and degrees of freedom for signal
         K_primeT_so = gamma * np.transpose(K_prime) @ Soinv
+        # posterior error covariance matrix (uses unweighted Sa)
         lns = np.linalg.inv(K_primeT_so @ K_prime + invlnsa)
+        # Averaging kernel (uses unweighted Sa)
         G = lns @ K_primeT_so
         ak = G @ K_prime
         dofs = np.trace(ak)
