@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -61,8 +61,9 @@ def get_satellite_data(
             dictionary of the extracted values
     """
     # satellite data dictionary
-    satellite_data = {"lat": [], "lon": [], species: [], "swir_albedo": []}
-
+    satellite_data = {"lat": [], "lon": [], species: [], "swir_albedo": [],
+                      "time" : []}
+    
     # Load the satellite data
     satellite, sat_ind = read_and_filter_satellite(
         file_path, satellite_str, startdate_np64, enddate_np64, xlim, ylim,
@@ -94,7 +95,6 @@ def imi_preview(
     # ----------------------------------
     # Setup
     # ----------------------------------
-
     # Read config file
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
     for key in config.keys():
@@ -113,12 +113,14 @@ def imi_preview(
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
         config, 
+        species,
         state_vector_path, 
         preview_dir, 
         satellite_cache, 
         preview=True, 
         kf_index=None
     )
+
     mask = state_vector_labels <= last_ROI_element
 
     # ----------------------------------
@@ -176,7 +178,6 @@ def imi_preview(
     # ----------------------------------
     # Output
     # ----------------------------------
-
     # Write preview diagnostics to text file
     outputtextfile = open(os.path.join(preview_dir, "preview_diagnostics.txt"), "w+")
     outputtextfile.write("##" + outstring6 + "\n")
@@ -237,14 +238,14 @@ def imi_preview(
     # Plot observations
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    xch4_min, xch4_max = dynamic_range(ds["xch4"].values)
+    species_min, species_max = dynamic_range(ds[species].values)
     plot_field(
         ax,
         ds[species],
         cmap="Spectral_r",
         plot_type="pcolormesh",
-        vmin=xch4_min,
-        vmax=xch4_max,
+        vmin=species_min,
+        vmax=species_max,
         lon_bounds=None,
         lat_bounds=None,
         title=f"Satellite $X_{species}$",
@@ -390,7 +391,6 @@ def estimate_averaging_kernel(
     # ----------------------------------
     # Setup
     # ----------------------------------
-
     # Open the state vector file
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
@@ -446,7 +446,6 @@ def estimate_averaging_kernel(
     # ----------------------------------
     # Observations in region of interest
     # ----------------------------------
-
     # Paths to satellite data files
     satellite_files = [f for f in os.listdir(satellite_cache) if ".nc" in f]
     satellite_paths = [os.path.join(satellite_cache, f) for f in satellite_files]
@@ -498,15 +497,15 @@ def estimate_averaging_kernel(
         )
         for file_path in satellite_paths
     )
+
     # Remove any problematic observation dicts (eg. corrupted data file)
     observation_dicts = list(filter(None, observation_dicts))
-
     for dict in observation_dicts:
         lat.extend(dict["lat"])
         lon.extend(dict["lon"])
         xspecies.extend(dict[species])
         albedo.extend(dict["swir_albedo"])
-        trtime.extend(obs_dict["time"])
+        trtime.extend(dict["time"])
 
     # Assemble in dataframe
     df = pd.DataFrame()
@@ -644,7 +643,7 @@ def estimate_averaging_kernel(
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
 
-    print("\n" + outstring2)
+        print("\n" + outstring2)
 
     # Other parameters
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
@@ -689,7 +688,6 @@ def estimate_averaging_kernel(
     m_superi = np.array(m_superi)
     k = alpha * (Mair * L * g / (Mspecies * U * p))
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
-
     # Places with 0 superobs should be 0
     a = np.where(np.equal(m_superi, 0), float(0), a)
 
