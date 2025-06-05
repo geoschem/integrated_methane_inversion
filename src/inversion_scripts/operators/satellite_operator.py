@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -7,6 +8,8 @@ from src.inversion_scripts.utils import (
     read_and_filter_satellite,
     mixing_ratio_conv_factor,
     get_strdate,
+    check_is_OH_element,
+    check_is_BC_element,
 )
 from src.inversion_scripts.operators.operator_utilities import (
     get_gc_lat_lon,
@@ -30,7 +33,9 @@ def apply_average_satellite_operator(
     ylim,
     gc_cache,
     build_jacobian,
-    sensi_cache,
+    period_i,
+    config,
+    use_water_obs=False
 ):
     """
     Apply the averaging satellite operator to map GEOS-Chem data to satellite observation space.
@@ -46,7 +51,9 @@ def apply_average_satellite_operator(
         ylim              [float]      : Latitude bounds for simulation domain
         gc_cache          [str]        : Path to GEOS-Chem output data
         build_jacobian    [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
-        sensi_cache       [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        period_i       [int]        : kalman filter period
+        config         [dict]       : dict of the config file
+        use_water_obs  [bool]       : if True, use observations over water
 
     Returns
         output            [dict]       : Dictionary with:
@@ -61,35 +68,45 @@ def apply_average_satellite_operator(
 
     # Read satellite data
     satellite, sat_ind = read_and_filter_satellite(
-        filename, satellite_product, gc_startdate, gc_enddate, xlim, ylim)
+        filename, satellite_product, gc_startdate, gc_enddate, 
+        xlim, ylim, use_water_obs)
     
     # Number of satellite observations
     n_obs = len(sat_ind[0])
     print("Found", n_obs, "satellite observations.")
-
+    
     # get the lat/lons of gc gridcells
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
-
     # Define time threshold (hour 00 after the inversion period)
-    date_after_inversion = str(gc_enddate + np.timedelta64(1, 'D'))[:10].replace('-', '')
+    date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
+        "-", ""
+    )
     time_threshold = f"{date_after_inversion}_00"
-
     # map satellite obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
-    obs_mapped_to_gc = average_satellite_observations(satellite, species, gc_lat_lon, sat_ind, time_threshold)
+    obs_mapped_to_gc = average_satellite_observations(
+        satellite, species, gc_lat_lon, sat_ind, time_threshold)
     n_gridcells = len(obs_mapped_to_gc)
-
     if build_jacobian:
         # Initialize Jacobian K
         jacobian_K = np.zeros([n_gridcells, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
 
+        pertf = os.path.expandvars(
+            f'{config["OutputPath"]}/{config["RunName"]}/'
+            f"archive_perturbation_sfs/pert_sf_{period_i}.npz"
+        )
+
+        emis_perturbations_dict = np.load(pertf)
+        emis_perturbations = emis_perturbations_dict["effective_pert_sf"]
+
     # create list to store the dates/hour of each gridcell
     all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
     all_strdate = list(set(all_strdate))
-
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
+    all_date_gc = read_all_geoschem(
+        all_strdate, gc_cache, n_elements, config, build_jacobian
+    )
 
     # Initialize array with n_gridcells rows and 5 columns. Columns are 
     # satellite gas, GEOSChem gas, longitude, latitude, observation counts
@@ -131,31 +148,120 @@ def apply_average_satellite_operator(
 
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:
-            # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-            sensi_lonlat = GEOSCHEM["Sensitivities"][
-                gridcell_dict["iGC"], gridcell_dict["jGC"], :, :
-            ]
-            # Map the sensitivities to satellite pressure levels
-            sat_deltaspecies = remap_sensitivities(
-                sensi_lonlat,
-                merged["data_type"],
-                merged["p_merge"],
-                merged["edge_index"],
-                merged["first_gc_edge"],
-            )  # mixing ratio, unitless
-            # Tile the satellite averaging kernel
-            avkern_tiled = np.transpose(np.tile(avkern, (n_elements, 1)))
-            # Tile the satellite dry air subcolumns
-            dry_air_subcolumns_tiled = np.transpose(
-                np.tile(dry_air_subcolumns, (n_elements, 1))
-            )  # mol m-2
-            # Derive the change in column-averaged mixing ratios that TROPOMI would 
-            # see over this ground cell
-            jacobian_K[i, :] = np.sum(
-                avkern_tiled * sat_deltaspecies * dry_air_subcolumns_tiled, 0
-            ) / sum(
-                dry_air_subcolumns
-            )  # mixing ratio, unitless
+    
+            # TODO: Eliminate redundant code mapping GC to
+            #       TROPOMI when build_jacobian=True
+
+            if config["OptimizeOH"]:
+                vars_to_xspecies = ["jacobian_species", 
+                                    "emis_base_species", 
+                                    "oh_base_species"]
+            else:
+                vars_to_xspecies = ["jacobian_species", "emis_base_species"]
+
+            xspecies = {}
+
+            for v in vars_to_xspecies:
+                # Get GEOS-Chem jacobian ch4 at this lat/lon, for all vertical levels and state vector elements
+                jacobian_lonlat = GEOSCHEM[v][
+                    gridcell_dict["iGC"], gridcell_dict["jGC"], :, :
+                ]
+
+                # Map the sensitivities to satellite pressure levels
+                sat_deltaspecies = remap_sensitivities(
+                    jacobian_lonlat,
+                    merged["data_type"],
+                    merged["p_merge"],
+                    merged["edge_index"],
+                    merged["first_gc_edge"],
+                )  # mixing ratio, unitless
+                # Tile the satellite averaging kernel
+                avkern_tiled = np.transpose(np.tile(avkern, (n_elements, 1)))
+                # Tile the satellite dry air subcolumns
+                dry_air_subcolumns_tiled = np.transpose(
+                    np.tile(dry_air_subcolumns, (n_elements, 1))
+                )  # mol m-2
+                # Derive the change in column-averaged mixing ratios that the 
+                # satellite would see over this ground cell
+                xspecies[v] = np.sum(
+                    avkern_tiled * sat_deltaspecies * dry_air_subcolumns_tiled, 
+                    0
+                ) / sum(
+                    dry_air_subcolumns
+                )  # mixing ratio, unitless
+
+            # separate variables for convenience later
+            pert_jacobian_xspecies = xspecies["jacobian_species"]
+            emis_base_xspecies = xspecies["emis_base_species"]
+            if config["OptimizeOH"]:
+                oh_base_xspecies = xspecies["oh_base_species"]
+
+            # Calculate sensitivities and save in K matrix
+            # determine which elements are for emis,
+            # BCs, and OH
+            is_oh = np.full(n_elements, False, dtype=bool)
+            is_bc = np.full(n_elements, False, dtype=bool)
+            is_emis = np.full(n_elements, False, dtype=bool)
+
+            for e in range(n_elements):
+                i_elem = e + 1
+                # booleans for whether this element is a
+                # BC element or OH element
+                is_OH_element = check_is_OH_element(
+                    i_elem, n_elements, config["OptimizeOH"], config["isRegional"]
+                )
+
+                is_BC_element = check_is_BC_element(
+                    i_elem,
+                    n_elements,
+                    config["OptimizeOH"],
+                    config["OptimizeBCs"],
+                    is_OH_element,
+                    config["isRegional"],
+                )
+
+                is_oh[e] = is_OH_element
+                is_bc[e] = is_BC_element
+            is_emis = ~np.equal(is_oh | is_bc, True)
+
+            # fill pert base array with values
+            # array contains 1 entry for each state vector element
+            # fill array with nans
+            base_xspecies = np.full(n_elements, np.nan)
+            # fill emission elements with the base value
+            base_xspecies = np.where(is_emis, emis_base_xspecies, base_xspecies)
+            # fill BC elements with the base value, which is same as emis value
+            base_xspecies = np.where(is_bc, emis_base_xspecies, base_xspecies)
+            if config["OptimizeOH"]:
+                # fill OH elements with the OH base value
+                base_xspecies = np.where(is_oh, oh_base_xspecies, base_xspecies)
+
+            # get perturbations and calculate sensitivities
+            perturbations = np.full(n_elements, 1.0, dtype=float)
+
+            if config["OptimizeOH"]:
+                oh_perturbation = config["PerturbValueOH"]
+            else:
+                oh_perturbation = 1.0
+            if config["OptimizeBCs"]:
+                bc_perturbation = config["PerturbValueBCs"]
+            else:
+                bc_perturbation = 1.0
+
+            # fill perturbation array with OH and BC perturbations
+            perturbations[0 : is_emis.sum()] = emis_perturbations
+            perturbations = np.where(is_oh, oh_perturbation, perturbations)
+            perturbations = np.where(is_bc, bc_perturbation, perturbations)
+
+            # calculate difference
+            delta_xspecies = pert_jacobian_xspecies - base_xspecies
+
+            # calculate sensitivities
+            sensi_xspecies = delta_xspecies / perturbations
+
+            # fill jacobian array
+            jacobian_K[i, :] = sensi_xspecies
+
 
         # Save actual and virtual satellite data
         obs_GC[i, 0] = gridcell_dict[
@@ -190,7 +296,9 @@ def apply_satellite_operator(
     ylim,
     gc_cache,
     build_jacobian,
-    sensi_cache,
+    period_i,
+    config,
+    use_water_obs=False,
 ):
     """
     Apply the satellite operator to map GEOS-Chem species data to satellite observation space.
@@ -206,7 +314,9 @@ def apply_satellite_operator(
         ylim               [float]      : Latitude bounds for simulation domain
         gc_cache           [str]        : Path to GEOS-Chem output data
         build_jacobian     [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
-        sensi_cache        [str]        : If build_jacobian=True, this is the path to the GEOS-Chem sensitivity data
+        period_i       [int]            : kalman filter period
+        config         [dict]          : dict of the config file
+        use_water_obs  [bool]          : if True, use observations over water
 
     Returns
         output             [dict]       : Dictionary with one or two fields:
@@ -221,7 +331,8 @@ def apply_satellite_operator(
 
     # Read satellite data
     satellite, sat_ind = read_and_filter_satellite(
-        filename, satellite_product, gc_startdate, gc_enddate, xlim, ylim)
+        filename, satellite_product, gc_startdate, gc_enddate, 
+        xlim, ylim, use_water_obs)
 
     # Number of satellite observations
     n_obs = len(sat_ind[0])
@@ -237,7 +348,9 @@ def apply_satellite_operator(
     all_strdate = []
 
     # Define time threshold (hour 00 after the inversion period)
-    date_after_inversion = str(gc_enddate + np.timedelta64(1, 'D'))[:10].replace('-', '')
+    date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
+        "-", ""
+    )
     time_threshold = f"{date_after_inversion}_00"
 
     # For each satellite observation
@@ -251,7 +364,9 @@ def apply_satellite_operator(
     all_strdate = list(set(all_strdate))
 
     # Read GEOS_Chem data for the dates of interest
-    all_date_gc = read_all_geoschem(all_strdate, gc_cache, build_jacobian, sensi_cache)
+    all_date_gc = read_all_geoschem(
+        all_strdate, gc_cache, n_elements, config, build_jacobian
+    )
 
     # Initialize array with n_obs rows and 6 columns. Columns are satellite 
     # mixing ratio, GEOSChem mixing ratio, longitude, latitude, II, JJ
@@ -280,8 +395,12 @@ def apply_satellite_operator(
         corners_lon_index = []
         corners_lat_index = []
         for l in range(4):
-            iGC = nearest_loc(longitude_bounds[l], GEOSCHEM["lon"], tolerance=max(dlon,0.5))
-            jGC = nearest_loc(latitude_bounds[l], GEOSCHEM["lat"], tolerance=max(dlat,0.5))
+            iGC = nearest_loc(
+                longitude_bounds[l], GEOSCHEM["lon"], tolerance=max(dlon,0.5)
+            )
+            jGC = nearest_loc(
+                latitude_bounds[l], GEOSCHEM["lat"], tolerance=max(dlat,0.5)
+            )
             corners_lon_index.append(iGC)
             corners_lat_index.append(jGC)
         # If the tolerance in nearest_loc() is not satisfied, skip the observation
@@ -380,7 +499,7 @@ def apply_satellite_operator(
             if build_jacobian:
 
                 # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-                sensi_lonlat = GEOSCHEM["Sensitivities"][iGC, jGC, :, :]
+                sensi_lonlat = GEOSCHEM["jacobian_species"][iGC, jGC, :, :]
 
                 # Map the sensitivities to satellite pressure levels
                 sat_deltaspecies = remap_sensitivities(
@@ -402,7 +521,8 @@ def apply_satellite_operator(
                 # Derive the change in column-averaged mixing ratio that the 
                 # satellite would see over this ground cell
                 satellite_sensitivity_gridcellIndex = np.sum(
-                    avkern_tiled * sat_deltaspecies * dry_air_subcolumns_tiled, 0
+                    avkern_tiled * sat_deltaspecies * dry_air_subcolumns_tiled, 
+                    0
                 ) / sum(
                     dry_air_subcolumns
                 )  # mixing ratio, unitless
@@ -419,7 +539,10 @@ def apply_satellite_operator(
         # For global inversions, area of overlap should equal area of satellite pixel
         # This is because the GEOS-Chem grid is continuous
         if dlon > 2.0:
-            assert abs(sum(overlap_area)-polygon_satellite.area)/polygon_satellite.area < 0.01, f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_satellite.area})"
+            assert (
+                abs(sum(overlap_area)-polygon_satellite.area)/polygon_satellite.area 
+                < 0.01
+            ), f"ERROR: overlap area ({sum(overlap_area)}) /= satellite pixel area ({polygon_satellite.area})"
 
         # Save actual and virtual satellite data
         obs_GC[k, 0] = satellite[species][
@@ -446,12 +569,15 @@ def apply_satellite_operator(
 
     # Optionally return the Jacobian
     if build_jacobian:
+        print("Building Jacobian")
         output["K"] = jacobian_K
 
     return output
 
 
-def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind, time_threshold):
+def average_satellite_observations(
+        satellite, species, gc_lat_lon, sat_ind, time_threshold
+    ):
     """
     Map TROPOMI observations into appropriate gc gridcells. Then average all
     observations within a gridcell for processing. Use area weighting if
@@ -488,7 +614,7 @@ def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind, time
     gc_lons = gc_lat_lon["lon"]
     dlon = np.median(np.diff(gc_lat_lon["lon"])) # GEOS-Chem lon resolution
     dlat = np.median(np.diff(gc_lat_lon["lat"])) # GEOS-Chem lon resolution
-    gridcell_dicts = get_gridcell_list(gc_lons, gc_lats)
+    gridcell_dicts = get_gridcell_list(gc_lons, gc_lats, species)
 
     for k in range(n_obs):
         iSat = sat_ind[0][k]  # lat index
@@ -597,6 +723,9 @@ def average_satellite_observations(satellite, species, gc_lat_lon, sat_ind, time
             gridcell_dict[species], weights=gridcell_dict["observation_weights"],
         )
         # take mean of epoch times and then convert gc filename time string
+        time = pd.to_datetime(
+            datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))
+        )
         gridcell_dict["time"] = get_strdate(time, time_threshold)
         # for multi-dimensional arrays, we only take the average across the 0 axis
         gridcell_dict["p_sat"] = np.average(
