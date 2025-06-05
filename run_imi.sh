@@ -51,8 +51,9 @@ PythonEnv=$(grep '^PythonEnv:' ${ConfigFile} |
     sed 's/^[[:space:]]*//' |
     tr -d '"')
 
-# Load conda/mamba/micromamba e.g. ~/.bashrc
+# Load conda/mamba/micromamba and append the current directory to PYTHONPATH
 source $PythonEnv
+export PYTHONPATH=${PYTHONPATH}:$(pwd -P)
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
