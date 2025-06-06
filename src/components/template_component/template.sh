@@ -107,15 +107,14 @@ setup_template() {
     # Use cropped met fields (add the region to both METDIR and the met files)
     if [ "$RegionID" != "" ]; then
 	if [ "$Res" != "0.125x0.15625" ]; then
-           sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
-           sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
-           sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+           sed -i -e "s:GEOS_${Res}_NA:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+           sed -i -e "s:\$RES.NA:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
         # Modify the METDIR for 0.125x0.15625 simulation
         elif [ "$Res" = "0.125x0.15625" ]; then
-           sed -i -e "s:GEOS_0.25x0.3125\/GEOS_FP:GEOS_0.25x0.3125_${RegionID}\/GEOS_FP:g" HEMCO_Config.rc.gmao_metfields_0125
-	   OLD="GEOS_0.125x0.15625/GEOS_FP"
+           sed -i -e "s:GEOS_0.25x0.3125_NA\/GEOS_FP:GEOS_0.25x0.3125_${RegionID}\/GEOS_FP:g" HEMCO_Config.rc.gmao_metfields_0125
+           OLD="GEOS_0.125x0.15625_NA/GEOS_FP"
            NEW="GEOS_0.125x0.15625_${RegionID}/GEOS_FP_DerivedWinds"
-	   sed -i "s|$OLD|$NEW|g" HEMCO_Config.rc.gmao_metfields_0125
+           sed -i "s|$OLD|$NEW|g" HEMCO_Config.rc.gmao_metfields_0125
            sed -i '/METDIR/d' HEMCO_Config.rc
 	fi
    fi
