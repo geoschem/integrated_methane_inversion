@@ -111,12 +111,6 @@ convert_sbatch_to_pbs() {
             -e "s/SBATCH -o /PBS -o /g" \
             -e "s/SBATCH --mail-type=END/PBS -m e/g" ${f}
     done
-
-    # Get files containing SLURM_CPUS
-    sed -i -e "s/SLURM_ARRAY_TASK_ID/PBS_ARRAY_INDEX/g" ${current_dir}/src/geoschem_run_scripts/run_jacobian_simulations.sh
-    sed -i '/^export OMP_NUM_THREADS=\$SLURM_CPUS_PER_TASK/s/^/# /' ${current_dir}/src/geoschem_run_scripts/run.template
-
-    done
 }
 
 # Description: 
