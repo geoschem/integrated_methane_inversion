@@ -56,9 +56,9 @@ run_hemco_prior_emis() {
     elif [ "$Res" == "0.125x0.15625" ]; then
        resnum="5"
     else
-	   printf "\nERROR: Grid resolution ${Res} is not supported by the IMI."
-	   printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
-	   exit 1
+	printf "\nERROR: Grid resolution ${Res} is not supported by the IMI."
+	printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+	exit 1
     fi
     HEMCOconfig=${RunTemplate}/HEMCO_Config.rc
 

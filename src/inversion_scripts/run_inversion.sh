@@ -24,7 +24,6 @@ printf "\n=== PARSING CONFIG FILE ===\n"
 
 invPath={INVERSION_PATH}
 configFile={CONFIG_FILE}
-runPath={RUNDIRS}
 
 # Get configuration
 #  This defines $StartDate, $EndDate, $nBufferClusters, $RunName
@@ -35,7 +34,7 @@ runPath={RUNDIRS}
 #  Make sure $PrecomputedJacobian is true, and then re-run this script
 #   (or run_imi.sh with only the $DoInversion module switched on in config.yml).
 
-eval $(python ${invPath}/src/utilities/parse_yaml.py ${runPath}/${configFile})
+eval $(python ${invPath}/src/utilities/parse_yaml.py ${invPath}/${configFile})
 
 #=======================================================================
 # Configuration (these settings generated on initial setup)
@@ -154,11 +153,11 @@ else
 
 fi
 
-python jacobian.py ${OutputPath}/${RunName}/config_${RunName}.yml $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $UseWaterObs $isPost $period_i $buildJacobian False; wait
+python jacobian.py ${invPath}}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $UseWaterObs $isPost $period_i $buildJacobian False; wait
 if "$LognormalErrors"; then
     # for lognormal error visualization of the prior we sample the prior run
     # without constructing the jacobian matrix
-    python jacobian.py ${OutputPath}/${RunName}/config_${RunName}.yml $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI  $UseWaterObs $isPost $period_i False True; wait
+    python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI  $UseWaterObs $isPost $period_i False True; wait
 fi
 printf " DONE -- jacobian.py\n\n"
 

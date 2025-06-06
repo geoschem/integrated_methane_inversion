@@ -63,7 +63,7 @@ source $CondaFile
 
 # Activate Conda environment
 printf "\nActivating conda environment: ${CondaEnv}\n"
-conda activate ${CondaEnv} 
+conda activate ${CondaEnv}
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
@@ -128,7 +128,7 @@ fi
 
 # Path to inversion setup
 InversionPath=$(pwd -P)
-ConfigPath=${RunDirs}/config_${RunName}.yml
+ConfigPath=${InversionPath}/${ConfigFile}
 
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
@@ -245,6 +245,10 @@ fi
 if [[ -f ${InversionPath}/imi_output.log ]]; then
     cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
+
+# copy config file to run directory
+cd $InversionPath
+cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
 if "$S3Upload"; then
