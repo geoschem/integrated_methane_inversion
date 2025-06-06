@@ -72,6 +72,8 @@ if ! "$isAWS"; then
     # If scheduler is PBS, get the list of needed sites
     if [[ "$SchedulerType" = "PBS" ]]; then
         convert_sbatch_to_pbs
+        sed -i -e "s/SLURM_ARRAY_TASK_ID/PBS_ARRAY_INDEX/g" ${OutputPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh
+        sed -i '/^export OMP_NUM_THREADS=\$SLURM_CPUS_PER_TASK/s/^/# /' ${OutputPath}/src/geoschem_run_scripts/run.template
     fi
 fi
 
