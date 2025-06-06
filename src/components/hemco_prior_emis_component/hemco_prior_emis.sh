@@ -62,7 +62,7 @@ run_hemco_prior_emis() {
 
     # Create HEMCO standalone directory
     cmd="${metNum}\n${resnum}\n${HEMCOconfig}\n${RunDirs}\n${HEMCOdir}\nn\n"
-    printf ${cmd} | ./createRunDir.sh >>createHemcoDir.log 2>&1
+    printf ${cmd} | ./createRunDir.sh >> createHemcoDir.log 2>&1
     rm -f createHemcoDir.log
     printf "\nCreated ${RunDirs}/${HEMCOdir}\n"
 
@@ -165,7 +165,7 @@ run_hemco_sa() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     # Remove soil absorption uptake from total emissions
-    pushd OutputDir
+    pushd $OutputDir
     for file in HEMCO_sa_diagnostics*.nc; do
         exclude_soil_sink $file $file
     done
