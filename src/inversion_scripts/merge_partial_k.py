@@ -30,6 +30,8 @@ def calc_so(obs_error, obs_GC):
     obs_error = [obs if obs > 0 else 1 for obs in obs_error]
     return obs_error
 
+from functools import partial
+print = partial(print, flush = True)
 
 def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
     """
@@ -55,16 +57,18 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
     """
     # Get observed and GEOS-Chem-simulated TROPOMI columns
     files = [f for f in np.sort(os.listdir(satdat_dir)) if "TROPOMI" in f]
-    tropomi = np.array([])
-    geos_prior = np.array([])
 
     # Initialize dictionary to store observational errors
     so_dict = {}
     for obs_err in obs_errs:
         key = f"so_{obs_err}"
-        so_dict[key] = np.array([])
+        so_dict[key] = [None for i in range(len(files))]
+    tropomi_list = [None for i in range(len(files))]
+    geos_prior_list = [None for i in range(len(files))]
+    K_list = [None for i in range(len(files))]
 
     for i, f in enumerate(files):
+        print(f'\r{f}',end='')
         # Get paths
         pth = os.path.join(satdat_dir, f)
         # Get same file from bc folder
@@ -87,8 +91,8 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
         obs_GC = obs_GC[ind[0], :]  # TROPOMI and GEOS-Chem data within bounds
 
         # concatenate full jacobian, obs, so, and prior
-        tropomi = np.concatenate((tropomi, obs_GC[:, 0]))
-        geos_prior = np.concatenate((geos_prior, obs_GC[:, 1]))
+        tropomi_list[i] = obs_GC[:, 0]
+        geos_prior_list[i] = obs_GC[:, 1]
 
         # read K from reference dir if precomp_K is true
         if precomp_K:
@@ -98,21 +102,22 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
             K_temp = dat_ref["K"][ind[0]]
         else:
             K_temp = obj["K"][ind[0]]
-
-        # append partial Ks to build full jacobian
-        if i == 0:
-            K = K_temp
-        else:
-            K = np.append(K, K_temp, axis=0)
+            K_list[i] = K_temp
 
         for obs_err in obs_errs:
             key = f"so_{obs_err}"
             obs_error = calc_so(obs_err, obs_GC)
-            so_dict[key] = np.concatenate((so_dict[key], obs_error))
+            so_dict[key][i] = obs_error
+
+    K = np.concatenate(list(filter(None, K_list)), axis=0)
+    geos_prior = np.concatenate(list(filter(None, geos_prior_list)), axis=0)
+    tropomi = np.concatenate(list(filter(None, tropomi_list)), axis=0)
+    for k,v in so_dict.items():
+        so_dict[k] = np.concatenate(list(filter(None, v)), axis=0)
 
     gc_ch4_prior = np.asmatrix(geos_prior)
-
     obs_tropomi = np.asmatrix(tropomi)
+
     return gc_ch4_prior, obs_tropomi, K, so_dict
 
 
