@@ -138,7 +138,7 @@ mkdir -p -v ${RunDirs}
 
 # Set/Collect information about the GEOS-Chem version, IMI version,
 # and TROPOMI processor version
-GEOSCHEM_VERSION=14.6.1
+GEOSCHEM_VERSION=14.6.2
 IMI_VERSION=$(git describe --tags)
 TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
     sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |
