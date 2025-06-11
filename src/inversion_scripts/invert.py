@@ -65,8 +65,11 @@ def do_inversion(
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
-    # This assumes 0.25x0.3125 and 0.5x0.625 simulations are always regional
-    if "0.25x0.3125" in res:
+    # This assumes 0.125x0.15625, 0.25x0.3125, and 0.5x0.625 simulations are always regional
+    if "0.125x0.15625" in res:
+        degx = 4 * 0.15625
+        degy = 4 * 0.125
+    elif "0.25x0.3125" in res:
         degx = 4 * 0.3125
         degy = 4 * 0.25
     elif "0.5x0.625" in res:

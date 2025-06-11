@@ -11,10 +11,14 @@ create_statevector() {
     printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
-    if [ "$RegionID" == "" ]; then
-        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+    if "$isRegional"; then
+        if [ "$Res" = "0.125x0.15625" ]; then
+            LandCoverSuffix="HEMCO/CH4/v2025-03/landcover/IMERG_land_sea_mask_0125x015625.nc"
+        else
+            LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        fi
     else
-        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
     LandCoverFile="${DataPath}/${LandCoverSuffix}"
 

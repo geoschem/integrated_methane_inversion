@@ -95,7 +95,8 @@ Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
-##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
+##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
+##   0.5x0.625, 2.0x2.5, or 4.0x5.0
 Res: "2.0x2.5"
 
 ## Meteorology

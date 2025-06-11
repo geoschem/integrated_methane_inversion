@@ -158,8 +158,12 @@ def make_state_vector_file(
     lc = xr.load_dataset(land_cover_pth)
     hd = xr.load_dataset(hemco_diag_pth)
 
-    # Select / group fields together
-    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
+    # Select/ group fields together
+    if config['Res'] == '0.125x0.15625':
+        lc = lc["landseamask"] #100% = all water and 0% = all land
+        lc = np.round( -(lc/100.-1), decimals=5)
+    else:
+        lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop_vars("time").squeeze()
 
     # Check compatibility of region of interest
