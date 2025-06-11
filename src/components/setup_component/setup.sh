@@ -156,33 +156,49 @@ setup_imi() {
     ##=======================================================================
     if "$UseGCHP"; then
         CSgridDir="${RunDirs}/CS_grids"
-        if [ ! -d "${CSgridDir}" ]; then
-            mkdir -p -v ${CSgridDir}
+        if [ ! -d "$CSgridDir" ]; then
+            mkdir -p -v "$CSgridDir"
         fi
-        cd $CSgridDir
+        cd "$CSgridDir"
 
-        # create a netCDF file containing CS grid coordinates
+        # Create CS grid file only if it doesn't exist
         gridfpath="${CSgridDir}/grids.c${CS_RES}.nc"
-        generate_grid $CS_RES $gridfpath
+        if [ -f "$gridfpath" ]; then
+            echo "CS grid file already exists: $gridfpath"
+        else
+            echo "Creating CS grid file: $gridfpath"
+            generate_grid "$CS_RES" "$gridfpath"
+        fi
 
-        # generating regridding weights needed
-        gridspec-create gcs ${CS_RES} > /dev/null 2>&1
+        # Generate regridding weights only if not already present
         dst_grid="c${CS_RES}_gridspec.nc"
         regridding_method="conserve"
         weightsfile="regrid_weights_${native}_to_c${CS_RES}_conserve.nc"
-        if "$metDir"=="GEOS_FP"; then
-            gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 721 1152 > /dev/null 2>&1
-            src_grid="regular_lat_lon_721x1152.nc"
-        elif "$metDir"=="MERRA2"; then
-            gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 361 576 > /dev/null 2>&1
-            src_grid="regular_lat_lon_361x576.nc"
-        fi
-        ESMF_RegridWeightGen -s $src_grid -d $dst_grid -m $regridding_method -w $weightsfile > /dev/null 2>&1
-        rm PET*
 
-        cp ${InversionPath}/src/utilities/regrid_tropomi-BC-restart_gcc2gchp.sh .
+        if [ -f "$weightsfile" ]; then
+            echo "Regridding weights file already exists: $weightsfile"
+        else
+            echo "Generating destination grid spec: $dst_grid"
+            gridspec-create gcs "$CS_RES" > /dev/null 2>&1
+
+            if [ "$metDir" = "GEOS_FP" ]; then
+                gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 721 1152 > /dev/null 2>&1
+                src_grid="regular_lat_lon_721x1152.nc"
+            elif [ "$metDir" = "MERRA2" ]; then
+                gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 361 576 > /dev/null 2>&1
+                src_grid="regular_lat_lon_361x576.nc"
+            else
+                echo "Unsupported metDir: $metDir"
+                exit 1
+            fi
+
+            echo "Generating regridding weights file: $weightsfile"
+            ESMF_RegridWeightGen -s "$src_grid" -d "$dst_grid" -m "$regridding_method" -w "$weightsfile" > /dev/null 2>&1
+            rm -f PET*
+
+            cp ${InversionPath}/src/utilities/regrid_tropomi-BC-restart_gcc2gchp.sh .
+        fi
     fi
-    cd -
 
     ##=======================================================================
     ## Create or copy state vector file

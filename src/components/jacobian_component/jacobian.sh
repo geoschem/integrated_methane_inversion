@@ -213,6 +213,7 @@ create_simulation_dir() {
     else
         sed -e "s:namename:${name}:g" ch4_run.template >${name}.run
         rm -f ch4_run.template
+    fi
     chmod 755 ${name}.run
 
     ### Turn on observation operators if requested, only for base run
@@ -331,7 +332,7 @@ create_simulation_dir() {
     # instead of all advected species
     if [ "$UseGCHP" != "true" ]; then
         sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
-        if "$isRegiona"; then
+        if "$isRegional"; then
             sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
         fi
     fi

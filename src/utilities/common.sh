@@ -69,8 +69,9 @@ generate_grid() {
     python - "$1" "$2" <<EOF
 import sys
 import gcpy
+import xarray as xr
 
-CS_RES = sys.argv[1]
+CS_RES = int(sys.argv[1])
 output_file = sys.argv[2]
 
 grid = gcpy.gen_grid(CS_RES)
@@ -84,8 +85,9 @@ grid = grid.rename({
     'lon_b': 'corner_lons'
 })
 
+grid_out = xr.Dataset({})
 # Add area as a DataArray
-grid['area'] = xr.DataArray(
+grid_out['area'] = xr.DataArray(
     area,
     dims=['nf', 'Ydim', 'Xdim'],
     coords={
@@ -97,8 +99,25 @@ grid['area'] = xr.DataArray(
         'units': 'm2'
     }
 )
-
-grid.to_netcdf(output_file)
+grid_out['lats'].attrs = dict(long_name='Latitude', units='degree_north')
+grid_out['lons'].attrs = dict(long_name='Longitude', units='degree_east')
+grid_out['corner_lons'] = xr.DataArray(
+    grid['corner_lons'].values,
+    dims=['nf', 'YCdim', 'XCdim'],
+    attrs={
+        'long_name': 'Longitude',
+        'units': 'degree_east'
+    }
+)
+grid_out['corner_lats'] = xr.DataArray(
+    grid['corner_lats'].values,
+    dims=['nf', 'YCdim', 'XCdim'],
+    attrs={
+        'long_name': 'Latitude',
+        'units': 'degree_north'
+    }
+)
+grid_out.to_netcdf(output_file)
 EOF
 }
 

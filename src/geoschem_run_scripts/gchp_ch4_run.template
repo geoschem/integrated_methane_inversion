@@ -1,18 +1,6 @@
 #!/bin/bash
-
-##SBATCH -n 96
-##SBATCH -N 2
+##SBATCH -N 1
 ##SBATCH -c 1
-##SBATCH --exclusive
-##-------------------------------------
-## Use this for 1-month runs (default)
-##SBATCH -t 0-8:00
-##------------------------------------
-## Use this for 1-year runs
-##SBATCH -t 1-0:00
-##------------------------------------
-##SBATCH -p sapphire,huce_cascade,seas_compute,shared
-##SBATCH --mem=180000
 ##SBATCH --mail-type=END
 
 ###############################################################################
@@ -46,7 +34,6 @@ echo "Writing output to ${log}"
 # Update config files, set restart symlink, load run env, and do sanity checks
 source setCommonRunSettings.sh > ${log}
 source setRestartLink.sh >> ${log}
-source gchp.env >> ${log}
 source checkRunSettings.sh >> ${log}
 
 # Cannon-specific setting to get around connection issues at high # cores

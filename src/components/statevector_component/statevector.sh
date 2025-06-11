@@ -8,7 +8,11 @@
 # Usage:
 #   create_statevector
 create_statevector() {
-    printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    if "$UseGCHP"; then
+        printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+    else
+        printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    fi
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then

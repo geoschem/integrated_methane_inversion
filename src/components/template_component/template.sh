@@ -42,7 +42,7 @@ setup_template() {
     fi
 
     if "$UseGCHP"; then
-        if [ "${metNum}" == "1"]; then
+        if [ "${metNum}" == "1" ]; then
             cmd="5\n2\n${metNum}\n${RunDirs}\n${runDir}\nn\n"
         else
             # GEOSFP: Use daily files pre-processed for GEOS-Chem
@@ -96,12 +96,12 @@ setup_template() {
         sed -i -e "s/Run_Duration=\"[0-9]{8} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
             -e 's/^CS_RES=.*$/CS_RES="${CS_RES}"/' \
             -e 's/^TOTAL_CORES=.*$/TOTAL_CORES="${TOTAL_CORES}"/' \
-            -e 's/^NUM_NODES=.*$/NUM_NODES="${NUM_NODES}"/' \ 
+            -e 's/^NUM_NODES=.*$/NUM_NODES="${NUM_NODES}"/' \
             -e 's/^NUM_CORES_PER_NODE=.*$/NUM_CORES_PER_NODE="${NUM_CORES_PER_NODE}"/' \
             -e 's/^AutoUpdate_Diagnostics=.*$/AutoUpdate_Diagnostics=OFF/' \
             -e 's/^Diag_Monthly=.*$/Diag_Monthly="0"/' \
             -e 's/^Diag_Frequency=.*$/Diag_Frequency="240000"/' \
-            -e 's/^Diag_Duration=.*$/Diag_Duration="240000"/' setComminRunSettings.sh
+            -e 's/^Diag_Duration=.*$/Diag_Duration="240000"/' setCommonRunSettings.sh
     else
         # Modify geoschem_config.yml based on settings in config.yml
         sed -i -e "s:20190101:${StartDate}:g" \
@@ -242,6 +242,7 @@ setup_template() {
             printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
             exit 999
         fi
+    fi
     printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build for details\n\n"
 
     # Navigate back to top-level directory
