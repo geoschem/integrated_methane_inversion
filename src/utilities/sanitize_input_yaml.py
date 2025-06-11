@@ -15,8 +15,10 @@ config_required = [
     "UseSlurm",
     "SafeMode",
     "S3Upload",
+    "UseGCHP",
     "StartDate",
     "EndDate",
+    "RunDuration",
     "SpinupMonths",
     "BlendedTROPOMI",
     "isRegional",
@@ -107,7 +109,12 @@ conditional_dict["S3Upload"] = [
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
 conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
-
+conditional_dict["UseGCHP"] = [
+    "CS_RES",
+    "TOTAL_CORES",
+    "NUM_NODES",
+    "NUM_CORES_PER_NODE"
+]
 
 def raise_error_message(var):
     """

@@ -373,6 +373,183 @@ def plot_field(
         plt.savefig(full_save_path, format="png", bbox_inches="tight")
         print(f"Plot saved to {full_save_path}")
 
+def plot_field_gchp(
+    ax,
+    corner_lons,
+    corner_lats,
+    field,
+    cmap,
+    plot_type="pcolormesh",
+    lon_bounds=None,
+    lat_bounds=None,
+    levels=None,
+    vmin=None,
+    vmax=None,
+    title=None,
+    point_sources=None,
+    cbar_label=None,
+    mask=None,
+    only_ROI=False,
+    state_vector_labels=None,
+    last_ROI_element=None,
+    is_regional=True,
+    save_path=None,
+    clean_title=None,
+):
+    """
+    Function to plot inversion results.
+
+    Arguments
+        ax         : matplotlib axis object
+        corner_lons: xarray dataarraycorner_lons in GCHP
+        corner_lats: xarray dataarray corner_lats in GCHP
+        field      : xarray dataarray
+        cmap       : colormap to use, e.g. 'viridis'
+        plot_type  : 'pcolormesh' or 'imshow'
+        lon_bounds : [lon_min, lon_max]
+        lat_bounds : [lat_min, lat_max]
+        levels     : number of colormap levels (None for continuous)
+        vmin       : colorbar lower bound
+        vmax       : colorbar upper bound
+        title      : plot title
+        point_sources: plot given point sources on map
+        cbar_label : colorbar label
+        mask       : mask for region of interest, boolean dataarray
+        only_ROI   : zero out data outside the region of interest, true or false
+        save_path  : path to save the plot
+        clean_title: title without special characters
+    """
+
+    # Select map features
+    if is_regional:
+        oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
+        lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
+        states_provinces_50m = cartopy.feature.NaturalEarthFeature(
+            "cultural", "admin_1_states_provinces_lines", "50m"
+        )
+        ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
+        ax.add_feature(oceans_50m, facecolor="none", edgecolor="black")
+        ax.add_feature(lakes_50m, facecolor="none", edgecolor="black")
+        ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
+    else:
+        ax.coastlines(resolution="110m")
+
+    # Show only ROI values?
+    if only_ROI:
+        field = field.where((state_vector_labels <= last_ROI_element))
+
+    # Plot
+    if plot_type == "pcolormesh":
+        for face in range(6):
+            x = corner_lons.isel(nf=face)
+            y = corner_lats.isel(nf=face)
+            v = field.squeeze().isel(nf=face)
+            mesh = ax.pcolormesh(
+                x, y, v, 
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                transform=ccrs.PlateCarree()
+            )
+        # Add colorbar
+        cbar = ax.get_figure().colorbar(
+            mesh,
+            ax=ax,
+            label=cbar_label,
+            fraction=0.041,
+            pad=0.04
+        )
+        
+    elif plot_type == "imshow":
+        for face in range(6):
+            x = corner_lons.isel(nf=face)
+            y = corner_lats.isel(nf=face)
+            v = field.squeeze().isel(nf=face)
+
+            img = ax.imshow(
+                v,
+                origin="lower",
+                extent=[x.min(), x.max(), y.min(), y.max()],
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                transform=ccrs.PlateCarree(),
+                interpolation="none"  
+            )
+
+        # Mimic xarray's automatic colorbar
+        cbar = ax.get_figure().colorbar(
+            img,
+            ax=ax,
+            fraction=0.041,
+            pad=0.04
+        )
+        cbar.set_label(cbar_label)
+    else:
+        raise ValueError('plot_type must be "pcolormesh" or "imshow"')
+
+    # Zoom on ROI?
+    if lon_bounds and lat_bounds:
+        extent = [lon_bounds[0], lon_bounds[1], lat_bounds[0], lat_bounds[1]]
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+
+    # Show boundary of ROI?
+    if mask is not None:
+        for face in range(6):
+            x = corner_lons.isel(nf=face)
+            y = corner_lats.isel(nf=face)
+            m = mask.squeeze().isel(nf=face)
+
+            ax.contour(
+                x, y, m,
+                levels=[1],
+                colors="k",
+                linewidths=4,
+                transform=ccrs.PlateCarree()
+            )
+
+    # Remove duplicated axis labels
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, alpha=0)
+    gl.right_labels = False
+    gl.top_labels = False
+
+    # Title
+    if title:
+        ax.set_title(title)
+
+    # Marks any specified high-resolution coordinates on the preview observation density map
+    if point_sources:
+        for coord in point_sources:
+            ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
+        point = Line2D(
+            [0],
+            [0],
+            label="point source",
+            marker="x",
+            markersize=10,
+            markeredgecolor="black",
+            markerfacecolor="k",
+            linestyle="",
+        )
+        ax.legend(handles=[point])
+
+    # Save plot
+    if save_path:
+        # Ensure the directory exists
+        os.makedirs(save_path, exist_ok=True)
+
+        # Replace spaces in the title or clean title with underscores
+        if clean_title:
+            sanitized_title = clean_title.replace(" ", "_") + ".png"
+        else:
+            sanitized_title = title.replace(" ", "_") + ".png"
+
+        # Construct the full file path
+        full_save_path = os.path.join(save_path, sanitized_title.lower())
+
+        # Save the plot
+        plt.savefig(full_save_path, format="png", bbox_inches="tight")
+        print(f"Plot saved to {full_save_path}")
 
 def plot_time_series(
     x_data,

@@ -21,10 +21,11 @@ setup_jacobian() {
 
     # make dir for jacobian ics/bcs
     mkdir -p jacobian_1ppb_ics_bcs/Restarts
-    mkdir -p jacobian_1ppb_ics_bcs/BCs
-    OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
-
+    if "$isRegions"; then
+        mkdir -p jacobian_1ppb_ics_bcs/BCs
+        OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
+    fi
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
@@ -96,6 +97,18 @@ setup_jacobian() {
     fi
 
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
+
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+    else
+        jacobian_period=1
+    fi
+
+    set -e
+    # generate gridded perturbation values for all state vector elements
+    printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
+    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+    printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
 }
 
 # Description: Create simulation directory for defined xstr
@@ -114,7 +127,11 @@ create_simulation_dir() {
     cd $runDir
 
     # Link to GEOS-Chem executable instead of having a copy in each rundir
-    ln -s ../../GEOSChem_build/gcclassic .
+    if "$UseGCHP"; then
+        ln -nsf ../../GEOSChem_build/gchp .
+    else
+        ln -nsf ../../GEOSChem_build/gcclassic .
+    fi
 
     # link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
@@ -137,6 +154,9 @@ create_simulation_dir() {
         -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
+    if "$UseGCHP"; then
+        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
+    fi
     # Determine which elements are BC perturbations
     BC_elem=false
     bcThreshold=$nElements
@@ -167,14 +187,13 @@ create_simulation_dir() {
     # Only save out hourly pressure fields to daily files for base run
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
         if "$HourlyCH4"; then
-            sed -i -e 's/'\''Restart/#'\''Restart/g' \
-                -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
         fi
-    # For all other runs, just disable Restarts
-    else
+    fi
+    # disable Restart for all runs
+    if [ "$UseGCHP" != "true" ]; then
         if "$HourlyCH4"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
         fi
@@ -188,8 +207,12 @@ create_simulation_dir() {
     fi
 
     # Create run script from template
-    sed -e "s:namename:${name}:g" ch4_run.template >${name}.run
-    rm -f ch4_run.template
+    if "$UseGCHP"; then
+        sed -e "s:namename:${name}:g" gchp_ch4_run.template >${name}.run
+        rm -f gchp_ch4_run.template
+    else
+        sed -e "s:namename:${name}:g" ch4_run.template >${name}.run
+        rm -f ch4_run.template
     chmod 755 ${name}.run
 
     ### Turn on observation operators if requested, only for base run
@@ -204,13 +227,15 @@ create_simulation_dir() {
     if is_number "$x"; then
         ### Perform dry run if requested, only for base run
         if [[ $x -eq 0 ]]; then
-            if "$ProductionDryRun"; then
-                printf "\nExecuting dry-run for production runs...\n"
-                ./gcclassic --dryrun &>log.dryrun
-                # prevent restart file from getting downloaded since
-                # we don't want to overwrite the one we link to above
-                sed -i '/GEOSChem.Restart/d' log.dryrun
-                python download_gc_data.py log.dryrun aws
+            if [ "$UseGCHP" != "true" ]; then
+                if "$ProductionDryRun"; then
+                    printf "\nExecuting dry-run for production runs...\n"
+                    ./gcclassic --dryrun &>log.dryrun
+                    # prevent restart file from getting downloaded since
+                    # we don't want to overwrite the one we link to above
+                    sed -i '/GEOSChem.Restart/d' log.dryrun
+                    python download_gc_data.py log.dryrun aws
+                fi
             fi
         fi
 
@@ -235,24 +260,19 @@ create_simulation_dir() {
                 sed -i -e "s| OH_pert_factor 1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
             else
                 # Perturb OH by hemisphere if this is a global simulation
-                # Add and edit perturbations txt file
-                cp Perturbations.txt PerturbationsOH.txt
-                sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
-                if [ $start_element -eq $((ohThreshold + 1)) ]; then
-                    OHPertNewLine="N_HEMIS    1     ${PerturbValueOH}"
-                else
-                    OHPertNewLine="S_HEMIS    2     ${PerturbValueOH}"
-                fi
-                OHPertPrevLine='DEFAULT    0     1.0'
-                sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
-
+                # Apply hemispheric OH perturbation values using mask file
+                Output_fpath="./gridded_perturbation_oh_scale.nc"
+                oh_sfs=($PerturbValueOH)
+                Hemis_mask_fpath="${DataPath}/HEMCO/MASKS/v2024-08/hemisphere_mask.01x01.nc"
+                gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath
+                
                 # Modify OH scale factor in HEMCO config
-                sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
-
-                HcoPrevLineMask='CH4_STATE_VECTOR'
-                HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
-'
-                sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+                sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
+                
+                if "$UseGCHP"; then
+                    # add entry in ExtData.rc for GCHP
+                    sed -i -e "s|^#OH_pert_factor.*|OH_pert_factor 1 N Y 2000-01-01-T00:00:00 none none oh_scale ${Output_fpath}|" ExtData.rc
+                fi
             fi
         fi
 
@@ -289,29 +309,41 @@ create_simulation_dir() {
     else
         # set 1ppb CH4 boundary conditions and restarts for all other perturbation simulations
         # Note that we use the timecycle flag C to avoid having to make additional files
-        RestartFile=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
-        BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
-        BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
-        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
+        if "$isRegional"; then
+            BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
+            BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
+            sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
+        fi
+        RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
         # create symlink to 1ppb restart file
-        ln -sf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        if "$UseGCHP"; then
+            new_restart_fpath="Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4"
+            add_jacobian_tracers_restart_for_gchp $start_element $end_element $RestartFile1ppb $new_restart_fpath
+        else
+            RestartFile=$RestartFile1ppb
+            ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        fi
         # Also, set emissions to zero for default CH4 tracer by applying ZERO scale factor (id 5)
         sed -i -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
     # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
     # instead of all advected species
-    sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
-    sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
+    if [ "$UseGCHP" != "true" ]; then
+        sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
+        if "$isRegiona"; then
+            sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
+        fi
+    fi
 
     # Initialize previous lines to search
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
     HcoPrevLine2='1 500'
-    HcoPrevLine3='Perturbations.txt - - - xy count 1'
+    HcoPrevLine3="#200N SCALE_ELEM_000N ./StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
-    PertPrevLine='DEFAULT    0     0.0'
-
+    ExtPrevLine3="#SCALE_ELEM_200N  1 N Y 2000-01-01T00:00:00 none none StateVector ./StateVector.nc"
+    
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
     if is_number "$x"; then
@@ -339,12 +371,6 @@ add_new_tracer() {
         istr="${i}"
     fi
 
-    # by default remove all emissions except for in the prior simulation
-    # and the OH perturbation simulation
-    if [ $x -gt 0 ]; then
-        sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
-    fi
-
     # Start HEMCO scale factor ID at 2000 to avoid conflicts with
     # preexisting scale factors/masks
     SFnum=$((2000 + i))
@@ -361,33 +387,28 @@ add_new_tracer() {
     SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
-    # Add lines to HEMCO_Config.yml
-    HcoNewLine1='\
-* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
-    sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_CH4_'$istr
-
-    HcoNewLine2='\
-0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
+    # Add lines for restarts to HEMCO_Config.rc
+    HcoNewLine2='0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '4/$SFnum' 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-    HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
+    HcoPrevLine2='CH4_'$istr' '4/$SFnum' 1 500'
 
-    HcoNewLine3='\
-'$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
-    sed -i "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
-    HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
+    HcoNewLine3="$SFnum SCALE_ELEM_$istr ./StateVector.nc StateVector 2000/1/1/0 C xy 1 1 $istr"
+    sed -i -e "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
+    HcoPrevLine3="$SFnum SCALE_ELEM_$istr ./StateVector.nc StateVector 2000/1/1/0 C xy 1 1 $istr"
 
-    HcoNewLine4='\
-* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
-    sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-    HcoPrevLine4='BC_CH4_'$istr
-
-    # Add new Perturbations.txt and update for non prior runs
-    cp Perturbations.txt Perturbations_${istr}.txt
-    if [ $x -gt 0 ]; then
-        PertNewLine='\
-ELEM_'$istr'  '$i'     '0.0''
-        sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
+    if [ "$UseGCHP" != "true" ]; then
+        HcoNewLine1='* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+        sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
+        HcoPrevLine1='SPC_CH4_'$istr
+        if "$isRegional"; then
+            HcoNewLine4='* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+            sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
+            HcoPrevLine4='BC_CH4_'$istr
+        fi
+    else
+        ExtNewLine3="SCALE_ELEM_$istr  1 N Y 2000-01-01T00:00:00 none none StateVector ./StateVector.nc"
+        sed -i -e "/$ExtPrevLine3/a $ExtNewLine3" HEMCO_Config.rc
+        ExtPrevLine3="SCALE_ELEM_$istr  1 N Y 2000-01-01T00:00:00 none none StateVector ./StateVector.nc"
     fi
 
 }
@@ -416,11 +437,6 @@ run_jacobian() {
     else
         jacobian_period=1
     fi
-
-    set -e
-    # update perturbation values before running jacobian simulations
-    printf "\n=== UPDATING PERTURBATION SFs ===\n"
-    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
 
     if ! "$PrecomputedJacobian"; then
 
@@ -585,4 +601,33 @@ print(nRuns)
 is_number() {
     local s="$1"
     [[ $s =~ ^[0-9]+$ ]]
+}
+
+# Description: add restarts for all Jacobian tracers for GCHP
+# Usage:
+#   add_jacobian_tracers_restart_for_gchp <start_element> <end_element> <org_restart_fpath> <new_restart_fpath>
+add_jacobian_tracers_restart_for_gchp(){
+    python3 - "$@" <<EOF
+import sys
+import xarray as xr
+
+start_element = int(sys.argv[1])
+end_element = int(sys.argv[2])
+org_restart_fpath = sys.argv[3]
+new_restart_fpath = sys.argv[4]
+
+org_restart = xr.open_dataset(org_restart_fpath)
+new_restart = org_restart.copy(deep=True)
+
+var = 'SPC_CH4'
+for i in range(start_element, end_element + 1):
+    tracer_name = f"{var}_{i:04d}"
+    new_restart[tracer_name] = new_restart[var].copy(deep=True)
+    new_restart[tracer_name].attrs['long_name'] = f"Dry mixing ratio of species CH4_{i:04d}"
+
+new_restart.to_netcdf(
+    new_restart_fpath,
+    encoding={v: {"zlib": True, "complevel": 1} for v in new_restart.data_vars},
+)
+EOF
 }

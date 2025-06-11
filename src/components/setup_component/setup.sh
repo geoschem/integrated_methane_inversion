@@ -58,11 +58,13 @@ setup_imi() {
     if [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
         metDir="GEOS_FP"
         native="0.25x0.3125"
+        metsuffix="025x03125"
         constYr="2011"
         LandCoverFileExtension="nc"
     elif [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metDir="MERRA2"
         native="0.5x0.625"
+        metsuffix="05x0625"
         constYr="2015"
         LandCoverFileExtension="nc4"
     else
@@ -71,60 +73,116 @@ setup_imi() {
         exit 1
     fi
 
-    if [ "$Res" == "0.125x0.15625" ]; then
-        gridDir="${Res}"
-        gridFile="0125x015625" 
-    elif [ "$Res" == "0.25x0.3125" ]; then
-        gridDir="${Res}"
-        gridFile="025x03125"
-    elif [ "$Res" == "0.5x0.625" ]; then
-        gridDir="${Res}"
-        gridFile="05x0625"
-    elif [ "$Res" == "2.0x2.5" ]; then
-        gridDir="2x2.5"
-        gridFile="2x25"
-    elif [ "$Res" = "4.0x5.0" ]; then
-        gridDir="4x5"
-        gridFile="4x5"
+    if [ "$UseGCHP" != "true" ]; then
+        if [ "$Res" == "0.125x0.15625" ]; then
+            gridDir="${Res}"
+            gridFile="0125x015625" 
+        elif [ "$Res" == "0.25x0.3125" ]; then
+            gridDir="${Res}"
+            gridFile="025x03125"
+        elif [ "$Res" == "0.5x0.625" ]; then
+            gridDir="${Res}"
+            gridFile="05x0625"
+        elif [ "$Res" == "2.0x2.5" ]; then
+            gridDir="2x2.5"
+            gridFile="2x25"
+        elif [ "$Res" = "4.0x5.0" ]; then
+            gridDir="4x5"
+            gridFile="4x5"
+        else
+            printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
+            printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+            exit 1
     else
-        printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-        printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
-        exit 1
+        gridDir="${native}"
+        gridFile="${metsuffix}"
     fi
     # Use cropped met for regional simulations instead of using global met
     if [ "$RegionID" != "" ]; then
         gridDir="${gridDir}_${RegionID}"
     fi
 
-    # Clone defined version of GCClassic
+    # Clone defined version of GCHP or GCClassic
     # Define path to GEOS-Chem run directory files
     cd "${InversionPath}"
-    if [ ! -d "GCClassic" ]; then
-        git clone https://github.com/geoschem/GCClassic.git
-        cd GCClassic
-        git checkout ${GEOSCHEM_VERSION}
-        git submodule update --init --recursive
-        cd ..
-    else
-        cd GCClassic
-        if grep -Fq "VERSION ${GEOSCHEM_VERSION}" CMakeLists.txt; then
-            printf "\nGCClassic already exists and is the correct version ${GEOSCHEM_VERSION}.\n"
+    if "$UseGCHP"; then
+        if [ ! -d "GCHP" ]; then
+            git clone https://github.com/geoschem/GCHP.git
+            cd GCHP
+            git checkout ${GEOSCHEM_VERSION}
+            git submodule update --init --recursive
+            cd ..
         else
-            printf "\nERROR: GCClassic already exists but is not version ${GEOSCHEM_VERSION}.\n"
-            exit 1
+            cd GCHP
+            if grep -Fq "VERSION ${GEOSCHEM_VERSION}" CMakeLists.txt; then
+                printf "\nGCHP already exists and is the correct version ${GEOSCHEM_VERSION}.\n"
+            else
+                printf "\nERROR: GCHP already exists but is not version ${GEOSCHEM_VERSION}.\n"
+                exit 1
+            fi
+            cd ..
         fi
-        cd ..
+    else
+        if [ ! -d "GCClassic" ]; then
+            git clone https://github.com/geoschem/GCClassic.git
+            cd GCClassic
+            git checkout ${GEOSCHEM_VERSION}
+            git submodule update --init --recursive
+            cd ..
+        else
+            cd GCClassic
+            if grep -Fq "VERSION ${GEOSCHEM_VERSION}" CMakeLists.txt; then
+                printf "\nGCClassic already exists and is the correct version ${GEOSCHEM_VERSION}.\n"
+            else
+                printf "\nERROR: GCClassic already exists but is not version ${GEOSCHEM_VERSION}.\n"
+                exit 1
+            fi
+            cd ..
+        fi
     fi
 
     # Define path to GEOS-Chem run directory files
+    GCHPPath="${InversionPath}/GCHP"
     GCClassicPath="${InversionPath}/GCClassic"
-    RunFilesPath="${GCClassicPath}/run"
-
+    
     # Create working directory if it doesn't exist yet
     RunDirs="${OutputPath}/${RunName}"
     if [ ! -d "${RunDirs}" ]; then
         mkdir -p -v ${RunDirs}
     fi
+
+    ##=======================================================================
+    ## Create regridding weights to CS grid
+    ##=======================================================================
+    if "$UseGCHP"; then
+        CSgridDir="${RunDirs}/CS_grids"
+        if [ ! -d "${CSgridDir}" ]; then
+            mkdir -p -v ${CSgridDir}
+        fi
+        cd $CSgridDir
+
+        # create a netCDF file containing CS grid coordinates
+        gridfpath="${CSgridDir}/grids.c${CS_RES}.nc"
+        generate_grid $CS_RES $gridfpath
+
+        # generating regridding weights needed
+        gridspec-create gcs ${CS_RES} > /dev/null 2>&1
+        dst_grid="c${CS_RES}_gridspec.nc"
+        regridding_method="conserve"
+        weightsfile="regrid_weights_${native}_to_c${CS_RES}_conserve.nc"
+        if "$metDir"=="GEOS_FP"; then
+            gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 721 1152 > /dev/null 2>&1
+            src_grid="regular_lat_lon_721x1152.nc"
+        elif "$metDir"=="MERRA2"; then
+            gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 361 576 > /dev/null 2>&1
+            src_grid="regular_lat_lon_361x576.nc"
+        fi
+        ESMF_RegridWeightGen -s $src_grid -d $dst_grid -m $regridding_method -w $weightsfile > /dev/null 2>&1
+        rm PET*
+
+        cp ${InversionPath}/src/utilities/regrid_tropomi-BC-restart_gcc2gchp.sh .
+    fi
+    cd -
 
     ##=======================================================================
     ## Create or copy state vector file
@@ -153,10 +211,17 @@ setup_imi() {
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
     # Define inversion domain lat/lon bounds
-    LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
-    LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    if [ "$UseGCHP" != "true" ]; then
+        LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
+        LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
+        LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
+        LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    else
+        LonMinInvDomain=-180
+        LonMaxInvDomain=180
+        LatMinInvDomain=-90
+        LatMaxInvDomain=90
+    fi
 
     # Define custom Kalman filter periods
     if "$KalmanMode"; then
@@ -176,17 +241,22 @@ setup_imi() {
     fi
 
     ##=======================================================================
-    ## Generate Prior Emissions using a HEMCO standalone run
+    ## Generate Prior Emissions using a HEMCO standalone run or GCHP prior run
     ##=======================================================================
     if "$DoHemcoPriorEmis"; then
-        run_hemco_prior_emis
+        if [ "$UseGCHP" != "true" ]; then
+            run_hemco_prior_emis
+        else
+            setup_prior_gchp
+            run_prior_gchp
+        fi
     fi
 
     ##=======================================================================
     ## Reduce state vector dimension
     ##=======================================================================
     if "$ReducedDimensionStateVector"; then
-        reduce_dimension
+        reduce_dimension # to do: adapt to GCHP
     fi
 
     ##=======================================================================

@@ -81,42 +81,6 @@ if [[ ! -f ${StateVectorFile} ]]; then
 fi
 
 #=======================================================================
-# Postprocess the SpeciesConc and LevelEdgeDiags files from GEOS-Chem
-#=======================================================================
-
-printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
-if "$FirstSimSwitch"; then
-    if [[ ! -d ${SpinupDir} ]]; then
-	printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-	exit 1
-    fi
-    PrevDir=$SpinupDir
-else
-    PrevDir=$PosteriorRunDir
-    if [[ ! -d ${PosteriorRunDir} ]]; then
-	printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-	exit 1
-    fi
-fi
-printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
-
-if ! "$PrecomputedJacobian"; then
-
-    # Postprocess all the Jacobian simulations
-    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate $Res; wait
-
-else
-
-    # Only postprocess the Prior simulation
-    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate $Res; wait
-    if "$LognormalErrors"; then
-        # for lognormal errors we need to postprocess the background run too
-        python postproc_diags.py $RunName $BackgroundRunDir $PrevDir $StartDate $Res; wait
-    fi
-fi
-printf "DONE -- postproc_diags.py\n\n"
-
-#=======================================================================
 # Setup GC data directory in workdir
 #=======================================================================
 

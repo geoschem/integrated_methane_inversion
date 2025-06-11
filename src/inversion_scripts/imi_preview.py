@@ -35,7 +35,7 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
     read_tropomi,
     read_blended,
 )
-
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import classify_obs_to_cs_grid
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
@@ -104,7 +104,7 @@ def get_TROPOMI_data(
 
 
 def imi_preview(
-    inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+    config_path, state_vector_path, preview_dir, tropomi_cache
 ):
     """
     Function to perform preview
@@ -405,7 +405,7 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
 
     return s
 
-def get_sectoral_outputs(prior_ds, mask, preview_dir):
+def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     """
     Get sectoral emissions from the prior dataset
     """
@@ -420,7 +420,7 @@ def get_sectoral_outputs(prior_ds, mask, preview_dir):
     prior_sector_vals = []
     positive_sectors = []
     for sector in sectors:
-        prior_val = sum_total_emissions(prior_ds[sector], prior_ds["AREA"], mask)
+        prior_val = sum_total_emissions(prior_ds[sector], areas, mask)
         if prior_val > 0:
             prior_sector_vals.append(prior_val)
             positive_sectors.append(sector.replace("EmisCH4_", ""))
@@ -522,7 +522,14 @@ def estimate_averaging_kernel(
     prior = prior_ds["EmisCH4_Total"]
 
     # Compute total emissions in the region of interest
-    areas = prior_ds["AREA"]
+    if config['UseGCHP']:
+        CSgrids = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"], "CS_grids")
+        )
+        areafpath = CSgrids + '/grids.c{}.nc'.format(config['CS_RES'])
+        areas = areafpath['area']
+    else:
+        areas = prior_ds["AREA"]
     total_prior_emissions = sum_total_emissions(prior, areas, mask)
     outstring1 = (
         f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y \n"
@@ -532,7 +539,7 @@ def estimate_averaging_kernel(
     
     # calculate sectoral totals if running preview
     if preview:
-        get_sectoral_outputs(prior_ds, mask, preview_dir)
+        get_sectoral_outputs(prior_ds, areas, mask, preview_dir)
 
     # ----------------------------------
     # Observations in region of interest
@@ -607,41 +614,49 @@ def estimate_averaging_kernel(
     df["xch4"] = xch4
     df["time"] = trtime
 
-    # Set resolution specific variables
-    # L_native = Rough length scale of native state vector element [m]
-    if config["Res"] == "0.125x0.15625":
-        L_native = 12.5 * 1000
-        lat_step = 0.125
-        lon_step = 0.15625
-    elif config["Res"] == "0.25x0.3125":
-        L_native = 25 * 1000
-        lat_step = 0.25
-        lon_step = 0.3125
-    elif config["Res"] == "0.5x0.625":
-        L_native = 50 * 1000
-        lat_step = 0.5
-        lon_step = 0.625
-    elif config["Res"] == "2.0x2.5":
-        L_native = 200 * 1000
-        lat_step = 2.0
-        lon_step = 2.5
-    elif config["Res"] == "4.0x5.0":
-        L_native = 400 * 1000
-        lat_step = 4.0
-        lon_step = 5.0
+    if config['UseGCHP']:
+        csres = config['CS_RES']
+        n_box = 6 * csres * csres
+        r_sphere = 6.375e6
+        L_native = np.sqrt(4 * np.pi * r_sphere ** 2 / n_box)
+        gridpath = '{}/{}/CS_grids/grids.c{CS_RES}.nc'.format(config["OutputPath"], config["RunName"], config["CS_RES"])
+        df_super = classify_obs_to_cs_grid(df, gridpath)
+    else:
+        # Set resolution specific variables
+        # L_native = Rough length scale of native state vector element [m]
+        if config["Res"] == "0.125x0.15625":
+            L_native = 12.5 * 1000
+            lat_step = 0.125
+            lon_step = 0.15625
+        elif config["Res"] == "0.25x0.3125":
+            L_native = 25 * 1000
+            lat_step = 0.25
+            lon_step = 0.3125
+        elif config["Res"] == "0.5x0.625":
+            L_native = 50 * 1000
+            lat_step = 0.5
+            lon_step = 0.625
+        elif config["Res"] == "2.0x2.5":
+            L_native = 200 * 1000
+            lat_step = 2.0
+            lon_step = 2.5
+        elif config["Res"] == "4.0x5.0":
+            L_native = 400 * 1000
+            lat_step = 4.0
+            lon_step = 5.0
 
-    # bin observations into gridcells and map onto statevector
-    to_lon = lambda x: np.floor(x / lon_step) * lon_step
-    to_lat = lambda x: np.floor(x / lat_step) * lat_step
+        # bin observations into gridcells and map onto statevector
+        to_lon = lambda x: np.floor(x / lon_step) * lon_step
+        to_lat = lambda x: np.floor(x / lat_step) * lat_step
 
-    df_super = df.rename(columns={"lon": "old_lon", "lat": "old_lat"})
+        df_super = df.rename(columns={"lon": "old_lon", "lat": "old_lat"})
 
-    df_super["lat"] = to_lat(df_super.old_lat)
-    df_super["lon"] = to_lon(df_super.old_lon)
+        df_super["lat"] = to_lat(df_super.old_lat)
+        df_super["lon"] = to_lon(df_super.old_lon)
 
-    # extract relevant fields and group by lat, lon, date
-    df_super = df_super[["lat", "lon", "time", "obs_count"]].copy()
-    df_super["date"] = df_super["time"].dt.floor("D")
+        # extract relevant fields and group by lat, lon, date
+        df_super = df_super[["lat", "lon", "time", "obs_count"]].copy()
+        df_super["date"] = df_super["time"].dt.floor("D")
     grouped = (
         df_super.groupby(["lat", "lon", "date"]).size().reset_index(name="obs_count")
     )
@@ -680,8 +695,6 @@ def estimate_averaging_kernel(
         emissions_temp = sum_total_emissions(prior, areas, mask)
         # number of native state vector elements in each element
         size_temp = state_vector_labels.where(mask).count().item()
-        # append the calculated length scale of element
-        L_temp = L_native * size_temp
         # append the number of obs in each element
         num_obs_temp = np.nansum(
             daily_observation_counts["obs_count"].where(buffered_mask).values
@@ -690,7 +703,7 @@ def estimate_averaging_kernel(
         n_success_obs_days = np.nansum(
             daily_observation_counts["superobs_count"].where(buffered_mask).values
         ).item()
-        return emissions_temp, L_temp, size_temp, num_obs_temp, n_success_obs_days
+        return emissions_temp, L_native, size_temp, num_obs_temp, n_success_obs_days
 
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
@@ -750,9 +763,7 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / np.power(
-        L, 2
-    )  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * np.power(L, 2))  # kg/m2/s from kg/s, per element
 
     # Use the first element of the error list if multiple values are provided
     sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
@@ -815,14 +826,13 @@ def estimate_averaging_kernel(
 
 if __name__ == "__main__":
     try:
-        inversion_path = sys.argv[1]
-        config_path = sys.argv[2]
-        state_vector_path = sys.argv[3]
-        preview_dir = sys.argv[4]
-        tropomi_cache = sys.argv[5]
+        config_path = sys.argv[1]
+        state_vector_path = sys.argv[2]
+        preview_dir = sys.argv[3]
+        tropomi_cache = sys.argv[4]
 
         imi_preview(
-            inversion_path, config_path, state_vector_path, preview_dir, tropomi_cache
+            config_path, state_vector_path, preview_dir, tropomi_cache
         )
     except Exception as err:
         with open(".preview_error_status.txt", "w") as file1:

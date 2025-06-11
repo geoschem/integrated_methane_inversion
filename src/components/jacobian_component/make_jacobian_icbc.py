@@ -52,6 +52,9 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
     elif "SpeciesRst_CH4" in data_vars:
         key = "SpeciesRst_CH4"
         file_prefix = "GEOSChem.Restart.1ppb."
+    elif "SPC_CH4" in data_vars:
+        key = "SPC_CH4"
+        file_prefix = "GEOSChem.Restart.1ppb."
     else:
         raise ValueError("No recognized CH4 species found in the file.")
 

@@ -203,12 +203,6 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
         state_vector, hemco_emis, perturb_value, prior_sf
     )
 
-    # update jacobian perturbation files with new perturbation scale factors
-    # before we run the jacobian simulations
-    update_jacobian_perturbation_files(
-        jacobian_dir, state_vector["StateVector"], perturbation_dict["jacobian_pert_sf"]
-    )
-
     # archive npz file of perturbation scale factor dictionary for later calculation of sensitivity
     archive_dir = os.path.join(base_directory, "archive_perturbation_sfs")
     os.makedirs(archive_dir, exist_ok=True)
@@ -216,6 +210,49 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
         os.path.join(archive_dir, f"pert_sf_{period_number}.npz"), **perturbation_dict
     )
 
+    grid_pert_fpath = os.path.join(archive_dir, f"gridded_pert_scale_{period_number}.nc")
+    make_gridded_perturbation_sf(perturbation_dict["jacobian_pert_sf"], state_vector, grid_pert_fpath)
+
+def make_gridded_perturbation_sf(pert_vector, statevector, save_pth):
+    lats = statevector['lats'].values
+    lons = statevector['lons'].values
+    
+    # Map the input vector (e.g., scale factors) to the state vector grid
+    sv_index = np.nan_to_num(statevector.StateVector.values, nan=0).astype(int)
+    gridded_pert = pert_vector[sv_index - 1]
+    gridded_pert = np.where(
+        np.isnan(statevector.StateVector.values),
+        1.0,
+        gridded_pert
+    )
+    
+    refyear = 2000
+    gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'nf', 'Ydim', 'Xdim'], 
+                                coords=dict(lats=(['nf', 'Ydim', 'Xdim'], lats.values), lons=(['nf', 'Ydim', 'Xdim'], lons.values)),
+                                attrs=dict(units='1', long_name='scaling factor for state vector elements'))
+    gridded_pert_ds = xr.Dataset({'scale': gridded_pert})
+    # Add attribute metadata
+    gridded_pert_ds.lat.attrs["units"] = "degrees_north"
+    gridded_pert_ds.lat.attrs["long_name"] = "Latitude"
+    gridded_pert_ds.lon.attrs["units"] = "degrees_east"
+    gridded_pert_ds.lon.attrs["long_name"] = "Longitude"
+    gridded_pert_ds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
+                                        delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
+                                        long_name='Time', calendar='standard')
+    gridded_pert_ds['corner_lats'] = statevector['corner_lats']
+    gridded_pert_ds['corner_lons'] = statevector['corner_lons']
+
+    # Save
+    if save_pth is not None:
+        print("Saving file {}".format(save_pth))
+        gridded_pert_ds.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 1} for v in gridded_pert_ds.data_vars
+            },
+        )
+
+    return gridded_pert_ds
 
 if __name__ == "__main__":
     config_path = sys.argv[1]
