@@ -267,6 +267,8 @@ def make_state_vector_file(
                     land = lc.where(
                         (lc.values > land_threshold) | (hd.values > emis_threshold)
                     )
+                else:
+                    land = lc.where((lc > land_threshold) | (hd > emis_threshold))
             else:
                 land = lc.where((lc > land_threshold) | (hd > emis_threshold))
 
