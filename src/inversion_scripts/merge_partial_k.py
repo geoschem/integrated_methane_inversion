@@ -68,7 +68,6 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
     K_list = [None for i in range(len(files))]
 
     for i, f in enumerate(files):
-        print(f'\r{f}',end='')
         # Get paths
         pth = os.path.join(satdat_dir, f)
         # Get same file from bc folder
