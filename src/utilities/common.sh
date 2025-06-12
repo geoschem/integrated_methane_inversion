@@ -123,9 +123,9 @@ EOF
 
 # Description: Generate gridded global OH scaling factor
 # Usage:
-#   gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath>
+#   gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath> <OptimizeNorth> <OptimizeSouth>
 gridded_optimized_OH() {
-    python - "$1" "$2" "$3" "$4" <<EOF
+    python - "$1" "$2" "$3" "$4" "$5" "$6"<<EOF
 import sys
 import xarray as xr
 import numpy as np
@@ -134,6 +134,8 @@ N_HEMIS = float(sys.argv[1])
 S_HEMIS = float(sys.argv[2])
 maskfpath = sys.argv[3]
 outfpath = sys.argv[4]
+OptimizeNorth = sys.argv[5]
+OptimizeSouth = sys.argv[6]
 
 maskds = xr.open_dataset(maskfpath)
 hemis = maskds['Hemisphere'].values
@@ -144,8 +146,10 @@ s_mask = np.isclose(hemis, 2.0)
 
 # Construct OH scaling field
 oh_scale = np.ones_like(hemis)
-oh_scale[n_mask] = N_HEMIS
-oh_scale[s_mask] = S_HEMIS
+if OptimizeNorth.lower()=='true':
+    oh_scale[n_mask] = N_HEMIS
+if OptimizeSouth.lower()=='true':
+    oh_scale[s_mask] = S_HEMIS
 
 # Add as new variable
 scaleds = maskds.copy(deep=True)

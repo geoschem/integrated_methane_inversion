@@ -204,11 +204,6 @@ setup_template() {
         cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
     fi
 
-    # Copy input file for applying emissions perturbations via HEMCO
-    if [ "$UseGCHP" != true ]; then
-        cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
-    fi
-
     # Compile GEOS-Chem and store executable in GEOSChem_build directory
     cd build
     if "$UseGCHP"; then
