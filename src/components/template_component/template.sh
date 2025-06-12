@@ -92,16 +92,16 @@ setup_template() {
     cp ${InversionPath}/src/utilities/download_gc_data.py download_gc_data.py
 
     if "$UseGCHP"; then
+        RunDuration=$(get_run_duration "$StartDate" "$EndDate")
         sed -i -e "s:20190101:${StartDate}:g" cap_restart
-        sed -i -e "s/Run_Duration=\"[0-9]{8} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
-            -e 's/^CS_RES=.*$/CS_RES="${CS_RES}"/' \
-            -e 's/^TOTAL_CORES=.*$/TOTAL_CORES="${TOTAL_CORES}"/' \
-            -e 's/^NUM_NODES=.*$/NUM_NODES="${NUM_NODES}"/' \
-            -e 's/^NUM_CORES_PER_NODE=.*$/NUM_CORES_PER_NODE="${NUM_CORES_PER_NODE}"/' \
+        sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
+            -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+            -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+            -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+            -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             -e 's/^AutoUpdate_Diagnostics=.*$/AutoUpdate_Diagnostics=OFF/' \
-            -e 's/^Diag_Monthly=.*$/Diag_Monthly="0"/' \
-            -e 's/^Diag_Frequency=.*$/Diag_Frequency="240000"/' \
-            -e 's/^Diag_Duration=.*$/Diag_Duration="240000"/' setCommonRunSettings.sh
+            setCommonRunSettings.sh
+        sed -i -e "s/monthly:[[:space:]]*1/monthly:        0/g" HISTORY.rc
     else
         # Modify geoschem_config.yml based on settings in config.yml
         sed -i -e "s:20190101:${StartDate}:g" \

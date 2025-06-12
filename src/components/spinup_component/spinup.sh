@@ -118,11 +118,20 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Spinup.run
+    if "$UseGCHP"; then
+        sbatch --mem $RequestedMemory \
+            -N $NUM_NODES \
+            -n $TOTAL_CORES \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Spinup.run
+    else
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Spinup.run
+    fi
     wait
 
     # check if exited with non-zero exit code

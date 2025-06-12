@@ -83,11 +83,12 @@ run_inversion() {
     InvMem="${InversionMemory:-$RequestedMemory}"
     InvCPU="${InversionCPUs:-$RequestedCPUs}"
     InvTime="${InversionTime:-$RequestedTime}"
+    InvPartition="${InvSchedulerPartition:-$SchedulerPartition}"
     # Execute inversion driver script
     sbatch --mem $InvMem \
         -c $InvCPU \
         -t $InvTime \
-        -p $InvSchedulerPartition \
+        -p $InvPartition \
         -W run_inversion.sh $FirstSimSwitch
     wait
 

@@ -81,6 +81,12 @@ setup_posterior() {
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                 -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
             sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' setCommonRunSettings.sh
+            sed -i -E \
+                -e "s/^#'Emissions/'Emissions/" \
+                -e "s/^([[:space:]]*Emissions\.frequency:[[:space:]]*)[0-9]{6}/\1240000/" \
+                -e "s/^([[:space:]]*Emissions\.duration:[[:space:]]*)[0-9]{6}/\1240000/" \
+                HISTORY.rc
+
         else
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
@@ -196,11 +202,20 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Posterior.run
+    if "$UseGCHP"; then
+        sbatch --mem $RequestedMemory \
+            -N $NUM_NODES \
+            -n $TOTAL_CORES \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Posterior.run
+    else
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Posterior.run
+    fi
     wait
 
     # check if exited with non-zero exit code

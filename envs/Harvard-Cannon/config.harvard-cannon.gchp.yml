@@ -22,7 +22,6 @@ NUM_CORES_PER_NODE: 36
 ## Period of interest
 StartDate: 20180501
 EndDate: 20180502
-RunDuration: 00000001 #Format is "YYYYMMDD"
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
@@ -127,7 +126,7 @@ SetupPosteriorRun: false
 
 ## Run modules
 ##   Turn on/off different steps in performing the inversion
-DoHemcoPriorEmis: false
+DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
 ReDoJacobian: false
@@ -136,7 +135,7 @@ DoPosterior: false
 
 ## IMI preview
 ##   NOTE: RunSetup must be true to run preview
-DoPreview: false
+DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
@@ -145,8 +144,8 @@ RequestedMemory: 180G
 InversionCPUs: 32
 InversionMemory: 600G
 InversionTime: "0-24:00"
-RequestedTime: "0-8:00"
-SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
+RequestedTime: "0-12:00"
+SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared,test"
 InvSchedulerPartition: "huce_bigmem,bigmem,bigmem_intermediate"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)

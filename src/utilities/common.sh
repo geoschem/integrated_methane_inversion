@@ -12,12 +12,12 @@
 # Usage:
 #   print_stats
 print_stats() {
-    printf "\nRuntime statistics (s):"
-    printf "\n Setup     : $([[ ! -z $setup_end ]] && echo $(($setup_end - $setup_start)) || echo 0)"
-    printf "\n Spinup     : $([[ ! -z $spinup_end ]] && echo $(($spinup_end - $spinup_start)) || echo 0)"
-    printf "\n Jacobian     : $([[ ! -z $jacobian_end ]] && echo $(($jacobian_end - $jacobian_start)) || echo 0)"
-    printf "\n Inversion     : $([[ ! -z $inversion_end ]] && echo $(($inversion_end - $inversion_start)) || echo 0)"
-    printf "\n Posterior     : $([[ ! -z $posterior_end ]] && echo $(($posterior_end - $posterior_start)) || echo 0)\n\n"
+    printf "\nRuntime statistics (s):\n"
+    printf " Setup      : %s\n" $(( ${setup_end:-0} - ${setup_start:-0} ))
+    printf " Spinup     : %s\n" $(( ${spinup_end:-0} - ${spinup_start:-0} ))
+    printf " Jacobian   : %s\n" $(( ${jacobian_end:-0} - ${jacobian_start:-0} ))
+    printf " Inversion  : %s\n" $(( ${inversion_end:-0} - ${inversion_start:-0} ))
+    printf " Posterior  : %s\n\n" $(( ${posterior_end:-0} - ${posterior_start:-0} ))
 }
 
 # Description: Print error message for if the IMI fails
@@ -161,4 +161,53 @@ scaleds['oh_scale'] = xr.DataArray(
 # Save to file
 scaleds.to_netcdf(outfpath)
 EOF
+}
+
+# Calculate RunDuration (YYYYMMDD) between two dates (YYYYMMDD)
+get_run_duration() {
+  local start_date=$1
+  local end_date=$2
+
+  # Convert to seconds since epoch
+  local start_sec=$(date -d "$start_date" +%s)
+  local end_sec=$(date -d "$end_date" +%s)
+
+  # Calculate total days difference
+  local diff_days=$(( (end_sec - start_sec) / 86400 ))
+
+  # Calculate years, months, days assuming:
+  # 1 year = 360 days (12 * 30), 1 month = 30 days
+  local years=$(( diff_days / 360 ))
+  local remainder=$(( diff_days % 360 ))
+  local months=$(( remainder / 30 ))
+  local days=$(( remainder % 30 ))
+
+  printf "%04d%02d%02d\n" $years $months $days
+}
+
+# Add one day to a RunDuration string YYYYMMDD (duration, not date)
+add_one_day_to_duration() {
+  local run_duration=$1
+
+  local years=${run_duration:0:4}
+  local months=${run_duration:4:2}
+  local days=${run_duration:6:2}
+
+  years=$((10#$years))
+  months=$((10#$months))
+  days=$((10#$days + 1))
+
+  # Handle day rollover (30 days = 1 month)
+  if [ $days -ge 30 ]; then
+    days=0
+    months=$((months + 1))
+  fi
+
+  # Handle month rollover (12 months = 1 year)
+  if [ $months -ge 12 ]; then
+    months=0
+    years=$((years + 1))
+  fi
+
+  printf "%04d%02d%02d\n" $years $months $days
 }

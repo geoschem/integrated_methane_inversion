@@ -18,7 +18,6 @@ config_required = [
     "UseGCHP",
     "StartDate",
     "EndDate",
-    "RunDuration",
     "SpinupMonths",
     "BlendedTROPOMI",
     "isRegional",

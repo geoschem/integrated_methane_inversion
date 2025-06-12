@@ -500,12 +500,22 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        sbatch --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -o imi_output.tmp \
-            -p $SchedulerPartition \
-            -W run_prior_simulation.sh
+        if "$UseGCHP"; then
+            sbatch --mem $RequestedMemory \
+                -N $NUM_NODES \
+                -n $TOTAL_CORES \
+                -t $RequestedTime \
+                -o imi_output.tmp \
+                -p $SchedulerPartition \
+                -W run_prior_simulation.sh
+        else
+            sbatch --mem $RequestedMemory \
+                -c $RequestedCPUs \
+                -t $RequestedTime \
+                -o imi_output.tmp \
+                -p $SchedulerPartition \
+                -W run_prior_simulation.sh
+        fi
         wait
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
