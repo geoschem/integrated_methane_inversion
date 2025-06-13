@@ -277,6 +277,7 @@ class GeoFilter:
         self.svds = self._get_state_vector_file()
         if config['UseGCHP']:
             self.lons = self.svds.lons.values
+            self.lons[self.lons>180] -= 360
             self.lats = self.svds.lats.values
         else:
             self.lons = self.svds.lon.values
