@@ -5,6 +5,7 @@ Classify observations into a cubed-sphere grid based on geographic location.
 """
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from shapely.geometry import Point, Polygon
 from scipy.spatial import cKDTree
@@ -52,34 +53,38 @@ def precompute_polygons(corner_lats, corner_lons):
 
 
 def classify_obs_to_cs_grid(
-    obs_dict: dict,
+    obs_df: pd.DataFrame,
     grid_path: str,
     k: int = 1
-):
+) -> pd.DataFrame:
     """
     Classify observation points into a cubed-sphere grid.
 
     Parameters:
-    - obs_dict: filtered TROPOMI observations in dict format
+    - obs_df: filtered TROPOMI observations as a pandas DataFrame
+              with at least 'lat', 'lon', 'time', 'obs_count' columns
     - grid_path: Path to cubed-sphere grid NetCDF file
     - k: Number of KDTree neighbors to consider for polygon check
 
     Returns:
-    - obs_super: classified observation in CS grids in dict format
+    - obs_super: DataFrame with observations mapped to CS grids
     """
     # Load datasets
     grid_ds = xr.open_dataset(grid_path)
 
-    # Read in values
-    obs_lat = np.array(obs_dict['lat'])
-    obs_lon = np.array(obs_dict['lon'])
-    obs_lon[obs_lon>180] -= 360
+    # Read in observation values
+    obs_lat = obs_df['lat'].values
+    obs_lon = obs_df['lon'].values
+    obs_lon = np.where(obs_lon > 180, obs_lon - 360, obs_lon)
 
-    # Read simulation grid
-    lats = np.array(grid_ds["lats"])
-    lons = np.array(grid_ds["lons"])
-    corner_lats = np.array(grid_ds["corner_lats"])
-    corner_lons = np.array(grid_ds["corner_lons"])
+    # Read cubed-sphere grid
+    nf = grid_ds["nf"].values
+    Ydim = grid_ds["Ydim"].values
+    Xdim = grid_ds["Xdim"].values
+    lats = grid_ds["lats"].values
+    lons = grid_ds["lons"].values
+    corner_lats = grid_ds["corner_lats"].values
+    corner_lons = grid_ds["corner_lons"].values
 
     # Build KDTree and polygons
     kdtree, shape = build_kdtree(lats, lons)
@@ -91,17 +96,88 @@ def classify_obs_to_cs_grid(
     if k == 1:
         neighbor_idxs = np.expand_dims(neighbor_idxs, axis=1)
 
-    # Classify
-    obs_super = obs_dict[["lat", "lon", "time", "obs_count"]].copy()
-    obs_super["date"] = obs_super["time"].dt.floor("D")
+    # Prepare output lat/lon arrays
+    cs_lat = np.full_like(obs_lat, np.nan, dtype=float)
+    cs_lon = np.full_like(obs_lon, np.nan, dtype=float)
+    nfi = np.full_like(obs_lat, np.nan, dtype=float)
+    yi = np.full_like(obs_lat, np.nan, dtype=float)
+    xi = np.full_like(obs_lat, np.nan, dtype=float)
 
+    # Classify each observation point
     for i in range(len(obs_lat)):
         pt = Point(obs_lon[i], obs_lat[i])
         for idx in neighbor_idxs[i]:
             f, j, x = np.unravel_index(idx, shape)
             poly = polygons[f, j, x]
             if poly is not None and poly.contains(pt):
-                obs_super["lat"][i] = lats[f,j,x]
-                obs_super["lon"][i] = lons[f,j,x]
+                cs_lat[i] = lats[f, j, x]
+                cs_lon[i] = lons[f, j, x]
+                nfi[i] = nf[f]
+                yi[i] = Ydim[j]
+                xi[i] = Xdim[x]
+                break
+
+    # Create new DataFrame with modified lat/lon and additional 'date'
+    obs_super = obs_df.copy()
+    obs_super['lat'] = cs_lat
+    obs_super['lon'] = cs_lon
+    obs_super['nf'] = nfi
+    obs_super['Ydim'] = yi
+    obs_super['Xdim'] = xi
+    obs_super['date'] = pd.to_datetime(obs_df['time']).dt.floor("D")
 
     return obs_super
+
+def map_obs_to_CSgrid(obs_super, state_vector_labels, value_cols):
+    """
+    Map multiple observation columns from obs_super DataFrame onto
+    an xarray Dataset grid based on matching (nf, Ydim, Xdim) indices and date.
+
+    Parameters:
+    - obs_super: pd.DataFrame with columns 'nf', 'Ydim', 'Xdim', 'date', plus value_cols
+    - state_vector_labels: xarray.DataArray with dims ('nf', 'Ydim', 'Xdim')
+    - value_cols: list of column names in obs_super to map, e.g. ['lat', 'lon', 'xch4']
+
+    Returns:
+    - obs_dataset: xarray.Dataset with DataArrays for each value_col + 'obs_count',
+                   aligned on ('nf', 'Ydim', 'Xdim', 'date'), NaN elsewhere.
+    """
+
+    # First: aggregate obs_count + values
+    # Exclude 'obs_count' if accidentally included in value_cols
+    value_cols = [col for col in value_cols if col != 'obs_count']
+
+    # Aggregate value columns
+    agg_dict = {col: 'mean' for col in value_cols}
+    grouped = obs_super.groupby(['nf', 'Ydim', 'Xdim', 'date']).agg(agg_dict).reset_index()
+
+    # Add observation count explicitly
+    grouped['obs_count'] = (
+        obs_super.groupby(['nf', 'Ydim', 'Xdim', 'date']).size().values
+    )
+
+    # Build the full grid
+    nf_vals = state_vector_labels['nf'].values
+    Ydim_vals = state_vector_labels['Ydim'].values
+    Xdim_vals = state_vector_labels['Xdim'].values
+    date_vals = np.sort(obs_super['date'].unique())
+
+    all_index = pd.MultiIndex.from_product(
+        [nf_vals, Ydim_vals, Xdim_vals, date_vals],
+        names=["nf", "Ydim", "Xdim", "date"]
+    )
+    full_df = pd.DataFrame(index=all_index).reset_index()
+
+    # Merge full grid with grouped data
+    merged = pd.merge(
+        full_df,
+        grouped,  # already aggregated
+        on=["nf", "Ydim", "Xdim", "date"],
+        how="left"
+    )
+
+    # Convert to xarray
+    merged = merged.set_index(["nf", "Ydim", "Xdim", "date"])
+    obs_dataset = merged.to_xarray()
+
+    return obs_dataset

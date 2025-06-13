@@ -275,8 +275,12 @@ class GeoFilter:
         self.use_shapefile = use_shapefile
         self.geo = self._make_roi_geometry()
         self.svds = self._get_state_vector_file()
-        self.lons = self.svds.lon.values
-        self.lats = self.svds.lat.values
+        if config['UseGCHP']:
+            self.lons = self.svds.lons.values
+            self.lats = self.svds.lats.values
+        else:
+            self.lons = self.svds.lon.values
+            self.lats = self.svds.lat.values
 
     def _get_state_vector_file(self):
 

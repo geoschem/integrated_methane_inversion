@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from pyproj import Geod
 import pandas as pd
-
+import re
 
 def save_obj(obj, name):
     """Save something with Pickle."""
@@ -800,10 +800,15 @@ def filter_prior_files(filenames, start_date, end_date):
 
     filtered_files = []
     for file in filenames:
+        match1 = re.search(r"\.(\d{8}_\d{4})z", file)
+        match2 = re.search(r"\.(\d{12})", file)
         # Extract the date part from the filename
-        date_str = file.split(".")[1]
-        file_date = datetime.strptime(date_str, "%Y%m%d%H%M")
-
+        file_date = None
+        if match1:
+            file_date = datetime.strptime(match1.group(1), "%Y%m%d_%H%M")
+        elif match2:
+            file_date = datetime.strptime(match2.group(1), "%Y%m%d%H%M")
+        
         # Check if the file date is within the specified range
         if start_date <= file_date <= end_date:
             filtered_files.append(file)
@@ -817,12 +822,18 @@ def get_mean_emissions(start_date, end_date, prior_cache_path):
     """
     # find all prior files in the specified date range
     prior_files = [
-        f for f in os.listdir(prior_cache_path) if "HEMCO_sa_diagnostics" in f
+        f for f in os.listdir(prior_cache_path)
+        if "HEMCO_sa_diagnostics" in f or "GEOSChem.Emissions" in f
     ]
     prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
-    hemco_diags = [
-        xr.load_dataset(os.path.join(prior_cache_path, f)) for f in prior_files
-    ]
+
+    # drop anchor with duplicate dimensions of ncontact from GCHP outputs
+    hemco_diags = []
+    for f in prior_files:
+        ds = xr.load_dataset(os.path.join(prior_cache_path, f))
+        if 'anchor' in ds.data_vars:
+            ds = ds.drop_vars('anchor')
+        hemco_diags.append(ds)
 
     # concatenate all datasets and aggregate into the mean prior
     # emissions for the specified date range
