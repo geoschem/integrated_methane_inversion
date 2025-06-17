@@ -73,36 +73,26 @@ def calculate_perturbation_sfs(
     target_emission.
 
     Args:
-        state_vector [xr.Dataset] : The state vector dataset. Must include a 3D or 4D variable
-                                    called "StateVector", containing integer state vector element
-                                    IDs at each grid cell.
-                                    
-        emis_prior   [xr.Dataset] : The prior emissions dataset. Must contain a variable
-                                    "EmisCH4_Total_ExclSoilAbs" representing prior methane
-                                    emissions in kg/m2/s.
-
-        target_emission [float]   : The emission strength in kg/m2/s you want to perturb each
-                                    state vector element by. This is used to compute the relative
-                                    scaling factor per grid cell.
-
-        prior_sf     [xr.Dataset] : (Optional) Dataset of prior scale factors, typically output
-                                    from a nudging or prior inversion process. If provided, the
-                                    function computes the effective perturbation scale factors for
-                                    use in the inversion. Must contain a variable named "ScaleFactor".
+        state_vector [xr.Dataset] : the state vector dataset
+        emis_prior   [xr.Dataset] : the prior emissions dataset
+        target_emission [float]   : the target emission value to perturb each state vector element by
+        prior_sf     [xr.Dataset] : the prior scale factor dataset (for kalman mode)
 
     Returns:
-        Dictionary containing two flat NumPy arrays of perturbation scale factors indexed by
-        state vector element, as well as the `target_emission` value used:
-
-        {
-            "jacobian_pert_sf": [array],   # Perturbation scale factors to apply to prior emissions
-                                           # (relative to 1.0, e.g., 1.5 means +50% increase).
-
-            "effective_pert_sf": [array],  # Perturbation scale factors relative to prior scale factors
-                                           # (relative to 0.0, e.g., 0.5 means +50% increase from prior SF).
-
-            "target_emission": float       # Target emission used to compute perturbations
-        }
+        dictionary containing two flat numpy arrays of perturbation scale factors
+        indexed by state vector element. The dictionary arrays are as follows:
+        jacobian_pert_sf [array]: contains the perturbation scale factors to apply
+                                  to the state vector elements in jacobian simulations
+                                  (based on the original prior emissions). To accomodate
+                                  how perturbations are applied in HEMCO these are relative
+                                  to 1, so a 50% perturbation is represented as 1.5.
+        effective_pert_sf [array]: contains the perturbation scalefactors (based on the
+                                   nudged prior emissions for kalman mode) used in the
+                                   inversion to calculate the sensitivity of observations
+                                   to the perturbation. These are relative to 0, so a 50%
+                                   perturbation is represented as 0.5. For a standalone
+                                   inversion, effective_pert_sf + 1 == jacobian_pert_sf.
+        target_emission   [float]: the target emission value used to calculate the perturbation
 
     Notes:
         - State vector elements with index <= 0 are ignored.
@@ -111,15 +101,16 @@ def calculate_perturbation_sfs(
         - If `prior_sf` is not provided, `effective_pert_sf = jacobian_pert_sf - 1.0`
     """
 
-    # Compute the raw perturbation scale factor per grid cell
+    # Calculate perturbation SFs such that applying them to the original
+    # emissions will result in a target_emission kg/m2/s2 emission.
     pert_sf = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
 
-    # Extract state vector IDs (per-gridcell labels)
-    state_vector_ds = state_vector["StateVector"]
+    # Extract state vector labels
+    state_vector_labels = state_vector["StateVector"]
 
     # Flatten both arrays to 1D for grouping
     sf_flat = pert_sf.values.flatten()
-    sv_flat = state_vector_ds.values.flatten()
+    sv_flat = state_vector_labels.values.flatten()
 
     # Mask invalid entries
     valid_mask = ~np.isnan(sf_flat) & ~np.isnan(sv_flat)
@@ -137,11 +128,16 @@ def calculate_perturbation_sfs(
     median_df = median_df[median_df["StateVector"] > 0].sort_values(by="StateVector")
     jacobian_pert_sf = median_df["ScaleFactor"].values
 
-    # Sanitize extreme or invalid values
+    # Replace any values greater than the threshold to avoid issues
+    # with reaching infinity. Replace any NaN values with 1.0
     max_sf_threshold = 1.5e7
     jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
     jacobian_pert_sf = np.nan_to_num(jacobian_pert_sf, nan=1.0)
 
+    # If we are using a kalman filter and have nudged prior emissions,
+    # calculate the effective scale factors based on the nudged prior emissions
+    # these will be used later in the inversion to calculate the sensitivity of
+    # observations to the perturbation
     # Compute effective perturbation scale factors (for use in inversion)
     if prior_sf is not None:
         # Flatten and filter prior SF to match state vector layout
@@ -161,12 +157,15 @@ def calculate_perturbation_sfs(
     # Compute effective perturbation (relative to prior)
     effective_pert_sf = jacobian_pert_sf / flat_prior_sf - 1.0
 
-    # Return dictionary
-    return {
+    # return dictionary of perturbation scale factor arrays
+    perturbation_dict = {
         "effective_pert_sf": effective_pert_sf,
         "jacobian_pert_sf": jacobian_pert_sf,
         "target_emission": target_emission,
     }
+
+    return perturbation_dict
+
 
 def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     """
