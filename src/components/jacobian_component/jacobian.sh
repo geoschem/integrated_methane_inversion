@@ -46,7 +46,7 @@ setup_jacobian() {
     fi
     python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
     cd ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/
-    if [ "$UseGCHP" != "true" ]; then
+    if ! "$UseGCHP"; then
         if [ -f GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 ]; then
             mv GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
             ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
@@ -72,7 +72,11 @@ setup_jacobian() {
     fi
 
     # Copy run scripts
-    cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
+    if "$UseGCHP"; then
+        cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array_gchp.sh jacobian_runs/submit_jacobian_simulations_array.sh
+    else
+        cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
+    fi
     sed -i -e "s:{START}:0:g" \
         -e "s:{END}:${nRuns}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
@@ -250,7 +254,7 @@ create_simulation_dir() {
         fi
     fi
     # disable Restart for all runs
-    if [ "$UseGCHP" != "true" ]; then
+    if ! "$UseGCHP"; then
         if "$HourlyCH4"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
         fi
@@ -285,7 +289,7 @@ create_simulation_dir() {
     if is_number "$x"; then
         ### Perform dry run if requested, only for base run
         if [[ $x -eq 0 ]]; then
-            if [ "$UseGCHP" != "true" ]; then
+            if ! "$UseGCHP"; then
                 if "$ProductionDryRun"; then
                     printf "\nExecuting dry-run for production runs...\n"
                     ./gcclassic --dryrun &>log.dryrun
@@ -403,7 +407,7 @@ create_simulation_dir() {
 
     # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
     # instead of all advected species
-    if [ "$UseGCHP" != "true" ]; then
+    if ! "$UseGCHP"; then
         sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
         if "$isRegional"; then
             sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
@@ -470,7 +474,7 @@ add_new_tracer() {
     sed -i -e "\|$HcoPrevLine3|a $HcoNewLine3" HEMCO_Config.rc
     HcoPrevLine3=$HcoNewLine3
 
-    if [ "$UseGCHP" != "true" ]; then
+    if ! "$UseGCHP"; then
         # Add lines for restarts of new tracers to HEMCO_Config.rc
         HcoNewLine1='* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
         sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
@@ -523,16 +527,7 @@ run_jacobian() {
 
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
         # Submit job to job scheduler
-        if [ "$UseGCHP" = "true" ]; then
-            # Replace the line with -c $RequestedCPUs \ by three lines for multiple nodes
-            sed -i -E "s|-c[[:space:]]+\\\$RequestedCPUs[[:space:]]*\\\\|-N \$NUM_NODES \\\
--n \$TOTAL_CORES \\\
--c 1 \\\
-|" submit_jacobian_simulations_array.sh
-        else
-            # Just append -N 1 \ after the line with -c $RequestedCPUs \
-            sed -i -E "/-c[[:space:]]+\\\$RequestedCPUs[[:space:]]*\\\\/a -N 1 \\" submit_jacobian_simulations_array.sh
-        fi
+        source submit_jacobian_simulations_array.sh
 
         if "$LognormalErrors"; then
             if "$UseGCHP"; then

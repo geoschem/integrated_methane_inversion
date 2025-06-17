@@ -12,6 +12,7 @@ from matplotlib.lines import Line2D
 from pyproj import Geod
 import pandas as pd
 import re
+import warnings
 
 def save_obj(obj, name):
     """Save something with Pickle."""
@@ -830,7 +831,10 @@ def get_mean_emissions(start_date, end_date, prior_cache_path):
     # drop anchor with duplicate dimensions of ncontact from GCHP outputs
     hemco_diags = []
     for f in prior_files:
-        ds = xr.load_dataset(os.path.join(prior_cache_path, f))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+            ds = xr.load_dataset(os.path.join(prior_cache_path, f))
+
         if 'anchor' in ds.data_vars:
             ds = ds.drop_vars('anchor')
         hemco_diags.append(ds)

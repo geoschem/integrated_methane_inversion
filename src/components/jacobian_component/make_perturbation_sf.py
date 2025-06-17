@@ -231,10 +231,12 @@ def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
     # Map the input vector (e.g., scale factors) to the state vector grid
     sv_index = statevector.StateVector.values
     valid_mask = ~np.isnan(sv_index)
-    sv_index = sv_index.astype(int)
+    # Create a placeholder array for integer indices, initialize with -1
+    sv_index_int = np.full_like(sv_index, fill_value=-1, dtype=int)
+    sv_index_int[valid_mask] = sv_index[valid_mask].astype(int)
 
     gridded_pert = np.ones_like(sv_index, dtype=float)
-    gridded_pert[valid_mask] = pert_vector[sv_index[valid_mask] - 1]
+    gridded_pert[valid_mask] = pert_vector[sv_index_int[valid_mask] - 1]
     
     refyear = 2000
     gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'nf', 'Ydim', 'Xdim'], 
@@ -269,10 +271,12 @@ def make_gridded_perturbation_sf_latlon(pert_vector, statevector, save_pth):
     # Map the input vector (e.g., scale factors) to the state vector grid
     sv_index = statevector.StateVector.values
     valid_mask = ~np.isnan(sv_index)
-    sv_index = sv_index.astype(int)
+    # Create a placeholder array for integer indices, initialize with -1
+    sv_index_int = np.full_like(sv_index, fill_value=-1, dtype=int)
+    sv_index_int[valid_mask] = sv_index[valid_mask].astype(int)
 
     gridded_pert = np.ones_like(sv_index, dtype=float)
-    gridded_pert[valid_mask] = pert_vector[sv_index[valid_mask] - 1]
+    gridded_pert[valid_mask] = pert_vector[sv_index_int[valid_mask] - 1]
     
     refyear = 2000
     gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'lat', 'lon'], 
