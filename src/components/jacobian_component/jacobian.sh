@@ -316,7 +316,7 @@ create_simulation_dir() {
             OH_elem=true
             if "$isRegional"; then
                 # Perturb OH everywhere if this is a reginoal simulation
-                sed -i -e "s| OH_pert_factor 1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
+                sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
             else
                 # Perturb OH by hemisphere if this is a global simulation
                 # Apply hemispheric OH perturbation values using mask file
@@ -332,11 +332,8 @@ create_simulation_dir() {
                 fi
                 gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
                 
-                # # Escape special characters in Output_fpath
-                # Output_fpath=$(printf '%s\n' "$Output_fpath" | sed -e 's/[\/&|]/\\&/g')
-
                 # Modify OH scale factor in HEMCO config
-                sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor $Output_fpath - - - xy 1 1|g" HEMCO_Config.rc
+                sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
                 
                 if "$UseGCHP"; then
                     # add entry in ExtData.rc for GCHP
@@ -383,15 +380,16 @@ create_simulation_dir() {
             BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
             sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
         fi
-        RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4
         # create symlink to 1ppb restart file
         if "$UseGCHP"; then
+            RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4
             restart_fpath="Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4"
             add_jacobian_tracers_restart_for_gchp $start_element $end_element $RestartFile1ppb $restart_fpath
             cd Restarts
             ln -nsf "GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4" "GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4"
             cd ..
         else
+            RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
             RestartFile=$RestartFile1ppb
             ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         fi

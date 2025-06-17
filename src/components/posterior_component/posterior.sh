@@ -191,10 +191,8 @@ run_posterior() {
             OptimizeSouth='True'
             gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
 
-            # # Escape special characters in Output_fpath
-            # Output_fpath=$(printf '%s\n' "$Output_fpath" | sed -e 's/[\/&|]/\\&/g')
             # Modify OH scale factor in HEMCO config
-            sed -i -E "s#OH_pert_factor[[:space:]]+1\.0[[:space:]]+-[[:space:]]+-[[:space:]]+-[[:space:]]+xy[[:space:]]+1[[:space:]]+1#OH_pert_factor ${Output_fpath} oh_scale 2000/1/1/0 C xy 1 1#g" HEMCO_Config.rc
+            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
             
             if "$UseGCHP"; then
                 # add entry in ExtData.rc for GCHP
