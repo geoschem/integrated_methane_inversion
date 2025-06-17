@@ -206,6 +206,11 @@ setup_prior_gchp() {
 
     # Link to GEOS-Chem executable
     ln -nsf ../GEOSChem_build/gchp .
+    sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+        -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+        -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+        setCommonRunSettings.sh
 
     # regrid restart file to GCHP resolution
     TROPOMIBC=${RestartFilePrefix}${StartDate}_0000z.nc4
@@ -221,14 +226,15 @@ setup_prior_gchp() {
     RunDuration=$(get_run_duration "$StartDate" "$EndDate")
     NextRunDuration=$(add_one_day_to_duration "$RunDuration")
     sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
-       -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
-       -e "s/Do_Advection=.*/Do_Advection=false/" \
-       -e "s/Do_Cloud_Conv=.*/Do_Cloud_Conv=false/" \
-       -e "s/Do_PBL_Mixing=.*/Do_PBL_Mixing=false/" \
-       -e "s/Do_Non_Local_Mixing=.*/Do_Non_Local_Mixing=false/" \
-       -e "s/Do_DryDep=.*/Do_DryDep=false/" \
-       -e "s/Do_WetDep=.*/Do_WetDep=false/" \
-       setCommonRunSettings.sh
+        -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
+        -e "s/Do_Advection=.*/Do_Advection=false/" \
+        -e "s/Do_Cloud_Conv=.*/Do_Cloud_Conv=false/" \
+        -e "s/Do_PBL_Mixing=.*/Do_PBL_Mixing=false/" \
+        -e "s/Do_Non_Local_Mixing=.*/Do_Non_Local_Mixing=false/" \
+        -e "s/Do_DryDep=.*/Do_DryDep=false/" \
+        -e "s/Do_WetDep=.*/Do_WetDep=false/" \
+        -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        setCommonRunSettings.sh
 
     # get daily emissions output only
     sed -i -e 's/#'\''Emissions/'\''Emissions/g' \

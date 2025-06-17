@@ -31,6 +31,11 @@ setup_posterior() {
 
     # Link to GEOS-Chem executable
     if "$UseGCHP"; then
+        sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+            -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+            -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+            -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+            setCommonRunSettings.sh
         ln -nsf ../GEOSChem_build/gchp .
     else
         ln -nsf ../GEOSChem_build/gcclassic .
@@ -80,7 +85,8 @@ setup_posterior() {
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                 -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
-            sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' setCommonRunSettings.sh
+            sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' \
+                setCommonRunSettings.sh
             sed -i -E \
                 -e "s/^#'Emissions/'Emissions/" \
                 -e "s/^([[:space:]]*Emissions\.frequency:[[:space:]]*)[0-9]{6}/\1240000/" \
@@ -185,8 +191,10 @@ run_posterior() {
             OptimizeSouth='True'
             gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
 
+            # # Escape special characters in Output_fpath
+            # Output_fpath=$(printf '%s\n' "$Output_fpath" | sed -e 's/[\/&|]/\\&/g')
             # Modify OH scale factor in HEMCO config
-            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
+            sed -i -E "s#OH_pert_factor[[:space:]]+1\.0[[:space:]]+-[[:space:]]+-[[:space:]]+-[[:space:]]+xy[[:space:]]+1[[:space:]]+1#OH_pert_factor ${Output_fpath} oh_scale 2000/1/1/0 C xy 1 1#g" HEMCO_Config.rc
             
             if "$UseGCHP"; then
                 # add entry in ExtData.rc for GCHP

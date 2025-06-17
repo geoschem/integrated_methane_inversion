@@ -31,6 +31,11 @@ setup_spinup() {
 
     # Link to GEOS-Chem executable
     if "$UseGCHP"; then
+        sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+            -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+            -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+            -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+            setCommonRunSettings.sh
         ln -nsf ../GEOSChem_build/gchp .
     else
         ln -nsf ../GEOSChem_build/gcclassic .
@@ -39,14 +44,14 @@ setup_spinup() {
     # Link to restart file
     if "$UseGCHP"; then
         # regrid restart file to GCHP resolution
-        TROPOMIBC=${RestartFilePrefix}${SpinupStart}_0000z.nc4
-        Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.nc4"
+        TROPOMIBC="${RestartFilePrefix}${SpinupStart}_0000z.nc4"
+        Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
         FilePrefix="GEOSChem.Restart.${SpinupStart}_0000z"
         cd ../CS_grids
         ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
-        RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${cs_res}.nc4"
+        RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
         cd ../${runDir}
-        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.c${CS_RES}.nc4
     else
         RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
         ln -nsf $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
@@ -59,13 +64,19 @@ setup_spinup() {
     # Update settings in geoschem_config.yml
     if "$UseGCHP"; then
         # Convert months into years and remaining months
-        years=$(( SpinupMonths / 12 ))
-        months=$(( SpinupMonths % 12 ))
+        years=$(( ${SpinupMonths} / 12 ))
+        months=$(( ${SpinupMonths} % 12 ))
         days=0
 
         # Format to YYYYMMDD
         SpinupDuration=$(printf "%04d%02d%02d" $years $months $days)
-        sed -i -e "s/Run_Duration=\"[0-9]{8} 000000\"/Run_Duration=\"${SpinupDuration} 000000\"/" setComminRunSettings.sh
+        sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${SpinupDuration} 000000\"/" \
+            -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+            -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+            -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+            -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+            setCommonRunSettings.sh
+        sed -i -e "s|${StartDate}|${SpinupStart}|g" cap_restart
     else
         sed -i -e "s|${StartDate}|${SpinupStart}|g" \
             -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
@@ -73,9 +84,15 @@ setup_spinup() {
 
     # Turn on LevelEdgeDiags output
     if "$HourlyCH4"; then
-        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
+        if "$UseGCHP"; then
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
+                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:    240000/g' HISTORY.rc
+        else
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
+        fi
     fi
 
     # Create run script from template

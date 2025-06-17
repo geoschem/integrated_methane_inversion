@@ -121,11 +121,15 @@ setup_template() {
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
 
     # Modify path to state vector file in HEMCO_Config.rc
-    OLD=" StateVector.nc"
+    OLD=" ./StateVector.nc"
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
-    if "$UseGCHP"; then
-        sed -i -e "s@$OLD@$NEW@g" ExtData.rc
+
+    if [ "$UseGCHP" = true ]; then
+        # Too long file name could be problematic in GCHP
+        ln -nsf "${RunDirs}" RunDirs
+        NEW_Ext=" ./RunDirs/StateVector.nc"
+        sed -i -e "s@$OLD@$NEW_Ext@g" ExtData.rc
     fi
 
     # Modify HEMCO_Config.rc if running Kalman filter
@@ -159,7 +163,7 @@ setup_template() {
         sed -i "s/'Emissions',/#'Emissions',/" HISTORY.rc
     fi
     # Add a new ZERO scale factor for use in jacobian simulations
-    sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" HEMCO_Config.rc
+    sed -i -E '/^1[[:space:]]+NEGATIVE[[:space:]]+-1\.0([[:space:]]+-){3}[[:space:]]+xy[[:space:]]+1[[:space:]]+1/a 5 ZERO     0.0 - - - xy 1 1' HEMCO_Config.rc
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
@@ -177,19 +181,18 @@ setup_template() {
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
     sed -i -e "s:'CH4':#'CH4':g" \
         -e "s:'Metrics:#'Metrics:g" \
-        -e "s:'StateMet:#'StateMet:g" \
-        -e "s:'SpeciesConcMND:#'SpeciesConcMND:g" \
-        -e "s:'Met_PEDGEDRY:#'Met_PEDGEDRY:g" \
-        -e "s:'Met_PFICU:#'Met_PFICU:g" \
-        -e "s:'Met_PFILSAN:#'Met_PFILSAN:g" \
-        -e "s:'Met_PFLCU:#'Met_PFLCU:g" \
-        -e "s:'Met_PFLLSAN:#'Met_PFLLSAN:g" HISTORY.rc
+        -e "s:'StateMet:#'StateMet:g" HISTORY.rc
 
     # If turned on, save out hourly CH4 concentrations to daily files
     # use time-average mode
     if "$HourlyCH4"; then
-        sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
-            -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' HISTORY.rc
+        if "$UseGCHP"; then
+            sed -i -e 's/SpeciesConc.frequency:.*/SpeciesConc.frequency:      010000/g' \
+                -e 's/SpeciesConc.duration:.*/SpeciesConc.duration:       240000/g' HISTORY.rc
+        else
+            sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
+                -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' HISTORY.rc
+        fi
     fi
 
     # Remove sample restart file; GCHP restarts are just soft links and are needed later as template
@@ -205,41 +208,45 @@ setup_template() {
     fi
 
     # Compile GEOS-Chem and store executable in GEOSChem_build directory
-    cd build
-    if "$UseGCHP"; then
-        printf "\nCompiling GCHP...\n"
-        cmake ${InversionPath}/GCHP >>build_geoschem.log 2>&1
+    if [[ -f "../GEOSChem_build/gchp" || -f "../GEOSChem_build/gcclassic" ]]; then
+        printf "\nGEOS-Chem executable is already built and stored in GEOSChem_build\n"
+        rm -rf build
     else
-        printf "\nCompiling GEOS-Chem...\n"
-        cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
-    fi
-    cmake . -DRUNDIR=.. -DMECH=carbon >>build_geoschem.log 2>&1
-    make -j install >>build_geoschem.log 2>&1
-    cd ..
-    if "$UseGCHP"; then
-        if [[ -f gchp ]]; then
-            mkdir ../GEOSChem_build
-            mv -v gchp ../GEOSChem_build/
-            mv build/CMakeCache.txt ../GEOSChem_build
-            mv build/build_geoschem.log ../GEOSChem_build
-            rm -rf build
+        cd build
+        if "$UseGCHP"; then
+            printf "\nCompiling GCHP...\n"
+            cmake ${InversionPath}/GCHP >>build_geoschem.log 2>&1
         else
-            printf "\nGCHP build failed! \n\nSee ${RunTemplate}/GEOSChem_build/build_geoschem.log for details\n"
-            exit 999
+            printf "\nCompiling GEOS-Chem...\n"
+            cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
         fi
-    else
-        if [[ -f gcclassic ]]; then
-            mv build_info ../GEOSChem_build
-            mv -v gcclassic ../GEOSChem_build/
-            mv build/build_geoschem.log ../GEOSChem_build
-            rm -rf build
+        cmake . -DRUNDIR=.. -DMECH=carbon >>build_geoschem.log 2>&1
+        make -j install >>build_geoschem.log 2>&1
+        cd ..
+        if "$UseGCHP"; then
+            if [[ -f gchp ]]; then
+                mkdir ../GEOSChem_build
+                mv -v gchp ../GEOSChem_build/
+                mv build/CMakeCache.txt ../GEOSChem_build
+                mv build/build_geoschem.log ../GEOSChem_build
+                rm -rf build
+            else
+                printf "\nGCHP build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
+                exit 999
+            fi
         else
-            printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
-            exit 999
+            if [[ -f gcclassic ]]; then
+                mv build_info ../GEOSChem_build
+                mv -v gcclassic ../GEOSChem_build/
+                mv build/build_geoschem.log ../GEOSChem_build
+                rm -rf build
+            else
+                printf "\nGEOS-Chem build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
+                exit 999
+            fi
         fi
+        printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build for details\n\n"
     fi
-    printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build for details\n\n"
-
     # Navigate back to top-level directory
     cd ..
 

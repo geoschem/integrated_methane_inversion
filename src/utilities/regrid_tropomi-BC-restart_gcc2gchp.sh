@@ -33,6 +33,7 @@ python -m gcpy.file_regrid --filein ${prefix}.nc4 \
 # Remove regridding files
 rm -rf conservative_*.nc ${prefix}.nc4
 # Add SPC_CH4 field from regridded file into template, and rename final output
+ncap2 -O -s 'SPC_CH4=float(SPC_CH4)' ${prefix}.c${cs_res}.nc4 ${prefix}.c${cs_res}.nc4
 ncks -A -v SPC_CH4 ${prefix}.c${cs_res}.nc4 temp.nc4
 mv temp.nc4 ${prefix}.c${cs_res}.nc4
 #cdo replace $template ${prefix}.c${cs_res}.nc4 ${prefix}.c${cs_res}.nc4

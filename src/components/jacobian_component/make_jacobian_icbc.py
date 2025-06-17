@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import xarray as xr
+import yaml
 
 
 def check_path_and_get_file(path, pattern="*"):
@@ -28,7 +29,7 @@ def check_path_and_get_file(path, pattern="*"):
         raise FileNotFoundError(f"The path '{path}' is neither a file nor a directory.")
 
 
-def make_jacobian_icbc(original_file_path, new_file_path, file_date):
+def make_jacobian_icbc(config, original_file_path, new_file_path, file_date):
     """
     This function takes a restart or boundary condition file and
     sets the CH4 concentration to 1 ppb for use in the Jacobian
@@ -62,19 +63,25 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
     new_restart[key] *= 0.0
     new_restart[key] += 1e-9
 
-    write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.nc4")
+    if config['UseGCHP']:
+        write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.c{config['CS_RES']}.nc4")
+    else:
+        write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.nc4")
 
     # write to new file path
     new_restart.to_netcdf(write_path)
 
 
 if __name__ == "__main__":
-    original_file_path = sys.argv[1]
-    new_file_path = sys.argv[2]
-    file_date = sys.argv[3]
+    config_path = sys.argv[1]
+    original_file_path = sys.argv[2]
+    new_file_path = sys.argv[3]
+    file_date = sys.argv[4]
+
+    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
 
     # default to getting the first file in the directory
     # or the file itself if it is a file
     file_path = check_path_and_get_file(original_file_path)
 
-    make_jacobian_icbc(file_path, new_file_path, file_date)
+    make_jacobian_icbc(config, file_path, new_file_path, file_date)
