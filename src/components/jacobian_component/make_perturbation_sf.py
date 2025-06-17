@@ -73,91 +73,100 @@ def calculate_perturbation_sfs(
     target_emission.
 
     Args:
-        state_vector [xr.Dataset] : the state vector dataset
-        emis_prior   [xr.Dataset] : the prior emissions dataset
-        target_emission [float]   : the target emission value to perturb each state vector element by
-        prior_sf     [xr.Dataset] : the prior scale factor dataset (for kalman mode)
+        state_vector [xr.Dataset] : The state vector dataset. Must include a 3D or 4D variable
+                                    called "StateVector", containing integer state vector element
+                                    IDs at each grid cell.
+                                    
+        emis_prior   [xr.Dataset] : The prior emissions dataset. Must contain a variable
+                                    "EmisCH4_Total_ExclSoilAbs" representing prior methane
+                                    emissions in kg/m2/s.
+
+        target_emission [float]   : The emission strength in kg/m2/s you want to perturb each
+                                    state vector element by. This is used to compute the relative
+                                    scaling factor per grid cell.
+
+        prior_sf     [xr.Dataset] : (Optional) Dataset of prior scale factors, typically output
+                                    from a nudging or prior inversion process. If provided, the
+                                    function computes the effective perturbation scale factors for
+                                    use in the inversion. Must contain a variable named "ScaleFactor".
 
     Returns:
-        dictionary containing two flat numpy arrays of perturbation scale factors
-        indexed by state vector element. The dictionary arrays are as follows:
+        Dictionary containing two flat NumPy arrays of perturbation scale factors indexed by
+        state vector element, as well as the `target_emission` value used:
 
-        jacobian_pert_sf [array]: contains the perturbation scale factors to apply
-                                  to the state vector elements in jacobian simulations
-                                  (based on the original prior emissions). To accomodate
-                                  how perturbations are applied in HEMCO these are relative
-                                  to 1, so a 50% perturbation is represented as 1.5.
+        {
+            "jacobian_pert_sf": [array],   # Perturbation scale factors to apply to prior emissions
+                                           # (relative to 1.0, e.g., 1.5 means +50% increase).
 
-        effective_pert_sf [array]: contains the perturbation scalefactors (based on the
-                                   nudged prior emissions for kalman mode) used in the
-                                   inversion to calculate the sensitivity of observations
-                                   to the perturbation. These are relative to 0, so a 50%
-                                   perturbation is represented as 0.5. For a standalone
-                                   inversion, effective_pert_sf + 1 == jacobian_pert_sf.
+            "effective_pert_sf": [array],  # Perturbation scale factors relative to prior scale factors
+                                           # (relative to 0.0, e.g., 0.5 means +50% increase from prior SF).
 
-        target_emission   [float]: the target emission value used to calculate the perturbation
+            "target_emission": float       # Target emission used to compute perturbations
+        }
+
+    Notes:
+        - State vector elements with index <= 0 are ignored.
+        - Very large perturbations are capped at a threshold to avoid numerical instability.
+        - NaNs in the perturbation fields are replaced with unity (1.0).
+        - If `prior_sf` is not provided, `effective_pert_sf = jacobian_pert_sf - 1.0`
     """
-    # create a dataset with the same structure as the state vector for perturbation SFs
-    pert_sf = state_vector.copy()
-    pert_sf = pert_sf.rename({"StateVector": "ScaleFactor"})
 
-    # Calculate perturbation SFs such that applying them to the original
-    # emissions will result in a target_emission kg/m2/s2 emission.
-    pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+    # Compute the raw perturbation scale factor per grid cell
+    pert_sf = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
 
-    # Extract state vector labels
-    state_vector_labels = state_vector["StateVector"]
+    # Extract state vector IDs (per-gridcell labels)
+    state_vector_ds = state_vector["StateVector"]
 
-    # Add state vector labels to pert sf Dataset
-    pert_sf = pert_sf.assign(StateVector=state_vector_labels)
+    # Flatten both arrays to 1D for grouping
+    sf_flat = pert_sf.values.flatten()
+    sv_flat = state_vector_ds.values.flatten()
 
-    # Use groupby to find the median perturbation scale factor for each state vector label
-    max_pert_sf_da = pert_sf["ScaleFactor"].groupby(pert_sf["StateVector"]).median()
+    # Mask invalid entries
+    valid_mask = ~np.isnan(sf_flat) & ~np.isnan(sv_flat)
+    sf_flat = sf_flat[valid_mask]
+    sv_flat = sv_flat[valid_mask].astype(int)
 
-    # get flat, numpy array by converting to dataframe and sorting based on
-    # state vector element
-    max_pert_sf_df = max_pert_sf_da.to_dataframe().reset_index()
-    max_pert_sf_df = max_pert_sf_df[max_pert_sf_df["StateVector"] > 0].sort_values(
-        by="StateVector"
-    )
-    jacobian_pert_sf = max_pert_sf_df["ScaleFactor"].values
+    # Group by state vector ID and compute the median scale factor
+    df = pd.DataFrame({
+        "StateVector": sv_flat,
+        "ScaleFactor": sf_flat,
+    })
+    median_df = df.groupby("StateVector")["ScaleFactor"].median().reset_index()
 
-    # Replace any values greater than the threshold to avoid issues
-    # with reaching infinity. Replace any NaN values with 1.0
-    max_sf_threshold = 15000000.0
+    # Keep only valid state vector IDs > 0
+    median_df = median_df[median_df["StateVector"] > 0].sort_values(by="StateVector")
+    jacobian_pert_sf = median_df["ScaleFactor"].values
+
+    # Sanitize extreme or invalid values
+    max_sf_threshold = 1.5e7
     jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
     jacobian_pert_sf = np.nan_to_num(jacobian_pert_sf, nan=1.0)
 
-    # If we are using a kalman filter and have nudged prior emissions,
-    # calculate the effective scale factors based on the nudged prior emissions
-    # these will be used later in the inversion to calculate the sensitivity of
-    # observations to the perturbation
+    # Compute effective perturbation scale factors (for use in inversion)
     if prior_sf is not None:
-        prior_sf = prior_sf.assign(StateVector=state_vector_labels)
-        prior_sf_da = prior_sf["ScaleFactor"].groupby(prior_sf["StateVector"]).median()
-        prior_sf_df = prior_sf_da.to_dataframe().reset_index()
-        prior_sf_df = prior_sf_df[prior_sf_df["StateVector"] > 0].sort_values(
-            by="StateVector"
+        # Flatten and filter prior SF to match state vector layout
+        flat_prior = prior_sf["ScaleFactor"].values.flatten()[valid_mask]
+        prior_df = pd.DataFrame({
+            "StateVector": sv_flat,
+            "PriorScaleFactor": flat_prior
+        })
+        prior_median = (
+            prior_df.groupby("StateVector")["PriorScaleFactor"].median().reset_index()
         )
-        flat_prior_sf = prior_sf_df["ScaleFactor"].values
+        prior_median = prior_median[prior_median["StateVector"] > 0].sort_values(by="StateVector")
+        flat_prior_sf = prior_median["PriorScaleFactor"].values
     else:
-        flat_prior_sf = np.ones(len(jacobian_pert_sf))
+        flat_prior_sf = np.ones_like(jacobian_pert_sf)
 
-    # calculate the effective perturbation SFs
-    effective_pert_sf = jacobian_pert_sf / flat_prior_sf
+    # Compute effective perturbation (relative to prior)
+    effective_pert_sf = jacobian_pert_sf / flat_prior_sf - 1.0
 
-    # make the effective perturbations relative to 0, as expected in the inversion
-    effective_pert_sf = effective_pert_sf - 1.0
-
-    # return dictionary of perturbation scale factor arrays
-    perturbation_dict = {
+    # Return dictionary
+    return {
         "effective_pert_sf": effective_pert_sf,
         "jacobian_pert_sf": jacobian_pert_sf,
         "target_emission": target_emission,
     }
-
-    return perturbation_dict
-
 
 def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     """
@@ -217,17 +226,16 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
         make_gridded_perturbation_sf_latlon(perturbation_dict["jacobian_pert_sf"], state_vector, grid_pert_fpath)
 
 def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
-    lats = statevector['lats'].values
-    lons = statevector['lons'].values
+    lats = statevector['lats']
+    lons = statevector['lons']
     
     # Map the input vector (e.g., scale factors) to the state vector grid
-    sv_index = np.nan_to_num(statevector.StateVector.values, nan=0).astype(int)
-    gridded_pert = pert_vector[sv_index - 1]
-    gridded_pert = np.where(
-        np.isnan(statevector.StateVector.values),
-        1.0,
-        gridded_pert
-    )
+    sv_index = statevector.StateVector.values
+    valid_mask = ~np.isnan(sv_index)
+    sv_index = sv_index.astype(int)
+
+    gridded_pert = np.ones_like(sv_index, dtype=float)
+    gridded_pert[valid_mask] = pert_vector[sv_index[valid_mask] - 1]
     
     refyear = 2000
     gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'nf', 'Ydim', 'Xdim'], 
@@ -255,20 +263,17 @@ def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
             },
         )
 
-    return gridded_pert_ds
-
 def make_gridded_perturbation_sf_latlon(pert_vector, statevector, save_pth):
     lat = statevector['lat'].values
     lon = statevector['lon'].values
     
     # Map the input vector (e.g., scale factors) to the state vector grid
-    sv_index = np.nan_to_num(statevector.StateVector.values, nan=0).astype(int)
-    gridded_pert = pert_vector[sv_index - 1]
-    gridded_pert = np.where(
-        np.isnan(statevector.StateVector.values),
-        1.0,
-        gridded_pert
-    )
+    sv_index = statevector.StateVector.values
+    valid_mask = ~np.isnan(sv_index)
+    sv_index = sv_index.astype(int)
+
+    gridded_pert = np.ones_like(sv_index, dtype=float)
+    gridded_pert[valid_mask] = pert_vector[sv_index[valid_mask] - 1]
     
     refyear = 2000
     gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'lat', 'lon'], 
@@ -295,8 +300,6 @@ def make_gridded_perturbation_sf_latlon(pert_vector, statevector, save_pth):
                 v: {"zlib": True, "complevel": 1} for v in gridded_pert_ds.data_vars
             },
         )
-
-    return gridded_pert_ds
 
 if __name__ == "__main__":
     config_path = sys.argv[1]

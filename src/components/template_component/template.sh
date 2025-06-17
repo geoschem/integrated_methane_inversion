@@ -125,11 +125,22 @@ setup_template() {
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+    else
+        jacobian_period=1
+    fi
+    scale_OLD=" ./gridded_pert_scale_1.nc"
+    scale_NEW=" ${RunDirs}/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
+    sed -i -e "s@$scale_OLD@$scale_NEW@g" HEMCO_Config.rc
+
     if [ "$UseGCHP" = true ]; then
         # Too long file name could be problematic in GCHP
         ln -nsf "${RunDirs}" RunDirs
         NEW_Ext=" ./RunDirs/StateVector.nc"
         sed -i -e "s@$OLD@$NEW_Ext@g" ExtData.rc
+        scale_NEW_Ext=" ./RunDirs/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
+        sed -i -e "s@$scale_OLD@$scale_NEW_Ext@g" ExtData.rc
     fi
 
     # Modify HEMCO_Config.rc if running Kalman filter
@@ -163,7 +174,7 @@ setup_template() {
         sed -i "s/'Emissions',/#'Emissions',/" HISTORY.rc
     fi
     # Add a new ZERO scale factor for use in jacobian simulations
-    sed -i -E '/^1[[:space:]]+NEGATIVE[[:space:]]+-1\.0([[:space:]]+-){3}[[:space:]]+xy[[:space:]]+1[[:space:]]+1/a 5 ZERO     0.0 - - - xy 1 1' HEMCO_Config.rc
+    sed -i -E '/^1[[:space:]]+NEGATIVE[[:space:]]+-1\.0([[:space:]]+-){3}[[:space:]]+xy[[:space:]]+1[[:space:]]+1/a 5 ZERO      0.0 - - - xy 1 1' HEMCO_Config.rc
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc

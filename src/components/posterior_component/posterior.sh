@@ -42,18 +42,37 @@ setup_posterior() {
     fi
 
     # Link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -nsf $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+    if "$UseGCHP"; then
+        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.c${CS_RES}.nc4
     else
-        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    fi
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
+        RestartFile=$RestartFileFromSpinup
+    else
         if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
+            if "$UseGCHP"; then
+                # regrid restart file to GCHP resolution
+                TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
+                Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+                FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
+                cd "${RunDirs}/CS_grids"
+                ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
+                RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
+                cd "${RunDirs}/jacobian_runs/${name}"
+            else
+                RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+                sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+                printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
+            fi
         fi
     fi
-
+    if "$UseGCHP"; then
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
+    else
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+    fi
+    
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
         gridded_posterior_filename="gridded_posterior_ln.nc"
@@ -83,15 +102,14 @@ setup_posterior() {
     if "$HourlyCH4"; then
         if "$UseGCHP"; then
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
+                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
+                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' \
+                -e 's/#'\''Emissions/'\''Emissions/g' \
+                -e 's/Emissions.frequency:.*/Emissions.frequency:      240000/g' \
+                -e 's/Emissions.duration:.*/Emissions.duration:       240000/g' \
+                HISTORY.rc
             sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' \
                 setCommonRunSettings.sh
-            sed -i -E \
-                -e "s/^#'Emissions/'Emissions/" \
-                -e "s/^([[:space:]]*Emissions\.frequency:[[:space:]]*)[0-9]{6}/\1240000/" \
-                -e "s/^([[:space:]]*Emissions\.duration:[[:space:]]*)[0-9]{6}/\1240000/" \
-                HISTORY.rc
 
         else
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \

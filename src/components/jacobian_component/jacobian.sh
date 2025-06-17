@@ -93,6 +93,18 @@ setup_jacobian() {
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_bkgd_simulation.sh
 
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+    else
+        jacobian_period=1
+    fi
+
+    set -e
+    # generate gridded perturbation values for all state vector elements
+    printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
+    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+    printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
+
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
 
@@ -125,20 +137,7 @@ setup_jacobian() {
     fi
 
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
-
-    if "$KalmanMode"; then
-        jacobian_period=${period_i}
-    else
-        jacobian_period=1
-    fi
-
-    set -e
-    # generate gridded perturbation values for all state vector elements
-    printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
-    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
-    printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
 }
-
 # Description: Create simulation directory for defined xstr
 # Usage:
 #   create_simulation_dir
@@ -243,7 +242,7 @@ create_simulation_dir() {
         if "$UseGCHP"; then
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
-                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:    240000/g' HISTORY.rc
+                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' HISTORY.rc
         else
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
@@ -321,7 +320,6 @@ create_simulation_dir() {
                 # Perturb OH by hemisphere if this is a global simulation
                 # Apply hemispheric OH perturbation values using mask file
                 Output_fpath="./gridded_perturbation_oh_scale.nc"
-                oh_sfs=($PerturbValueOH)
                 Hemis_mask_fpath="${DataPath}/HEMCO/MASKS/v2024-08/hemisphere_mask.01x01.nc"
                 OptimizeNorth='False'
                 OptimizeSouth='False'
@@ -330,7 +328,7 @@ create_simulation_dir() {
                 else
                     OptimizeSouth='True'
                 fi
-                gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
+                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
                 
                 # Modify OH scale factor in HEMCO config
                 sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
@@ -370,6 +368,9 @@ create_simulation_dir() {
             sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
                 -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
                 -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+            if "$UseGCHP"; then
+                sed -i -e "s|gridded_posterior.nc|./RunDirs/ScaleFactors.nc|g" ExtData.rc
+            fi
         fi
 
     else
@@ -412,7 +413,7 @@ create_simulation_dir() {
     HcoPrevLine2='1 500'
     HcoPrevLine3="#200N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
-    ExtPrevLine3="#SCALE_ELEM_200N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
+    ExtPrevLine3="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
     
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
@@ -457,7 +458,7 @@ add_new_tracer() {
     SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
-    # Add lines for restarts to HEMCO_Config.rc
+    # Add lines for new tracers to HEMCO_Config.rc
     HcoNewLine2='0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '4/$SFnum' 1 500'
     sed -i -e "\|$HcoPrevLine2|a $HcoNewLine2" HEMCO_Config.rc
     HcoPrevLine2=$HcoNewLine2
@@ -467,6 +468,7 @@ add_new_tracer() {
     HcoPrevLine3=$HcoNewLine3
 
     if [ "$UseGCHP" != "true" ]; then
+        # Add lines for restarts of new tracers to HEMCO_Config.rc
         HcoNewLine1='* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
         sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
         HcoPrevLine1='SPC_CH4_'$istr
@@ -476,6 +478,7 @@ add_new_tracer() {
             HcoPrevLine4='BC_CH4_'$istr
         fi
     else
+        # Add lines for new tracers to ExtData.rc
         ExtNewLine3="SCALE_ELEM_$istr  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
         sed -i -e "\|$ExtPrevLine3|a $ExtNewLine3" ExtData.rc
         ExtPrevLine3=$ExtNewLine3
