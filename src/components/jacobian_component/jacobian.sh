@@ -385,7 +385,10 @@ create_simulation_dir() {
         if "$UseGCHP"; then
             RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4
             restart_fpath="Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4"
-            add_jacobian_tracers_restart_for_gchp $start_element $end_element $RestartFile1ppb $restart_fpath
+            # Conditionally add tracers if missing
+            all_tracers_exist $start_element $end_element "$restart_fpath" || {
+                add_jacobian_tracers_restart_for_gchp "$start_element" "$end_element" "$RestartFile1ppb" "$restart_fpath"
+            }
             cd Restarts
             ln -nsf "GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4" "GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4"
             cd ..
@@ -715,27 +718,47 @@ is_number() {
 # Usage:
 #   add_jacobian_tracers_restart_for_gchp <start_element> <end_element> <org_restart_fpath> <new_restart_fpath>
 add_jacobian_tracers_restart_for_gchp(){
-    python3 - "$@" <<EOF
-import sys
-import xarray as xr
+    local start=$1
+    local end=$2
+    local org_restart_fpath=$3
+    local new_restart_fpath=$4
 
-start_element = int(sys.argv[1])
-end_element = int(sys.argv[2])
-org_restart_fpath = sys.argv[3]
-new_restart_fpath = sys.argv[4]
+    # Make a copy of the original file to work on
+    cp "$org_restart_fpath" "$new_restart_fpath"
 
-org_restart = xr.open_dataset(org_restart_fpath)
-new_restart = org_restart.copy(deep=True)
+    for ((i=start; i<=end; i++)); do
+        tracer=$(printf "SPC_CH4_%04d" "$i")
+        
+        # Duplicate variable using ncap2
+        ncap2 -O -s "${tracer}=SPC_CH4;" "$new_restart_fpath" "$new_restart_fpath"
+        
+        # Optionally update long_name attribute
+        ncatted -O -a long_name,"$tracer",o,c,"Dry mixing ratio of species CH4_$(printf "%04d" "$i")" "$new_restart_fpath"
+    done
+}
 
-var = 'SPC_CH4'
-for i in range(start_element, end_element + 1):
-    tracer_name = f"{var}_{i:04d}"
-    new_restart[tracer_name] = new_restart[var].copy(deep=True)
-    new_restart[tracer_name].attrs['long_name'] = f"Dry mixing ratio of species CH4_{i:04d}"
+# Function to check if all SPC_CH4_#### variables exist
+all_tracers_exist() {
+    local start=$1
+    local end=$2
+    local file=$3
 
-new_restart.to_netcdf(
-    new_restart_fpath,
-    encoding={v: {"zlib": True, "complevel": 1} for v in new_restart.data_vars},
-)
-EOF
+    if [ ! -f "$file" ]; then
+        echo "File $file does not exist."
+        return 1
+    fi
+
+    # Extract variable names from file header
+    local vars
+    vars=$(ncdump -h "$file" | awk '/(float|double|int|char|byte)[[:space:]]+SPC_CH4_[0-9]{4}/ {gsub(/\(.*/, "", $2); print $2}')
+
+    for ((i=start; i<=end; i++)); do
+        tracer=$(printf "SPC_CH4_%04d" "$i")
+        if ! echo "$vars" | grep -q "^$tracer$"; then
+            echo "Missing tracer: $tracer"
+            return 1
+        fi
+    done
+
+    return 0
 }
