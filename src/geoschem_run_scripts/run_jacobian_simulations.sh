@@ -49,14 +49,13 @@ if {ReDoJacobian}; then
         echo "Not re-running jacobian simulation: ${xstr}"
         exit 0
     else
-        if {UseGCHP}; then
-            source ../cleanRunDir.sh
-            echo "{StartDate} 000000" > cap_restart
-        fi
-
         ### Run GEOS-Chem in the directory corresponding to the cluster Id
         echo "Re-running jacobian simulation: ${xstr}"
         cd ..
+        if {UseGCHP}; then
+            ./cleanRunDir.sh
+            echo "{StartDate} 000000" > cap_restart
+        fi
         ./{RunName}_${xstr}.run
         # save the exit code of the jacobian simulation cmd
         retVal=$?
