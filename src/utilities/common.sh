@@ -125,7 +125,7 @@ EOF
 # Usage:
 #   gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath> <OptimizeNorth> <OptimizeSouth>
 gridded_optimized_OH() {
-    python - "$1" "$2" "$3" "$4" "$5" "$6"<<EOF
+    python - "$1" "$2" "$3" "$4" "$5" "$6" <<EOF
 import sys
 import xarray as xr
 import numpy as np
@@ -138,28 +138,36 @@ OptimizeNorth = sys.argv[5]
 OptimizeSouth = sys.argv[6]
 
 maskds = xr.open_dataset(maskfpath)
-hemis = maskds['Hemisphere'].values
+hemis = maskds['Hemisphere']
 
-# Create masks
-n_mask = np.isclose(hemis, 1.0)
-s_mask = np.isclose(hemis, 2.0)
+# Define masks using approximate equality (tolerance 1e-6)
+n_mask = abs(hemis - 1.0) < 1e-6
+s_mask = abs(hemis - 2.0) < 1e-6
 
-# Construct OH scaling field
-oh_scale = np.ones_like(hemis)
-if OptimizeNorth.lower()=='true':
-    oh_scale[n_mask] = N_HEMIS
-if OptimizeSouth.lower()=='true':
-    oh_scale[s_mask] = S_HEMIS
+# Initialize oh_scale as all ones with the same dims and coords as hemis
+oh_scale = xr.ones_like(hemis)
 
-# Add as new variable
-scaleds = maskds.copy(deep=True)
-scaleds['oh_scale'] = xr.DataArray(
-    oh_scale, dims=maskds['Hemisphere'].dims,
-    attrs=dict(long_name='Scaling factor for OH', units='1')
+if OptimizeNorth.lower() == 'true':
+    oh_scale = oh_scale.where(~n_mask, other=N_HEMIS)
+if OptimizeSouth.lower() == 'true':
+    oh_scale = oh_scale.where(~s_mask, other=S_HEMIS)
+
+# Drop Hemisphere and add oh_scale with attributes
+scaleds = maskds.drop_vars('Hemisphere').assign(
+    oh_scale=oh_scale
 )
 
-# Save to file
-scaleds.to_netcdf(outfpath)
+refyear = 2000
+scaleds['oh_scale'].attrs = dict(long_name='Scaling factor for OH', units='1')
+scaleds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
+                            delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
+                            long_name='Time', calendar='standard')
+if outfpath is not None:
+    print(f"Saving file {outfpath}")
+    scaleds.to_netcdf(
+        outfpath,
+        encoding={v: {"zlib": True, "complevel": 1} for v in scaleds.data_vars},
+    )
 EOF
 }
 

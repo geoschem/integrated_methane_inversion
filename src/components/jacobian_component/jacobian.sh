@@ -339,7 +339,7 @@ create_simulation_dir() {
                 
                 if "$UseGCHP"; then
                     # add entry in ExtData.rc for GCHP
-                    sed -i -e "s|^#OH_pert_factor.*|OH_pert_factor 1 N Y 2000-01-01-T00:00:00 none none oh_scale ${Output_fpath}|" ExtData.rc
+                    sed -i -e "s|^#OH_pert_factor.*|OH_pert_factor 1 N Y - none none oh_scale ${Output_fpath}|" ExtData.rc
                 fi
             fi
         fi
@@ -507,8 +507,8 @@ run_jacobian() {
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" \
         -e "s:{KalmanMode}:${KalmanMode}:g" \
-        -e "s:{EndDate}:${EndDate}:g" \
-        -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+        -e "s:{ReDoJacobian}:${ReDoJacobian}:g" \
+        -e "s:{EndDate}:${EndDate}:g" jacobian_runs/run_jacobian_simulations.sh
 
     popd
 
