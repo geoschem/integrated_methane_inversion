@@ -157,11 +157,7 @@ scaleds = maskds.drop_vars('Hemisphere').assign(
     oh_scale=oh_scale
 )
 
-refyear = 2000
 scaleds['oh_scale'].attrs = dict(long_name='Scaling factor for OH', units='1')
-scaleds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
-                            delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
-                            long_name='Time', calendar='standard')
 if outfpath is not None:
     print(f"Saving file {outfpath}")
     scaleds.to_netcdf(
