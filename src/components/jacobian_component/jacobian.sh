@@ -332,8 +332,9 @@ create_simulation_dir() {
                 else
                     OptimizeSouth='True'
                 fi
-                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
-                
+                if [ ! -f "$Output_fpath" ]; then
+                    gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
+                fi
                 # Modify OH scale factor in HEMCO config
                 sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
                 

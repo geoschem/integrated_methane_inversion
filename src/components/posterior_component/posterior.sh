@@ -207,8 +207,10 @@ run_posterior() {
             Hemis_mask_fpath="${DataPath}/HEMCO/MASKS/v2024-08/hemisphere_mask.01x01.nc"
             OptimizeNorth='True'
             OptimizeSouth='True'
-            gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
-
+            if [ ! -f "$Output_fpath" ]; then
+                gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
+            fi
+            
             # Modify OH scale factor in HEMCO config
             sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
             
