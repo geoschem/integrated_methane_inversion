@@ -332,9 +332,7 @@ create_simulation_dir() {
                 else
                     OptimizeSouth='True'
                 fi
-                if [ ! -f "$Output_fpath" ]; then
-                    gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
-                fi
+                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
                 # Modify OH scale factor in HEMCO config
                 sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
                 
@@ -421,8 +419,8 @@ create_simulation_dir() {
     HcoPrevLine2='1 500'
     HcoPrevLine3="#200N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
-    ExtPrevLine3="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
-    
+    ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
+    HisPrevLine1="'SpeciesConcVV_CH4    ', 'GCHPchem',"
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
     if is_number "$x"; then
@@ -487,9 +485,13 @@ add_new_tracer() {
         fi
     else
         # Add lines for new tracers to ExtData.rc
-        ExtNewLine3="SCALE_ELEM_$istr  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
-        sed -i -e "\|$ExtPrevLine3|a $ExtNewLine3" ExtData.rc
-        ExtPrevLine3=$ExtNewLine3
+        ExtNewLine1="SCALE_ELEM_$istr  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
+        sed -i -e "\|$ExtPrevLine1|a $ExtNewLine1" ExtData.rc
+        ExtPrevLine1=$ExtNewLine1
+
+        HisNewLine1="                              'SpeciesConcVV_CH4_$istr', 'GCHPchem',"
+        sed -i -e "/${HisPrevLine1}/a\\"$'\n'"${HisNewLine1}" HISTORY.rc
+        HisPrevLine1=$HisNewLine1
     fi
 
 }
@@ -509,6 +511,8 @@ run_jacobian() {
         -e "s:{InversionPath}:${InversionPath}:g" \
         -e "s:{KalmanMode}:${KalmanMode}:g" \
         -e "s:{ReDoJacobian}:${ReDoJacobian}:g" \
+        -e "s:{UseGCHP}:${UseGCHP}:g" \
+        -e "s:{StartDate}:${StartDate}:g" \
         -e "s:{EndDate}:${EndDate}:g" jacobian_runs/run_jacobian_simulations.sh
 
     popd

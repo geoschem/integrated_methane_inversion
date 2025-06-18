@@ -2,6 +2,7 @@ import os
 import numpy as np
 import xarray as xr
 import pandas as pd
+import warnings
 from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
 
 
@@ -52,7 +53,12 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
 
     # Read lat, lon, CH4 from the SpeciecConc collection
     filename = f"{gc_cache}/{file_species}"
-    gc_data = xr.open_dataset(filename)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        gc_data = xr.open_dataset(filename)
+    # Drop the "anchor" variable if it exists
+    if 'anchor' in gc_data:
+        gc_data = gc_data.drop_vars('anchor')
     if UseGCHP:
         LON = gc_data["lons"].values
         LAT = gc_data["lats"].values
@@ -69,7 +75,12 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
 
     # Read PEDGE from the LevelEdgeDiags collection
     filename = f"{gc_cache}/{file_pedge}"
-    gc_data = xr.open_dataset(filename)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        gc_data = xr.open_dataset(filename)
+    # Drop the "anchor" variable if it exists
+    if 'anchor' in gc_data:
+        gc_data = gc_data.drop_vars('anchor')
     if UseGCHP:
         PEDGE = gc_data["Met_PEDGE"].values[0, ...]
         PEDGE = np.einsum("lfyx->fyxl", PEDGE)
@@ -219,7 +230,11 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     )
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-    dsmf = xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto")
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        dsmf = xr.open_dataset("/".join([j_dir, file_stub]))
+    if 'anchor' in dsmf:
+        dsmf = dsmf.drop_vars('anchor')
     keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
     is_Regional = config["isRegional"]
 

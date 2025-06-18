@@ -2,6 +2,7 @@ import xarray as xr
 import datetime
 from joblib import Parallel, delayed
 from src.inversion_scripts.utils import zero_pad_num_hour
+import warnings
 
 
 def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
@@ -33,12 +34,20 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
     # For each day:
     def process(d):
         # Load the SpeciesConc and LevelEdgeDiags data
-        SpeciesConc_data = xr.load_dataset(
-            f"{gc_source_path}/GEOSChem.SpeciesConc.{d}_0000z.nc4"
-        )
-        LevelEdgeDiags_data = xr.load_dataset(
-            f"{gc_source_path}/GEOSChem.LevelEdgeDiags.{d}_0000z.nc4"
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+            SpeciesConc_data = xr.load_dataset(
+                f"{gc_source_path}/GEOSChem.SpeciesConc.{d}_0000z.nc4"
+            )
+            LevelEdgeDiags_data = xr.load_dataset(
+                f"{gc_source_path}/GEOSChem.LevelEdgeDiags.{d}_0000z.nc4"
+            )
+        # Drop the "anchor" variable if it exists
+        if 'anchor' in SpeciesConc_data:
+            SpeciesConc_data = SpeciesConc_data.drop_vars('anchor')
+
+        if 'anchor' in LevelEdgeDiags_data:
+            LevelEdgeDiags_data = LevelEdgeDiags_data.drop_vars('anchor')
 
         # For each hour:
         for h in hours:

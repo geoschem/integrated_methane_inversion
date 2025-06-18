@@ -142,7 +142,7 @@ DOFSThreshold: 0
 RequestedCPUs: 36
 RequestedMemory: 180G
 InversionCPUs: 32
-InversionMemory: 600G
+InversionMemory: 1000G
 InversionTime: "0-24:00"
 RequestedTime: "0-12:00"
 SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared,test"

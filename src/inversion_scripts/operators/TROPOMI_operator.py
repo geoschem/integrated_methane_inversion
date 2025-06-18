@@ -96,9 +96,6 @@ def apply_average_tropomi_operator(
     n_obs = len(sat_ind[0])
     print("Found", n_obs, "TROPOMI observations.")
 
-    # get the lat/lons of gc gridcells
-    gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
-
     # Define time threshold (hour 00 after the inversion period)
     date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
         "-", ""
@@ -108,11 +105,14 @@ def apply_average_tropomi_operator(
     # map tropomi obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
     if config["UseGCHP"]:
-        gridfpath = '{}/{}/CS_grids/grids.c{CS_RES}.nc'.format(config["OutputPath"], config["RunName"], config["CS_RES"])
+        CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
+        gridfpath = f"{CSgridDir}/grids.c{config['CS_RES']}.nc"
         obs_mapped_to_gc = average_tropomi_observations_to_CSgrid(
             TROPOMI, gridfpath, sat_ind, time_threshold
         )
     else:
+        # get the lat/lons of gc gridcells
+        gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
         obs_mapped_to_gc = average_tropomi_observations(
             TROPOMI, gc_lat_lon, sat_ind, time_threshold
         )
@@ -446,7 +446,8 @@ def apply_tropomi_operator(
         GEOSCHEM = all_date_gc[strdate]
 
         if config['UseGCHP']:
-            gridfpath = '{}/{}/CS_grids/grids.c{CS_RES}.nc'.format(config["OutputPath"], config["RunName"], config["CS_RES"])
+            CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
+            gridfpath = f"{CSgridDir}/grids.c{config['CS_RES']}.nc"
             grid_ds = xr.open_dataset(gridfpath)
             # Read simulation grid
             lats = np.array(grid_ds["lats"])
@@ -468,7 +469,7 @@ def apply_tropomi_operator(
                 
                 obs_cart_corner = latlon_to_cartesian(latitude_bounds, longitude_bounds)
                 _, neighbor_idx_corner = kdtree.query(obs_cart_corner, k=1)
-                neighbor_idx_corner_u = np.unqiue(neighbor_idx_corner)
+                neighbor_idx_corner_u = np.unique(neighbor_idx_corner)
                 
                 # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
                 overlap_area = np.zeros(len(neighbor_idx_corner_u))
@@ -1135,7 +1136,7 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         
         obs_cart_corner = latlon_to_cartesian(latitude_bounds, longitude_bounds)
         _, neighbor_idx_corner = kdtree.query(obs_cart_corner, k=1)
-        neighbor_idx_corner_u = np.unqiue(neighbor_idx_corner)
+        neighbor_idx_corner_u = np.unique(neighbor_idx_corner)
         
         # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
         overlap_area = np.zeros(len(neighbor_idx_corner_u))
