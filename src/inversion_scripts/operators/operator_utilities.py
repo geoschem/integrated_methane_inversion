@@ -4,7 +4,11 @@ import xarray as xr
 import pandas as pd
 import warnings
 from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
+from pyproj import Geod
+from shapely.geometry import Polygon
 
+# Initialize WGS84 ellipsoid
+geod = Geod(ellps="WGS84")
 
 # common utilities for using different operators
 def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
@@ -328,6 +332,7 @@ def get_gridcell_list_gchp(lons, lats):
     # create array of dictionaries to represent gridcells
     gridcells = []
     nf, Ydim, Xdim = lats.shape
+    lons[lons>180] -= 360
     for nfi in range(nf):
         for yi in range(Ydim):
             for xi in range(Xdim):
@@ -546,3 +551,95 @@ def nearest_loc(query_location, reference_grid, tolerance=0.5):
         return np.nan
     else:
         return ind
+
+def normalize_longitudes(lons, convention="180"):
+    """
+    Normalize longitudes for polygons crossing 0/360 or -180/180.
+    """
+    lons = np.array(lons)
+    if convention == "360":
+        lons = (lons + 360) % 360
+        if np.ptp(lons) > 180:
+            lons[lons < 180] += 360
+        lons = lons % 360
+    else:  # convention == "180"
+        lons = ((lons + 180) % 360) - 180
+        if np.ptp(lons) > 180:
+            lons[lons > 0] -= 360
+    return lons.tolist()
+
+def compute_geodetic_polygon_area(lat, lon, convention="180"):
+    """
+    Compute the geodetic (ellipsoidal) area of a polygon.
+    
+    Parameters:
+    - lat, lon: lists of polygon corner coordinates (degrees)
+    - convention: longitude convention of input polygon ('180' or '360')
+    
+    Returns:
+    - area in square meters (float)
+    """
+    lon_norm = normalize_longitudes(lon, convention)
+    poly = Polygon(zip(lon_norm, lat))
+    if not poly.is_valid:
+        poly = poly.buffer(0)
+
+    x, y = poly.exterior.coords.xy
+    x = list(x)
+    y = list(y)
+    # Close polygon if needed
+    if (x[0], y[0]) != (x[-1], y[-1]):
+        x.append(x[0])
+        y.append(y[0])
+
+    area, _ = geod.polygon_area_perimeter(x, y)
+    return abs(area)
+    
+def compute_geodetic_intersection_area(lat1, lon1, lat2, lon2, convention1="180", convention2="180"):
+    """
+    Compute geodetic intersection area between two lat/lon polygons,
+    each possibly using different longitude conventions.
+    
+    Parameters:
+    - lat1, lon1: list of polygon 1 corners
+    - lat2, lon2: list of polygon 2 corners
+    - convention1: '180' or '360' for polygon 1
+    - convention2: '180' or '360' for polygon 2
+
+    Returns:
+    - intersection area in square meters (float)
+    """
+    # Normalize longitudes
+    lon1 = normalize_longitudes(lon1, convention1)
+    lon2 = normalize_longitudes(lon2, convention2)
+
+    # Convert both to same target convention, say [-180, 180]
+    lon1 = normalize_longitudes(lon1, "180")
+    lon2 = normalize_longitudes(lon2, "180")
+
+    # Build polygons
+    poly1 = Polygon(zip(lon1, lat1)).buffer(0)
+    poly2 = Polygon(zip(lon2, lat2)).buffer(0)
+
+    if not poly1.is_valid or not poly2.is_valid or not poly1.intersects(poly2):
+        return 0.0
+
+    inter = poly1.intersection(poly2)
+    if inter.is_empty:
+        return 0.0
+
+    def area_from_coords(x, y):
+        if (x[0], y[0]) != (x[-1], y[-1]):
+            x = list(x) + [x[0]]
+            y = list(y) + [y[0]]
+        area, _ = geod.polygon_area_perimeter(x, y)
+        return abs(area)
+
+    if inter.geom_type == 'Polygon':
+        x, y = inter.exterior.coords.xy
+        return area_from_coords(x, y)
+
+    elif inter.geom_type == 'MultiPolygon':
+        return sum(area_from_coords(p.exterior.coords.xy[0], p.exterior.coords.xy[1]) for p in inter.geoms)
+
+    return 0.0

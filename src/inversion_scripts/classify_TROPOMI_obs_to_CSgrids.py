@@ -28,29 +28,60 @@ def build_kdtree(lats, lons):
     cart_coords = latlon_to_cartesian(lat_flat, lon_flat)
     return cKDTree(cart_coords), lats.shape
 
-
 def precompute_polygons(corner_lats, corner_lons):
-    """Precompute simulation grid cell polygons from corner coordinates."""
-    corner_lons[corner_lons>180] -= 360
+    """
+    Precompute simulation grid cell polygons from corner coordinates.
+
+    Parameters:
+    - corner_lats, corner_lons: numpy arrays of shape (nf, YC+1, XC+1)
+    - project: optional projection function (lon, lat) -> (x, y)
+
+    Returns:
+    - polygons: numpy array of shape (nf, YC, XC) with shapely.Polygon objects
+    """
+    corner_lons = np.where(corner_lons < 0, corner_lons + 360, corner_lons)
     nf, YCdim, XCdim = corner_lats.shape
-    Ydim = YCdim - 1
-    Xdim = XCdim - 1
+    Ydim, Xdim = YCdim - 1, XCdim - 1
     polygons = np.empty((nf, Ydim, Xdim), dtype=object)
 
     for f in range(nf):
         for j in range(Ydim):
             for i in range(Xdim):
                 try:
-                    polygons[f, j, i] = Polygon([
-                        (corner_lons[f, j, i],     corner_lats[f, j, i]),
-                        (corner_lons[f, j, i + 1], corner_lats[f, j, i + 1]),
-                        (corner_lons[f, j + 1, i + 1], corner_lats[f, j + 1, i + 1]),
-                        (corner_lons[f, j + 1, i], corner_lats[f, j + 1, i])
-                    ])
-                except Exception:
-                    polygons[f, j, i] = None
-    return polygons
+                    lons = [
+                        corner_lons[f, j, i],
+                        corner_lons[f, j, i + 1],
+                        corner_lons[f, j + 1, i + 1],
+                        corner_lons[f, j + 1, i],
+                    ]
+                    lats = [
+                        corner_lats[f, j, i],
+                        corner_lats[f, j, i + 1],
+                        corner_lats[f, j + 1, i + 1],
+                        corner_lats[f, j + 1, i],
+                    ]
 
+                    # Handle antimeridian: wrap lons to avoid crossing discontinuity
+                    lons = np.array(lons)
+                    if np.ptp(lons) > 180:
+                        lons = np.where(lons < 180, lons + 360, lons)
+
+                    lonlat = list(zip(lons, lats))
+                    poly = Polygon(lonlat)
+
+                    # Optional: fix invalid polygons
+                    if not poly.is_valid:
+                        poly = poly.buffer(0)
+
+                    # Sanity check: make sure we really have a shapely Polygon
+                    assert isinstance(poly, Polygon), f"Expected Polygon but got {type(poly)} at f={f}, j={j}, i={i}"
+
+                    polygons[f, j, i] = poly if poly.is_valid else None
+
+                except Exception as e:
+                    polygons[f, j, i] = None
+
+    return polygons
 
 def classify_obs_to_cs_grid(
     obs_df: pd.DataFrame,

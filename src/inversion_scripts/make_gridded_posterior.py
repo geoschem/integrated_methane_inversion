@@ -121,10 +121,6 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         ds.lats.attrs["long_name"] = "Latitude"
         ds.lons.attrs["units"] = "degrees_east"
         ds.lons.attrs["long_name"] = "Longitude"
-    refyear = 2000
-    ds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
-                            delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
-                            long_name='Time', calendar='standard')
     ds.attrs = inv_results.attrs
 
     # Create netcdf for ensemble results
