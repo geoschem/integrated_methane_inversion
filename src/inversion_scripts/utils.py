@@ -13,6 +13,10 @@ from pyproj import Geod
 import pandas as pd
 import re
 import warnings
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
+    latlon_to_cartesian,
+    build_kdtree,
+)
 
 def save_obj(obj, name):
     """Save something with Pickle."""
@@ -64,29 +68,47 @@ def sum_total_emissions(emissions, areas, mask):
     return float(total)
 
 
-def filter_obs_with_mask(mask, df):
+def filter_obs_with_mask(mask, df, UseGCHP=False):
     """
     Select observations lying within a boolean mask
     mask is boolean xarray data array
     df is pandas dataframe with lat, lon, etc.
     """
 
-    reference_lat_grid = mask["lat"].values
-    reference_lon_grid = mask["lon"].values
-
     # Query lats/lons
     query_lats = df["lat"].values
     query_lons = df["lon"].values
 
-    # Loop
-    bad_ind = []
-    for k in range(len(df)):
-        # Find closest reference coordinates to selected lat/lon bounds
-        ref_lat_ind = np.abs(reference_lat_grid - query_lats[k]).argmin()
-        ref_lon_ind = np.abs(reference_lon_grid - query_lons[k]).argmin()
-        # If not in mask, save as bad index
-        if mask[ref_lat_ind, ref_lon_ind] == 0:
-            bad_ind.append(k)
+    if UseGCHP:
+        lats = mask["lats"].values
+        lons = mask["lons"].values
+        
+        # Loop
+        bad_ind = []
+        for k in range(len(df)):
+            # Find closest reference coordinates to selected lat/lon bounds
+            # Build KDTree and polygons
+            kdtree, shape = build_kdtree(lats, lons)
+            query_cart = latlon_to_cartesian(query_lats[k], query_lons[k])
+            _, neighbor_idx = kdtree.query(query_cart, k=1)
+            neighbor_idx = neighbor_idx.flatten()
+            f, j, i = np.unravel_index(neighbor_idx, shape)
+            # If not in mask, save as bad index
+            if mask[f,j,i] == 0:
+                bad_ind.append(k)
+
+    else:
+        reference_lat_grid = mask["lat"].values
+        reference_lon_grid = mask["lon"].values
+        # Loop
+        bad_ind = []
+        for k in range(len(df)):
+            # Find closest reference coordinates to selected lat/lon bounds
+            ref_lat_ind = np.abs(reference_lat_grid - query_lats[k]).argmin()
+            ref_lon_ind = np.abs(reference_lon_grid - query_lons[k]).argmin()
+            # If not in mask, save as bad index
+            if mask[ref_lat_ind, ref_lon_ind] == 0:
+                bad_ind.append(k)
 
     # Drop bad indexes and count remaining entries
     df_filtered = df.copy()
@@ -95,14 +117,14 @@ def filter_obs_with_mask(mask, df):
     return df_filtered
 
 
-def count_obs_in_mask(mask, df):
+def count_obs_in_mask(mask, df, UseGCHP=False):
     """
     Count the number of observations in a boolean mask
     mask is boolean xarray data array
     df is pandas dataframe with lat, lon, etc.
     """
 
-    df_filtered = filter_obs_with_mask(mask, df)
+    df_filtered = filter_obs_with_mask(mask, df, UseGCHP)
     n_obs = len(df_filtered)
 
     return n_obs
@@ -259,6 +281,7 @@ def plot_field(
     is_regional=True,
     save_path=None,
     clean_title=None,
+    UseGCHP=False,
 ):
     """
     Function to plot inversion results.
@@ -329,7 +352,14 @@ def plot_field(
 
     # Show boundary of ROI?
     if mask is not None:
-        mask.plot.contour(levels=1, colors="k", linewidths=4, ax=ax)
+        if UseGCHP:
+            for face in range(6):
+                ax.contour(
+                    mask['lons'].isel(nf=face), mask['lats'].isel(nf=face), mask.isel(nf=face),
+                    levels=1, colors='k', linewidths=4, transform=ccrs.PlateCarree(),
+                )
+        else:
+            mask.plot.contour(levels=1, colors="k", linewidths=4, ax=ax)
 
     # Remove duplicated axis labels
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, alpha=0)
@@ -497,16 +527,9 @@ def plot_field_gchp(
     # Show boundary of ROI?
     if mask is not None:
         for face in range(6):
-            x = corner_lons.isel(nf=face)
-            y = corner_lats.isel(nf=face)
-            m = mask.squeeze().isel(nf=face)
-
             ax.contour(
-                x, y, m,
-                levels=[1],
-                colors="k",
-                linewidths=4,
-                transform=ccrs.PlateCarree()
+                mask['lons'].isel(nf=face), mask['lats'].isel(nf=face), mask.isel(nf=face),
+                levels=1, colors='k', linewidths=4, transform=ccrs.PlateCarree(),
             )
 
     # Remove duplicated axis labels

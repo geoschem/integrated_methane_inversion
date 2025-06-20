@@ -39,7 +39,7 @@ def precompute_polygons(corner_lats, corner_lons):
     Returns:
     - polygons: numpy array of shape (nf, YC, XC) with shapely.Polygon objects
     """
-    corner_lons = np.where(corner_lons < 0, corner_lons + 360, corner_lons)
+    corner_lons = np.where(corner_lons > 180, corner_lons - 360, corner_lons)
     nf, YCdim, XCdim = corner_lats.shape
     Ydim, Xdim = YCdim - 1, XCdim - 1
     polygons = np.empty((nf, Ydim, Xdim), dtype=object)
@@ -64,7 +64,7 @@ def precompute_polygons(corner_lats, corner_lons):
                     # Handle antimeridian: wrap lons to avoid crossing discontinuity
                     lons = np.array(lons)
                     if np.ptp(lons) > 180:
-                        lons = np.where(lons < 180, lons + 360, lons)
+                        lons = np.where(lons > 0, lons - 360, lons)
 
                     lonlat = list(zip(lons, lats))
                     poly = Polygon(lonlat)

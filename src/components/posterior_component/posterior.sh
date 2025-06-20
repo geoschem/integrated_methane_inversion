@@ -260,6 +260,7 @@ run_posterior() {
         PrevDir="${RunDirs}/spinup_run"
     fi
 
+    PosteriorRunDir="${RunDirs}/posterior_run"
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
     mkdir -p data_visualization_posterior
