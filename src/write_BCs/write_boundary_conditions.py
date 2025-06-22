@@ -27,18 +27,12 @@ def get_TROPOMI_times(filename):
     Example output (tuple): (np.datetime64('2022-07-25T15:27:51'), np.datetime64('2022-07-25T17:09:21'))
     """
 
-    file_times = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
-    assert (
-        file_times is not None
-    ), "check TROPOMI filename - wasn't able to find start and end times in the filename"
-    start_TROPOMI_time = np.datetime64(
-        datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S")
-    )
-    end_TROPOMI_time = np.datetime64(
-        datetime.datetime.strptime(file_times.group(2), "%Y%m%dT%H%M%S")
-    )
+    ftimes = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
+    assert ftimes is not None
+    begint = np.datetime64(datetime.datetime.strptime(ftimes.group(1), "%Y%m%dT%H%M%S"))
+    endt = np.datetime64(datetime.datetime.strptime(ftimes.group(2), "%Y%m%dT%H%M%S"))
 
-    return start_TROPOMI_time, end_TROPOMI_time
+    return begint, endt
 
 
 def apply_tropomi_operator_to_one_tropomi_file(filename):
@@ -51,36 +45,28 @@ def apply_tropomi_operator_to_one_tropomi_file(filename):
         filename=filename,
         BlendedTROPOMI=blendedTROPOMI,
         n_elements=False,  # Not relevant
-        gc_startdate=start_time_of_interest,
-        gc_enddate=end_time_of_interest,
+        gc_startdate=start_time,
+        gc_enddate=end_time,
         xlim=[-180, 180],
         ylim=[-90, 90],
         gc_cache=os.path.join(config["workDir"], "gc_run", "OutputDir"),
         build_jacobian=False,  # Not relevant
         period_i=False,  # Not relevant
-        config=False,
-    )  # Not relevant
+        config=False,  # Not relevent
+    )
 
     return result["obs_GC"], filename
 
 
-def create_daily_means(satelliteDir, start_time_of_interest, end_time_of_interest):
+def create_daily_means(satelliteDir, start_time, end_time):
 
-    # List of all TROPOMI files that interesct our time period of interest
+    # List of all TROPOMI files that intersect our time period of interest
     TROPOMI_files = sorted(
         [
             file
             for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
-            if (
-                start_time_of_interest
-                <= get_TROPOMI_times(file)[0]
-                <= end_time_of_interest
-            )
-            or (
-                start_time_of_interest
-                <= get_TROPOMI_times(file)[1]
-                <= end_time_of_interest
-            )
+            if (start_time <= get_TROPOMI_times(file)[0] <= end_time)
+            or (start_time <= get_TROPOMI_times(file)[1] <= end_time)
         ]
     )
     print(f"First TROPOMI file -> {TROPOMI_files[0]}")
@@ -104,9 +90,7 @@ def create_daily_means(satelliteDir, start_time_of_interest, end_time_of_interes
         LAT = data["lat"].values
 
     # List of all days in our time range of interest
-    alldates = np.arange(
-        start_time_of_interest, end_time_of_interest, dtype="datetime64[D]"
-    )
+    alldates = np.arange(start_time, end_time, dtype="datetime64[D]")
     alldates = [day.astype(datetime.datetime).strftime("%Y%m%d") for day in alldates]
 
     # Initialize arrays for regridding
@@ -126,9 +110,7 @@ def create_daily_means(satelliteDir, start_time_of_interest, end_time_of_interes
             # Which day are we on (this is not perfect right now because orbits can cross from one day to the next...
             # but it is the best we can do right now without changing apply_tropomi_operator)
             file_times = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
-            assert (
-                file_times is not None
-            ), "check TROPOMI filename - wasn't able to find start and end times in the filename"
+            assert file_times is not None
             try:
                 date = datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
                 time_ind = alldates.index(date)
@@ -312,13 +294,13 @@ if __name__ == "__main__":
     blendedTROPOMI = sys.argv[1] == "True"  # use blended data?
     satelliteDir = sys.argv[2]  # where is the satellite data?
     # Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
-    start_time_of_interest = np.datetime64(
+    start_time = np.datetime64(
         datetime.datetime.strptime(sys.argv[3], "%Y%m%d")
     )
-    if start_time_of_interest != np.datetime64("2018-04-01T00:00:00"):
-        start_time_of_interest += np.timedelta64(1, "D")
+    if start_time != np.datetime64("2018-04-01T00:00:00"):
+        start_time += np.timedelta64(1, "D")
     # End of GC output
-    end_time_of_interest = np.datetime64(
+    end_time = np.datetime64(
         datetime.datetime.strptime(sys.argv[4], "%Y%m%d")
     )
     print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
@@ -340,8 +322,6 @@ if __name__ == "__main__":
         - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions
     """
 
-    daily_means = create_daily_means(
-        satelliteDir, start_time_of_interest, end_time_of_interest
-    )
+    daily_means = create_daily_means(satelliteDir, start_time, end_time)
     bias = calculate_bias(daily_means)
     write_bias_corrected_files(bias)
