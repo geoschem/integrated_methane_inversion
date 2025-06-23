@@ -270,11 +270,11 @@ def write_bias_corrected_files(bias):
             new_xch4 = original_xch4 - bias_for_this_boundary_condition_file
             ratio = new_xch4 / original_xch4
 
-            for t in range(original_data.shape[0]):
-                for lev in range(original_data.shape[1]):
-                    original_data[t, lev, :, :] *= ratio
+            for t in range(mixing_ratio.shape[0]):
+                for lev in range(mixing_ratio.shape[1]):
+                    mixing_ratio[t, lev, :, :] *= ratio
 
-            ds["SpeciesBC_CH4"].values = original_data
+            ds["SpeciesBC_CH4"].values = mixing_ratio
 
             if blendedTROPOMI:
                 print(
