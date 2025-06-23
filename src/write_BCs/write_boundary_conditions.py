@@ -276,29 +276,10 @@ def write_bias_corrected_files(bias):
 
             ds["SpeciesBC_CH4"].values = mixing_ratio
 
-            if blendedTROPOMI:
-                print(
-                    f"Writing to {os.path.join(config['workDir'], 'blended-boundary-conditions', os.path.basename(filename))}"
-                )
-                ds.to_netcdf(
-                    os.path.join(
-                        config["workDir"],
-                        "blended-boundary-conditions",
-                        os.path.basename(filename),
-                    )
-                )
-            else:
-                print(
-                    f"Writing to {os.path.join(config['workDir'], 'tropomi-boundary-conditions', os.path.basename(filename))}"
-                )
-                ds.to_netcdf(
-                    os.path.join(
-                        config["workDir"],
-                        "tropomi-boundary-conditions",
-                        os.path.basename(filename),
-                    )
-                )
-
+            subdir = "blended-boundary-conditions" if blendedTROPOMI else "tropomi-boundary-conditions"
+            output_path = os.path.join(config["workDir"], subdir, os.path.basename(filename))
+            print(f"Writing to {output_path}")
+            ds.to_netcdf(output_path)
 
 if __name__ == "__main__":
 
