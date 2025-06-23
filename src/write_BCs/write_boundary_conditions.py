@@ -112,10 +112,14 @@ def create_daily_means(satelliteDir, start_time, end_time):
             file_times = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
             assert file_times is not None
             try:
-                date = datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
+                date = datetime.datetime.strptime(
+                    file_times.group(1), "%Y%m%dT%H%M%S"
+                ).strftime("%Y%m%d")
                 time_ind = alldates.index(date)
             except:
-                date = datetime.datetime.strptime(file_times.group(2), "%Y%m%dT%H%M%S").strftime("%Y%m%d")
+                date = datetime.datetime.strptime(
+                    file_times.group(2), "%Y%m%dT%H%M%S"
+                ).strftime("%Y%m%d")
                 time_ind = alldates.index(date)
 
             c_TROPOMI, c_GC, lon0, lat0 = obsGC[iNN, :4]
@@ -259,11 +263,19 @@ def write_bias_corrected_files(bias):
         bias_for_this_boundary_condition_file = bias_mol_mol[index, :, :]
 
         with xr.open_dataset(filename) as ds:
-            original_data = ds["SpeciesBC_CH4"].values.copy()
+
+            mixing_ratio = ds["SpeciesBC_CH4"].values.copy()  # [mol/mol]
+            dry_air = ds["Met_AD"] / 28.9644e-3  # [mol]
+            original_xch4 = (mixing_ratio * dry_air).sum(dim="lev") / dry_air.sum(dim="lev")
+            new_xch4 = original_xch4 - bias_for_this_boundary_condition_file
+            ratio = new_xch4 / original_xch4
+
             for t in range(original_data.shape[0]):
                 for lev in range(original_data.shape[1]):
-                    original_data[t, lev, :, :] -= bias_for_this_boundary_condition_file
+                    original_data[t, lev, :, :] *= ratio
+
             ds["SpeciesBC_CH4"].values = original_data
+
             if blendedTROPOMI:
                 print(
                     f"Writing to {os.path.join(config['workDir'], 'blended-boundary-conditions', os.path.basename(filename))}"
@@ -294,15 +306,11 @@ if __name__ == "__main__":
     blendedTROPOMI = sys.argv[1] == "True"  # use blended data?
     satelliteDir = sys.argv[2]  # where is the satellite data?
     # Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
-    start_time = np.datetime64(
-        datetime.datetime.strptime(sys.argv[3], "%Y%m%d")
-    )
+    start_time = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
     if start_time != np.datetime64("2018-04-01T00:00:00"):
         start_time += np.timedelta64(1, "D")
     # End of GC output
-    end_time = np.datetime64(
-        datetime.datetime.strptime(sys.argv[4], "%Y%m%d")
-    )
+    end_time = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
     print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
     print(f"Using files at {satelliteDir}")
 

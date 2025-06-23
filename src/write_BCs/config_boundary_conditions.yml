@@ -3,7 +3,7 @@ startDate: "20180401"
 endDate: "20180531"
 
 ## A directory with a lot of space where you can write the BCs (and intermediate files)
-workDir: "/n/holylfs06/LABS/jacob_lab2/Lab/nbalasus/test"
+workDir: "/n/holylfs06/LABS/jacob_lab2/Lab/nbalasus/test-new"
 
 ## Paths to TROPOMI data and blended TROPOMI+GOSAT data
 tropomiDir: "/n/holylfs05/LABS/jacob_lab/Everyone/imi/ch4/tropomi"
