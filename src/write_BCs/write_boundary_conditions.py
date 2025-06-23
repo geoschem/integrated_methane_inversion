@@ -270,9 +270,8 @@ def write_bias_corrected_files(bias):
             new_xch4 = original_xch4 - bias_for_this_boundary_condition_file
             ratio = new_xch4 / original_xch4
 
-            for t in range(mixing_ratio.shape[0]):
-                for lev in range(mixing_ratio.shape[1]):
-                    mixing_ratio[t, lev, :, :] *= ratio
+            for lev in range(mixing_ratio.shape[1]):
+                mixing_ratio[:, lev, :, :] *= ratio
 
             ds["SpeciesBC_CH4"].values = mixing_ratio
 
