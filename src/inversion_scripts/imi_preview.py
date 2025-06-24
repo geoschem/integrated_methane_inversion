@@ -39,50 +39,11 @@ from src.inversion_scripts.operators.TROPOMI_operator import (
 )
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
     latlon_to_cartesian,
-    build_kdtree, 
+    build_kdtree,
     classify_obs_to_cs_grid,
-    map_obs_to_CSgrid
+    map_obs_to_CSgrid,
 )
 warnings.filterwarnings("ignore", category=FutureWarning)
-
-def buffered_mask_cubedsphere(mask: xr.DataArray, structure=None):
-    """
-    Perform binary dilation on a cubed-sphere mask (nf, Ydim, Xdim) independently per face.
-
-    Parameters:
-    - mask: xarray.DataArray with dims ('nf', 'Ydim', 'Xdim')
-    - structure: 2D numpy array for dilation structuring element (default 5x5 ones)
-
-    Returns:
-    - buffered_mask: xarray.DataArray with same dims and coords as input mask
-    """
-
-    if structure is None:
-        structure = np.ones((5, 5))  # default 5x5 dilation kernel
-
-    nf, Ydim, Xdim = mask.shape
-    buffered_np = np.zeros_like(mask.values, dtype=bool)
-
-    # Apply dilation face-by-face
-    for f in range(nf):
-        # mask for face f as numpy boolean array
-        face_mask = mask.values[f, :, :].astype(bool)
-        # dilate 2D mask on this face
-        dilated_face = binary_dilation(face_mask, structure=structure)
-        buffered_np[f, :, :] = dilated_face
-
-    # Rebuild xarray.DataArray with original dims and coords
-    buffered_mask = xr.DataArray(
-        buffered_np,
-        dims=mask.dims,
-        coords={k: v for k, v in mask.coords.items() if k != 'time'},  # drop time coord or keep as you prefer
-    )
-    
-    # Optionally keep time coord if you want (as scalar coord)
-    if 'time' in mask.coords:
-        buffered_mask = buffered_mask.assign_coords(time=mask.coords['time'])
-
-    return buffered_mask
 
 def get_TROPOMI_data(
     file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
@@ -353,7 +314,7 @@ def imi_preview(
         dpi=150,
     )
 
-   
+
 
     # Plot albedo
     fig = plt.figure(figsize=(10, 8))
@@ -454,7 +415,8 @@ def imi_preview(
             sensitivities_da["Sensitivities"],
             cmap=cc.cm.CET_L19,
             vmin=0,
-            vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
+            vmax=0.08,
+            #vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
             lon_bounds=None,
             lat_bounds=None,
             title="Estimated Averaging kernel sensitivities",
@@ -484,7 +446,7 @@ def imi_preview(
         dpi=150,
     )
 
-    
+
 
     # calculate expected DOFS
     expectedDOFS = np.round(sum(a), 5)
@@ -526,7 +488,7 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
     # Fill valid state vector elements with sensitivities
     for i in range(1, last_ROI_element + 1):
         mapped = mapped.where(~(sv_index == i), sensitivities[i - 1])
-    
+
     return mapped.to_dataset(name='Sensitivities')
 
 def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
@@ -746,37 +708,25 @@ def estimate_averaging_kernel(
     # Set resolution specific variables
     # L_native = Rough length scale of native state vector element [m]
     if config['UseGCHP']:
-        n_box = 6 * config['CS_RES'] ** 2
-        L_native = np.sqrt(4 * np.pi * (R_EARTH_km * 1e3) ** 2 / n_box)
         df_super = classify_obs_to_cs_grid(df, gridpath)
-<<<<<<< HEAD
+        value_columns = ['obs_count', 'lat', 'lon']
+        daily_observation_counts = map_obs_to_CSgrid(df_super, state_vector_labels, value_columns)
     else:
         # Set resolution specific variables
         # L_native = Rough length scale of native state vector element [m]
         if config["Res"] == "0.125x0.15625":
-            L_native = 12.5 * 1000
             lat_step = 0.125
             lon_step = 0.15625
         elif config["Res"] == "0.25x0.3125":
-=======
-        value_columns = ['obs_count', 'lat', 'lon']
-        daily_observation_counts = map_obs_to_CSgrid(df_super, state_vector_labels, value_columns)
-    else:
-        if config["Res"] == "0.25x0.3125":
->>>>>>> 93993a3 (fix for preview for GCHP)
-            L_native = 25 * 1000
             lat_step = 0.25
             lon_step = 0.3125
         elif config["Res"] == "0.5x0.625":
-            L_native = 50 * 1000
             lat_step = 0.5
             lon_step = 0.625
         elif config["Res"] == "2.0x2.5":
-            L_native = 200 * 1000
             lat_step = 2.0
             lon_step = 2.5
         elif config["Res"] == "4.0x5.0":
-            L_native = 400 * 1000
             lat_step = 4.0
             lon_step = 5.0
 
@@ -804,11 +754,9 @@ def estimate_averaging_kernel(
 
     # set the nans to 0 if there are no observations. For superobs each day is 1 superob
     daily_observation_counts["superobs_count"].values = np.where(
-        np.isnan(daily_observation_counts["superobs_count"].values), 0, 1
+        np.isnan(np.array(daily_observation_counts["obs_count"].values)), 0, 1
     )
-    daily_observation_counts["obs_count"].values = np.nan_to_num(
-        daily_observation_counts["obs_count"].values
-    )
+    daily_observation_counts["obs_count"] = daily_observation_counts["obs_count"].fillna(0)
 
     int_sv_labels = state_vector_labels.astype(int)
     structure = np.ones((5, 5))
@@ -824,21 +772,21 @@ def estimate_averaging_kernel(
         # size by adding concentric rings to mimic transport/diffusion
         # when counting observations. We use 2 concentric rings based on
         # empirical evidence -- Nesser et al used 3.
-        
+
         if config["UseGCHP"]:
             lati = CSlats.values[np.where(maski.values)]
             loni = CSlons.values[np.where(maski.values)]
             query_cart = latlon_to_cartesian(lati, loni)
             _, neighbor_idxs = kdtree.query(query_cart, k=n_neighbors)
 
-            neighbor_idxs = np.unique(neighbor_idxs.flatten())
+            neighbor_idxs = neighbor_idxs.flatten()
             f_idx, j_idx, x_idx = np.unravel_index(neighbor_idxs, shape)
 
-            obs_count_values = daily_observation_counts["obs_count"].values[f_idx, j_idx, x_idx]
-            superobs_count_values = daily_observation_counts["superobs_count"].values[f_idx, j_idx, x_idx]
-            num_obs_temp = np.nansum(obs_count_values)
+            obs_count_values = daily_observation_counts["obs_count"].values[:, f_idx, j_idx, x_idx]
+            superobs_count_values = daily_observation_counts["superobs_count"].values[:, f_idx, j_idx, x_idx]
+            num_obs_temp = np.nansum(obs_count_values).item()
             n_success_obs_days = np.nansum(superobs_count_values).item()
-            
+
         else:
             buffered_mask = binary_dilation(maski, structure=structure)
             buffered_mask = xr.DataArray(
@@ -849,7 +797,7 @@ def estimate_averaging_kernel(
             # append the number of obs in each element
             num_obs_temp = np.nansum(
                 daily_observation_counts["obs_count"].where(buffered_mask).values
-            )
+            ).item()
             # append the number of successful obs days
             n_success_obs_days = np.nansum(
                 daily_observation_counts["superobs_count"].where(buffered_mask).values
@@ -859,7 +807,8 @@ def estimate_averaging_kernel(
         emissions_temp = sum_total_emissions(prior, areas, maski)
         # number of native state vector elements in each element
         size_temp = state_vector_labels.where(maski).count().item()
-        
+        L_native = np.sqrt(np.nanmean(areas.where(maski).values)).item()
+
         del maski
         gc.collect()
         return emissions_temp, L_native, size_temp, num_obs_temp, n_success_obs_days
@@ -889,9 +838,10 @@ def estimate_averaging_kernel(
 
     # State vector, observations
     emissions = np.array(emissions)
-    m_superi = np.array(m_superi)  # Number of successful observation days
     L = np.array(L)
     num_native_elements = np.array(num_native_elements)
+    num_obs = np.array(num_obs)
+    m_superi = np.array(m_superi)  # Number of successful observation days
 
     # If Kalman filter mode, count observations per inversion period
     if config["KalmanMode"]:
@@ -922,7 +872,7 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * np.power(L, 2))  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * L ** 2)  # kg/m2/s from kg/s, per element
 
     # Use the first element of the error list if multiple values are provided
     sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
@@ -957,7 +907,7 @@ def estimate_averaging_kernel(
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
 
     # Places with 0 superobs should be 0
-    a = np.where(np.equal(m_superi, 0), float(0), a)
+    a = np.where(np.isclose(m_superi, 0.0, atol=1e-8), 0.0, a)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"

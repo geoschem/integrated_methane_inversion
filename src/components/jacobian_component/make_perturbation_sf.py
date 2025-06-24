@@ -269,7 +269,10 @@ def make_gridded_perturbation_sf_latlon(pert_vector, statevector, save_pth):
     lon = statevector['lon'].values
     
     # Map the input vector (e.g., scale factors) to the state vector grid
-    sv_index = statevector.StateVector.values
+    if "time" in statevector.StateVector.dims:
+        sv_index = statevector.StateVector.values
+    else:
+        sv_index = statevector.StateVector.values[None,...]
     valid_mask = ~np.isnan(sv_index)
     # Create a placeholder array for integer indices, initialize with -1
     sv_index_int = np.full_like(sv_index, fill_value=-1, dtype=int)
@@ -291,8 +294,6 @@ def make_gridded_perturbation_sf_latlon(pert_vector, statevector, save_pth):
     gridded_pert_ds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
                                         delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
                                         long_name='Time', calendar='standard')
-    gridded_pert_ds['corner_lats'] = statevector['corner_lats']
-    gridded_pert_ds['corner_lons'] = statevector['corner_lons']
 
     # Save
     if save_pth is not None:
