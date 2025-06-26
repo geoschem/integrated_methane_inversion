@@ -4,6 +4,7 @@ import xarray as xr
 import pandas as pd
 import datetime
 from shapely.geometry import Polygon
+from spherical_geometry.polygon import SphericalPolygon
 from src.inversion_scripts.utils import (
     filter_tropomi,
     filter_blended,
@@ -21,8 +22,7 @@ from src.inversion_scripts.operators.operator_utilities import (
     get_gridcell_list,
     get_gridcell_list_gchp,
     nearest_loc,
-    compute_geodetic_polygon_area,
-    compute_geodetic_intersection_area,
+    precompute_CSgrid_polygons,
 )
 
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
@@ -444,6 +444,7 @@ def apply_tropomi_operator(
         
         # Build KDTree and polygons
         kdtree, shape = build_kdtree(lats, lons)
+        polygons = precompute_CSgrid_polygons(corner_lats, corner_lons)
     # For each TROPOMI observation:
     for k in range(n_obs):
         # Get GEOS-Chem data for the date of the observation:
@@ -455,8 +456,9 @@ def apply_tropomi_operator(
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
 
         # Polygon representing TROPOMI pixel
-        polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
-        polygon_tropomi_area = compute_geodetic_polygon_area(latitude_bounds, longitude_bounds, convention="180")
+        # Polygon representing TROPOMI pixel
+        xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
+        polygon_tropomi = SphericalPolygon(xyz_bounds)
         
         p_sat = TROPOMI["pressures"][iSat, jSat, :]
         dry_air_subcolumns = TROPOMI["dry_air_subcolumns"][iSat, jSat, :]  # mol m-2
@@ -475,21 +477,10 @@ def apply_tropomi_operator(
             overlap_area = np.zeros(len(neighbor_idx))
             for ii in range(len(neighbor_idx)):
                 f, j, i = np.unravel_index(neighbor_idx[ii], shape)
-                corner_lonsi = [
-                    corner_lons[f, j, i],
-                    corner_lons[f, j, i + 1],
-                    corner_lons[f, j + 1, i + 1],
-                    corner_lons[f, j + 1, i],
-                ]
-                corner_latsi = [
-                    corner_lats[f, j, i],
-                    corner_lats[f, j, i + 1],
-                    corner_lats[f, j + 1, i + 1],
-                    corner_lats[f, j + 1, i],
-                ]
-                area = compute_geodetic_intersection_area(
-                    latitude_bounds, longitude_bounds, corner_latsi, corner_lonsi, convention1="180", convention2="360")
-                overlap_area[ii] = area
+                polygon_gchp = polygons[f,j,i]
+                inter_poly = polygon_gchp.intersection(polygon_tropomi)
+                if inter_poly is not None:
+                    overlap_area[ii] = inter_poly.area()
             
             gc_coords = neighbor_idx
         
@@ -539,14 +530,13 @@ def apply_tropomi_operator(
                     for i in [1, 2]:
                         geoschem_corners_lon[i] += dlon / 2
 
-                polygon_geoschem = Polygon(
-                    np.column_stack((geoschem_corners_lon, geoschem_corners_lat))
-                )
+                xyz_geoschem_corners = latlon_to_cartesian(geoschem_corners_lat, geoschem_corners_lon)
+                polygon_geoschem = SphericalPolygon(xyz_geoschem_corners)
                 
                 # Calculate overlapping area as the intersection of the two polygons
-                area = compute_geodetic_intersection_area(
-                    latitude_bounds, longitude_bounds, geoschem_corners_lat, geoschem_corners_lon, convention1="180", convention2="180")
-                overlap_area[gridcellIndex] = area
+                inter_poly = polygon_geoschem.intersection(polygon_tropomi)
+                if inter_poly is not None:
+                    overlap_area[gridcellIndex] = inter_poly.area()
 
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         if sum(overlap_area) < 1e-6:
@@ -655,7 +645,7 @@ def apply_tropomi_operator(
 
         # For global inversions, area of overlap should equal area of TROPOMI pixel
         # This is because the GEOS-Chem grid is continuous
-        rel_diff = abs(sum(overlap_area) - polygon_tropomi_area) / polygon_tropomi_area
+        rel_diff = abs(sum(overlap_area) - polygon_tropomi.area()) / polygon_tropomi.area()
         if not config['isRegional'] and rel_diff > 0.01:
             print(f"Skipping obs #{k} at lat {sat_lat:.2f} and lon {sat_lon:.2f} due to poor overlap: {rel_diff:.4f}")
             continue  # Skip this observation
@@ -966,8 +956,8 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
         overlap_area = np.zeros(len(gc_coords))
 
         # Polygon representing TROPOMI pixel
-        polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
-        polygon_tropomi_area = compute_geodetic_polygon_area(latitude_bounds, longitude_bounds, convention="180")
+        xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
+        polygon_tropomi = SphericalPolygon(xyz_bounds)
         
         for gridcellIndex in range(len(gc_coords)):
             # Define polygon representing the GEOS-Chem grid cell
@@ -984,13 +974,13 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
                 coords[1] + dlat / 2,
                 coords[1] + dlat / 2,
             ]
-            polygon_geoschem = Polygon(
-                np.column_stack((geoschem_corners_lon, geoschem_corners_lat))
-            )
+            xyz_geoschem_corners = latlon_to_cartesian(geoschem_corners_lat, geoschem_corners_lon)
+            polygon_geoschem = SphericalPolygon(xyz_geoschem_corners)
+            
             # Calculate overlapping area as the intersection of the two polygons
-            area = compute_geodetic_intersection_area(
-                latitude_bounds, longitude_bounds, geoschem_corners_lat, geoschem_corners_lon, convention1="180", convention2="180")
-            overlap_area[gridcellIndex] = area
+            inter_poly = polygon_geoschem.intersection(polygon_tropomi)
+            if inter_poly is not None:
+                overlap_area[gridcellIndex] = inter_poly.area()
 
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)
@@ -1122,7 +1112,7 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
 
     # Build KDTree and polygons
     kdtree, shape = build_kdtree(lats, lons)
-    
+    polygons = precompute_CSgrid_polygons(corner_lats, corner_lons)
     for k in range(n_obs):
         iSat = sat_ind[0][k]  # lat index
         jSat = sat_ind[1][k]  # lon index
@@ -1134,8 +1124,8 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         longitude_bounds = TROPOMI["longitude_bounds"][iSat, jSat, :]
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
         # Polygon representing TROPOMI pixel
-        polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
-        polygon_tropomi_area = compute_geodetic_polygon_area(latitude_bounds, longitude_bounds, convention="180")
+        xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
+        polygon_tropomi = SphericalPolygon(xyz_bounds)
         
         obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
         _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be more safe to include all overlap
@@ -1145,28 +1135,17 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         overlap_area = np.zeros(len(neighbor_idx))
         for ii in range(len(neighbor_idx)):
             f, j, i = np.unravel_index(neighbor_idx[ii], shape)
-            corner_lonsi = [
-                corner_lons[f, j, i],
-                corner_lons[f, j, i + 1],
-                corner_lons[f, j + 1, i + 1],
-                corner_lons[f, j + 1, i],
-            ]
-            corner_latsi = [
-                corner_lats[f, j, i],
-                corner_lats[f, j, i + 1],
-                corner_lats[f, j + 1, i + 1],
-                corner_lats[f, j + 1, i],
-            ]
-            area = compute_geodetic_intersection_area(
-                latitude_bounds, longitude_bounds, corner_latsi, corner_lonsi, convention1="180", convention2="360")
-            overlap_area[ii] = area
+            polygon_gchp = polygons[f,j,i]
+            inter_poly = polygon_gchp.intersection(polygon_tropomi)
+            if inter_poly is not None:
+                overlap_area[ii] = inter_poly.area()
         
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)
         if total_overlap_area < 1e-6:
             continue
-        rel_diff = abs(sum(overlap_area) - polygon_tropomi_area) / polygon_tropomi_area
-        if rel_diff > 0.05:
+        rel_diff = abs(sum(overlap_area) - polygon_tropomi.area()) / polygon_tropomi.area()
+        if rel_diff > 0.01:
             print(f"Skipping obs #{k} at lat {sat_lat:.2f} and lon {sat_lon:.2f} due to poor overlap: {rel_diff:.4f}")
             continue  # Skip this observation
 
