@@ -8,7 +8,11 @@
 # Usage:
 #   create_statevector
 create_statevector() {
-    printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    if "$UseGCHP"; then
+        printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+    else
+        printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    fi
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then
@@ -49,7 +53,11 @@ create_statevector() {
     printf "\nCalling make_state_vector_file.py\n"
     python make_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
 
-    printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    if "$UseGCHP"; then
+        printf "\n=== DONE CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+    else
+        printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    fi
 }
 
 # Description: Reduce dimension of state vector with clustering method

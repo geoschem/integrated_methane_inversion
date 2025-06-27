@@ -30,21 +30,49 @@ setup_posterior() {
     cd $runDir
 
     # Link to GEOS-Chem executable
-    ln -s ../GEOSChem_build/gcclassic .
-
-    # Link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
-    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+    if "$UseGCHP"; then
+        sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+            -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+            -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+            -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+            setCommonRunSettings.sh
+        ln -nsf ../GEOSChem_build/gchp .
     else
-        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-        if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-            printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
-        fi
+        ln -nsf ../GEOSChem_build/gcclassic .
     fi
 
+    # Link to restart file
+    if "$UseGCHP"; then
+        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.c${CS_RES}.nc4
+    else
+        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    fi
+    if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
+        RestartFile=$RestartFileFromSpinup
+    else
+        if "$UseBCsForRestart"; then
+            if "$UseGCHP"; then
+                # regrid restart file to GCHP resolution
+                TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
+                Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+                FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
+                cd "${RunDirs}/CS_grids"
+                ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
+                RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
+                cd "${RunDirs}/jacobian_runs/${name}"
+            else
+                RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+                sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+                printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
+            fi
+        fi
+    fi
+    if "$UseGCHP"; then
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
+    else
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+    fi
+    
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
         gridded_posterior_filename="gridded_posterior_ln.nc"
@@ -64,34 +92,60 @@ setup_posterior() {
         -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
+    if "$UseGCHP"; then
+        sed -i -e "s|\.\./\.\.|\.\.|g" \
+            -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+            -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" ExtData.rc
+    fi
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
-        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
-            -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
-            -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
+        if "$UseGCHP"; then
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
+                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' \
+                -e 's/#'\''Emissions/'\''Emissions/g' \
+                -e 's/Emissions.frequency:.*/Emissions.frequency:      240000/g' \
+                -e 's/Emissions.duration:.*/Emissions.duration:       240000/g' \
+                HISTORY.rc
+            sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' \
+                setCommonRunSettings.sh
+
+        else
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+                -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
+                -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
+        fi
     fi
 
     ### Turn on observation operators if requested, for posterior run
     activate_observations
 
     # Create run script from template
-    sed -e "s:namename:${PosteriorName}:g" \
-        -e "s:##:#:g" ch4_run.template >${PosteriorName}.run
-    chmod 755 ${PosteriorName}.run
-    rm -f ch4_run.template
+    if "$UseGCHP"; then
+        sed -e "s:namename:${PosteriorName}:g" \
+            -e "s:##:#:g" gchp_ch4_run.template >${PosteriorName}.run
+        chmod 755 ${PosteriorName}.run
+        rm -f gchp_ch4_run.template
+    else
+        sed -e "s:namename:${PosteriorName}:g" \
+            -e "s:##:#:g" ch4_run.template >${PosteriorName}.run
+        chmod 755 ${PosteriorName}.run
+        rm -f ch4_run.template
+    fi
 
     ### Perform dry run if requested
-    if "$PosteriorDryRun"; then
-        printf "\nExecuting dry-run for posterior run...\n"
-        ./gcclassic --dryrun &>log.dryrun
-        # prevent restart file from getting downloaded since
-        # we don't want to overwrite the one we link to above
-        sed -i '/GEOSChem.Restart/d' log.dryrun
-        python download_gc_data.py log.dryrun aws
+    if [ "$UseGCHP" != "true" ]; then
+        if "$PosteriorDryRun"; then
+            printf "\nExecuting dry-run for posterior run...\n"
+            ./gcclassic --dryrun &>log.dryrun
+            # prevent restart file from getting downloaded since
+            # we don't want to overwrite the one we link to above
+            sed -i '/GEOSChem.Restart/d' log.dryrun
+            python download_gc_data.py log.dryrun aws
+        fi
     fi
 
     # Navigate back to top-level directory
@@ -148,21 +202,20 @@ run_posterior() {
             printf "OH optimized perturbation value set to: ${PerturbOHValue}\n"
         else
             # Apply hemispheric OH perturbation values using mask file
+            Output_fpath="./gridded_posterior_oh_scale.nc"
             oh_sfs=($PerturbOHValue)
-            cp Perturbations.txt PerturbationsOH.txt
-            sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
-            OHPertPrevLine='DEFAULT    0     1.0'
-            OHPertNewLine="N_HEMIS    1     ${oh_sfs[0]}\nS_HEMIS    2     ${oh_sfs[1]}"
-            sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
-
+            Hemis_mask_fpath="${DataPath}/HEMCO/MASKS/v2024-08/hemisphere_mask.01x01.nc"
+            OptimizeNorth='True'
+            OptimizeSouth='True'
+            gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
+            
             # Modify OH scale factor in HEMCO config
-            sed -i -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" HEMCO_Config.rc
-            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
-
-            HcoPrevLineMask='CH4_STATE_VECTOR'
-            HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
-'
-            sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
+            
+            if "$UseGCHP"; then
+                # add entry in ExtData.rc for GCHP
+                sed -i -e "s|^#OH_pert_factor.*|OH_pert_factor 1 N Y - none none oh_scale ${Output_fpath}|" ExtData.rc
+            fi
 
             printf "OH optimized perturbation values set to:\n"
             printf " ${oh_sfs[0]} for Northern Hemisphere\n"
@@ -173,11 +226,20 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Posterior.run
+    if "$UseGCHP"; then
+        sbatch --mem $RequestedMemory \
+            -N $NUM_NODES \
+            -n $TOTAL_CORES \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Posterior.run
+    else
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Posterior.run
+    fi
     wait
 
     # check if exited with non-zero exit code
@@ -198,13 +260,7 @@ run_posterior() {
         PrevDir="${RunDirs}/spinup_run"
     fi
 
-    # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
-    printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res
-    wait
-    printf "\n=== DONE -- postproc_diags.py ===\n"
-
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
     mkdir -p data_visualization_posterior
@@ -217,10 +273,17 @@ run_posterior() {
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
     # Sample GEOS-Chem atmosphere with TROPOMI
-    LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
-    LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
-    LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
-    LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    if "$UseGCHP"; then
+        LonMinInvDomain=-180
+        LonMaxInvDomain=180
+        LatMinInvDomain=-90
+        LatMaxInvDomain=90
+    else
+        LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
+        LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
+        LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
+        LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
+    fi
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     if "$OptimizeBCs"; then
         nElements=$((nElements + 4))
