@@ -21,7 +21,8 @@ else
 fi
 
 #mamba activate gcpy_env
-cp $tropomi_bc ${prefix}.nc4
+python regrid_vertgrid_47-to-72.py $tropomi_bc "temp_tropomi-bc.nc4"
+mv temp_tropomi-bc.nc4 ${prefix}.nc4
 cp $template temp.nc4
 ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 ${prefix}.nc4
 python -m gcpy.file_regrid --filein ${prefix}.nc4 \

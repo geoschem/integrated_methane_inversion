@@ -46,7 +46,7 @@ setup_template() {
             cmd="5\n2\n${metNum}\n${RunDirs}\n${runDir}\nn\n"
         else
             # GEOSFP: Use daily files pre-processed for GEOS-Chem
-            cmd="5\n2\n${metNum}\n1\n${RunDirs}\n${runDir}\nn\n"
+            cmd="5\n2\n${metNum}\ny\n1\n1\n${RunDirs}\n${runDir}\nn\n"
         fi
     else
         if [ "$Res" = "4.0x5.0" ]; then

@@ -168,7 +168,6 @@ def imi_preview(
     num_state_variables = np.nanmax(state_vector_labels.values)
 
     if config['UseGCHP']:
-        inversion_area_km = 4 * np.pi * R_EARTH_km ** 2
         csres = config['CS_RES']
         nbox = 6 * csres ** 2
     else:
@@ -708,8 +707,7 @@ def estimate_averaging_kernel(
     # L_native = Rough length scale of native state vector element [m]
     if config['UseGCHP']:
         df_super = classify_obs_to_cs_grid(df, gridpath)
-        value_columns = ['obs_count', 'lat', 'lon']
-        daily_observation_counts = map_obs_to_CSgrid(df_super, state_vector_labels, value_columns)
+        daily_observation_counts = map_obs_to_CSgrid(df_super, gridpath)
     else:
         # Set resolution specific variables
         # L_native = Rough length scale of native state vector element [m]

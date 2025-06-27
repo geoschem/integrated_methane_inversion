@@ -93,6 +93,7 @@ setup_imi() {
             printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
             printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
             exit 1
+        fi
     else
         gridDir="${native}"
         gridFile="${metsuffix}"
@@ -197,6 +198,7 @@ setup_imi() {
             rm -f PET*
 
             cp ${InversionPath}/src/utilities/regrid_tropomi-BC-restart_gcc2gchp.sh .
+            cp ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py .
         fi
     fi
 

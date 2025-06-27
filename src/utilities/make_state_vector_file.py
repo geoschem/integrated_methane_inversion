@@ -189,6 +189,8 @@ def make_state_vector_file(
         )
         lc = sparselt.xr.apply(transform, lc)
         hd = sparselt.xr.apply(transform, hd)
+        lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
+    
     else:
         # Select/ group fields together
         if config['Res'] == '0.125x0.15625':
@@ -272,6 +274,8 @@ def make_state_vector_file(
             else:
                 land = lc.where((lc > land_threshold) | (hd > emis_threshold))
 
+        print("statevector shape:", statevector.values.shape)
+        print("land null mask shape:", land.isnull().values.shape)
         statevector.values[land.isnull().values] = -9999
         statevector.values[~indomain_mask] = -9999
 
