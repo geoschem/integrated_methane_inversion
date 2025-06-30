@@ -21,7 +21,7 @@
    - `debug`           - whether or not to delete the `debug.log`.
       - this includes information about your environment file and the build of GEOS-Chem.
       - all important information and errors are written to `boundary_conditions.log`.
-2. Run `sbatch -p huce_cascade run_boundary_conditions.sh`.
+2. Run `sbatch -p huce_ice run_boundary_conditions.sh`.
    - GEOS-Chem will be run first (2.0 x 2.5, GEOS-FP, CH4, 47 L, daily restart files).
    - Bias-corrected boundary conditions will be written via `write_boundary_conditions.py` (description in file).
    - In `workDir`, the folders `tropomi-boundary-conditions` and `blended-boundary-conditions` will be populated.

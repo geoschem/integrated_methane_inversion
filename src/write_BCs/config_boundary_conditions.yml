@@ -1,9 +1,9 @@
 ## Date range (inclusive) that you want to generate BCs for
 startDate: "20180401"
-endDate: "20240229"
+endDate: "20241231"
 
 ## A directory with a lot of space where you can write the BCs (and intermediate files)
-workDir: "/n/holylfs05/LABS/jacob_lab/Users/nbalasus/v2024-06-IMI-BCs"
+workDir: "/n/holylfs06/LABS/jacob_lab2/Lab/nbalasus/v2025-06-IMI-BCs/apr2018-dec2024"
 
 ## Paths to TROPOMI data and blended TROPOMI+GOSAT data
 tropomiDir: "/n/holylfs05/LABS/jacob_lab/Everyone/imi/ch4/tropomi"
@@ -14,7 +14,7 @@ condaEnv: imi_env
 condaFile: ~/.bashrc
 geosChemEnv: "../../envs/Harvard-Cannon/gcclassic.rocky+gnu12.minimal.env"
 geosChemDataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
-partition: huce_cascade,seas_compute,huce_ice
+partition: huce_ice
 
 ## A restart file for GEOS-Chem for your simulation start date
 restartFilePath: "/path/to/restart/file"

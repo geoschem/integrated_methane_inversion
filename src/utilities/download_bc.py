@@ -11,7 +11,7 @@ Description: Download boundary condition data from aws S3 bucket for
              desired dates. Function can be called from another script 
              or run as a directly as a script.
 Example Usage:
-    $ python download_bc.py 20200501 20200508 path/to/imi/boundary-conditions v2024-06
+    $ python download_bc.py 20200501 20200508 path/to/imi/boundary-conditions v2025-06
 """
 
 

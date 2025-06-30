@@ -202,12 +202,12 @@ RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/al2/ExtData/BoundaryConditions/v2024-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/al2/ExtData/BoundaryConditions/v2025-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/home/al2/ExtData/BoundaryConditions"
-BCversion: "v2024-06"
+BCversion: "v2025-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 HemcoPriorEmisDryRun: true
