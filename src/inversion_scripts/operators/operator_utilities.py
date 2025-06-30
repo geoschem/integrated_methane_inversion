@@ -175,7 +175,7 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
         run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
         gc_date    [pd.Datetime] : date object, specifies Ymd_h
         config     [dict]        : dictionary of IMI config file
-        sv_elems   [list]        : list of state vector element tracers in this simulations
+        sv_elems   [list]        : list of state vector element tracers in this simulation
         n_elements [int]         : number of state vector elements in this inversion
         baserun    [bool]        : If True, only the base variable in the simulation will
                                  be opened, and the function will just return this one
@@ -197,39 +197,41 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     )
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-    dsmf = xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto")
-    keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
-    is_Regional = config["isRegional"]
 
-    if len(keepvars) == 1:
+    with xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto") as dsmf:
+        try:
+            dsmf = dsmf.isel(time=gc_date.hour, drop=True)  # subset hour of interest
+        except Exception as e:
+            print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
+            raise e
 
-        is_OH_element = check_is_OH_element(
-            sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
-        )
-        is_BC_element = check_is_BC_element(
-            sv_elems[0],
-            n_elements,
-            config["OptimizeOH"],
-            config["OptimizeBCs"],
-            is_OH_element,
-            is_Regional,
-        )
+        keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
+        is_Regional = config["isRegional"]
 
-        # for BC and OH elems, no number in var name
-        if is_OH_element or is_BC_element:
+        if len(keepvars) == 1:
+
+            is_OH_element = check_is_OH_element(
+                sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
+            )
+            is_BC_element = check_is_BC_element(
+                sv_elems[0],
+                n_elements,
+                config["OptimizeOH"],
+                config["OptimizeBCs"],
+                is_OH_element,
+                is_Regional,
+            )
+
+            # for BC and OH elems, no number in var name
+            if is_OH_element or is_BC_element:
+                keepvars = ["SpeciesConcVV_CH4"]
+
+        if baserun:
             keepvars = ["SpeciesConcVV_CH4"]
 
-    if baserun:
-        keepvars = ["SpeciesConcVV_CH4"]
-
-    try:
-        dsmf = dsmf.isel(time=gc_date.hour, drop=True)  # subset hour of interest
-    except Exception as e:
-        print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
-        raise e
-
-    ds_concat = xr.concat([dsmf[v] for v in keepvars], "element").rename("ch4")
-    ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
+        ds_concat = xr.concat([dsmf[v] for v in keepvars], "element").rename("ch4")
+        ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
+        
     if not baserun:
         ds_concat = ds_concat.assign_coords({"element": sv_elems})
     return ds_concat
