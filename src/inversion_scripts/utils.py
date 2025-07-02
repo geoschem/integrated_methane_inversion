@@ -351,15 +351,8 @@ def plot_field(
         ax.set_extent(extent, crs=ccrs.PlateCarree())
 
     # Show boundary of ROI?
-    if mask is not None:
-        if UseGCHP:
-            for face in range(6):
-                ax.contour(
-                    mask['lons'].isel(nf=face), mask['lats'].isel(nf=face), mask.isel(nf=face),
-                    levels=1, colors='k', linewidths=4, transform=ccrs.PlateCarree(),
-                )
-        else:
-            mask.plot.contour(levels=1, colors="k", linewidths=4, ax=ax)
+    if (mask is not None) and (not UseGCHP) and (is_regional):
+        mask.plot.contour(levels=1, colors="k", linewidths=4, ax=ax)
 
     # Remove duplicated axis labels
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, alpha=0)
@@ -419,7 +412,6 @@ def plot_field_gchp(
     title=None,
     point_sources=None,
     cbar_label=None,
-    mask=None,
     only_ROI=False,
     state_vector_labels=None,
     last_ROI_element=None,
@@ -523,14 +515,6 @@ def plot_field_gchp(
     if lon_bounds and lat_bounds:
         extent = [lon_bounds[0], lon_bounds[1], lat_bounds[0], lat_bounds[1]]
         ax.set_extent(extent, crs=ccrs.PlateCarree())
-
-    # Show boundary of ROI?
-    if mask is not None:
-        for face in range(6):
-            ax.contour(
-                mask['lons'].isel(nf=face), mask['lats'].isel(nf=face), mask.isel(nf=face),
-                levels=1, colors='k', linewidths=4, transform=ccrs.PlateCarree(),
-            )
 
     # Remove duplicated axis labels
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, alpha=0)

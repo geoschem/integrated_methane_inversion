@@ -145,7 +145,7 @@ InversionCPUs: 32
 InversionMemory: 1000G
 InversionTime: "0-24:00"
 RequestedTime: "0-12:00"
-SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared,test"
+SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 InvSchedulerPartition: "huce_bigmem,bigmem,bigmem_intermediate"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
@@ -206,7 +206,7 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER/imi-gchp-test/output-gchp-local"
+OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 
 ## Path to GEOS-Chem input data
 DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
@@ -216,7 +216,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
 
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
-CondaEnv: "imi-gchp"
+CondaEnv: "imi-gchp-202506"
 CondaFile: "${HOME}/.bashrc"
 
 ## GCHP environment file (with fortran compiler, netcdf libraries, etc.)
