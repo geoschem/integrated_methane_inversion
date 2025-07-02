@@ -148,8 +148,6 @@ def calculate_perturbation_sfs(
     # also scales the jacobian calculation to account for the nudged prior emissions
     effective_pert_sf = (jacobian_pert_sf - 1) / flat_prior_sf
 
-    effective_pert_sf = effective_pert_sf - 1.0
-
     # return dictionary of perturbation scale factor arrays
     perturbation_dict = {
         "effective_pert_sf": effective_pert_sf,
