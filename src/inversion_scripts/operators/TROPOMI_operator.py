@@ -456,9 +456,13 @@ def apply_tropomi_operator(
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
 
         # Polygon representing TROPOMI pixel
-        # Polygon representing TROPOMI pixel
-        xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-        polygon_tropomi = SphericalPolygon(xyz_bounds)
+        if config['UseGCHP']:
+            xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
+            polygon_tropomi = SphericalPolygon(xyz_bounds)
+            polygon_tropomi_area = polygon_tropomi.area()
+        else:
+            polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
+            polygon_tropomi_area = polygon_tropomi.area
         
         p_sat = TROPOMI["pressures"][iSat, jSat, :]
         dry_air_subcolumns = TROPOMI["dry_air_subcolumns"][iSat, jSat, :]  # mol m-2
@@ -530,13 +534,15 @@ def apply_tropomi_operator(
                     for i in [1, 2]:
                         geoschem_corners_lon[i] += dlon / 2
 
-                xyz_geoschem_corners = latlon_to_cartesian(geoschem_corners_lat, geoschem_corners_lon)
-                polygon_geoschem = SphericalPolygon(xyz_geoschem_corners)
+                polygon_geoschem = Polygon(
+                    np.column_stack((geoschem_corners_lon, geoschem_corners_lat))
+                )
                 
                 # Calculate overlapping area as the intersection of the two polygons
-                inter_poly = polygon_geoschem.intersection(polygon_tropomi)
-                if inter_poly is not None:
-                    overlap_area[gridcellIndex] = inter_poly.area()
+                if polygon_geoschem.intersects(polygon_tropomi):
+                    overlap_area[gridcellIndex] = polygon_tropomi.intersection(
+                        polygon_geoschem
+                    ).area
 
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         if sum(overlap_area) < 1e-6:
@@ -645,7 +651,7 @@ def apply_tropomi_operator(
 
         # For global inversions, area of overlap should equal area of TROPOMI pixel
         # This is because the GEOS-Chem grid is continuous
-        rel_diff = abs(sum(overlap_area) - polygon_tropomi.area()) / polygon_tropomi.area()
+        rel_diff = abs(sum(overlap_area) - polygon_tropomi_area) / polygon_tropomi_area
         if not config['isRegional'] and rel_diff > 0.01:
             print(f"Skipping obs #{k} at lat {sat_lat:.2f} and lon {sat_lon:.2f} due to poor overlap: {rel_diff:.4f}")
             continue  # Skip this observation
@@ -956,8 +962,7 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
         overlap_area = np.zeros(len(gc_coords))
 
         # Polygon representing TROPOMI pixel
-        xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-        polygon_tropomi = SphericalPolygon(xyz_bounds)
+        polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
         
         for gridcellIndex in range(len(gc_coords)):
             # Define polygon representing the GEOS-Chem grid cell
@@ -974,13 +979,15 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
                 coords[1] + dlat / 2,
                 coords[1] + dlat / 2,
             ]
-            xyz_geoschem_corners = latlon_to_cartesian(geoschem_corners_lat, geoschem_corners_lon)
-            polygon_geoschem = SphericalPolygon(xyz_geoschem_corners)
+            polygon_geoschem = Polygon(
+                np.column_stack((geoschem_corners_lon, geoschem_corners_lat))
+            )
             
             # Calculate overlapping area as the intersection of the two polygons
-            inter_poly = polygon_geoschem.intersection(polygon_tropomi)
-            if inter_poly is not None:
-                overlap_area[gridcellIndex] = inter_poly.area()
+            if polygon_geoschem.intersects(polygon_tropomi):
+                overlap_area[gridcellIndex] = polygon_tropomi.intersection(
+                    polygon_geoschem
+                ).area
 
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)

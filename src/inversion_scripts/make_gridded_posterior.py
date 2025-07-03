@@ -88,7 +88,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
             # change key to ScaleFactor to match HEMCO expectations
             new_SF_key = f"ScaleFactor{var[len('xhat'):]}"
             if statevector.StateVector.dims == ('time', 'lat', 'lon'):
-                data_dict[new_SF_key] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
+                data_dict[new_SF_key] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
             elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
                 data_dict[new_SF_key] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
 

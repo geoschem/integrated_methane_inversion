@@ -277,7 +277,8 @@ def make_state_vector_file(
         print("statevector shape:", statevector.values.shape)
         print("land null mask shape:", land.isnull().values.shape)
         statevector.values[land.isnull().values] = -9999
-        statevector.values[~indomain_mask] = -9999
+        if UseGCHP:
+            statevector.values[~indomain_mask] = -9999
 
     # Fill in the remaining NaNs with state vector element values
     statevector.values[statevector.isnull().values] = np.arange(

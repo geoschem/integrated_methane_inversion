@@ -304,7 +304,7 @@ def plot_field(
         save_path  : path to save the plot
         clean_title: title without special characters
     """
-
+    field = field.squeeze()
     # Select map features
     if is_regional:
         oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")

@@ -186,6 +186,8 @@ def imi_preview(
         elif config["Res"] == "4.0x5.0":
             deltalat = 4.0
             deltalon = 5.0
+        lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
+        lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
         nbox = (lats[1] - lats[0]) / deltalat * (lons[1] - lons[0]) / deltalon
     nbox_factor = nbox / ref_nbox
     additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
@@ -237,11 +239,11 @@ def imi_preview(
     # Plot prior emissions
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    gridfpath = f'{config["OutputPath"]}/{config["RunName"]}/CS_grids/grids.c{csres}.nc'
-    gridds = xr.open_dataset(gridfpath)
-    corner_lons = gridds['corner_lons']
-    corner_lats = gridds['corner_lats']
     if config['UseGCHP']:
+        gridfpath = f'{config["OutputPath"]}/{config["RunName"]}/CS_grids/grids.c{csres}.nc'
+        gridds = xr.open_dataset(gridfpath)
+        corner_lons = gridds['corner_lons']
+        corner_lats = gridds['corner_lats']
         plot_field_gchp(
             ax,
             corner_lons,
@@ -757,10 +759,11 @@ def estimate_averaging_kernel(
 
     int_sv_labels = state_vector_labels.astype(int)
     structure = np.ones((5, 5))
-    n_neighbors = structure.size
-    CSlons = gridds['lons']
-    CSlats = gridds['lats']
-    kdtree, shape = build_kdtree(CSlats.values, CSlons.values)
+    if config["UseGCHP"]:
+        n_neighbors = structure.size
+        CSlons = gridds['lons']
+        CSlats = gridds['lats']
+        kdtree, shape = build_kdtree(CSlats.values, CSlons.values)
 
     # parallel processing function
     def process(i):
@@ -835,7 +838,7 @@ def estimate_averaging_kernel(
 
     # State vector, observations
     emissions = np.array(emissions)
-    L = np.array(L)
+    L = np.array(L) 
     num_native_elements = np.array(num_native_elements)
     num_obs = np.array(num_obs)
     m_superi = np.array(m_superi)  # Number of successful observation days
