@@ -3,6 +3,7 @@
 # Functions available in this file include:
 #   - run_hemco_prior_emis
 #   - exclude_soil_sink
+#   - for GCHP: set_prior_gchp; run_prior_gchp
 
 # Description: Run a HEMCO standalone simulation to generate prior emissions
 #
@@ -179,4 +180,137 @@ exclude_soil_sink() {
     emis['EmisCH4_Total_ExclSoilAbs'] = emis['EmisCH4_Total'] - emis['EmisCH4_SoilAbsorb']; \
     emis['EmisCH4_Total_ExclSoilAbs'].attrs = emis['EmisCH4_Total'].attrs; \
     emis.to_netcdf(sys.argv[2])" $1 $2
+}
+
+# Description: Setup Spinup Directory
+# Usage:
+#   setup_prior_gchp
+setup_prior_gchp() {
+    # Make sure template run directory exists
+    if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
+        printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n"
+        exit 9999
+    fi
+
+    printf "\n=== CREATING GCHP Prior RUN DIRECTORY ===\n"
+
+    cd ${RunDirs}
+
+    # Make the directory
+    runDir="hemco_prior_emis"
+    mkdir -p -v ${runDir}
+
+    # Copy run directory files
+    cp -r ${RunTemplate}/* ${runDir}
+    cd $runDir
+
+    # Link to GEOS-Chem executable
+    ln -nsf ../GEOSChem_build/gchp .
+    sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+        -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+        -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+        setCommonRunSettings.sh
+
+    # regrid restart file to GCHP resolution
+    TROPOMIBC=${RestartFilePrefix}${StartDate}_0000z.nc4
+    Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+    FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
+    cd ../CS_grids
+    ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
+    RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
+    cd ../${runDir}
+    ln -nsf $RestartFile Restarts/${FilePrefix}.c${CS_RES}.nc4
+
+    # a temporary fix for GCHP: get day+1 emissions for running GCHP
+    RunDuration=$(get_run_duration "$StartDate" "$EndDate")
+    NextRunDuration=$(add_one_day_to_duration "$RunDuration")
+    sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
+        -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
+        -e "s/Do_Advection=.*/Do_Advection=false/" \
+        -e "s/Do_Cloud_Conv=.*/Do_Cloud_Conv=false/" \
+        -e "s/Do_PBL_Mixing=.*/Do_PBL_Mixing=false/" \
+        -e "s/Do_Non_Local_Mixing=.*/Do_Non_Local_Mixing=false/" \
+        -e "s/Do_DryDep=.*/Do_DryDep=false/" \
+        -e "s/Do_WetDep=.*/Do_WetDep=false/" \
+        -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        setCommonRunSettings.sh
+
+    # get daily emissions output only
+    sed -i -e 's/#'\''Emissions/'\''Emissions/g' \
+        -e "s/'SpeciesConc',/#'SpeciesConc',/" HISTORY.rc
+    sed -i -e "s/Emissions.frequency:[[:space:]]*010000/Emissions.frequency:        240000/" \
+        -e "s/Emissions.duration:[[:space:]]*010000/Emissions.duration:         240000/" \
+        HISTORY.rc
+    # Create run script from template
+    sed -e "s:namename:${RunName}_HEMCO_Prior_Emis.run:g" \
+        -e "s:##:#:g" gchp_ch4_run.template >${RunName}_HEMCO_Prior_Emis.run
+    chmod 755 ${RunName}_HEMCO_Prior_Emis.run
+    rm -f gchp_ch4_run.template
+
+    # Navigate back to top-level directory
+    cd ..
+
+    printf "\n=== DONE CREATING GCHP Prior RUN DIRECTORY ===\n"
+}
+
+# Description: Run Prior Directory
+# Usage:
+#   run_prior_gchp
+run_prior_gchp() {
+    hemco_start=$1
+    hemco_end=$2
+    
+    echo "$hemco_start 000000" > cap_restart
+    # a temporary fix for GCHP: get day+1 emissions for running GCHP
+    RunDuration=$(get_run_duration "$hemco_start" "$hemco_end")
+    NextRunDuration=$(add_one_day_to_duration "$RunDuration")
+    sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
+        -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
+        -e "s/Do_Advection=.*/Do_Advection=false/" \
+        -e "s/Do_Cloud_Conv=.*/Do_Cloud_Conv=false/" \
+        -e "s/Do_PBL_Mixing=.*/Do_PBL_Mixing=false/" \
+        -e "s/Do_Non_Local_Mixing=.*/Do_Non_Local_Mixing=false/" \
+        -e "s/Do_DryDep=.*/Do_DryDep=false/" \
+        -e "s/Do_WetDep=.*/Do_WetDep=false/" \
+        -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        setCommonRunSettings.sh
+
+    prior_start=$(date +%s)
+    printf "\n=== SUBMITTING GCHP Prior SIMULATION ===\n"
+
+    cd ${RunDirs}/hemco_prior_emis
+
+    # Submit job to job scheduler
+    if "$UseGCHP"; then
+        sbatch --mem $RequestedMemory \
+            -N $NUM_NODES \
+            -n $TOTAL_CORES \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_HEMCO_Prior_Emis.run
+    else
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_HEMCO_Prior_Emis.run
+    fi
+    wait
+
+    # check if exited with non-zero exit code
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+
+    # Remove soil absorption uptake from total emissions
+    cd OutputDir
+    for file in GEOSChem.Emissions*.nc4; do
+        exclude_soil_sink $file $file
+    done
+    set +e
+
+    # Navigate back to top-level directory
+    cd ${RunDirs}
+
+    printf "\n=== DONE GCHP Prior SIMULATION ===\n"
+    spinup_end=$(date +%s)
 }

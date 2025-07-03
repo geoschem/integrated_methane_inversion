@@ -13,6 +13,13 @@ from src.inversion_scripts.imi_preview import (
     map_sensitivities_to_sv,
 )
 
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
+    latlon_to_cartesian,
+    build_kdtree,
+)
+
+import os 
+
 # clustering
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
@@ -182,16 +189,32 @@ def get_max_cluster_size(config, sensitivities, desired_element_num):
         desired_element_num   int : desired number of state vector elements
     Returns:                  int : max gridcells per cluster
     """
-    if config["Res"] == "0.125x0.15625":
-        max_aggregation_level = 128
-    elif config["Res"] == "0.25x0.3125":
-        max_aggregation_level = 64
-    elif config["Res"] == "0.5x0.625":
-        max_aggregation_level = 32
-    elif config["Res"] == "2.0x2.5":
-        max_aggregation_level = 16
-    elif config["Res"] == "4.0x5.0":
-        max_aggregation_level = 8
+    # Just mimic the settings of max_aggregation_level based on resolution
+    # I am using the resolution of 0.25 degree with 64 as the benchmark for C360 with 64
+    if config['UseGCHP']:
+        if config['CS_RES'] == "720":
+            max_aggregation_level = 128
+        elif config['CS_RES'] == "360":
+            max_aggregation_level = 64
+        elif config['CS_RES'] == "180":
+            max_aggregation_level = 32
+        elif config['CS_RES'] == "90":
+            max_aggregation_level = 16
+        elif config['CS_RES'] == "48":
+            max_aggregation_level = 8
+        elif config['CS_RES'] == "24":
+            max_aggregation_level = 4
+    else:
+        if config["Res"] == "0.125x0.15625":
+            max_aggregation_level = 128
+        elif config["Res"] == "0.25x0.3125":
+            max_aggregation_level = 64
+        elif config["Res"] == "0.5x0.625":
+            max_aggregation_level = 32
+        elif config["Res"] == "2.0x2.5":
+            max_aggregation_level = 16
+        elif config["Res"] == "4.0x5.0":
+            max_aggregation_level = 8
 
     max_cluster_size = (
         config["MaxClusterSize"]
@@ -239,25 +262,31 @@ def force_native_res_pixels(config, clusters, sensitivities):
         )
         return sensitivities
 
-    if config["Res"] == "0.125x0.15625":
-        lat_step = 0.125
-        lon_step = 0.15625
-    elif config["Res"] == "0.25x0.3125":
-        lat_step = 0.25
-        lon_step = 0.3125
-    elif config["Res"] == "0.5x0.625":
-        lat_step = 0.5
-        lon_step = 0.625
-    elif config["Res"] == "2.0x2.5":
-        lat_step = 2.0
-        lon_step = 2.5
-    elif config["Res"] == "4.0x5.0":
-        lat_step = 4.0
-        lon_step = 5.0
-
-    for lat, lon in coords:
-        lon = np.floor(lon / lon_step) * lon_step
-        lat = np.floor(lat / lat_step) * lat_step
+    if config['UseGCHP']:
+        CSgrids = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"], "CS_grids")
+        )
+        gridpath = CSgrids + '/grids.c{}.nc'.format(config['CS_RES'])
+        gridds = xr.open_dataset(gridpath)
+        CSlons = gridds['lons']
+        CSlats = gridds['lats']
+        kdtree, shape = build_kdtree(CSlats.values, CSlons.values)
+    else:
+        if config["Res"] == "0.125x0.15625":
+            lat_step = 0.125
+            lon_step = 0.15625
+        elif config["Res"] == "0.25x0.3125":
+            lat_step = 0.25
+            lon_step = 0.3125
+        elif config["Res"] == "0.5x0.625":
+            lat_step = 0.5
+            lon_step = 0.625
+        elif config["Res"] == "2.0x2.5":
+            lat_step = 2.0
+            lon_step = 2.5
+        elif config["Res"] == "4.0x5.0":
+            lat_step = 4.0
+            lon_step = 5.0
 
     # Remove any duplicate coordinates within the same gridcell.
     coords = sorted(set(map(tuple, coords)), reverse=True)
@@ -267,20 +296,27 @@ def force_native_res_pixels(config, clusters, sensitivities):
         coords = coords[0 : config["NumberOfElements"] - 1]
 
     for lat, lon in coords:
-        binned_lon = np.floor(lon / lon_step) * lon_step
-        binned_lat = np.floor(lat / lat_step) * lat_step
-
-        try:
-            cluster_index = int(
-                clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
-            )
-            # assign higher than 1 to ensure first assignment
+        if config['UseGCHP']:
+            query_cart = latlon_to_cartesian(lat, lon)
+            _, neighbor_idxs = kdtree.query(query_cart, k=1)
+            neighbor_idxs = neighbor_idxs.flatten()
+            f_idx, j_idx, x_idx = np.unravel_index(neighbor_idxs, shape)
+            cluster_index = int(clusters.values[f_idx, j_idx, x_idx])
             sensitivities[cluster_index - 1] = dofs_max
-        except:
-            print(
-                f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
-                + " because it is not in the specified region of interest."
-            )
+        else:
+            binned_lon = np.floor(lon / lon_step) * lon_step
+            binned_lat = np.floor(lat / lat_step) * lat_step
+            try:
+                cluster_index = int(
+                    clusters.sel(lat=binned_lat, lon=binned_lon).values.flatten()[0]
+                )
+                # assign higher than 1 to ensure first assignment
+                sensitivities[cluster_index - 1] = dofs_max
+            except:
+                print(
+                    f"Warning: not forcing pixel at (lat, lon) = ({lat}, {lon})"
+                    + " because it is not in the specified region of interest."
+                )
     return sensitivities
 
 
@@ -637,15 +673,14 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
 if __name__ == "__main__":
     try:
-        inversion_path = sys.argv[1]
-        config_path = sys.argv[2]
-        state_vector_path = sys.argv[3]
-        preview_dir = sys.argv[4]
-        tropomi_cache = sys.argv[5]
-        kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
+        config_path = sys.argv[1]
+        state_vector_path = sys.argv[2]
+        preview_dir = sys.argv[3]
+        tropomi_cache = sys.argv[4]
+        kf_index = int(sys.argv[5]) if len(sys.argv) > 5 else None
         config = yaml.load(open(config_path), Loader=yaml.FullLoader)
 
-        original_clusters = xr.open_dataset(state_vector_path)
+        original_clusters = xr.open_dataset(state_vector_path).squeeze()
         sensitivity_args = [
             config,
             state_vector_path,

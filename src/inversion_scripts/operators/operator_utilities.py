@@ -2,8 +2,12 @@ import os
 import numpy as np
 import xarray as xr
 import pandas as pd
+import warnings
 from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
-
+from spherical_geometry.polygon import SphericalPolygon
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
+    latlon_to_cartesian,
+)
 
 # common utilities for using different operators
 def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
@@ -45,25 +49,47 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
                                     - PEDGE
     """
 
+    UseGCHP = config['UseGCHP']
     # Assemble file paths to GEOS-Chem output collections for input data
     file_species = f"GEOSChem.SpeciesConc.{date}00z.nc4"
     file_pedge = f"GEOSChem.LevelEdgeDiags.{date}00z.nc4"
 
     # Read lat, lon, CH4 from the SpeciecConc collection
     filename = f"{gc_cache}/{file_species}"
-    gc_data = xr.open_dataset(filename)
-    LON = gc_data["lon"].values
-    LAT = gc_data["lat"].values
-    CH4 = gc_data["SpeciesConcVV_CH4"].values[0, :, :, :]
-    CH4 = CH4 * 1e9  # Convert to ppb
-    CH4 = np.einsum("lij->jil", CH4)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        gc_data = xr.open_dataset(filename)
+    # Drop the "anchor" variable if it exists
+    if 'anchor' in gc_data:
+        gc_data = gc_data.drop_vars('anchor')
+    if UseGCHP:
+        LON = gc_data["lons"].values
+        LAT = gc_data["lats"].values
+        CH4 = gc_data["SpeciesConcVV_CH4"].values[0, ...]
+        CH4 = CH4 * 1e9  # Convert to ppb
+        CH4 = np.einsum("lfyx->fyxl", CH4)
+    else:
+        LON = gc_data["lon"].values
+        LAT = gc_data["lat"].values
+        CH4 = gc_data["SpeciesConcVV_CH4"].values[0, :, :, :]
+        CH4 = CH4 * 1e9  # Convert to ppb
+        CH4 = np.einsum("lij->jil", CH4)
     gc_data.close()
 
     # Read PEDGE from the LevelEdgeDiags collection
     filename = f"{gc_cache}/{file_pedge}"
-    gc_data = xr.open_dataset(filename)
-    PEDGE = gc_data["Met_PEDGE"].values[0, :, :, :]
-    PEDGE = np.einsum("lij->jil", PEDGE)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        gc_data = xr.open_dataset(filename)
+    # Drop the "anchor" variable if it exists
+    if 'anchor' in gc_data:
+        gc_data = gc_data.drop_vars('anchor')
+    if UseGCHP:
+        PEDGE = gc_data["Met_PEDGE"].values[0, ...]
+        PEDGE = np.einsum("lfyx->fyxl", PEDGE)
+    else:
+        PEDGE = gc_data["Met_PEDGE"].values[0, :, :, :]
+        PEDGE = np.einsum("lij->jil", PEDGE)
     gc_data.close()
 
     # Store GEOS-Chem data in dictionary
@@ -143,8 +169,12 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         ds_sensi = xr.concat(ds_all, "element")
 
         sensitivities = ds_sensi["ch4"].values
-        # Reshape so the data have dimensions (lon, lat, lev, grid_element)
-        sensitivities = np.einsum("klji->ijlk", sensitivities)
+        if UseGCHP:
+            # Reshape so the data have dimensions (nf, Ydim, Xdim, lev, grid_element)
+            sensitivities = np.einsum("klfyx->fyxlk", sensitivities)
+        else:
+            # Reshape so the data have dimensions (lon, lat, lev, grid_element)
+            sensitivities = np.einsum("klji->ijlk", sensitivities)
         dat["jacobian_ch4"] = sensitivities
 
         # get emis base, which is also BC base
@@ -152,7 +182,10 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
             "0001", gc_date, config, [0], n_elements, baserun=True
         )
 
-        dat["emis_base_ch4"] = np.einsum("klji->ijlk", ds_emis_base["ch4"].values)
+        if UseGCHP:
+            dat["emis_base_ch4"] = np.einsum("klfyx->fyxlk", ds_emis_base["ch4"].values)
+        else:
+            dat["emis_base_ch4"] = np.einsum("klji->ijlk", ds_emis_base["ch4"].values)
 
         # get OH base, run RunName_0000
         # it's always here whether OptimizeOH is true or not
@@ -161,7 +194,10 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
             "0000", gc_date, config, [0], n_elements, baserun=True
         )
 
-        dat["oh_base_ch4"] = np.einsum("klji->ijlk", ds_oh_base["ch4"].values)
+        if UseGCHP:
+            dat["oh_base_ch4"] = np.einsum("klfyx->fyxlk", ds_oh_base["ch4"].values)
+        else:
+            dat["oh_base_ch4"] = np.einsum("klji->ijlk", ds_oh_base["ch4"].values)
 
     return dat
 
@@ -197,7 +233,11 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     )
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-    dsmf = xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto")
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        dsmf = xr.open_dataset("/".join([j_dir, file_stub]))
+    if 'anchor' in dsmf:
+        dsmf = dsmf.drop_vars('anchor')
     keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
     is_Regional = config["isRegional"]
 
@@ -274,6 +314,49 @@ def get_gridcell_list(lons, lats):
     gridcells = np.array(gridcells).reshape(len(lons), len(lats))
     return gridcells
 
+
+def get_gridcell_list_gchp(lons, lats):
+    """
+    Create a 2d array of dictionaries, with each dictionary representing a GC gridcell.
+    Dictionaries also initialize the fields necessary to store for tropomi data
+    (eg. methane, time, p_sat, etc.)
+
+    Arguments
+        lons     [float[]]      : list of gc longitudes for region of interest
+        lats     [float[]]      : list of gc latitudes for region of interest
+
+    Returns
+        gridcells [dict[][]]     : 2D array of dicts representing a gridcell
+    """
+    # create array of dictionaries to represent gridcells
+    gridcells = []
+    nf, Ydim, Xdim = lats.shape
+    lons[lons>180] -= 360
+    for nfi in range(nf):
+        for yi in range(Ydim):
+            for xi in range(Xdim):
+                gridcells.append(
+                    {
+                        "lat": lats[nfi,yi,xi],
+                        "lon": lons[nfi,yi,xi],
+                        "nfi": nfi,
+                        "Ydimi": yi,
+                        "Xdimi": xi,
+                        "methane": [],
+                        "p_sat": [],
+                        "dry_air_subcolumns": [],
+                        "apriori": [],
+                        "avkern": [],
+                        "time": [],
+                        "overlap_area": [],
+                        "lat_sat": [],
+                        "lon_sat": [],
+                        "observation_count": 0,
+                        "observation_weights": [],
+                    }
+                )
+    gridcells = np.array(gridcells).reshape(nf, Ydim, Xdim)
+    return gridcells
 
 def get_gc_lat_lon(gc_cache, start_date):
     """
@@ -467,3 +550,40 @@ def nearest_loc(query_location, reference_grid, tolerance=0.5):
         return np.nan
     else:
         return ind
+
+def precompute_CSgrid_polygons(corner_lats, corner_lons):
+    """
+    Precompute simulation grid cell polygons from corner coordinates.
+
+    Parameters:
+    - corner_lats, corner_lons: numpy arrays of shape (nf, YC+1, XC+1)
+
+    Returns:
+    - poly_grid: numpy array of shape (nf, YC, XC) with shapely.Polygon objects
+    """
+    nf, YCdim, XCdim = corner_lats.shape
+    Ydim, Xdim = YCdim - 1, XCdim - 1
+    poly_grid = np.empty((nf, Ydim, Xdim), dtype=object)
+
+    for f in range(nf):
+        for j in range(Ydim):
+            for i in range(Xdim):
+                # Extract 4 corners in counter-clockwise order
+                lons = [
+                    corner_lons[f, j, i],
+                    corner_lons[f, j, i + 1],
+                    corner_lons[f, j + 1, i + 1],
+                    corner_lons[f, j + 1, i],
+                ]
+                lats = [
+                    corner_lats[f, j, i],
+                    corner_lats[f, j, i + 1],
+                    corner_lats[f, j + 1, i + 1],
+                    corner_lats[f, j + 1, i],
+                ]
+                # Convert to 3D Cartesian
+                verts = latlon_to_cartesian(lats, lons)
+                # Store the polygon
+                poly_grid[f, j, i] = SphericalPolygon(verts)
+
+    return poly_grid
