@@ -221,7 +221,7 @@ setup_prior_gchp() {
     RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
     cd ../${runDir}
     ln -nsf $RestartFile Restarts/${FilePrefix}.c${CS_RES}.nc4
-    
+
     # a temporary fix for GCHP: get day+1 emissions for running GCHP
     RunDuration=$(get_run_duration "$StartDate" "$EndDate")
     NextRunDuration=$(add_one_day_to_duration "$RunDuration")
@@ -258,6 +258,24 @@ setup_prior_gchp() {
 # Usage:
 #   run_prior_gchp
 run_prior_gchp() {
+    hemco_start=$1
+    hemco_end=$2
+    
+    echo "$hemco_start 000000" > cap_restart
+    # a temporary fix for GCHP: get day+1 emissions for running GCHP
+    RunDuration=$(get_run_duration "$hemco_start" "$hemco_end")
+    NextRunDuration=$(add_one_day_to_duration "$RunDuration")
+    sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
+        -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
+        -e "s/Do_Advection=.*/Do_Advection=false/" \
+        -e "s/Do_Cloud_Conv=.*/Do_Cloud_Conv=false/" \
+        -e "s/Do_PBL_Mixing=.*/Do_PBL_Mixing=false/" \
+        -e "s/Do_Non_Local_Mixing=.*/Do_Non_Local_Mixing=false/" \
+        -e "s/Do_DryDep=.*/Do_DryDep=false/" \
+        -e "s/Do_WetDep=.*/Do_WetDep=false/" \
+        -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        setCommonRunSettings.sh
+
     prior_start=$(date +%s)
     printf "\n=== SUBMITTING GCHP Prior SIMULATION ===\n"
 

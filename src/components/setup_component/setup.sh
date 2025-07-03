@@ -266,7 +266,7 @@ setup_imi() {
             run_hemco_prior_emis
         else
             setup_prior_gchp
-            run_prior_gchp
+            run_prior_gchp $StartDate $EndDate
         fi
     fi
 

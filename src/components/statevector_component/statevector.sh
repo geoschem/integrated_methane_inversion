@@ -83,7 +83,7 @@ reduce_dimension() {
     fi
 
     # conditionally add period_i to python args
-    python_args=($aggregation_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
+    python_args=($aggregation_file $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
     archive_sv=false
     if ("$KalmanMode" && "$DynamicKFClustering"); then
         if [ -n "$period_i" ]; then
