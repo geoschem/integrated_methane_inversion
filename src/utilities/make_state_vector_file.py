@@ -162,7 +162,7 @@ def make_state_vector_file(
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
     hd = xr.load_dataset(hemco_diag_pth)
-    
+
     if UseGCHP:
         CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
         gridfpath = f"{CSgridDir}/grids.c{CS_RES}.nc"
@@ -190,7 +190,7 @@ def make_state_vector_file(
         lc = sparselt.xr.apply(transform, lc)
         hd = sparselt.xr.apply(transform, hd)
         lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
-    
+
     else:
         # Select/ group fields together
         if config['Res'] == '0.125x0.15625':
@@ -297,7 +297,7 @@ def make_state_vector_file(
     if UseGCHP:
         fillvalue = -9999
         # add time dimension
-        da_statevector = xr.DataArray(statevector.values[None,...], dims=['time', 'nf', 'Ydim', 'Xdim'], 
+        da_statevector = xr.DataArray(statevector.values[None,...], dims=['time', 'nf', 'Ydim', 'Xdim'],
                                     coords=dict(time=(['time'], [0.]), lats=(['nf', 'Ydim', 'Xdim'], gridds['lats'].values),
                                                 lons=(['nf', 'Ydim', 'Xdim'], gridds['lons'].values)),
                                     attrs=dict(units='1', missing_value=fillvalue, _FillValue=fillvalue))
@@ -330,6 +330,8 @@ def make_state_vector_file(
         ds_statevector.StateVector.attrs["_FillValue"] = -9999
     # Save
     if save_pth is not None:
+        if os.path.exists(save_pth):
+            os.remove(save_pth)
         print("Saving file {}".format(save_pth))
         ds_statevector.to_netcdf(
             save_pth,
