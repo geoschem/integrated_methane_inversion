@@ -110,7 +110,12 @@ def get_s3_paths(start_date, end_date, bucket):
         elif len(subset["ProcessingMode"].unique()) > 1:
             index_to_drop = subset.loc[subset["ProcessingMode"] != "RPRO"].index
             df = df.drop(index_to_drop)
-
+    
+    # If there are multiple processor versions for the same orbit number,
+    # keep the one with the latest version.
+    df = df.loc[df.groupby("OrbitNumber")["ProcessorVersion"].idxmax()]
+    df.reset_index(drop=True, inplace=True)
+        
     assert len(df) == len(df["OrbitNumber"].unique())
     df = df.reset_index(drop=True)
     df["S3Path"] = df["Prefix"] + df["Name"]
