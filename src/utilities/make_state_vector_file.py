@@ -146,6 +146,8 @@ def make_state_vector_file(
             deg_lat, deg_lon = 0.5, 0.625
         elif config["Res"] == "0.25x0.3125":
             deg_lat, deg_lon = 0.25, 0.3125
+        elif config["Res"] == "0.125x0.15625":
+            deg_lat, deg_lon = 0.125, 0.15625
         buffer_min_lat = deg_lat * 3
         buffer_min_lon = deg_lon * 3
 
