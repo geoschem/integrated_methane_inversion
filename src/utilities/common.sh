@@ -233,8 +233,10 @@ regrid_tropomi-BC-restart_gcc2gchp() {
         fi
     else
         local template=${template_prefix}.c48.nc4
-        gridspec-create gcs 48 > /dev/null 2>&1
         local src_grid="c48_gridspec.nc"
+        if [ ! -f "$src_grid" ]; then
+            gridspec-create gcs 48 > /dev/null 2>&1
+        fi
         local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
         local dst_grid="${dst_prefix}_gridspec.nc"
         if [ ! -f "$dst_grid" ]; then
@@ -266,8 +268,10 @@ regrid_tropomi-BC-restart_gcc2gchp() {
             --cs_res_out "${CS_RES}" \
             --dim_format_out checkpoint > /dev/null 2>&1
     else
-        gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc 91 144 > /dev/null 2>&1
         local src_grid="regular_lat_lon_91x144.nc"
+        if [ ! -f "$src_grid" ]; then
+            gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc 91 144 > /dev/null 2>&1
+        fi
         local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
         local dst_grid="${dst_prefix}_gridspec.nc"
         if [ ! -f "$dst_grid" ]; then
