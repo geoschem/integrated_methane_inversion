@@ -77,17 +77,18 @@ get_GridSpec_prefix() {
         echo "Usage: get_GridSpec_prefix <CS_RES> [STRETCH_FACTOR TARGET_LAT TARGET_LON]" >&2
         return 1
     fi
-    # Format stretch factor: e.g., 1.50 -> 1d50
-    local sf_formatted
-    sf_formatted=$(printf "%.2f" "$STRETCH_FACTOR" | sed 's/\./d/')
-
-    # Compute geohash using Python, safely quoting lat/lon
-    local target_geohash
-    target_geohash=$(python3 -c "import pygeohash as pgh; print(pgh.encode(float('$TARGET_LAT'), float('$TARGET_LON')))" )
-
+    
     if (( $(echo "$STRETCH_FACTOR == 1.0" | bc -l) )); then
         echo "c${CS_RES}"
     else
+        # Format stretch factor: e.g., 1.50 -> 1d50
+        local sf_formatted
+        sf_formatted=$(printf "%.2f" "$STRETCH_FACTOR" | sed 's/\./d/')
+
+        # Compute geohash using Python, safely quoting lat/lon
+        local target_geohash
+        target_geohash=$(python3 -c "import pygeohash as pgh; print(pgh.encode(float('$TARGET_LAT'), float('$TARGET_LON')))" )
+
         echo "c${CS_RES}_s${sf_formatted}_t${target_geohash}"
     fi
 }
