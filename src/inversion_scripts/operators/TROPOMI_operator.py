@@ -111,12 +111,14 @@ def apply_average_tropomi_operator(
         obs_mapped_to_gc = average_tropomi_observations_to_CSgrid(
             TROPOMI, gridfpath, sat_ind, time_threshold
         )
+        GC_shape = (6, config['CS_RES'], config['CS_RES'])
     else:
         # get the lat/lons of gc gridcells
         gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
         obs_mapped_to_gc = average_tropomi_observations(
             TROPOMI, gc_lat_lon, sat_ind, time_threshold
         )
+        GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
     n_gridcells = len(obs_mapped_to_gc)
 
     if build_jacobian:
@@ -146,6 +148,9 @@ def apply_average_tropomi_operator(
     obs_GC = np.zeros([n_gridcells, 5], dtype=np.float32)
     obs_GC.fill(np.nan)
 
+    GC_index = np.zeros([n_gridcells, ], dtype=int)
+    GC_index.fill(-9999)
+    
     # For each gridcell dict with tropomi obs:
     for i, gridcell_dict in enumerate(obs_mapped_to_gc):
 
@@ -162,11 +167,16 @@ def apply_average_tropomi_operator(
             p_gc = GEOSCHEM["PEDGE"][gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"], :]
             # Get GEOS-Chem methane for the cell
             gc_CH4 = GEOSCHEM["CH4"][gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"], :]
+            
+            flat_index = np.ravel_multi_index((gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"]), GC_shape)
         else:
             # Get GEOS-Chem pressure edges for the cell
             p_gc = GEOSCHEM["PEDGE"][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
             # Get GEOS-Chem methane for the cell
             gc_CH4 = GEOSCHEM["CH4"][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
+            
+            flat_index = np.ravel_multi_index((gridcell_dict["jGC"], gridcell_dict["iGC"]), GC_shape)
+        GC_index[i] = flat_index
         # Get merged GEOS-Chem/TROPOMI pressure grid for the cell
         merged = merge_pressure_grids(p_sat, p_gc)
         # Remap GEOS-Chem methane to TROPOMI pressure levels
@@ -323,6 +333,7 @@ def apply_average_tropomi_operator(
 
     # Always return the coincident TROPOMI and GEOS-Chem data
     output["obs_GC"] = obs_GC
+    output["GC_index"] = GC_index
 
     # Optionally return the Jacobian
     if build_jacobian:
@@ -1135,7 +1146,7 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         polygon_tropomi = SphericalPolygon(xyz_bounds)
         
         obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
-        _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be more safe to include all overlap
+        _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be safe to include all overlap
         neighbor_idx = neighbor_idx.flatten()
 
         # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches

@@ -9,7 +9,11 @@
 #   create_statevector
 create_statevector() {
     if "$UseGCHP"; then
-        printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        if "$STRETCH_GRID"; then
+            printf "\n=== CREATING Cubed-Sphere C${CS_RES}.s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E STATE VECTOR FILE ===\n"
+        else
+            printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        fi
     else
         printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     fi
@@ -54,7 +58,11 @@ create_statevector() {
     python make_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
 
     if "$UseGCHP"; then
-        printf "\n=== DONE CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        if "$STRETCH_GRID"; then
+            printf "\n=== DONE CREATING Cubed-Sphere C${CS_RES}.s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E STATE VECTOR FILE ===\n"
+        else
+            printf "\n=== DONE CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        fi
     else
         printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
     fi

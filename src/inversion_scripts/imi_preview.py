@@ -32,7 +32,6 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     get_posterior_emissions,
 )
-from joblib import Parallel, delayed
 from src.inversion_scripts.operators.TROPOMI_operator import (
     read_tropomi,
     read_blended,
@@ -44,6 +43,7 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
     map_obs_to_CSgrid,
 )
 warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 def get_TROPOMI_data(
     file_path, BlendedTROPOMI, xlim, ylim, startdate_np64, enddate_np64, use_water_obs
@@ -259,7 +259,6 @@ def imi_preview(
             title="Prior emissions",
             point_sources=get_point_source_coordinates(config),
             cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-            mask=mask if config["isRegional"] else None,
             only_ROI=False,
         )
     else:

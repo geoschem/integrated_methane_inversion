@@ -10,13 +10,20 @@ def do_gridding(vector, statevector):
     """
 
     # Map the input vector (e.g., scale factors) to the state vector grid
-    sv_index = np.nan_to_num(statevector.StateVector.values, nan=0).astype(int)
+    missing_val = statevector.StateVector.attrs.get("missing_value", np.nan)
+    fill_val = statevector.StateVector.attrs.get("_FillValue", np.nan)
+
+    # Create a mask for invalid values (either NaN, missing_value, or _FillValue)
+    sv_org = statevector.StateVector.values
+    invalid_mask = np.isnan(sv_org) | (sv_org == missing_val) | (sv_org == fill_val)
+
+    # Replace invalids with 0, then cast to int
+    sv_index = np.where(invalid_mask, 0, sv_org).astype(int)
+
+    invalid_mask_expanded = np.expand_dims(invalid_mask, axis=-1)
+    
     outarr = vector[sv_index - 1]
-    outarr = np.where(
-        np.isnan(statevector.StateVector.values)[...,None],
-        np.nan,
-        outarr
-    )
+    outarr[invalid_mask_expanded] = np.nan
 
     # to dataarray    
     if statevector.StateVector.dims == ('time', 'lat', 'lon'):

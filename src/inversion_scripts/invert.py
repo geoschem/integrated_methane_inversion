@@ -431,6 +431,7 @@ def do_inversion_ensemble(
 
 if __name__ == "__main__":
     import sys
+    import numpy as np
 
     config_path = sys.argv[1]
     n_elements = int(sys.argv[2])
@@ -481,6 +482,15 @@ if __name__ == "__main__":
         is_Regional,
     )
 
+    # add atributes for stretching GCHP simulation
+    if config['STRETCH_GRID']:
+        outds.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        outds.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        outds.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
+        
+        outds_default.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        outds_default.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        outds_default.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
     # Save the results of the ensemble inversion
     out_ds.to_netcdf(
         output_path.replace(".nc", "_ensemble.nc"),

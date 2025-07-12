@@ -10,6 +10,10 @@ S3Upload: false
 UseGCHP: true
 ## Even integer representing number of grid cells per cubed-sphere face side
 CS_RES: 48
+STRETCH_GRID: false
+STRETCH_FACTOR: 10.0
+TARGET_LAT: 32.0
+TARGET_LON: 256.0
 
 #------------------------------------------------
 #   COMPUTE RESOURCES for GCHP runs

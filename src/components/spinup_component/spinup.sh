@@ -45,10 +45,12 @@ setup_spinup() {
     if "$UseGCHP"; then
         # regrid restart file to GCHP resolution
         TROPOMIBC="${RestartFilePrefix}${SpinupStart}_0000z.nc4"
-        Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+        TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
         FilePrefix="GEOSChem.Restart.${SpinupStart}_0000z"
         cd ../CS_grids
-        ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
+        TROPOMIBC72="temp_tropomi-bc.nc4"
+        python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+        regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
         RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
         cd ../${runDir}
         ln -nsf $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.c${CS_RES}.nc4
@@ -76,7 +78,7 @@ setup_spinup() {
             -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             setCommonRunSettings.sh
-        sed -i -e "s|${StartDate}|${SpinupStart}|g" cap_restart
+        echo "$SpinupStart 000000" > cap_restart
     else
         sed -i -e "s|${StartDate}|${SpinupStart}|g" \
             -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml

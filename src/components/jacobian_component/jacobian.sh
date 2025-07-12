@@ -34,11 +34,12 @@ setup_jacobian() {
         if [ ! -f "$OrigRestartFile" ]; then
             # regrid restart file to GCHP resolution
             TROPOMIBC=${RestartFilePrefix}${StartDate}_0000z.nc4
-            Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+            TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
             FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
             cd ${RunDirs}/CS_grids
-            ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
-            RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
+            TROPOMIBC72="temp_tropomi-bc.nc4"
+            python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+            regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
             cd ${RunDirs}
         fi
     else
@@ -183,10 +184,12 @@ create_simulation_dir() {
             if "$UseGCHP"; then
                 # regrid restart file to GCHP resolution
                 TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
-                Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+                TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
                 FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
                 cd "${RunDirs}/CS_grids"
-                ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
+                TROPOMIBC72="temp_tropomi-bc.nc4"
+                python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+                regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
                 RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
                 cd "${RunDirs}/jacobian_runs/${name}"
             else
@@ -332,7 +335,7 @@ create_simulation_dir() {
                 else
                     OptimizeSouth='True'
                 fi
-                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
+                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth $STRETCH_FACTOR $TARGET_LAT $TARGET_LON
                 # Modify OH scale factor in HEMCO config
                 sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
                 

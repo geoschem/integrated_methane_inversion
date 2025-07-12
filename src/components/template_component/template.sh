@@ -102,6 +102,13 @@ setup_template() {
             -e 's/^AutoUpdate_Diagnostics=.*$/AutoUpdate_Diagnostics=OFF/' \
             setCommonRunSettings.sh
         sed -i -e "s/monthly:[[:space:]]*1/monthly:        0/g" HISTORY.rc
+        if "$STRETCH_GRID"; then
+            sed -i -e "s/^STRETCH_GRID=.*/STRETCH_GRID=ON/" \
+                -e "s/^STRETCH_FACTOR=.*/STRETCH_FACTOR=${STRETCH_FACTOR}/" \
+                -e "s/^TARGET_LAT=.*/TARGET_LAT=${TARGET_LAT}/" \
+                -e "s/^TARGET_LON=.*/TARGET_LON=${TARGET_LON}/" \
+                setCommonRunSettings.sh
+        fi
     else
         # Modify geoschem_config.yml based on settings in config.yml
         sed -i -e "s:20190101:${StartDate}:g" \

@@ -16,6 +16,7 @@ config_required = [
     "SafeMode",
     "S3Upload",
     "UseGCHP",
+    "STRETCH_GRID",
     "StartDate",
     "EndDate",
     "SpinupMonths",
@@ -113,6 +114,11 @@ conditional_dict["UseGCHP"] = [
     "TOTAL_CORES",
     "NUM_NODES",
     "NUM_CORES_PER_NODE"
+]
+conditional_dict["STRETCH_GRID"] = [
+    "STRETCH_FACTOR",
+    "TARGET_LAT",
+    "TARGET_LON"
 ]
 
 def raise_error_message(var):

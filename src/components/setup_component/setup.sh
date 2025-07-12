@@ -162,26 +162,41 @@ setup_imi() {
         fi
         cd "$CSgridDir"
 
+        prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+        gridspec_fname="${CSgridDir}/${prefix}_gridspec.nc"
+        if [ -f "$gridspec_fname" ]; then
+            echo "GridSpec file of already exists: $gridspec_fname"
+        else
+            echo "Generating grid spec: $gridspec_fname"
+            if "$STRETCH_GRID"; then
+                gridspec-create sgcs -s "${STRETCH_FACTOR}" -t "${TARGET_LAT}" "${TARGET_LON}" "$CS_RES" > /dev/null 2>&1
+            else
+                gridspec-create gcs "$CS_RES" > /dev/null 2>&1
+            fi
+        fi
+
         # Create CS grid file only if it doesn't exist
         gridfpath="${CSgridDir}/grids.c${CS_RES}.nc"
         if [ -f "$gridfpath" ]; then
             echo "CS grid file already exists: $gridfpath"
         else
             echo "Creating CS grid file: $gridfpath"
-            generate_grid "$CS_RES" "$gridfpath"
+            generate_grid_from_GridSpec "$CS_RES" "$gridfpath" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON"
         fi
 
         # Generate regridding weights only if not already present
-        dst_grid="c${CS_RES}_gridspec.nc"
+        dst_grid=$gridspec_fname
+        if "$STRETCH_GRID"; then
+            weightsfile="regrid_weights_${native}_to_c${CS_RES}_s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E_conserve.nc"
+        else
+            weightsfile="regrid_weights_${native}_to_c${CS_RES}_conserve.nc"
+        fi
+
         regridding_method="conserve"
-        weightsfile="regrid_weights_${native}_to_c${CS_RES}_conserve.nc"
 
         if [ -f "$weightsfile" ]; then
             echo "Regridding weights file already exists: $weightsfile"
         else
-            echo "Generating destination grid spec: $dst_grid"
-            gridspec-create gcs "$CS_RES" > /dev/null 2>&1
-
             if [ "$metDir" = "GEOS_FP" ]; then
                 gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc -o . 721 1152 > /dev/null 2>&1
                 src_grid="regular_lat_lon_721x1152.nc"
@@ -196,10 +211,8 @@ setup_imi() {
             echo "Generating regridding weights file: $weightsfile"
             ESMF_RegridWeightGen -s "$src_grid" -d "$dst_grid" -m "$regridding_method" -w "$weightsfile" > /dev/null 2>&1
             rm -f PET*
-
-            cp ${InversionPath}/src/utilities/regrid_tropomi-BC-restart_gcc2gchp.sh .
-            cp ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py .
         fi
+        cd "${InversionPath}"
     fi
 
     ##=======================================================================

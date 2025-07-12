@@ -175,11 +175,14 @@ run_hemco_sa() {
 # Usage:
 #   exclude_soil_sink <src-file> <target-file>
 exclude_soil_sink() {
-    python -c "import sys; import xarray; import numpy as np; \
+    python -c "import sys, warnings; \
+    warnings.filterwarnings('ignore', category=FutureWarning); \
+    warnings.filterwarnings('ignore', category=UserWarning); \
+    import xarray; import numpy as np; \
     emis = xarray.load_dataset(sys.argv[1]); \
     emis['EmisCH4_Total_ExclSoilAbs'] = emis['EmisCH4_Total'] - emis['EmisCH4_SoilAbsorb']; \
     emis['EmisCH4_Total_ExclSoilAbs'].attrs = emis['EmisCH4_Total'].attrs; \
-    emis.to_netcdf(sys.argv[2])" $1 $2
+    emis.to_netcdf(sys.argv[2])" "$1" "$2"
 }
 
 # Description: Setup Spinup Directory
@@ -198,6 +201,10 @@ setup_prior_gchp() {
 
     # Make the directory
     runDir="hemco_prior_emis"
+    if [[ -d ${RunDirs}/${runDir} ]]; then
+        printf "\nERROR: ${RunDirs}/${runDir} already exists. Please remove or set 'DoHemcoPriorEmis: false' in config.yml.\n"
+        exit 9999
+    fi
     mkdir -p -v ${runDir}
 
     # Copy run directory files
@@ -214,10 +221,12 @@ setup_prior_gchp() {
 
     # regrid restart file to GCHP resolution
     TROPOMIBC=${RestartFilePrefix}${StartDate}_0000z.nc4
-    Template="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z.c${CS_RES}.nc4"
+    TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
     FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
     cd ../CS_grids
-    ./regrid_tropomi-BC-restart_gcc2gchp.sh ${TROPOMIBC} ${Template} ${FilePrefix} ${CS_RES}
+    TROPOMIBC72="temp_tropomi-bc.nc4"
+    python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+    regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
     RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
     cd ../${runDir}
     ln -nsf $RestartFile Restarts/${FilePrefix}.c${CS_RES}.nc4
@@ -261,6 +270,11 @@ run_prior_gchp() {
     hemco_start=$1
     hemco_end=$2
     
+    prior_start=$(date +%s)
+    printf "\n=== SUBMITTING GCHP Prior SIMULATION ===\n"
+
+    cd ${RunDirs}/hemco_prior_emis
+
     echo "$hemco_start 000000" > cap_restart
     # a temporary fix for GCHP: get day+1 emissions for running GCHP
     RunDuration=$(get_run_duration "$hemco_start" "$hemco_end")
@@ -276,26 +290,13 @@ run_prior_gchp() {
         -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
         setCommonRunSettings.sh
 
-    prior_start=$(date +%s)
-    printf "\n=== SUBMITTING GCHP Prior SIMULATION ===\n"
-
-    cd ${RunDirs}/hemco_prior_emis
-
     # Submit job to job scheduler
-    if "$UseGCHP"; then
-        sbatch --mem $RequestedMemory \
-            -N $NUM_NODES \
-            -n $TOTAL_CORES \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -W ${RunName}_HEMCO_Prior_Emis.run
-    else
-        sbatch --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -W ${RunName}_HEMCO_Prior_Emis.run
-    fi
+    sbatch --mem $RequestedMemory \
+        -N $NUM_NODES \
+        -n $TOTAL_CORES \
+        -t $RequestedTime \
+        -p $SchedulerPartition \
+        -W ${RunName}_HEMCO_Prior_Emis.run
     wait
 
     # check if exited with non-zero exit code
