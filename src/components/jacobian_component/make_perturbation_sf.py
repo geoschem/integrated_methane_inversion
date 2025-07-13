@@ -144,10 +144,9 @@ def calculate_perturbation_sfs(
         flat_prior_sf = np.ones(len(jacobian_pert_sf))
 
     # calculate the effective perturbation SFs
-    effective_pert_sf = jacobian_pert_sf / flat_prior_sf
-
-    # make the effective perturbations relative to 0, as expected in the inversion
-    effective_pert_sf = effective_pert_sf - 1.0
+    # this will be a fraction relative to 0 and in the case of a Kalman filter
+    # also scales the jacobian calculation to account for the nudged prior emissions
+    effective_pert_sf = (jacobian_pert_sf - 1) / flat_prior_sf
 
     # return dictionary of perturbation scale factor arrays
     perturbation_dict = {
