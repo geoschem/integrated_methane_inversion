@@ -25,7 +25,26 @@ setup_template() {
         exit 9999
     fi
 
-    # Commands to feed to createRunDir.sh
+    #---------------------------------------------------------------------
+    # Create GEOS-Chem run directory 
+    #---------------------------------------------------------------------
+    simNum=3  # Carbon simulation
+
+    # Species
+    spcNum=2  # Hardcode for now; enable options below when CO2 is supported
+    #if [[ "$Species" == "CH4" ]]; then
+    #	spcNum=2
+    #elif [[ "$Species" == "CO2" ]]; then
+    #	spcNum=3
+    #elif [[ "$Species" == "CH4_CO2" ]]; then
+    #	spcNum=1
+    #else
+    #	printf "\nERROR: Species ${Species} is not supported by the IMI. "
+    #	printf "\n Options are CH4, CO2, or CH4_CO2"
+    #	exit 1
+    #fi
+
+    # Meteorology field
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
@@ -36,35 +55,36 @@ setup_template() {
         printf "\n Options are GEOSFP or MERRA2.\n"
         exit 1
     fi
-    if [ "$Res" = "4.0x5.0" ]; then
-        cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-    elif [ "$Res" == "2.0x2.5" ]; then
-        cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
-    elif [ "$Res" == "0.5x0.625" ]; then
-        if "$isRegional"; then
-            # Use NA domain by default and adjust lat/lon below
-            cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
-        else
-            cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-        fi
-    elif [ "$Res" == "0.25x0.3125" ]; then
-        if "$isRegional"; then
-            # Use NA domain by default and adjust lat/lon below
-            cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
-        else
-            cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-        fi
-    elif [ "$Res" == "0.125x0.15625" ]; then
-        if "$isRegional"; then
-            # Use NA domain by default and adjust lat/lon below
-            cmd="9\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
-        else
-            cmd="9\n${metNum}\n5\n1\n2\n${RunDirs}\n${runDir}\nn\n"
-        fi
+
+    # Grid resolution
+    if [[ "$Res" == "4.0x5.0" ]]; then
+        resNum=1
+    elif [[ "$Res" == "2.0x2.5" ]]; then
+        resNum=2
+    elif [[ "$Res" == "0.5x0.625" ]]; then
+	resNum=3
+    elif [[ "$Res" == "0.25x0.3125" ]]; then
+	resNum=4
+    elif [[ "$Res" == "0.125x0.15625" ]]; then
+	resNum=5
     else
         printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
         printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
         exit 1
+    fi
+
+    # Regional or global
+    if "$isRegional"; then
+	regionNum=4  # Use NA domain by default and adjust lat/lon below
+    else
+	regionNum=1
+    fi
+
+    # Command to feed to createRunDir.sh
+    if [[ "$Res" == "4.0x5.0" || "$Res" == "2.0x2.5" ]]; then
+	cmd="${simNum}\n${spcNum}\n${metNum}\n${resNum}\n2\n${RunDirs}\n${runDir}\nn\n"
+    else
+	cmd="${simNum}\n${spcNum}\n${metNum}\n${resNum}\n${regionNum}\n2\n${RunDirs}\n${runDir}\nn\n"
     fi
 
     # Create run directory
@@ -72,6 +92,9 @@ setup_template() {
     rm -f createRunDir.log
     printf "\nCreated ${RunTemplate}\n"
 
+    #---------------------------------------------------------------------
+    # Modify default settings in run directory
+    #---------------------------------------------------------------------
     cd ${RunTemplate}
 
     # Copy download script to run directory
@@ -164,7 +187,9 @@ setup_template() {
     # Copy input file for applying emissions perturbations via HEMCO
     cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
 
+    #---------------------------------------------------------------------
     # Compile GEOS-Chem and store executable in GEOSChem_build directory
+    #---------------------------------------------------------------------
     printf "\nCompiling GEOS-Chem...\n"
     cd build
     cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
