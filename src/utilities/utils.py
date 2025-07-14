@@ -73,7 +73,7 @@ def download_hemcodiags_files(config):
         gridFile = "025x03125"
 
     s3_hd_path = (
-        f"HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"
+        f"HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"
     )
     HemcoDiagFile = os.path.join(config["DataPath"], s3_hd_path)
     target_dir = os.path.dirname(HemcoDiagFile)

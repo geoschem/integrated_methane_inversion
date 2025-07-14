@@ -23,7 +23,7 @@ create_statevector() {
     LandCoverFile="${DataPath}/${LandCoverSuffix}"
 
     # Use archived HEMCO standalone emissions output
-    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
     
     # Download land cover and HEMCO diagnostics files
     # if the files do not exist
@@ -32,7 +32,7 @@ create_statevector() {
         python ${InversionPath}/src/utilities/download_aws_file.py ${s3_lc_path} ${LandCoverFile}
     fi
     if [ ! -f "$HemcoDiagFile" ]; then
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
         python ${InversionPath}/src/utilities/download_aws_file.py ${s3_hd_path} ${HemcoDiagFile}
     fi
 
