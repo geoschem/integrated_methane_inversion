@@ -50,7 +50,7 @@ setup_spinup() {
         cd ../CS_grids
         TROPOMIBC72="temp_tropomi-bc.nc4"
         python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
-        regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+        regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
         RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
         cd ../${runDir}
         ln -nsf $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.c${CS_RES}.nc4

@@ -226,7 +226,7 @@ setup_prior_gchp() {
     cd ../CS_grids
     TROPOMIBC72="temp_tropomi-bc.nc4"
     python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
-    regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+    regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
     RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
     cd ../${runDir}
     ln -nsf $RestartFile Restarts/${FilePrefix}.c${CS_RES}.nc4
@@ -252,7 +252,7 @@ setup_prior_gchp() {
         -e "s/Emissions.duration:[[:space:]]*010000/Emissions.duration:         240000/" \
         HISTORY.rc
     # Create run script from template
-    sed -e "s:namename:${RunName}_HEMCO_Prior_Emis.run:g" \
+    sed -e "s:namename:${RunName}_HEMCO_Prior_Emis:g" \
         -e "s:##:#:g" gchp_ch4_run.template >${RunName}_HEMCO_Prior_Emis.run
     chmod 755 ${RunName}_HEMCO_Prior_Emis.run
     rm -f gchp_ch4_run.template

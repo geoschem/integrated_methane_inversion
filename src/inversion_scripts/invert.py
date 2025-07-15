@@ -484,13 +484,13 @@ if __name__ == "__main__":
 
     # add atributes for stretching GCHP simulation
     if config['STRETCH_GRID']:
-        outds.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
-        outds.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
-        outds.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
+        out_ds.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        out_ds.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        out_ds.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
         
-        outds_default.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
-        outds_default.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
-        outds_default.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
+        out_ds_default.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        out_ds_default.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        out_ds_default.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
     # Save the results of the ensemble inversion
     out_ds.to_netcdf(
         output_path.replace(".nc", "_ensemble.nc"),

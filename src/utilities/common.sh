@@ -66,21 +66,20 @@ calculate_geoschem_domain() {
 
 # Description: Generate grid prefix for CS or SGCS grid files
 # Usage:
-# get_GridSpec_prefix <CS_RES> [STRETCH_FACTOR TARGET_LAT TARGET_LON]
+# get_GridSpec_prefix <CS_RES> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]
 get_GridSpec_prefix() {
     local CS_RES="$1"
-    local STRETCH_FACTOR="${2:-1.0}"
-    local TARGET_LAT="${3:--90.0}"
-    local TARGET_LON="${4:-170.0}"
+    local STRETCH_GRID="$2"
+    local STRETCH_FACTOR="${3:-1.0}"
+    local TARGET_LAT="${4:--90.0}"
+    local TARGET_LON="${5:-170.0}"
 
-    if [ "$#" -lt 1 ]; then
-        echo "Usage: get_GridSpec_prefix <CS_RES> [STRETCH_FACTOR TARGET_LAT TARGET_LON]" >&2
+    if [ "$#" -lt 2 ]; then
+        echo "Usage: get_GridSpec_prefix <CS_RES> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]" >&2
         return 1
     fi
     
-    if (( $(echo "$STRETCH_FACTOR == 1.0" | bc -l) )); then
-        echo "c${CS_RES}"
-    else
+    if "$STRETCH_GRID"; then
         # Format stretch factor: e.g., 1.50 -> 1d50
         local sf_formatted
         sf_formatted=$(printf "%.2f" "$STRETCH_FACTOR" | sed 's/\./d/')
@@ -90,27 +89,30 @@ get_GridSpec_prefix() {
         target_geohash=$(python3 -c "import pygeohash as pgh; print(pgh.encode(float('$TARGET_LAT'), float('$TARGET_LON')))" )
 
         echo "c${CS_RES}_s${sf_formatted}_t${target_geohash}"
+    else
+        echo "c${CS_RES}"
     fi
 }
 
 # Description: Create CS or SGCS grid and save to netCDF
-# Usage: generate_grid_from_GridSpec <CS_RES> <OUTPUT_FILE> [STRETCH_FACTOR TARGET_LAT TARGET_LON]
+# Usage: generate_grid_from_GridSpec <CS_RES> <OUTPUT_FILE> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]
 generate_grid_from_GridSpec() {
     local CS_RES="$1"
     local OUTPUT_FILE="$2"
-    local STRETCH_FACTOR="${3:-1.0}"
-    local TARGET_LAT="${4:--90.0}"
-    local TARGET_LON="${5:-170.0}"
+    local STRETCH_GRID="$3"
+    local STRETCH_FACTOR="${4:-1.0}"
+    local TARGET_LAT="${5:--90.0}"
+    local TARGET_LON="${6:-170.0}"
 
-    if [ "$#" -lt 2 ]; then
-        echo "Usage: generate_grid_from_GridSpec <CS_RES> <OUTPUT_FILE> [STRETCH_FACTOR TARGET_LAT TARGET_LON]"
+    if [ "$#" -lt 3 ]; then
+        echo "Usage: generate_grid_from_GridSpec <CS_RES> <OUTPUT_FILE> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]"
         return 1
     fi
 
     local prefix
-    prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+    prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
 
-    python - "$CS_RES" "$OUTPUT_FILE" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON" "$prefix" <<EOF
+    python - "$CS_RES" "$OUTPUT_FILE" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON" "$prefix" <<EOF
 import sys
 import os
 import numpy as np
@@ -119,10 +121,11 @@ import pygeohash as pgh
 
 CS_RES = int(sys.argv[1])
 OUTPUT_FILE = sys.argv[2]
-STRETCH_FACTOR = float(sys.argv[3])
-TARGET_LAT = float(sys.argv[4])
-TARGET_LON = float(sys.argv[5])
-prefix = sys.argv[6]
+STRETCH_GRID = sys.argv[3].lower() == "true"
+STRETCH_FACTOR = float(sys.argv[4])
+TARGET_LAT = float(sys.argv[5])
+TARGET_LON = float(sys.argv[6])
+prefix = sys.argv[7]
 
 lon   = np.zeros((6, CS_RES, CS_RES))
 lat   = np.zeros((6, CS_RES, CS_RES))
@@ -188,7 +191,7 @@ data['lats'].attrs = dict(units='degrees_north', long_name='Latitude')
 data['lons'].attrs = dict(units='degrees_east', long_name='Longitude')
 
 # Add global attributes if stretched grid
-if abs(STRETCH_FACTOR - 1.0) > 1e-6:
+if STRETCH_GRID:
     data.attrs['STRETCH_FACTOR'] = np.float32(STRETCH_FACTOR)
     data.attrs['TARGET_LAT'] = np.float32(TARGET_LAT)
     data.attrs['TARGET_LON'] = np.float32(TARGET_LON)
@@ -200,10 +203,10 @@ EOF
 }
 
 # Description: regrid TROPOMI restart file (regridded from 47 to 72 layers) to GCHP restart
-# Usage: Usage: regrid_tropomi-BC-restart_gcc2gchp {TROPOMI-BC} {TemplatePrefix} {FILE-PREFIX} {CS-RESOLUTION} [stretch_factor target_lat target_lon]
+# Usage: Usage: regrid_tropomi-BC-restart_gcc2gchp {TROPOMI-BC} {TemplatePrefix} {FILE-PREFIX} {CS-RESOLUTION} {STRETCH_GRID} [stretch_factor target_lat target_lon]
 regrid_tropomi-BC-restart_gcc2gchp() {
-    if [ "$#" -lt 4 ]; then
-        echo "Usage: regrid_tropomi-BC-restart_gcc2gchp {TROPOMI-BC} {TemplatePrefix} {FILE-PREFIX} {CS-RESOLUTION} [stretch_factor target_lat target_lon]" >&2
+    if [ "$#" -lt 5 ]; then
+        echo "Usage: regrid_tropomi-BC-restart_gcc2gchp {TROPOMI-BC} {TemplatePrefix} {FILE-PREFIX} {CS-RESOLUTION} {STRETCH_GRID} [stretch_factor target_lat target_lon]" >&2
         return 1
     fi
 
@@ -211,33 +214,23 @@ regrid_tropomi-BC-restart_gcc2gchp() {
     local template_prefix=$2
     local prefix=$3
     local CS_RES=$4
-    local STRETCH_FACTOR="${5:-1.0}"
-    local TARGET_LAT="${6:--90.0}"
-    local TARGET_LON="${7:-170.0}"
+    local STRETCH_GRID=$5
+    local STRETCH_FACTOR="${6:-1.0}"
+    local TARGET_LAT="${7:--90.0}"
+    local TARGET_LON="${8:-170.0}"
 
     ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 "$tropomi_bc"
 
     echo "Generate restart file with all other variables except SPC_CH4"
     local restart_others=$prefix.c${CS_RES}.others.nc4
 
-    if [ "$STRETCH_FACTOR" = "1.0" ]; then
-        local template=${template_prefix}.c${CS_RES}.nc4
-        if [ -f "$template" ]; then
-            cp "$prefix.c${CS_RES}.nc4" "$restart_others"
-        else
-            python -m gcpy.file_regrid --filein "${template_prefix}.c48.nc4" \
-                --dim_format_in checkpoint \
-                --fileout "$restart_others" \
-                --cs_res_out "${CS_RES}" \
-                --dim_format_out checkpoint > /dev/null 2>&1
-        fi
-    else
+    if "$STRETCH_GRID"; then
         local template=${template_prefix}.c48.nc4
         local src_grid="c48_gridspec.nc"
         if [ ! -f "$src_grid" ]; then
             gridspec-create gcs 48 > /dev/null 2>&1
         fi
-        local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+        local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
         local dst_grid="${dst_prefix}_gridspec.nc"
         if [ ! -f "$dst_grid" ]; then
             gridspec-create sgcs -s "${STRETCH_FACTOR}" -t "${TARGET_LAT}" "${TARGET_LON}" "$CS_RES" > /dev/null 2>&1
@@ -256,23 +249,28 @@ regrid_tropomi-BC-restart_gcc2gchp() {
             "$regrid_weights_others"               \
             "$template" > /dev/null 2>&1
         mv new_restart_file.nc "$restart_others"
+    else
+        local template=${template_prefix}.c${CS_RES}.nc4
+        if [ -f "$template" ]; then
+            cp "$template" "$restart_others"
+        else
+            python -m gcpy.file_regrid --filein "${template_prefix}.c48.nc4" \
+                --dim_format_in checkpoint \
+                --fileout "$restart_others" \
+                --cs_res_out "${CS_RES}" \
+                --dim_format_out checkpoint > /dev/null 2>&1
+        fi
     fi
 
     echo "Generate restart file for SPC_CH4"
     local restart_ch4=$prefix.c${CS_RES}.ch4.nc4
 
-    if [ "$STRETCH_FACTOR" = "1.0" ]; then
-        python -m gcpy.file_regrid --filein "$tropomi_bc" \
-            --dim_format_in classic \
-            --fileout "$restart_ch4" \
-            --cs_res_out "${CS_RES}" \
-            --dim_format_out checkpoint > /dev/null 2>&1
-    else
+    if "$STRETCH_GRID"; then
         local src_grid="regular_lat_lon_91x144.nc"
         if [ ! -f "$src_grid" ]; then
             gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc 91 144 > /dev/null 2>&1
         fi
-        local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+        local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
         local dst_grid="${dst_prefix}_gridspec.nc"
         if [ ! -f "$dst_grid" ]; then
             gridspec-create sgcs -s "${STRETCH_FACTOR}" -t "${TARGET_LAT}" "${TARGET_LON}" "$CS_RES" > /dev/null 2>&1
@@ -291,6 +289,12 @@ regrid_tropomi-BC-restart_gcc2gchp() {
             "$regrid_weights_ch4"                  \
             "$restart_others" > /dev/null 2>&1
         mv new_restart_file.nc "$restart_ch4"
+    else
+        python -m gcpy.file_regrid --filein "$tropomi_bc" \
+            --dim_format_in classic \
+            --fileout "$restart_ch4" \
+            --cs_res_out "${CS_RES}" \
+            --dim_format_out checkpoint > /dev/null 2>&1
     fi
 
     # Combine SPC_CH4 field and other fields, and rename final output
@@ -298,13 +302,15 @@ regrid_tropomi-BC-restart_gcc2gchp() {
     ncks -A -v SPC_CH4 "$restart_ch4" "$restart_others"
     mv "$restart_others" "${prefix}.c${CS_RES}.nc4"
 
-    # global attributes
-    ncatted -O -h -a ,global,d,, "${prefix}.c${CS_RES}.nc4"
-    ncatted -O \
-        -a STRETCH_FACTOR,global,o,f,$STRETCH_FACTOR \
-        -a TARGET_LAT,global,o,f,$TARGET_LAT \
-        -a TARGET_LON,global,o,f,$TARGET_LON \
-        "${prefix}.c${CS_RES}.nc4"
+    # global attributes for STRETCH_GRID
+    if "$STRETCH_GRID"; then
+        ncatted -O -h -a ,global,d,, "${prefix}.c${CS_RES}.nc4"
+        ncatted -O \
+            -a STRETCH_FACTOR,global,o,f,$STRETCH_FACTOR \
+            -a TARGET_LAT,global,o,f,$TARGET_LAT \
+            -a TARGET_LON,global,o,f,$TARGET_LON \
+            "${prefix}.c${CS_RES}.nc4"
+    fi
     # compress
     nccopy -d1 "${prefix}.c${CS_RES}.nc4" tmp.nc
     mv tmp.nc "${prefix}.c${CS_RES}.nc4"
@@ -316,10 +322,10 @@ regrid_tropomi-BC-restart_gcc2gchp() {
 
 # Description: Generate gridded global OH scaling factor
 # Usage:
-#   gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath> <OptimizeNorth> <OptimizeSouth> [STRETCH_FACTOR TARGET_LAT TARGET_LON]
+#   gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath> <OptimizeNorth> <OptimizeSouth> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]
 gridded_optimized_OH() {
-    if [ "$#" -lt 6 ]; then
-        echo "Usage: gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath> <OptimizeNorth> <OptimizeSouth> [STRETCH_FACTOR TARGET_LAT TARGET_LON]"
+    if [ "$#" -lt 7 ]; then
+        echo "Usage: gridded_optimized_OH <NH_scale> <SH_scale> <Hemis_mask_fpath> <Output_fpath> <OptimizeNorth> <OptimizeSouth> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]"
         return 1
     fi
 
@@ -329,11 +335,12 @@ gridded_optimized_OH() {
     local Output_fpath="$4"
     local OptimizeNorth="$5"
     local OptimizeSouth="$6"
-    local STRETCH_FACTOR="${7:-1.0}"
-    local TARGET_LAT="${8:--90.0}"
-    local TARGET_LON="${9:-170.0}"
+    local STRETCH_GRID="$7"
+    local STRETCH_FACTOR="${8:-1.0}"
+    local TARGET_LAT="${9:--90.0}"
+    local TARGET_LON="${10:-170.0}"
 
-    python - "$NH_scale" "$SH_scale" "$Hemis_mask_fpath" "$Output_fpath" "$OptimizeNorth" "$OptimizeSouth" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON" <<EOF
+    python - "$NH_scale" "$SH_scale" "$Hemis_mask_fpath" "$Output_fpath" "$OptimizeNorth" "$OptimizeSouth" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON" <<EOF
 import sys
 import xarray as xr
 import numpy as np
@@ -344,9 +351,10 @@ maskfpath = sys.argv[3]
 outfpath = sys.argv[4]
 OptimizeNorth = sys.argv[5]
 OptimizeSouth = sys.argv[6]
-STRETCH_FACTOR = float(sys.argv[7])
-TARGET_LAT = float(sys.argv[8])
-TARGET_LON = float(sys.argv[9])
+STRETCH_GRID = sys.argv[7].lower() == "true"
+STRETCH_FACTOR = float(sys.argv[8])
+TARGET_LAT = float(sys.argv[9])
+TARGET_LON = float(sys.argv[10])
 
 maskds = xr.open_dataset(maskfpath)
 hemis = maskds['Hemisphere']
@@ -370,7 +378,7 @@ scaleds = maskds.drop_vars('Hemisphere').assign(
 
 scaleds['oh_scale'].attrs = dict(long_name='Scaling factor for OH', units='1')
 
-if abs(STRETCH_FACTOR - 1.0) > 1e-6:
+if STRETCH_GRID:
     scaleds.attrs['STRETCH_FACTOR'] = np.float32(STRETCH_FACTOR)
     scaleds.attrs['TARGET_LAT'] = np.float32(TARGET_LAT)
     scaleds.attrs['TARGET_LON'] = np.float32(TARGET_LON)

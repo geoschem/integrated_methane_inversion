@@ -22,6 +22,7 @@ from src.inversion_scripts.operators.operator_utilities import (
     get_gridcell_list,
     get_gridcell_list_gchp,
     nearest_loc,
+    ccw_order_latlon_cartesian,
     precompute_CSgrid_polygons,
 )
 
@@ -469,7 +470,8 @@ def apply_tropomi_operator(
         # Polygon representing TROPOMI pixel
         if config['UseGCHP']:
             xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-            polygon_tropomi = SphericalPolygon(xyz_bounds)
+            xyz_bounds_order = ccw_order_latlon_cartesian(xyz_bounds)
+            polygon_tropomi = SphericalPolygon(xyz_bounds_order)
             polygon_tropomi_area = polygon_tropomi.area()
         else:
             polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
@@ -1103,8 +1105,9 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         output         [dict[]]   : flat list of dictionaries the following fields:
                                     - lat                 : gridcell latitude
                                     - lon                 : gridcell longitude
-                                    - iGC                 : longitude index value
-                                    - jGC                 : latitude index value
+                                    - nfi                 : face index value
+                                    - Ydimi               : Ydim index value
+                                    - Xdimi               : Xdim index value
                                     - lat_sat             : averaged tropomi latitude
                                     - lon_sat             : averaged tropomi longitude
                                     - overlap_area        : averaged overlap area with gridcell
@@ -1143,7 +1146,8 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
         # Polygon representing TROPOMI pixel
         xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-        polygon_tropomi = SphericalPolygon(xyz_bounds)
+        xyz_bounds_order = ccw_order_latlon_cartesian(xyz_bounds)
+        polygon_tropomi = SphericalPolygon(xyz_bounds_order)
         
         obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
         _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be safe to include all overlap

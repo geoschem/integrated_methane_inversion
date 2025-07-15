@@ -162,7 +162,7 @@ setup_imi() {
         fi
         cd "$CSgridDir"
 
-        prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+        prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
         gridspec_fname="${CSgridDir}/${prefix}_gridspec.nc"
         if [ -f "$gridspec_fname" ]; then
             echo "GridSpec file of already exists: $gridspec_fname"
@@ -181,7 +181,7 @@ setup_imi() {
             echo "CS grid file already exists: $gridfpath"
         else
             echo "Creating CS grid file: $gridfpath"
-            generate_grid_from_GridSpec "$CS_RES" "$gridfpath" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON"
+            generate_grid_from_GridSpec "$CS_RES" "$gridfpath" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON"
         fi
 
         # Generate regridding weights only if not already present

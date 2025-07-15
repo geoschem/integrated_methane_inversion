@@ -39,7 +39,7 @@ setup_jacobian() {
             cd ${RunDirs}/CS_grids
             TROPOMIBC72="temp_tropomi-bc.nc4"
             python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
-            regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+            regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
             cd ${RunDirs}
         fi
     else
@@ -189,7 +189,7 @@ create_simulation_dir() {
                 cd "${RunDirs}/CS_grids"
                 TROPOMIBC72="temp_tropomi-bc.nc4"
                 python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
-                regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+                regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
                 RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
                 cd "${RunDirs}/jacobian_runs/${name}"
             else
@@ -335,7 +335,7 @@ create_simulation_dir() {
                 else
                     OptimizeSouth='True'
                 fi
-                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth $STRETCH_FACTOR $TARGET_LAT $TARGET_LON
+                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth $STRETCH_GRID $STRETCH_FACTOR $TARGET_LAT $TARGET_LON
                 # Modify OH scale factor in HEMCO config
                 sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
                 
@@ -420,7 +420,7 @@ create_simulation_dir() {
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
     HcoPrevLine2='1 500'
-    HcoPrevLine3="#200N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
+    HcoPrevLine3="#300N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
     ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
     HisPrevLine1="'SpeciesConcVV_CH4    ', 'GCHPchem',"
@@ -451,9 +451,9 @@ add_new_tracer() {
         istr="${i}"
     fi
 
-    # Start HEMCO scale factor ID at 2000 to avoid conflicts with
+    # Start HEMCO scale factor ID at 3000 to avoid conflicts with
     # preexisting scale factors/masks
-    SFnum=$((2000 + i))
+    SFnum=$((3000 + i))
 
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
@@ -747,7 +747,7 @@ all_tracers_exist() {
     local file=$3
 
     if [ ! -f "$file" ]; then
-        echo "File $file does not exist."
+        # echo "File $file does not exist."
         return 1
     fi
 
@@ -758,7 +758,7 @@ all_tracers_exist() {
     for ((i=start; i<=end; i++)); do
         tracer=$(printf "SPC_CH4_%04d" "$i")
         if ! echo "$vars" | grep -q "^$tracer$"; then
-            echo "Missing tracer: $tracer"
+            # echo "Missing tracer: $tracer"
             return 1
         fi
     done
