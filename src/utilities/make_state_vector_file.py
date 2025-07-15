@@ -166,7 +166,7 @@ def make_state_vector_file(
         lc = np.round( -(lc/100.-1), decimals=5)
     else:
         lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
-    hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop_vars("time").squeeze()
+    hd = hd["EmisCH4_Total"].mean(dim="time")
 
     # Check compatibility of region of interest
     if is_regional:
