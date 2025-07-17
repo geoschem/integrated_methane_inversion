@@ -24,6 +24,7 @@ source src/components/jacobian_component/jacobian.sh
 source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
 source src/components/kalman_component/kalman.sh
+source src/components/osse_component/osse_sim.sh
 
 # trap and exit on errors
 trap 'imi_failed $LINENO' ERR
@@ -198,6 +199,10 @@ setup_end=$(date +%s)
 ##=======================================================================
 if "$DoSpinup"; then
     run_spinup
+fi
+
+if ("$DoOSSE" && "$SimulateObs"); then
+    run_osse
 fi
 
 ##=======================================================================

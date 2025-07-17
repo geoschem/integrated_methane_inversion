@@ -18,6 +18,16 @@ BlendedTROPOMI: false
 ## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
 
+## Settings for Observing System Simulation Experiment (OSSE)
+## If true, the IMI will run on synthetic observations
+SimulateObs: true
+## Perturbation to apply to the prior emissions to generate synthetic observations
+EmisRandomPerturbation: 0.5
+## Run the simulation with randomly perturbed emissions to generate synthetic observations
+DoOSSE: true
+## Noise added to the synthetic observations
+SimulatedObsError: 15
+
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
 
