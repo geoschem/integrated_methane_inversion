@@ -779,6 +779,9 @@ def read_blended(filename):
             dat["surface_classification"] = (
                 blended_data["surface_classification"].values[:].astype("uint8") & 0x03
             ).astype(int)
+            dat["surface_classification_0xF9"] = (
+                blended_data["surface_classification"].values[:].astype("uint8") & 0xF9
+                ).astype(int)
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
 
             # Remove "Z" from time so that numpy doesn't throw a warning

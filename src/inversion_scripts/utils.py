@@ -501,6 +501,7 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
                 & (blended_data["chi_square_SWIR"][:] > 20000)
             )
         )
+        & ~(blended_data["surface_classification_0xF9"] == 184)
         & (blended_data["latitude"] > -60)
     )
 
