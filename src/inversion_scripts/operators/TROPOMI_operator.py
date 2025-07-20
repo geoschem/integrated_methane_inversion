@@ -558,7 +558,7 @@ def apply_tropomi_operator(
                     ).area
 
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
-        if sum(overlap_area) < 1e-6:
+        if sum(overlap_area) == 0:
             continue
 
         # =======================================================
@@ -780,12 +780,46 @@ def read_tropomi(filename):
             # Surface classification values of NaN will be filtered out
             # due to a low QA value. We can make sure by setting them to 5
             # and making sure nothing outside of [0,1,2,3] makes it through.
-            sc = tropomi_data["surface_classification"].values[0, :, :]
-            nan_mask = np.isnan(sc)
-            sc_no_nans = np.nan_to_num(sc, nan=0)
-            sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
-            sc[nan_mask] = 5
-            dat["surface_classification"] = sc
+            # decode all surface classifications
+            
+            # Metadata
+            flag_values = np.array([
+                0, 1, 2, 3, 4, 9, 17, 25, 33, 41, 49, 57,
+                8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112,
+                120, 128, 136, 144, 152, 160, 168, 176, 184
+            ], dtype="uint8")
+
+            flag_masks = np.array([
+                3, 3, 3, 3, 4, 249, 249, 249, 249, 249, 249, 249,
+                249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249,
+                249, 249, 249, 249, 249, 249, 249, 249, 249
+            ], dtype="uint8")
+
+            flag_meanings = [
+                "land", "water", "some_water", "coast", "value_covers_majority_of_pixel",
+                "water+shallow_ocean", "water+shallow_inland_water", "water+ocean_coastline-lake_shoreline",
+                "water+intermittent_water", "water+deep_inland_water", "water+continental_shelf_ocean", "water+deep_ocean",
+                "land+urban_and_built-up_land", "land+dryland_cropland_and_pasture", "land+irrigated_cropland_and_pasture",
+                "land+mixed_dryland-irrigated_cropland_and_pasture", "land+cropland-grassland_mosaic", "land+cropland-woodland_mosaic",
+                "land+grassland", "land+shrubland", "land+mixed_shrubland-grassland", "land+savanna",
+                "land+deciduous_broadleaf_forest", "land+deciduous_needleleaf_forest", "land+evergreen_broadleaf_forest",
+                "land+evergreen_needleleaf_forest", "land+mixed_forest", "land+herbaceous_wetland", "land+wooded_wetland",
+                "land+barren_or_sparsely_vegetated", "land+herbaceous_tundra", "land+wooded_tundra", "land+mixed_tundra",
+                "land+bare_ground_tundra", "land+snow_or_ice"
+            ]
+            sc_raw = blended_data["surface_classification"].values[0, :, :].astype("uint8")
+            
+            # Initialize decoded array with fill value (255)
+            decoded = np.full(sc_raw.shape, 255, dtype=int)
+            
+            for val, mask in zip(flag_values, flag_masks):
+                mask_match = (sc_raw & mask) == val
+                decoded[mask_match] = int(val)
+
+            # Keep fill value pixels as 255 explicitly and make nan as 255 too
+            decoded[(sc_raw == 255) | np.isnan(sc_raw)] = 255
+
+            dat["surface_classification"] = decoded
 
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (
@@ -873,9 +907,48 @@ def read_blended(filename):
             ]
             dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
             dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
-            dat["surface_classification"] = (
-                blended_data["surface_classification"].values[:].astype("uint8") & 0x03
-            ).astype(int)
+            
+            # decode all surface classifications
+            
+            # Metadata
+            flag_values = np.array([
+                0, 1, 2, 3, 4, 9, 17, 25, 33, 41, 49, 57,
+                8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112,
+                120, 128, 136, 144, 152, 160, 168, 176, 184
+            ], dtype="uint8")
+
+            flag_masks = np.array([
+                3, 3, 3, 3, 4, 249, 249, 249, 249, 249, 249, 249,
+                249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249, 249,
+                249, 249, 249, 249, 249, 249, 249, 249, 249
+            ], dtype="uint8")
+
+            flag_meanings = [
+                "land", "water", "some_water", "coast", "value_covers_majority_of_pixel",
+                "water+shallow_ocean", "water+shallow_inland_water", "water+ocean_coastline-lake_shoreline",
+                "water+intermittent_water", "water+deep_inland_water", "water+continental_shelf_ocean", "water+deep_ocean",
+                "land+urban_and_built-up_land", "land+dryland_cropland_and_pasture", "land+irrigated_cropland_and_pasture",
+                "land+mixed_dryland-irrigated_cropland_and_pasture", "land+cropland-grassland_mosaic", "land+cropland-woodland_mosaic",
+                "land+grassland", "land+shrubland", "land+mixed_shrubland-grassland", "land+savanna",
+                "land+deciduous_broadleaf_forest", "land+deciduous_needleleaf_forest", "land+evergreen_broadleaf_forest",
+                "land+evergreen_needleleaf_forest", "land+mixed_forest", "land+herbaceous_wetland", "land+wooded_wetland",
+                "land+barren_or_sparsely_vegetated", "land+herbaceous_tundra", "land+wooded_tundra", "land+mixed_tundra",
+                "land+bare_ground_tundra", "land+snow_or_ice"
+            ]
+            sc_raw = blended_data["surface_classification"].values[0, :, :].astype("uint8")
+            
+            # Initialize decoded array with fill value (255)
+            decoded = np.full(sc_raw.shape, 255, dtype=int)
+            
+            for val, mask in zip(flag_values, flag_masks):
+                mask_match = (sc_raw & mask) == val
+                decoded[mask_match] = int(val)
+
+            # Keep fill value pixels as 255 explicitly and make nan as 255 too
+            decoded[(sc_raw == 255) | np.isnan(sc_raw)] = 255
+
+            dat["surface_classification"] = decoded
+            
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
 
             # Remove "Z" from time so that numpy doesn't throw a warning
@@ -1164,7 +1237,7 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)
-        if total_overlap_area < 1e-6:
+        if total_overlap_area == 0:
             continue
         rel_diff = abs(sum(overlap_area) - polygon_tropomi.area()) / polygon_tropomi.area()
         if rel_diff > 0.01:
@@ -1175,7 +1248,7 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         # weight each observation if observation extent overlaps with multiple
         # gridcells
         for index, overlap in enumerate(overlap_area):
-            if overlap > 1e-6:
+            if not overlap == 0:
                 # get the matching dictionary for the gridcell with the overlap
                 f, j, x = np.unravel_index(neighbor_idx[index], shape)
                 gridcell_dict = gridcell_dicts[f,j,x]
