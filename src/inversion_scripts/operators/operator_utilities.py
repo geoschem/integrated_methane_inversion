@@ -551,43 +551,6 @@ def nearest_loc(query_location, reference_grid, tolerance=0.5):
     else:
         return ind
 
-def ccw_order_latlon_cartesian(xyz):
-    """
-    Ensure 4 Cartesian 3D points on a sphere are ordered counterclockwise 
-    around their centroid using a local tangent plane projection.
-
-    Parameters:
-        xyz: (4, 3) array of 3D Cartesian coordinates on the unit sphere
-
-    Returns:
-        xyz_ccw: (4, 3) array of points reordered in CCW order
-    """
-    xyz = np.asarray(xyz)
-    assert xyz.shape == (4, 3), "Input must be a (4, 3) array"
-
-    # Compute centroid and normalize to stay on the unit sphere
-    centroid = xyz.mean(axis=0)
-    centroid /= np.linalg.norm(centroid)
-
-    # Construct local tangent plane basis at centroid
-    z_axis = centroid  # normal vector
-    arbitrary = np.array([1, 0, 0]) if abs(z_axis[0]) < 0.9 else np.array([0, 1, 0])
-    x_axis = np.cross(arbitrary, z_axis)
-    x_axis /= np.linalg.norm(x_axis)
-    y_axis = np.cross(z_axis, x_axis)
-
-    # Project each point onto the tangent plane
-    vecs = xyz - centroid  # (4, 3)
-    x_proj = np.dot(vecs, x_axis)
-    y_proj = np.dot(vecs, y_axis)
-
-    # Compute angle in plane and sort
-    angles = np.arctan2(y_proj, x_proj)
-    order = np.argsort(angles)
-
-    xyz_ccw = xyz[order]
-    return xyz_ccw
-
 def precompute_CSgrid_polygons(corner_lats, corner_lons):
     """
     Precompute simulation grid cell polygons from corner coordinates.
