@@ -5,6 +5,7 @@ import pandas as pd
 import warnings
 from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
 from spherical_geometry.polygon import SphericalPolygon
+from shapely.geometry import Polygon
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
     latlon_to_cartesian,
 )
@@ -563,28 +564,33 @@ def precompute_CSgrid_polygons(corner_lats, corner_lons):
     """
     nf, YCdim, XCdim = corner_lats.shape
     Ydim, Xdim = YCdim - 1, XCdim - 1
-    poly_grid = np.empty((nf, Ydim, Xdim), dtype=object)
+    poly_grid_3d = np.empty((nf, Ydim, Xdim), dtype=object)
+    poly_grid_2d = np.empty((nf, Ydim, Xdim), dtype=object)
+    cross_dateline = np.empty((nf, Ydim, Xdim), dtype=bool)
+    cross_dateline[:] = False
 
     for f in range(nf):
         for j in range(Ydim):
             for i in range(Xdim):
                 # Extract 4 corners in counter-clockwise order
-                lons = [
+                lons = np.array([
                     corner_lons[f, j, i],
                     corner_lons[f, j, i + 1],
                     corner_lons[f, j + 1, i + 1],
                     corner_lons[f, j + 1, i],
-                ]
+                ])
                 lats = [
                     corner_lats[f, j, i],
                     corner_lats[f, j, i + 1],
                     corner_lats[f, j + 1, i + 1],
                     corner_lats[f, j + 1, i],
                 ]
+                if np.ptp(lons)>180:
+                    cross_dateline[f,j,i] = True
                 # Convert to 3D Cartesian
                 verts = latlon_to_cartesian(lats, lons)
-                verts_order = ccw_order_latlon_cartesian(verts)
                 # Store the polygon
-                poly_grid[f, j, i] = SphericalPolygon(verts_order)
+                poly_grid_3d[f, j, i] = SphericalPolygon(verts)
+                poly_grid_2d[f, j, i] = Polygon(np.column_stack((lons, lats)))
 
-    return poly_grid
+    return poly_grid_3d, poly_grid_2d, cross_dateline

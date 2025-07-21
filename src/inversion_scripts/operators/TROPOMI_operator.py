@@ -22,7 +22,6 @@ from src.inversion_scripts.operators.operator_utilities import (
     get_gridcell_list,
     get_gridcell_list_gchp,
     nearest_loc,
-    ccw_order_latlon_cartesian,
     precompute_CSgrid_polygons,
 )
 
@@ -453,10 +452,11 @@ def apply_tropomi_operator(
         lons = np.array(grid_ds["lons"])
         corner_lats = np.array(grid_ds["corner_lats"])
         corner_lons = np.array(grid_ds["corner_lons"])
+        corner_lons[corner_lons>180] -= 360
         
         # Build KDTree and polygons
         kdtree, shape = build_kdtree(lats, lons)
-        polygons = precompute_CSgrid_polygons(corner_lats, corner_lons)
+        polygons_3d, polygons_2d, cross_dateline = precompute_CSgrid_polygons(corner_lats, corner_lons)
     # For each TROPOMI observation:
     for k in range(n_obs):
         # Get GEOS-Chem data for the date of the observation:
@@ -468,11 +468,7 @@ def apply_tropomi_operator(
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
 
         # Polygon representing TROPOMI pixel
-        if config['UseGCHP']:
-            xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-            polygon_tropomi = SphericalPolygon(xyz_bounds)
-            polygon_tropomi_area = polygon_tropomi.area()
-        else:
+        if not config['UseGCHP']:
             polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
             polygon_tropomi_area = polygon_tropomi.area
         
@@ -488,16 +484,32 @@ def apply_tropomi_operator(
             obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
             _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be more safe to include all overlap
             neighbor_idx = neighbor_idx.flatten()
-
+            
             # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
             overlap_area = np.zeros(len(neighbor_idx))
-            for ii in range(len(neighbor_idx)):
-                f, j, i = np.unravel_index(neighbor_idx[ii], shape)
-                polygon_gchp = polygons[f,j,i]
-                inter_poly = polygon_gchp.intersection(polygon_tropomi)
-                if inter_poly is not None:
-                    overlap_area[ii] = inter_poly.area()
             
+            if cross_dateline.flatten()[neighbor_idx].any():
+                xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
+                polygon_tropomi = SphericalPolygon(xyz_bounds)
+                polygon_tropomi_area = polygon_tropomi.area()
+                for ii in range(len(neighbor_idx)):
+                    f, j, i = np.unravel_index(neighbor_idx[ii], shape)
+                    polygon_gchp = polygons_3d[f,j,i]
+                    inter_poly = polygon_gchp.intersection(polygon_tropomi)
+                    if inter_poly is not None:
+                        overlap_area[ii] = inter_poly.area()
+            else:
+                polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
+                polygon_tropomi_area = polygon_tropomi.area
+                for ii in range(len(neighbor_idx)):
+                    f, j, i = np.unravel_index(neighbor_idx[ii], shape)
+                    polygon_gchp = polygons_2d[f,j,i]
+                    
+                    if polygon_gchp.intersects(polygon_tropomi):
+                        overlap_area[ii] = polygon_tropomi.intersection(
+                            polygon_gchp
+                        ).area
+                
             gc_coords = neighbor_idx
         
         else:
@@ -778,12 +790,8 @@ def read_tropomi(filename):
 
             # Surface classification values (ubyte type)
             sc_raw = tropomi_data["surface_classification"].values[0, :, :].astype("uint8")
-            dat["surface_classification"] = (sc_raw & 0x03).astype(int)
-            # Create snow/ice mask based on decoded flag 184UB
-            # NOTE: 184 = 0b10111000. According to flag_masks = 249UB = 0b11111001
-            #       So: (value & 249) == 184 → land+snow_or_ice
-            snow_or_ice_mask = (sc_raw & 0xF9) == 184
-            dat["land_snow_or_ice"] = snow_or_ice_mask.astype(bool)
+            dat["surface_classification"] = (sc_raw & 3).astype(int)
+            dat["surface_classification_249"] = (sc_raw & 249).astype(int)
 
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (
@@ -874,12 +882,8 @@ def read_blended(filename):
             
             # Surface classification values (ubyte type)
             sc_raw = blended_data["surface_classification"].values[:].astype("uint8")
-            dat["surface_classification"] = (sc_raw & 0x03).astype(int)
-            # Create snow/ice mask based on decoded flag 184UB
-            # NOTE: 184 = 0b10111000. According to flag_masks = 249UB = 0b11111001
-            #       So: (value & 249) == 184 → land+snow_or_ice
-            snow_or_ice_mask = (sc_raw & 0xF9) == 184
-            dat["land_snow_or_ice"] = snow_or_ice_mask.astype(bool)
+            dat["surface_classification"] = (sc_raw & 3).astype(int)
+            dat["surface_classification_249"] = (sc_raw & 249).astype(int)
             
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
 
@@ -1134,11 +1138,12 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
     lons = np.array(grid_ds["lons"])
     corner_lats = np.array(grid_ds["corner_lats"])
     corner_lons = np.array(grid_ds["corner_lons"])
+    corner_lons[corner_lons>180] -= 360
     gridcell_dicts = get_gridcell_list_gchp(lons, lats)
 
     # Build KDTree and polygons
     kdtree, shape = build_kdtree(lats, lons)
-    polygons = precompute_CSgrid_polygons(corner_lats, corner_lons)
+    polygons_3d, polygons_2d, cross_dateline = precompute_CSgrid_polygons(corner_lats, corner_lons)
     for k in range(n_obs):
         iSat = sat_ind[0][k]  # lat index
         jSat = sat_ind[1][k]  # lon index
@@ -1149,9 +1154,6 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
         
         longitude_bounds = TROPOMI["longitude_bounds"][iSat, jSat, :]
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
-        # Polygon representing TROPOMI pixel
-        xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-        polygon_tropomi = SphericalPolygon(xyz_bounds)
         
         obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
         _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be safe to include all overlap
@@ -1159,18 +1161,33 @@ def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_thr
 
         # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
         overlap_area = np.zeros(len(neighbor_idx))
-        for ii in range(len(neighbor_idx)):
-            f, j, i = np.unravel_index(neighbor_idx[ii], shape)
-            polygon_gchp = polygons[f,j,i]
-            inter_poly = polygon_gchp.intersection(polygon_tropomi)
-            if inter_poly is not None:
-                overlap_area[ii] = inter_poly.area()
+        if cross_dateline.flatten()[neighbor_idx].any():
+            xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
+            polygon_tropomi = SphericalPolygon(xyz_bounds)
+            polygon_tropomi_area = polygon_tropomi.area()
+            for ii in range(len(neighbor_idx)):
+                f, j, i = np.unravel_index(neighbor_idx[ii], shape)
+                polygon_gchp = polygons_3d[f,j,i]
+                inter_poly = polygon_gchp.intersection(polygon_tropomi)
+                if inter_poly is not None:
+                    overlap_area[ii] = inter_poly.area()
+        else:
+            polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
+            polygon_tropomi_area = polygon_tropomi.area
+            for ii in range(len(neighbor_idx)):
+                f, j, i = np.unravel_index(neighbor_idx[ii], shape)
+                polygon_gchp = polygons_2d[f,j,i]
+                
+                if polygon_gchp.intersects(polygon_tropomi):
+                    overlap_area[ii] = polygon_tropomi.intersection(
+                        polygon_gchp
+                    ).area
         
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
         total_overlap_area = sum(overlap_area)
         if total_overlap_area == 0:
             continue
-        rel_diff = abs(sum(overlap_area) - polygon_tropomi.area()) / polygon_tropomi.area()
+        rel_diff = abs(sum(overlap_area) - polygon_tropomi_area) / polygon_tropomi_area
         if rel_diff > 0.01:
             print(f"Skipping obs #{k} at lat {sat_lat:.2f} and lon {sat_lon:.2f} due to poor overlap: {rel_diff:.4f}")
             continue  # Skip this observation

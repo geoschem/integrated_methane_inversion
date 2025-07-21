@@ -649,7 +649,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
         & (tropomi_data["qa_value"] >= 0.5)
         & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
         & (tropomi_data["latitude"] > -60)
-        & ~(tropomi_data["land_snow_or_ice"]) # exclude land_snow_or_ice
+        & (tropomi_data["surface_classification_249"] != 184) # exclude land+snow_or_ice
     )
 
     if use_water_obs:
@@ -688,7 +688,7 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
             )
         )
         & (blended_data["latitude"] > -60)
-        & ~(blended_data["land_snow_or_ice"]) # exclude land_snow_or_ice
+        & (blended_data["surface_classification_249"] != 184) # exclude land+snow_or_ice
     )
 
     if use_water_obs:
