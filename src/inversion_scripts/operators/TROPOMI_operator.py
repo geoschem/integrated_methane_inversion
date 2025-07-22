@@ -689,6 +689,9 @@ def read_tropomi(filename):
             sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
             sc[nan_mask] = 5
             dat["surface_classification"] = sc
+            sc_0xF9 = (sc_no_nans.astype("uint8") & 0xF9).astype(int)
+            sc_0xF9[nan_mask] = 5
+            dat["surface_classification_0xF9"] = sc_0xF9
 
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (
