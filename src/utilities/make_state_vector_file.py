@@ -258,6 +258,8 @@ def make_state_vector_file(
         # if global, use hemco file
         statevector = hd.where(hd == -9999.0)
 
+    if UseGCHP:
+        statevector.values[~indomain_mask] = -9999
     # Set pixels in buffer areas to 0
     if is_regional:
         statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
@@ -288,8 +290,6 @@ def make_state_vector_file(
         print("statevector shape:", statevector.values.shape)
         print("land null mask shape:", land.isnull().values.shape)
         statevector.values[land.isnull().values] = -9999
-        if UseGCHP:
-            statevector.values[~indomain_mask] = -9999
 
     # Fill in the remaining NaNs with state vector element values
     statevector.values[statevector.isnull().values] = np.arange(

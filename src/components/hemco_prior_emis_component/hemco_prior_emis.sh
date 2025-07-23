@@ -175,14 +175,39 @@ run_hemco_sa() {
 # Usage:
 #   exclude_soil_sink <src-file> <target-file>
 exclude_soil_sink() {
-    python -c "import sys, warnings; \
-    warnings.filterwarnings('ignore', category=FutureWarning); \
-    warnings.filterwarnings('ignore', category=UserWarning); \
-    import xarray; import numpy as np; \
-    emis = xarray.load_dataset(sys.argv[1]); \
-    emis['EmisCH4_Total_ExclSoilAbs'] = emis['EmisCH4_Total'] - emis['EmisCH4_SoilAbsorb']; \
-    emis['EmisCH4_Total_ExclSoilAbs'].attrs = emis['EmisCH4_Total'].attrs; \
-    emis.to_netcdf(sys.argv[2])" "$1" "$2"
+    python -c '
+import sys, warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+import xarray as xr
+import numpy as np
+
+emis = xr.load_dataset(sys.argv[1], decode_times=False)
+emis["EmisCH4_Total_ExclSoilAbs"] = emis["EmisCH4_Total"] - emis["EmisCH4_SoilAbsorb"]
+emis["EmisCH4_Total_ExclSoilAbs"].attrs = emis["EmisCH4_Total"].attrs.copy()
+emis["EmisCH4_Total_ExclSoilAbs"].encoding = emis["EmisCH4_Total"].encoding.copy()
+
+if "time" in emis.coords:
+    original_units = emis["time"].attrs.get("units", "")
+    if "since " in original_units:
+        idx = original_units.index("since ") + len("since ")
+        date_part = original_units[idx:idx+10]
+        unit_part = original_units.split(" since")[0]
+        new_units = f"{unit_part} since {date_part} 00:00:00"
+        emis["time"].attrs.clear()
+        emis["time"].attrs["standard_name"] = "time"
+        emis["time"].attrs["long_name"] = "Time"
+        emis["time"].attrs["units"] = new_units
+        emis["time"].attrs["calendar"] = "standard"
+        emis["time"].attrs["axis"] = "T"
+
+keep_vars = [
+    var for var in emis.data_vars
+    if any(kw in var.lower() for kw in ["time", "lon", "lat"]) or var.startswith("Emis")
+]
+emis = emis[keep_vars]
+emis.to_netcdf(sys.argv[2])
+' "$1" "$2"
 }
 
 # Description: Setup Spinup Directory
