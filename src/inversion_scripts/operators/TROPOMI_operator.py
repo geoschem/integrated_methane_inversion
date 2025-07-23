@@ -130,12 +130,8 @@ def apply_average_tropomi_operator(
 
     # Read GEOS-Chem data for simulated truth in OSSE simulation
     if config["SimulateObs"]:
-        osse_gc_cache = os.path.join(
-            config["OutputPath"],
-            config["RunName"],
-            "osse_observations_run",
-            "OutputDir",
-        )
+        osse_gc_cache = "./data_geoschem_osse"
+        
         # check if the osse_gc_cache exists
         assert os.path.exists(osse_gc_cache), (
             f"OSSE GEOS-Chem cache directory {osse_gc_cache} does not exist. "

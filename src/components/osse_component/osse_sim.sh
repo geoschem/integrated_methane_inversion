@@ -8,6 +8,7 @@
 # Usage:
 #   setup_osse
 setup_osse() {
+    set -e
     # Make sure template run directory exists
     if [[ ! -f ${RunTemplate}/geoschem_config.yml ]]; then
         printf "\nTemplate run directory does not exist or has missing files. Please set 'SetupTemplateRundir=true' in config.yml\n"
@@ -30,16 +31,7 @@ setup_osse() {
     cd $runDir
 
     # Link to GEOS-Chem executable
-    ln -s ../GEOSChem_build/gcclassic .
-
-    # TODO: set the restart file
-    # Link to restart file
-    RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
-    ln -s $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
-    if "$UseBCsForRestart"; then
-        sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
-        printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
-    fi
+    ln -sfn ../GEOSChem_build/gcclassic .
 
     # Update settings in geoschem_config.yml
     # sed -i -e "s|${StartDate}|${SpinupStart}|g" \
@@ -60,7 +52,7 @@ setup_osse() {
     rm -f ch4_run.template
 
     ### Perform dry run if requested
-    if "$OSSEDryrun"; then
+    if "$ProductionDryRun"; then
         printf "\nExecuting dry-run for OSSE run...\n"
         ./gcclassic --dryrun &>log.dryrun
         # prevent restart file from getting downloaded since
@@ -72,16 +64,16 @@ setup_osse() {
     # Create random scaling factors
     printf "\nCreating random scaling factors for OSSE run...\n"
     python ${InversionPath}/src/components/osse_component/make_random_sf.py \
-    ${RunDirs}/${runDir} \
+    ${RunDirs}/StateVector.nc \
     ${InversionPath}/${ConfigFile}
 
     # Link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -sfn $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     else
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        ln -sfn $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
@@ -105,12 +97,14 @@ setup_osse() {
     cd ..
 
     printf "\n=== DONE CREATING OSSE RUN DIRECTORY ===\n"
+    set +e
 }
 
 # Description: Run OSSE Directory
 # Usage:
 #   run_osse
 run_osse() {
+    set -e
     osse_start=$(date +%s)
     printf "\n=== SUBMITTING OSSE SIMULATION ===\n"
 
@@ -121,7 +115,7 @@ run_osse() {
         -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
-        -W ${RunName}_OSSE.run
+        -W ${OSSEName}.run
     wait
 
     # check if exited with non-zero exit code
@@ -129,4 +123,5 @@ run_osse() {
 
     printf "\n=== DONE OSSE SIMULATION ===\n"
     osse_end=$(date +%s)
+    set +e
 }

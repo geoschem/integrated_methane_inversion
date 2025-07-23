@@ -136,6 +136,18 @@ python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
 
 #=======================================================================
+# setup geoschem cache for pseudo observations if doing OSSE
+#=======================================================================
+if "$SimulateObs"; then
+    RunDirOSSE="${OutputPath}/${RunName}/osse_observations_run"
+    GCDirOSSE="./data_geoschem_osse"
+    mkdir -p  $GCDirOSSE
+    # If simulating observations, we need to postprocess the observation data
+    python postproc_diags.py $RunName $RunDirOSSE $PrevDir $StartDate $Res; wait
+    python setup_gc_cache.py $StartDate $EndDate "${RunDirOSSE}/OutputDir" $GCDirOSSE; wait
+fi
+
+#=======================================================================
 # Generate Jacobian matrix files 
 #=======================================================================
 
