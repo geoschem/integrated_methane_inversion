@@ -19,11 +19,9 @@ def do_gridding(vector, statevector):
 
     # Replace invalids with 0, then cast to int
     sv_index = np.where(invalid_mask, 0, sv_org).astype(int)
-
-    invalid_mask_expanded = np.expand_dims(invalid_mask, axis=-1)
     
     outarr = vector[sv_index - 1]
-    outarr[invalid_mask_expanded] = np.nan
+    outarr = np.where(np.expand_dims(invalid_mask, -1), np.nan, outarr)
 
     # to dataarray    
     if statevector.StateVector.dims == ('time', 'lat', 'lon'):
