@@ -145,6 +145,10 @@ if "$SimulateObs"; then
     # If simulating observations, we need to postprocess the observation data
     python postproc_diags.py $RunName $RunDirOSSE $PrevDir $StartDate $Res; wait
     python setup_gc_cache.py $StartDate $EndDate "${RunDirOSSE}/OutputDir" $GCDirOSSE; wait
+    cp "$RunDirOSSE/jacobian_scale_factors.npy" "${OutputPath}/${RunName}/inversion/jacobian_scale_factors.npy"
+    if ! "$PrecomputedJacobian"; then
+        ln -sfn ${OutputPath}/${RunName}/inversion/data_converted ${OutputPath}/${RunName}/inversion/data_converted_reference
+    fi
 fi
 
 #=======================================================================
@@ -176,6 +180,10 @@ printf " DONE -- jacobian.py\n\n"
 #=======================================================================
 # Do inversion
 #=======================================================================
+if "$SimulateObs"; then
+    jacobian_sf=./jacobian_scale_factors.npy
+fi
+
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
     python merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian

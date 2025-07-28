@@ -128,18 +128,33 @@ def apply_average_tropomi_operator(
         all_strdate, gc_cache, n_elements, config, build_jacobian
     )
 
-    # Read GEOS-Chem data for simulated truth in OSSE simulation
+    # Read GEOS-Chem data for OSSE simulation
     if config["SimulateObs"]:
-        osse_gc_cache = "./data_geoschem_osse"
-        
-        # check if the osse_gc_cache exists
-        assert os.path.exists(osse_gc_cache), (
-            f"OSSE GEOS-Chem cache directory {osse_gc_cache} does not exist. "
-            "Please run the OSSE simulation first."
-        )
-        synthetic_gc_obs = read_all_geoschem(
-            all_strdate, osse_gc_cache, n_elements, config, False
-        )
+
+        # For lognormal inversions, when construct data_converted/, force reading prior simulations as true observations
+        if config["LognormalErrors"] and os.path.basename(gc_cache) == "data_geoschem":
+
+            # Use background simulations for lognormal inversion (osse_gc_obs)
+            osse_gc_obs = all_date_gc 
+
+            #Read prior GEOS-Chem simulation with "true emissions" for generating synthetic TROPOMI observation (all_date_gc)
+            gc_prior_cache = "./data_geoschem_prior"
+            all_date_gc = read_all_geoschem(
+                all_strdate, gc_prior_cache, n_elements, config, True
+            ) 
+
+        else:
+
+            # Use OSSE simulation for normal inversion (osse_gc_obs)
+            gc_prior_cache = "./data_geoschem_osse"
+            # check if the gc_prior_cache exists
+            assert os.path.exists(gc_prior_cache), (
+                f"OSSE GEOS-Chem cache directory {gc_prior_cache} does not exist. "
+                "Please run the OSSE simulation first."
+            )
+            osse_gc_obs = read_all_geoschem(
+                all_strdate, gc_prior_cache, n_elements, config, False
+            ) 
 
     # Initialize array with n_gridcells rows and 5 columns. Columns are
     # TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
@@ -182,33 +197,39 @@ def apply_average_tropomi_operator(
         )  # ppb
 
         if config["SimulateObs"]:
-            tropomi_synthetic = synthetic_gc_obs[strdate]
-            # Get GEOS-Chem methane for the cell
-            synthetic_CH4 = tropomi_synthetic["CH4"][
-                gridcell_dict["iGC"], gridcell_dict["jGC"], :
-            ]
-            synthetic_sat_CH4 = remap(
-                synthetic_CH4,
-                merged["data_type"],
-                merged["p_merge"],
-                merged["edge_index"],
-                merged["first_gc_edge"],
-            )  # ppb
-            synthetic_sat_CH4_molm2 = (
-                synthetic_sat_CH4 * 1e-9 * dry_air_subcolumns
-            )  # mol m-2
-            synthetic_tropomi = (
-                sum(apriori + avkern * (synthetic_sat_CH4_molm2 - apriori))
-                / sum(dry_air_subcolumns)
-                * 1e9
-            )  # ppb
+            # 1. pseudo observations from prior simulations (using true emissions) 
+            synthetic_tropomi = virtual_tropomi
             # add random noise to observations
+            np.random.seed(1)
             noise = np.random.normal(
                 loc=0.0,
                 scale=float(config["SimulatedObsError"]),
                 size=synthetic_tropomi.shape,
             )
             synthetic_tropomi += noise
+
+            # 2. update using osse prior simulations (using perturbed emissions) 
+            OSSE_GC = osse_gc_obs[strdate]
+            # Get GEOS-Chem methane for the cell
+            gc_CH4 = OSSE_GC["CH4"][
+                gridcell_dict["iGC"], gridcell_dict["jGC"], :
+            ]
+            sat_CH4 = remap(
+                gc_CH4,
+                merged["data_type"],
+                merged["p_merge"],
+                merged["edge_index"],
+                merged["first_gc_edge"],
+            )  # ppb
+            sat_CH4_molm2 = (
+                sat_CH4 * 1e-9 * dry_air_subcolumns
+            )  # mol m-2
+            virtual_tropomi = (
+                sum(apriori + avkern * (sat_CH4_molm2 - apriori))
+                / sum(dry_air_subcolumns)
+                * 1e9
+            )  # ppb
+
 
         # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
         if build_jacobian:

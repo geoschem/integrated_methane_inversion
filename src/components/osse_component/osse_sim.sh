@@ -62,10 +62,21 @@ setup_osse() {
     fi
 
     # Create random scaling factors
-    printf "\nCreating random scaling factors for OSSE run...\n"
-    python ${InversionPath}/src/components/osse_component/make_random_sf.py \
-    ${RunDirs}/StateVector.nc \
-    ${InversionPath}/${ConfigFile}
+    if "$CreateAutomaticScaleFactorFile"; then
+        printf "\nCreating random scaling factors for OSSE run...\n"
+        python ${InversionPath}/src/components/osse_component/make_random_sf.py \
+        ${RunDirs}/StateVector.nc \
+        ${InversionPath}/${ConfigFile}
+    else
+        # Copy custom scale factor to $OSSEDirs directory for later use
+        printf "\nCopying scale factor file\n"
+        cp -v $ScaleFactorFile ${RunDirs}/osse_observations_run/ScaleFactors.nc
+        python ${InversionPath}/src/components/osse_component/make_random_sf.py \
+        ${RunDirs}/StateVector.nc \
+        ${InversionPath}/${ConfigFile}
+    fi
+
+
 
     # Link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
