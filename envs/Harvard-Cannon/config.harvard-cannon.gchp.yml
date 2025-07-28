@@ -107,7 +107,7 @@ PriorErrorBCs: [10.0]
 PriorErrorBufferElements: [0.5]
 PriorErrorOH: [0.1]
 ObsError: [15]
-Gamma: [0.02]
+Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
