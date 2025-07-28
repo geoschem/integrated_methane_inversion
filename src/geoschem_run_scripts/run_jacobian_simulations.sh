@@ -42,23 +42,33 @@ if {ReDoJacobian}; then
     # rerun if it is not there
     yyyymmdd={EndDate}
     LastConcFile=$(date -d "${yyyymmdd} -1 day" +GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4)
+    next_day=$(date -d "${yyyymmdd} +1 day" +%Y%m%d)
 
-    cd OutputDir
-
-    if is_valid_nc "$LastConcFile"; then
-        echo "Not re-running jacobian simulation: ${xstr}"
-        exit 0
-    else
-        ### Run GEOS-Chem in the directory corresponding to the cluster Id
-        echo "Re-running jacobian simulation: ${xstr}"
-        cd ..
-        if {UseGCHP}; then
+    if {UseGCHP}; then
+        date_val=$(cat cap_restart | sed 's/ .*//')
+        if [[ "$date_val" == "$next_day" ]]; then
+            echo "Not re-running jacobian simulation: ${xstr}"
+            exit 0
+        else
+            ### Run GEOS-Chem in the directory corresponding to the cluster Id
+            echo "Re-running jacobian simulation: ${xstr}"
             ./cleanRunDir.sh
             echo "{StartDate} 000000" > cap_restart
+            ./{RunName}_${xstr}.run
+            # save the exit code of the jacobian simulation cmd
+            retVal=$?
         fi
-        ./{RunName}_${xstr}.run
-        # save the exit code of the jacobian simulation cmd
-        retVal=$?
+    else
+        if is_valid_nc "OutputDir/$LastConcFile"; then
+            echo "Not re-running jacobian simulation: ${xstr}"
+            exit 0
+        else
+            ### Run GEOS-Chem in the directory corresponding to the cluster Id
+            echo "Re-running jacobian simulation: ${xstr}"
+            ./{RunName}_${xstr}.run
+            # save the exit code of the jacobian simulation cmd
+            retVal=$?
+        fi
     fi
 else
     ### Run GEOS-Chem in the directory corresponding to the cluster Id
