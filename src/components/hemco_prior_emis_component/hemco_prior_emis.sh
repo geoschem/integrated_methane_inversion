@@ -203,7 +203,7 @@ if "time" in emis.coords:
 
 keep_vars = [
     var for var in emis.data_vars
-    if any(kw in var.lower() for kw in ["time", "lon", "lat"]) or var.startswith("Emis")
+    if any(kw in var.lower() for kw in ["time", "lon", "lat", "area"]) or var.startswith("Emis")
 ]
 emis = emis[keep_vars]
 emis.to_netcdf(sys.argv[2])

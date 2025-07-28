@@ -200,7 +200,7 @@ def make_state_vector_file(
             )
         lc = sparselt.xr.apply(transform, lc)
         hd = sparselt.xr.apply(transform, hd)
-        lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
+        lc = (lc["FRLAND"]).drop_vars("time").squeeze()
 
     else:
         # Select/ group fields together
@@ -208,7 +208,7 @@ def make_state_vector_file(
             lc = lc["landseamask"] #100% = all water and 0% = all land
             lc = np.round( -(lc/100.-1), decimals=5)
         else:
-            lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
+            lc = (lc["FRLAND"]).drop_vars("time").squeeze()
     hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop_vars("time").squeeze()
 
     # Check compatibility of region of interest
