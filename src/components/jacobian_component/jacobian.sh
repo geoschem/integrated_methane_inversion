@@ -91,12 +91,6 @@ setup_jacobian() {
     else
         sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
     fi
-    cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RunName}:g" \
-        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
-    cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh jacobian_runs/
-    sed -i -e "s:{RunName}:${RunName}:g" \
-        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_bkgd_simulation.sh
 
     if "$KalmanMode"; then
         jacobian_period=${period_i}
@@ -538,6 +532,19 @@ run_jacobian() {
         source submit_jacobian_simulations_array.sh
 
         if "$LognormalErrors"; then
+            # Submit background simulation to job scheduler
+            printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
+
+            cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh ./
+            RunDuration=$(get_run_duration "$StartDate" "$EndDate")
+            
+            sed -i -e "s:{RunName}:${RunName}:g" \
+                -e "s:{InversionPath}:${InversionPath}:g" \
+                -e "s:{UseGCHP}:${UseGCHP}:g" \
+                -e "s:{StartDate}:${StartDate}:g" \
+                -e "s:{RunDuration}:${RunDuration}:g" \
+                run_bkgd_simulation.sh
+            
             if "$UseGCHP"; then
                 sbatch --mem $RequestedMemory \
                     -c 1 \
@@ -555,6 +562,8 @@ run_jacobian() {
                     -W run_bkgd_simulation.sh
             fi
             wait
+
+            printf "\n=== DONE BACKGROUND SIMULATION ===\n"
         fi
 
         # check if any jacobians exited with non-zero exit code
@@ -575,7 +584,7 @@ run_jacobian() {
         fi
 
         precomputedJacobianCache=${precomputedJacobianCachePrefix}/data_converted
-        ln -s $precomputedJacobianCache data_converted_reference
+        ln -nsf $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
         JacobianRunsDir=${RunDirs}/jacobian_runs
@@ -583,6 +592,14 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
+        cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh ./
+        RunDuration=$(get_run_duration "$StartDate" "$EndDate")
+        sed -i -e "s:{RunName}:${RunName}:g" \
+            -e "s:{InversionPath}:${InversionPath}:g" \
+            -e "s:{UseGCHP}:${UseGCHP}:g" \
+            -e "s:{StartDate}:${StartDate}:g" \
+            -e "s:{RunDuration}:${RunDuration}:g" \
+            run_prior_simulation.sh
         if "$UseGCHP"; then
             sbatch --mem $RequestedMemory \
                 -N $NUM_NODES \

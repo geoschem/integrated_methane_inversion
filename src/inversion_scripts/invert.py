@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import glob
 import yaml
+import re
+import datetime
 import numpy as np
 import xarray as xr
 from itertools import product
@@ -15,7 +17,7 @@ from src.inversion_scripts.utils import (
 
 def do_inversion(
     n_elements,
-    jacobian_dir,
+    jacobian_files,
     lon_min,
     lon_max,
     lat_min,
@@ -35,7 +37,7 @@ def do_inversion(
 
     Arguments
         n_elements   [int]   : Number of state vector elements
-        jacobian_dir [str]   : Directory where the data from jacobian.py are stored
+        jacobian_files [list]  : Jacobian files generated from jacobian.py
         lon_min      [float] : Minimum longitude
         lon_max      [float] : Maximum longitude
         lat_min      [float] : Minimum latitude
@@ -86,8 +88,8 @@ def do_inversion(
     ylim = [lat_min + degy, lat_max - degy]
 
     # Read output data from jacobian.py (virtual & true TROPOMI columns, Jacobian matrix)
-    files = glob.glob(f"{jacobian_dir}/*.pkl")
-    files.sort()
+    
+    files = jacobian_files
 
     # ==========================================================================================
     # Now we will assemble two different expressions needed for the analytical inversion.
@@ -330,7 +332,7 @@ def do_inversion(
 
 def do_inversion_ensemble(
     n_elements,
-    jacobian_dir,
+    jacobian_files,
     lon_min,
     lon_max,
     lat_min,
@@ -377,7 +379,7 @@ def do_inversion_ensemble(
         xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, Ja_normalized = (
             do_inversion(
                 n_elements,
-                jacobian_dir,
+                jacobian_files,
                 lon_min,
                 lon_max,
                 lat_min,
@@ -431,7 +433,6 @@ def do_inversion_ensemble(
 
 if __name__ == "__main__":
     import sys
-    import numpy as np
 
     config_path = sys.argv[1]
     n_elements = int(sys.argv[2])
@@ -464,10 +465,26 @@ if __name__ == "__main__":
     if jacobian_sf == "None":
         jacobian_sf = None
 
+    # make it robust to read output files in the defined time range
+    # Get TROPOMI data filenames for the desired date range
+    gc_startdate = np.datetime64(datetime.datetime.strptime(str(config['StartDate']), "%Y%m%d"))
+    gc_enddate = np.datetime64(datetime.datetime.strptime(str(config['EndDate']), "%Y%m%d"))
+    allfiles = glob.glob(f"{jacobian_dir}/*.pkl")
+    jacobian_files = []
+    for index in range(len(allfiles)):
+        filename = allfiles[index]
+        shortname = re.split(r"\/", filename)[-1]
+        shortname = re.split(r"\.", shortname)[0]
+        strdate = re.split(r"\.|_+|T", shortname)[4]
+        strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
+        if (strdate >= gc_startdate) and (strdate < gc_enddate):
+            jacobian_files.append(filename)
+    jacobian_files.sort()
+    
     # Run the inversion code
     out_ds, out_ds_default = do_inversion_ensemble(
         n_elements,
-        jacobian_dir,
+        jacobian_files,
         lon_min,
         lon_max,
         lat_min,

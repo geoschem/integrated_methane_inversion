@@ -31,7 +31,9 @@ setup_posterior() {
 
     # Link to GEOS-Chem executable
     if "$UseGCHP"; then
-        sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+        RunDuration=$(get_run_duration "$StartDate" "$EndDate")
+        sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
+            -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
             -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
             -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
