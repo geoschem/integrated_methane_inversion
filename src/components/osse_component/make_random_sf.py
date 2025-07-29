@@ -28,12 +28,13 @@ def make_random_sf(state_vector_path, save_directory, config):
             mean=1.0,
             sigma=config["EmisRandomPerturbation"],
         )
-    else:  # gaussian errors
-        scale_factor["ScaleFactor"].values = np.random.uniform(
-            1 - config["EmisRandomPerturbation"],
-            1 + config["EmisRandomPerturbation"],
-            size=scale_factor["ScaleFactor"].values.shape,
-        )
+    else:  
+        # gaussian errors
+        # Warning: can have negative values
+        scale_factor["ScaleFactor"].values = np.random.normal(
+            loc=1.0, 
+            scale=config["EmisRandomPerturbation"],
+            size=scale_factor["ScaleFactor"].values.shape)
         
     # set non-ROI elements to 1.0
     scale_factor["ScaleFactor"].values[~mask] = 1.0
