@@ -115,9 +115,6 @@ setup_posterior() {
             sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
                 -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' \
-                -e 's/#'\''Emissions/'\''Emissions/g' \
-                -e 's/Emissions.frequency:.*/Emissions.frequency:      240000/g' \
-                -e 's/Emissions.duration:.*/Emissions.duration:       240000/g' \
                 HISTORY.rc
             sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' \
                 setCommonRunSettings.sh
@@ -257,19 +254,6 @@ run_posterior() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
-    if "$KalmanMode"; then
-        cd ${RunDirs}/kf_inversions/period${period_i}
-        if ((period_i == 1)); then
-            PrevDir="${RunDirs}/spinup_run"
-        else
-            PrevDir="${RunDirs}/posterior_run"
-        fi
-    else
-        StartDate_i=$StartDate
-        EndDate_i=$EndDate
-        cd ${RunDirs}/inversion
-        PrevDir="${RunDirs}/spinup_run"
-    fi
 
     PosteriorRunDir="${RunDirs}/posterior_run"
     # Build directory for hourly posterior GEOS-Chem output data

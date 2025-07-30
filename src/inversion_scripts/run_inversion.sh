@@ -47,7 +47,6 @@ nElements={STATE_VECTOR_ELEMENTS}
 nTracers={NUM_JACOBIAN_TRACERS}
 OutputPath={OUTPUT_PATH}
 Res={RES}
-SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"

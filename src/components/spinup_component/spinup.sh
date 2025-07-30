@@ -84,18 +84,10 @@ setup_spinup() {
             -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
     fi
 
-    # Turn on LevelEdgeDiags output
-    if "$HourlyCH4"; then
-        if "$UseGCHP"; then
-            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
-                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:    240000/g' HISTORY.rc
-        else
-            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
-        fi
-    fi
+    # Disable diagnostic outputs from spinup (we only need restart file from spin up)
+    sed -i -e 's/'\''LevelEdgeDiags/#'\''LevelEdgeDiags/g' \
+        -e 's/'\''SpeciesConc/#'\''SpeciesConc/g' \
+        HISTORY.rc
 
     # Create run script from template
     if "$UseGCHP"; then
