@@ -205,11 +205,14 @@ create_simulation_dir() {
     # absorption back in below
     sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
         -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
-        -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
-    if "$UseGCHP"; then
-        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
+    if [ "$OptimizeSoil" != true ]; then
+        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+            HEMCO_Config.rc
+        if "$UseGCHP"; then
+            sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
+    fi
     fi
     # Determine which elements are BC perturbations
     BC_elem=false
@@ -354,8 +357,10 @@ create_simulation_dir() {
     # and, in the case, of kalman mode the prior is scaled by the nudged scale factors
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
         # Use MeMo soil absorption for the prior simulation
-        sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
-            -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+        if [ "$OptimizeSoil" != true ]; then
+            sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+                -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+        fi
 
         # create a break in EMISSIONS logic block for MeMo in background simulation
         if [[ "$x" = "background" ]]; then
