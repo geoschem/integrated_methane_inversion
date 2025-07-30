@@ -172,7 +172,7 @@ def calculate_perturbation_sfs(
     return perturbation_dict
 
 
-def make_perturbation_sf(config, period_number, perturb_value=1e-8, OptimizeSoil=False):
+def make_perturbation_sf(config, period_number, perturb_value=1e-8):
     """
     Calculate the perturbations for each state vector element and update the perturbation files.
     Write out an archive of the flat perturbation scale factors for later use in sensitivity calculations.
@@ -213,7 +213,7 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8, OptimizeSoil
 
     # calculate the perturbation scale factors we perturb each state vector element by
     perturbation_dict = calculate_perturbation_sfs(
-        state_vector, hemco_emis, perturb_value, prior_sf, OptimizeSoil
+        state_vector, hemco_emis, perturb_value, prior_sf, config["OptimizeSoil"]
     )
 
     # archive npz file of perturbation scale factor dictionary for later calculation of sensitivity
@@ -319,4 +319,4 @@ if __name__ == "__main__":
     perturb_value = perturb_value * 1e-8
 
     config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    make_perturbation_sf(config, period_number, perturb_value, config['OptimizeSoil'])
+    make_perturbation_sf(config, period_number, perturb_value)
