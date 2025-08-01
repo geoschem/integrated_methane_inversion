@@ -31,14 +31,14 @@ mkdir -p "${workDir}/tropomi-boundary-conditions"
 mkdir -p "${workDir}/blended-boundary-conditions"
 cd "${workDir}"
 
-# Get GCClassic v14.4.1 and create the run directory
+# Get GCClassic v14.6.2 and create the run directory
 git clone https://github.com/geoschem/GCClassic.git
 cd GCClassic
-git checkout 14.4.1
+git checkout 14.6.2
 git submodule update --init --recursive
 cd run
 runDir="gc_run"
-c="9\n2\n2\n2\n${workDir}\n${runDir}\nn\n" # CH4, GEOS-FP, 2.0 x 2.5, 47L
+c="9\n2\ny\n2\n2\n${workDir}\n${runDir}\nn\n" # CH4, GEOS-FP, 2.0 x 2.5, 47L
 printf ${c} | ./createRunDir.sh
 cd "${workDir}/${runDir}/build"
 cmake ../CodeDir -DRUNDIR=..
@@ -49,6 +49,7 @@ cd "${workDir}/${runDir}"
 # Modify HISTORY.rc (hourly instantaneous CH4/pressure/air and 3-hourly BCs)
 sed -i -e "s|'CH4',|#'CH4',|g" \
     -e "s|'Metrics',|#'Metrics',|g" \
+    -e "s|'StateMet',|#'StateMet',|g" \
     -e "s|#'LevelEdgeDiags',|'LevelEdgeDiags',|g" \
     -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000001 000000',|g" \
     -e "s|Restart.duration:           'End',|Restart.duration:           '00000001 000000',|g" \
@@ -56,10 +57,9 @@ sed -i -e "s|'CH4',|#'CH4',|g" \
     -e "s|time-averaged|instantaneous|g" \
     -e "s|Met_CMFMC|Met_PEDGE|g" \
     -e "s|#'BoundaryConditions',|'BoundaryConditions',|g" \
-    -e "s|'Met_AD                        ',|'Met_AIRVOL                    ',|g" HISTORY.rc
+    -e "s|'SpeciesBC_?ADV?             ',|'SpeciesBC_?ADV?_             ',\\n                                 'Met_AD                       ',|g" HISTORY.rc
 
-# Remove unnecessary StateMet and then LevelEdge variables
-sed -i '265,340d' HISTORY.rc
+# Remove unnecessary LevelEdge variables
 sed -i '195,200d' HISTORY.rc
 
 # Modify HEMCO_Config.rc so that GEOS-Chem can run into 2024
