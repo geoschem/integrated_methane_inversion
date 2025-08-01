@@ -259,6 +259,9 @@ def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
     gridded_pert_ds['corner_lats'] = statevector['corner_lats']
     gridded_pert_ds['corner_lons'] = statevector['corner_lons']
 
+    # copy global attributes from state vector dataset
+    if statevector.attrs:
+        gridded_pert_ds.attrs = statevector.attrs
     # Save
     if save_pth is not None:
         print("Saving file {}".format(save_pth))

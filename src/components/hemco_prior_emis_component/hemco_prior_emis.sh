@@ -206,6 +206,16 @@ keep_vars = [
     if any(kw in var.lower() for kw in ["time", "lon", "lat", "area"]) or var.startswith("Emis")
 ]
 emis = emis[keep_vars]
+
+# Define the attributes to rename
+attrs_to_rename = ["stretch_factor", "target_lat", "target_lon"]
+
+for attr in attrs_to_rename:
+    if attr in emis.attrs:
+        # Get the value
+        value = emis.attrs.pop(attr)
+        # Set new attribute with uppercase name
+        emis.attrs[attr.upper()] = value
 emis.to_netcdf(sys.argv[2])
 ' "$1" "$2"
 }
