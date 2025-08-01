@@ -13,7 +13,7 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: false
+BlendedTROPOMI: true
 
 ## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
@@ -198,7 +198,7 @@ OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
 ## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi"
+DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
@@ -215,11 +215,11 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions/v2025-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2025-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/tropomi-boundary-conditions"
+BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions"
 BCversion: "v2025-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
