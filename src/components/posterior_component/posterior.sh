@@ -255,6 +255,14 @@ run_posterior() {
 
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
 
+    if "$KalmanMode"; then
+        cd ${RunDirs}/kf_inversions/period${period_i}
+    else
+        StartDate_i=$StartDate
+        EndDate_i=$EndDate
+        cd ${RunDirs}/inversion
+    fi
+
     PosteriorRunDir="${RunDirs}/posterior_run"
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
