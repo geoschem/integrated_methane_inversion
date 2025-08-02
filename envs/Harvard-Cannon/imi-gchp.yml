@@ -32,3 +32,4 @@ dependencies:
 - pip:
   - git+https://github.com/LiamBindle/gridspec.git
   - git+https://github.com/LiamBindle/sparselt.git
+  - spherical-geometry==1.3.3

@@ -2,30 +2,16 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_Global_1day"
+RunName: "Test_Permian_1week"
 UseSlurm: true
 SafeMode: true
 S3Upload: false
 
-UseGCHP: true
-## Even integer representing number of grid cells per cubed-sphere face side
-CS_RES: 48
+UseGCHP: false
 STRETCH_GRID: false
-STRETCH_FACTOR: 10.0
-TARGET_LAT: 32.0
-TARGET_LON: 256.0
-
-#------------------------------------------------
-#   COMPUTE RESOURCES for GCHP runs
-#------------------------------------------------
-# Total cores must be divisible by 6
-TOTAL_CORES: 36
-NUM_NODES: 1
-NUM_CORES_PER_NODE: 36
-
 ## Period of interest
 StartDate: 20180501
-EndDate: 20180502
+EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
@@ -35,7 +21,7 @@ BlendedTROPOMI: true
 UseWaterObs: false
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: false
+isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -49,15 +35,15 @@ isRegional: false
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-RegionID: ""
+RegionID: "NA"
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -180
-LonMax: 180
-LatMin: -90
-LatMax: 90
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 33
 
 ## Kalman filter options
 KalmanMode: false
@@ -68,12 +54,12 @@ CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 0
-BufferDeg: 0
+nBufferClusters: 8
+BufferDeg: 5
 LandThreshold: 0.25
 OffshoreEmisThreshold: 0
-OptimizeBCs: false
-OptimizeOH: true
+OptimizeBCs: true
+OptimizeOH: false
 # optimize soil option when using normal errors, 
 # do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors, 
 # do not use it either when it is GCC regional simulation with buffer cluster 
@@ -90,7 +76,7 @@ PointSourceDatasets: ["SRON"]
 ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: 1000
+NumberOfElements: 45
 ForcedNativeResolutionElements:
   - [31.5, -104]
 EmissionRateFilter: 2500
@@ -98,15 +84,15 @@ PlumeCountFilter: 50
 GroupByCountry: false
 
 ## Custom state vector
-StateVectorFile: "/path/to/StateVector.nc"
-ShapeFile: "None"
+StateVectorFile: "/home/ubuntu/integrated_methane_inversion/resources/statevectors/StateVector.nc"
+ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/PermianBasin_Extent_201712.shp"
 
 ## Inversion
 ## Notes:
 ## - PriorError is a relative fraction (e.g. 0.5 = 50%)
 ## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
 ## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-## - PriorErrorBCs is in ppb (not used for global)
+## - PriorErrorBCs is in ppb
 ## - PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
 PriorError: [0.5]
@@ -118,8 +104,9 @@ Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
-##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "2.0x2.5"
+##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
+##   0.5x0.625, 2.0x2.5, or 4.0x5.0
+Res: "0.25x0.3125"
 
 ## Meteorology
 ##   Options are GEOSFP or MERRA2
@@ -149,14 +136,12 @@ DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
-RequestedCPUs: 36
-RequestedMemory: 80G
+RequestedCPUs: 8
+RequestedMemory: 10000
 InversionCPUs: 32
-InversionMemory: 1000G
-InversionTime: "0-24:00"
-RequestedTime: "0-12:00"
-SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared,huce_ice"
-InvSchedulerPartition: "huce_bigmem,bigmem,bigmem_intermediate"
+InversionMemory: 32000
+RequestedTime: "0-24:00"
+SchedulerPartition: "debug"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
 MaxSimultaneousRuns: -1
@@ -216,40 +201,31 @@ AIRS: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
+OutputPath: "/home/ubuntu/imi_output_dir"
 
 ## Path to GEOS-Chem input data
-DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
-
-## Path to TROPOMI Data
-DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
+DataPath: "/home/ubuntu/ExtData"
 
 ## Conda environment file
-## See envs/README to create the Conda environment specified below
+CondaFile: "/home/ubuntu/.bashrc"
 CondaEnv: "imi-gchp"
-CondaFile: "${HOME}/.bashrc"
-
-## GCHP environment file (with fortran compiler, netcdf libraries, etc.)
-##   NOTE: Copy your own file in the envs/ directory within the IMI
-GEOSChemEnv: "${HOME}/envs/gnu12/gchp.rocky+gnu12.minimal.env"
 
 ## Download initial restart file from AWS S3?
-##   NOTE: Must have AWS CLI enabled
-RestartDownload: false
+##  NOTE: Must have AWS CLI enabled
+RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2024-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2024-06/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions"
+BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
 BCversion: "v2024-06"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: Must have AWS CLI enabled
-HemcoPriorEmisDryRun: false
-SpinupDryrun: false
-ProductionDryRun: false
-PosteriorDryRun: false
-BCdryrun: false
+HemcoPriorEmisDryRun: true
+SpinupDryrun: true
+ProductionDryRun: true
+PosteriorDryRun: true
+BCdryrun: true
