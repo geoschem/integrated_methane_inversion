@@ -416,6 +416,7 @@ def plot_field_gchp(
     state_vector_labels=None,
     last_ROI_element=None,
     is_regional=True,
+    stretch_grid=False,
     save_path=None,
     clean_title=None,
 ):
@@ -444,7 +445,7 @@ def plot_field_gchp(
     """
 
     # Select map features
-    if is_regional:
+    if (is_regional | stretch_grid):
         oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
         lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
         states_provinces_50m = cartopy.feature.NaturalEarthFeature(

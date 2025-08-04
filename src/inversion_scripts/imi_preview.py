@@ -137,6 +137,50 @@ def imi_preview(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
     )
 
+    if config['UseGCHP']:
+        basedir = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"])
+        )
+        gridfpath = f'{basedir}/CS_grids/grids.c{config["CS_RES"]}.nc'
+        gridds = xr.open_dataset(gridfpath)
+        corner_lons = gridds['corner_lons']
+        corner_lats = gridds['corner_lats']
+        
+    # Set latitude/longitude bounds for plots
+    if not config['UseGCHP']:
+        # Trim 1-2.5 degrees to remove GEOS-Chem buffer zone
+        if config["Res"] == "0.25x0.3125":
+            degx = 4 * 0.3125
+            degy = 4 * 0.25
+        elif config["Res"] == "0.5x0.625":
+            degx = 4 * 0.625
+            degy = 4 * 0.5
+        elif config["Res"] == "2.0x2.5":
+            degx = 4 * 2.5
+            degy = 4 * 2.0
+
+        lon_bounds = [
+            np.min(state_vector.lon.values) + degx,
+            np.max(state_vector.lon.values) - degx,
+        ]
+        lat_bounds = [
+            np.min(state_vector.lat.values) + degy,
+            np.max(state_vector.lat.values) - degy,
+        ]
+    elif config['STRETCH_GRID']:
+        buffer_bounds = 0.
+        temp_lons = gridds['corner_lons'].values[5,...].copy()
+        temp_lons[temp_lons>180] -= 360
+        lon_min = max(temp_lons.min() - buffer_bounds, -180)
+        lon_max = min(temp_lons.max() + buffer_bounds, 180)
+        lat_min = max(gridds['corner_lats'].values[5,...].min(), -90)
+        lat_max = min(gridds['corner_lats'].values[5,...].max(), 90)
+        lon_bounds = [lon_min, lon_max]
+        lat_bounds = [lat_min, lat_max]
+    else:
+        lon_bounds = [-180, 180]
+        lat_bounds = [-90, 90]
+    
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
         config,
@@ -146,7 +190,10 @@ def imi_preview(
         preview=True,
         kf_index=None,
     )
-    mask = state_vector_labels <= last_ROI_element
+    mask = (state_vector_labels <= last_ROI_element).copy()
+    # set non-target face to be False as well (target face will be face_idx of 5)
+    if config['STRETCH_GRID']:
+        mask.values[:5,...] = False
 
     # ----------------------------------
     # Estimate dollar cost
@@ -168,8 +215,7 @@ def imi_preview(
     num_state_variables = np.nanmax(state_vector_labels.values)
 
     if config['UseGCHP']:
-        csres = config['CS_RES']
-        nbox = 6 * csres ** 2
+        nbox = 6 * config['CS_RES'] ** 2
     else:
         if config["Res"] == "0.125x0.15625":
             deltalat = 0.125
@@ -240,10 +286,6 @@ def imi_preview(
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     if config['UseGCHP']:
-        gridfpath = f'{config["OutputPath"]}/{config["RunName"]}/CS_grids/grids.c{csres}.nc'
-        gridds = xr.open_dataset(gridfpath)
-        corner_lons = gridds['corner_lons']
-        corner_lats = gridds['corner_lats']
         plot_field_gchp(
             ax,
             corner_lons,
@@ -253,8 +295,8 @@ def imi_preview(
             plot_type="pcolormesh",
             vmin=0,
             vmax=14,
-            lon_bounds=None,
-            lat_bounds=None,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
             levels=21,
             title="Prior emissions",
             point_sources=get_point_source_coordinates(config),
@@ -269,8 +311,8 @@ def imi_preview(
             plot_type="pcolormesh",
             vmin=0,
             vmax=14,
-            lon_bounds=None,
-            lat_bounds=None,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
             levels=21,
             title="Prior emissions",
             point_sources=get_point_source_coordinates(config),
@@ -300,8 +342,8 @@ def imi_preview(
         plot_type="pcolormesh",
         vmin=xch4_min,
         vmax=xch4_max,
-        lon_bounds=None,
-        lat_bounds=None,
+        lon_bounds=lon_bounds,
+        lat_bounds=lat_bounds,
         title="TROPOMI $X_{CH4}$",
         cbar_label="Column mixing ratio (ppb)",
         mask=mask if config["isRegional"] else None,
@@ -326,8 +368,8 @@ def imi_preview(
         plot_type="pcolormesh",
         vmin=0,
         vmax=0.4,
-        lon_bounds=None,
-        lat_bounds=None,
+        lon_bounds=lon_bounds,
+        lat_bounds=lat_bounds,
         title="SWIR Albedo",
         cbar_label="Albedo",
         mask=mask if config["isRegional"] else None,
@@ -347,8 +389,8 @@ def imi_preview(
         plot_type="pcolormesh",
         vmin=0,
         vmax=np.nanmax(ds_counts["counts"].values),
-        lon_bounds=None,
-        lat_bounds=None,
+        lon_bounds=lon_bounds,
+        lat_bounds=lat_bounds,
         title="Observation density",
         cbar_label="Number of observations",
         mask=mask if config["isRegional"] else None,
@@ -374,8 +416,8 @@ def imi_preview(
             cmap=sv_cmap,
             vmin=1,
             vmax=num_colors,
-            lon_bounds=None,
-            lat_bounds=None,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
             title="State Vector Elements",
             cbar_label="Element ID",
             only_ROI=True,
@@ -389,8 +431,8 @@ def imi_preview(
             cmap=sv_cmap,
             vmin=1,
             vmax=num_colors,
-            lon_bounds=None,
-            lat_bounds=None,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
             title="State Vector Elements",
             cbar_label="Element ID",
             only_ROI=True,
@@ -404,7 +446,7 @@ def imi_preview(
     )
 
     # plot estimated averaging kernel sensitivities
-    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+    sensitivities_da = map_sensitivities_to_sv(a, state_vector, mask)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     if config['UseGCHP']:
@@ -416,8 +458,8 @@ def imi_preview(
             cmap=cc.cm.CET_L19,
             vmin=0,
             vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
-            lon_bounds=None,
-            lat_bounds=None,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
             title="Estimated Averaging kernel sensitivities",
             cbar_label="Sensitivity",
             only_ROI=True,
@@ -431,8 +473,8 @@ def imi_preview(
             cmap=cc.cm.CET_L19,
             vmin=0,
             vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
-            lon_bounds=None,
-            lat_bounds=None,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
             title="Estimated Averaging kernel sensitivities",
             cbar_label="Sensitivity",
             only_ROI=True,
@@ -463,14 +505,14 @@ def imi_preview(
         sys.exit(1)
 
 
-def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+def map_sensitivities_to_sv(sensitivities, sv, mask):
     """
     Map sensitivities (1D) onto a 2D xarray DataArray for visualization.
 
     Parameters:
         sensitivities (array-like): 1D array of sensitivity values, indexed by ROI element (0-based).
         sv (xarray.Dataset): Dataset containing a 2D variable "StateVector".
-        last_ROI_element (int): Highest ROI index to include in mapping (1-based indexing assumed).
+        mask (xarray.DataArray): valid mask of state vector elements to be mapped (1-based indexing)
 
     Returns:
         xarray.Dataset: 2D DataArray with one DataArray 'Sensitivities'.
@@ -478,14 +520,11 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
     # Extract 2D index array (e.g., shape (lat, lon))
     sv_index = sv["StateVector"].astype(int)
 
-    # Mask invalid state vector elements
-    valid_mask = sv_index <= last_ROI_element
-
     # Create an output array filled with NaN
     mapped = xr.full_like(sv_index, fill_value=np.nan, dtype=float)
 
     # Fill valid state vector elements with sensitivities
-    for i in range(1, last_ROI_element + 1):
+    for i in range(sv_index.values[mask.values].min(), sv_index.values[mask.values].max()+1):
         mapped = mapped.where(~(sv_index == i), sensitivities[i - 1])
 
     return mapped.to_dataset(name='Sensitivities')
@@ -575,7 +614,10 @@ def estimate_averaging_kernel(
     use_water_obs = config["UseWaterObs"] if "UseWaterObs" in config.keys() else False
 
     # Define mask for ROI, to be used below
-    mask = state_vector_labels <= last_ROI_element
+    mask = (state_vector_labels <= last_ROI_element).copy()
+    # set non-target face to be False as well (target face will be face_idx of 5)
+    if config['STRETCH_GRID']:
+        mask.values[:5,...] = False
 
     # ----------------------------------
     # Total prior emissions
@@ -608,11 +650,11 @@ def estimate_averaging_kernel(
 
     # Compute total emissions in the region of interest
     if config['UseGCHP']:
-        CSgrids = os.path.expandvars(
-            os.path.join(config["OutputPath"], config["RunName"], "CS_grids")
+        basedir = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"])
         )
-        gridpath = CSgrids + '/grids.c{}.nc'.format(config['CS_RES'])
-        gridds = xr.open_dataset(gridpath)
+        gridfpath = f'{basedir}/CS_grids/grids.c{config["CS_RES"]}.nc'
+        gridds = xr.open_dataset(gridfpath)
         areas = gridds['area']
     else:
         areas = prior_ds["AREA"]
@@ -707,8 +749,8 @@ def estimate_averaging_kernel(
     # Set resolution specific variables
     # L_native = Rough length scale of native state vector element [m]
     if config['UseGCHP']:
-        df_super = classify_obs_to_cs_grid(df, gridpath)
-        daily_observation_counts = map_obs_to_CSgrid(df_super, gridpath)
+        df_super = classify_obs_to_cs_grid(df, gridfpath)
+        daily_observation_counts = map_obs_to_CSgrid(df_super, gridfpath)
     else:
         # Set resolution specific variables
         # L_native = Rough length scale of native state vector element [m]
@@ -815,7 +857,7 @@ def estimate_averaging_kernel(
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
     result = Parallel(n_jobs=-1)(
-        delayed(process)(i) for i in range(1, last_ROI_element + 1)
+        delayed(process)(i) for i in range(int_sv_labels.values[mask.values].min(), int_sv_labels.values[mask.values].max() + 1)
     )
 
     # unpack list of tuples into individual lists
