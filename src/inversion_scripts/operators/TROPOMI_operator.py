@@ -129,7 +129,7 @@ def apply_average_tropomi_operator(
     )
 
     # Read GEOS-Chem data for simulated truth in OSSE simulation
-    if config["SimulateObs"]:
+    if config["EnableOSSE"]:
         osse_gc_cache = "./data_geoschem_osse"
         
         # check if the osse_gc_cache exists
@@ -181,7 +181,7 @@ def apply_average_tropomi_operator(
             * 1e9
         )  # ppb
 
-        if config["SimulateObs"]:
+        if config["EnableOSSE"]:
             tropomi_synthetic = synthetic_gc_obs[strdate]
             # Get GEOS-Chem methane for the cell
             synthetic_CH4 = tropomi_synthetic["CH4"][
@@ -205,7 +205,7 @@ def apply_average_tropomi_operator(
             # add random noise to observations
             noise = np.random.normal(
                 loc=0.0,
-                scale=float(config["SimulatedObsError"]),
+                scale=float(config["ObsErrorOSSE"]),
                 size=synthetic_tropomi.shape,
             )
             synthetic_tropomi += noise
@@ -328,7 +328,7 @@ def apply_average_tropomi_operator(
             jacobian_K[i, :] = sensi_xch4
 
         # Save actual and virtual TROPOMI data
-        if config["SimulateObs"]:
+        if config["EnableOSSE"]:
             obs_GC[i, 0] = synthetic_tropomi  # Synthetic observations if using OSSE
         else:
             obs_GC[i, 0] = gridcell_dict[

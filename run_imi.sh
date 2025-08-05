@@ -201,7 +201,7 @@ if "$DoSpinup"; then
     run_spinup
 fi
 
-if ("$DoOSSE" && "$SimulateObs"); then
+if ("$DoOSSE" && "$EnableOSSE"); then
     setup_osse
     run_osse
 fi

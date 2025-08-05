@@ -82,7 +82,7 @@ config_required = [
     "LognormalErrors",
     "MakePeriodsCSV",
     "UseWaterObs",
-    "SimulateObs",
+    "EnableOSSE",
 ]
 
 # dict of variables that are required if another variable is set to true
@@ -108,8 +108,8 @@ conditional_dict["S3Upload"] = [
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
 conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
-conditional_dict["SimulateObs"] = ["DoOSSE", "SimulatedObsError", "CreateAutomaticScaleFactorFile"]
-conditional_dict["CreateAutomaticScaleFactorFile"] = ["EmisRandomPerturbation"]
+conditional_dict["EnableOSSE"] = ["DoOSSE", "ObsErrorOSSE", "CreateAutomaticScaleFactorFileOSSE"]
+conditional_dict["CreateAutomaticScaleFactorFileOSSE"] = ["EmisPerturbationOSSE"]
 
 
 def raise_error_message(var):

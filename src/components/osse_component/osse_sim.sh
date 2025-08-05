@@ -62,7 +62,7 @@ setup_osse() {
     fi
 
     # Create random scaling factors
-    if "$CreateAutomaticScaleFactorFile"; then
+    if "$CreateAutomaticScaleFactorFileOSSE"; then
         printf "\nCreating random scaling factors for OSSE run...\n"
         python ${InversionPath}/src/components/osse_component/make_random_sf.py \
         ${RunDirs}/StateVector.nc \
@@ -70,7 +70,7 @@ setup_osse() {
     else
         # Copy custom scale factor to $OSSEDirs directory for later use
         printf "\nCopying scale factor file\n"
-        cp -v $ScaleFactorFile ${RunDirs}/osse_observations_run/ScaleFactors.nc
+        cp -v $ScaleFactorFileOSSE ${RunDirs}/osse_observations_run/ScaleFactors.nc
         python ${InversionPath}/src/components/osse_component/make_random_sf.py \
         ${RunDirs}/StateVector.nc \
         ${InversionPath}/${ConfigFile}

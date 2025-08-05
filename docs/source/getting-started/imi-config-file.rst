@@ -292,18 +292,18 @@ by randomly perturbing the prior emissions and adding noise to the generated obs
    :widths: 30, 70
    :class: tight-table
 
-   * - ``SimulateObs``
+   * - ``EnableOSSE``
      - Boolean to enable running the IMI with pseudo-observations. Default value is ``false``.
    * - ``DoOSSE``
      - Boolean to run the simulation that pseudo-observations will be generated on. This should be run after the SpinupSimulation. Default value is ``false``.
-   * - ``EmisRandomPerturbation``
+   * - ``EmisPerturbationOSSE``
      - Amount of random perturbation to apply to the prior emissions to generate synthetic observations. Uses a Gaussian distribution to assign, unless ``LognormalErrors`` is set to true, then it uses a log-normal distribution. Default value is ``0.5`` (50%).
-   * - ``SimulatedObsError``
+   * - ``ObsErrorOSSE``
      - Amount of random gaussian error to apply to the observations sampled from the OSSE simulation. Default value is ``15`` ppb.
-   * - ``CreateAutomaticScaleFactorFile``
+   * - ``CreateAutomaticScaleFactorFileOSSE``
       - Boolean to create a scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Default value is ``true``.
-   * - ``ScaleFactorFile``
-      - Path to the scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Only used if ``CreateAutomaticScaleFactorFile`` is ``false``.
+   * - ``ScaleFactorFileOSSE``
+      - Path to the scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Only used if ``CreateAutomaticScaleFactorFileOSSE`` is ``false``.
 
 
 Advanced settings: GEOS-Chem options

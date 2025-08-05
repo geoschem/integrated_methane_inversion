@@ -160,17 +160,17 @@ NumJacobianTracers: 5
 ## Settings for Observing System Simulation Experiment (OSSE)
 ##--------------------------------------------------------------------
 ## If true, the IMI will run on synthetic observations
-SimulateObs: false
+EnableOSSE: false
 ## Run the simulation with randomly perturbed emissions to generate synthetic observations
 DoOSSE: false
 ## Perturbation to apply to the prior emissions 
-EmisRandomPerturbation: 0.5
+EmisPerturbationOSSE: 0.5
 ## Noise added to the synthetic observations
-SimulatedObsError: 15
+ObsErrorOSSE: 15
 ## Use randomly perturbed scale factor as "true" emissions (true)
-CreateAutomaticScaleFactorFile: true
-## Path to a custom scale factor file if CreateAutomaticScaleFactorFile is false
-ScaleFactorFile: "/path/to/ScaleFactor.nc"
+CreateAutomaticScaleFactorFileOSSE: true
+## Path to a custom scale factor file if CreateAutomaticScaleFactorFileOSSE is false
+ScaleFactorFileOSSE: "/path/to/ScaleFactor.nc"
 
 ##--------------------------------------------------------------------
 ## Additional settings for GEOS-Chem simulations

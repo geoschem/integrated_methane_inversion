@@ -27,15 +27,15 @@ def make_random_sf(state_vector_path, config):
     if config["LognormalErrors"]:
         scale_factor["ScaleFactor"].values = np.random.lognormal(
             mean=1.0,
-            sigma=np.log(config["EmisRandomPerturbation"]),
+            sigma=np.log(config["EmisPerturbationOSSE"]),
             size=scale_factor["ScaleFactor"].values.shape,
-            ) # Note: set config["EmisRandomPerturbation"] as GSD value
+            ) # Note: set config["EmisPerturbationOSSE"] as GSD value
     else:  
         # gaussian errors
         # Warning: can have negative values
         scale_factor["ScaleFactor"].values = np.random.normal(
             loc=1.0, 
-            scale=config["EmisRandomPerturbation"],
+            scale=config["EmisPerturbationOSSE"],
             size=scale_factor["ScaleFactor"].values.shape)
         
     # set non-ROI elements to 1.0
@@ -57,6 +57,6 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # Run the script
-    if config["CreateAutomaticScaleFactorFile"]:
+    if config["CreateAutomaticScaleFactorFileOSSE"]:
         make_random_sf(state_vector_path, config)
 

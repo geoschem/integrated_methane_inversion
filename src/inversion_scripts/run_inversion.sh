@@ -138,7 +138,7 @@ printf "DONE -- setup_gc_cache.py\n\n"
 #=======================================================================
 # setup geoschem cache for pseudo observations if doing OSSE
 #=======================================================================
-if "$SimulateObs"; then
+if "$EnableOSSE"; then
     RunDirOSSE="${OutputPath}/${RunName}/osse_observations_run"
     GCDirOSSE="./data_geoschem_osse"
     mkdir -p  $GCDirOSSE
