@@ -18,19 +18,6 @@ BlendedTROPOMI: false
 ## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
 
-## Settings for Observing System Simulation Experiment (OSSE)
-## If true, the IMI will run on synthetic observations
-SimulateObs: true
-## Run the simulation with randomly perturbed emissions to generate synthetic observations
-DoOSSE: true
-## Perturbation to apply to the prior emissions 
-CreateAutomaticScaleFactorFile: true
-EmisRandomPerturbation: 0.5
-## Noise added to the synthetic observations
-SimulatedObsError: 15
-## Custom scale factors
-ScaleFactorFile: "/path/to/ScaleFactor.nc"
-
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
 
@@ -165,7 +152,25 @@ NumJacobianTracers: 5
 ## These settings are intended for advanced users who wish to:
 ##   a. modify additional GEOS-Chem options, or
 ##   b. run the IMI on a local cluster.
+##   c. do an Observing System Simulation Experiment (OSSE)
 ## They can be ignored for any standard cloud application of the IMI.
+
+
+##--------------------------------------------------------------------
+## Settings for Observing System Simulation Experiment (OSSE)
+##--------------------------------------------------------------------
+## If true, the IMI will run on synthetic observations
+SimulateObs: false
+## Run the simulation with randomly perturbed emissions to generate synthetic observations
+DoOSSE: false
+## Perturbation to apply to the prior emissions 
+EmisRandomPerturbation: 0.5
+## Noise added to the synthetic observations
+SimulatedObsError: 15
+## Use randomly perturbed scale factor as "true" emissions (true)
+CreateAutomaticScaleFactorFile: true
+## Path to a custom scale factor file if CreateAutomaticScaleFactorFile is false
+ScaleFactorFile: "/path/to/ScaleFactor.nc"
 
 ##--------------------------------------------------------------------
 ## Additional settings for GEOS-Chem simulations
