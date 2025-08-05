@@ -91,9 +91,8 @@ def calculate_perturbation_sfs(
         effective_pert_sf [array]: contains the perturbation scalefactors (based on the
                                    nudged prior emissions for kalman mode) used in the
                                    inversion to calculate the sensitivity of observations
-                                   to the perturbation. These are relative to 0, so a 50%
-                                   perturbation is represented as 0.5. For a standalone
-                                   inversion, effective_pert_sf + 1 == jacobian_pert_sf.
+                                   to the perturbation. In standalone mode this will be the same
+                                   as jacobian_pert_sf.
 
         target_emission   [float]: the target emission value used to calculate the perturbation
     """
@@ -144,9 +143,10 @@ def calculate_perturbation_sfs(
         flat_prior_sf = np.ones(len(jacobian_pert_sf))
 
     # calculate the effective perturbation SFs
-    # this will be a fraction relative to 0 and in the case of a Kalman filter
-    # also scales the jacobian calculation to account for the nudged prior emissions
-    effective_pert_sf = (jacobian_pert_sf - 1) / flat_prior_sf
+    # this will be the same as the jacobian perturbation SFs
+    # for a standalone inversion, but for kalman mode is scaled
+    # to account for the nudged prior emissions
+    effective_pert_sf = jacobian_pert_sf / flat_prior_sf
 
     # return dictionary of perturbation scale factor arrays
     perturbation_dict = {
