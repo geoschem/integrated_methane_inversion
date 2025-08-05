@@ -21,12 +21,15 @@ UseWaterObs: false
 ## Settings for Observing System Simulation Experiment (OSSE)
 ## If true, the IMI will run on synthetic observations
 SimulateObs: true
-## Perturbation to apply to the prior emissions to generate synthetic observations
-EmisRandomPerturbation: 0.5
 ## Run the simulation with randomly perturbed emissions to generate synthetic observations
 DoOSSE: true
+## Perturbation to apply to the prior emissions 
+CreateAutomaticScaleFactorFile: true
+EmisRandomPerturbation: 0.5
 ## Noise added to the synthetic observations
 SimulatedObsError: 15
+## Custom scale factors
+ScaleFactorFile: "/path/to/ScaleFactor.nc"
 
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true

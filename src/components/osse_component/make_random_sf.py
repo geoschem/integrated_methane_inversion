@@ -27,8 +27,9 @@ def make_random_sf(state_vector_path, config):
     if config["LognormalErrors"]:
         scale_factor["ScaleFactor"].values = np.random.lognormal(
             mean=1.0,
-            sigma=config["EmisRandomPerturbation"],
-        )
+            sigma=np.log(config["EmisRandomPerturbation"]),
+            size=scale_factor["ScaleFactor"].values.shape,
+            ) # Note: set config["EmisRandomPerturbation"] as GSD value
     else:  
         # gaussian errors
         # Warning: can have negative values
@@ -46,7 +47,6 @@ def make_random_sf(state_vector_path, config):
         encoding={v: {"zlib": True, "complevel": 1} for v in scale_factor.data_vars},
     )
 
-
 if __name__ == "__main__":
     # Inputs
     state_vector_path = sys.argv[1]
@@ -57,4 +57,6 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     # Run the script
-    make_random_sf(state_vector_path, config)
+    if config["CreateAutomaticScaleFactorFile"]:
+        make_random_sf(state_vector_path, config)
+
