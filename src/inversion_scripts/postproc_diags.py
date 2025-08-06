@@ -209,7 +209,7 @@ if __name__ == "__main__":
     res = sys.argv[5]
 
     # Check if this is a posterior run, background run, or prior run
-    accepted_rundirs = ("posterior_run", f"{run_name}_0000", f"{run_name}_background")
+    accepted_rundirs = ("posterior_run", f"{run_name}_0000", f"{run_name}_background", "osse_observations_run")
 
     if run_dirs_pth.endswith((accepted_rundirs)):
         fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res)
