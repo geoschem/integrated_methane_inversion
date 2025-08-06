@@ -13,7 +13,7 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: false
+BlendedTROPOMI: true
 
 ## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
@@ -225,12 +225,12 @@ RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2025-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/ubuntu/ExtData/BoundaryConditions/v2025-06-blended/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/home/ubuntu/ExtData/BoundaryConditions"
-BCversion: "v2025-06"
+BCversion: "v2025-06-blended"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 HemcoPriorEmisDryRun: true
