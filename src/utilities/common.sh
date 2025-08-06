@@ -187,3 +187,121 @@ data.to_netcdf(OUTPUT_FILE)
 print(f"Combined c{CS_RES} cubed-sphere grid data saved to {OUTPUT_FILE}")
 EOF
 }
+
+# Description: regrid TROPOMI restart file (regridded from 47 to 72 layers) to GCHP restart
+# Usage: Usage: regrid_tropomi-BC-restart_gcc2gchp {TROPOMI-BC} {TemplatePrefix} {FILE-PREFIX} {CS-RESOLUTION} {STRETCH_GRID} [stretch_factor target_lat target_lon]
+regrid_tropomi-BC-restart_gcc2gchp() {
+    if [ "$#" -lt 5 ]; then
+        echo "Usage: regrid_tropomi-BC-restart_gcc2gchp {TROPOMI-BC} {TemplatePrefix} {FILE-PREFIX} {CS-RESOLUTION} {STRETCH_GRID} [stretch_factor target_lat target_lon]" >&2
+        return 1
+    fi
+
+    local tropomi_bc=$1
+    local template_prefix=$2
+    local prefix=$3
+    local CS_RES=$4
+    local STRETCH_GRID=$5
+    local STRETCH_FACTOR="${6:-1.0}"
+    local TARGET_LAT="${7:--90.0}"
+    local TARGET_LON="${8:-170.0}"
+
+    ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 "$tropomi_bc"
+
+    echo "Generate restart file with all other variables except SPC_CH4"
+    local restart_others=$prefix.c${CS_RES}.others.nc4
+
+    if "$STRETCH_GRID"; then
+        local template=${template_prefix}.c48.nc4
+        local src_grid="c48_gridspec.nc"
+        if [ ! -f "$src_grid" ]; then
+            gridspec-create gcs 48 > /dev/null 2>&1
+        fi
+        local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+        local dst_grid="${dst_prefix}_gridspec.nc"
+        if [ ! -f "$dst_grid" ]; then
+            gridspec-create sgcs -s "${STRETCH_FACTOR}" -t "${TARGET_LAT}" "${TARGET_LON}" "$CS_RES" > /dev/null 2>&1
+        fi
+        local regrid_weights_others="./regrid_weights_c48_to_c${CS_RES}_s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E_conserve.nc"
+        if [ ! -f "$regrid_weights_others" ]; then
+            local regridding_method="conserve"
+            ESMF_RegridWeightGen -s "$src_grid" -d "$dst_grid" -m "$regridding_method" -w "$regrid_weights_others" > /dev/null 2>&1
+        fi
+        python -m gcpy.regrid_restart_file       \
+            --stretched-grid                        \
+            --stretch-factor "$STRETCH_FACTOR"     \
+            --target-latitude "$TARGET_LAT"        \
+            --target-longitude "$TARGET_LON"       \
+            "$template"                            \
+            "$regrid_weights_others"               \
+            "$template" > /dev/null 2>&1
+        mv new_restart_file.nc "$restart_others"
+    else
+        local template=${template_prefix}.c${CS_RES}.nc4
+        if [ -f "$template" ]; then
+            cp "$template" "$restart_others"
+        else
+            python -m gcpy.file_regrid --filein "${template_prefix}.c48.nc4" \
+                --dim_format_in checkpoint \
+                --fileout "$restart_others" \
+                --cs_res_out "${CS_RES}" \
+                --dim_format_out checkpoint > /dev/null 2>&1
+        fi
+    fi
+
+    echo "Generate restart file for SPC_CH4"
+    local restart_ch4=$prefix.c${CS_RES}.ch4.nc4
+
+    if "$STRETCH_GRID"; then
+        local src_grid="regular_lat_lon_91x144.nc"
+        if [ ! -f "$src_grid" ]; then
+            gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc 91 144 > /dev/null 2>&1
+        fi
+        local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+        local dst_grid="${dst_prefix}_gridspec.nc"
+        if [ ! -f "$dst_grid" ]; then
+            gridspec-create sgcs -s "${STRETCH_FACTOR}" -t "${TARGET_LAT}" "${TARGET_LON}" "$CS_RES" > /dev/null 2>&1
+        fi
+        local regrid_weights_ch4="./regrid_weights_latlon_91x144_to_c${CS_RES}_s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E_conserve.nc"
+        if [ ! -f "$regrid_weights_ch4" ]; then
+            local regridding_method="conserve"
+            ESMF_RegridWeightGen -s "$src_grid" -d "$dst_grid" -m "$regridding_method" -w "$regrid_weights_ch4" > /dev/null 2>&1
+        fi
+        python -m gcpy.regrid_restart_file       \
+            --stretched-grid                        \
+            --stretch-factor "$STRETCH_FACTOR"     \
+            --target-latitude "$TARGET_LAT"        \
+            --target-longitude "$TARGET_LON"       \
+            "$tropomi_bc"                          \
+            "$regrid_weights_ch4"                  \
+            "$restart_others" > /dev/null 2>&1
+        mv new_restart_file.nc "$restart_ch4"
+    else
+        python -m gcpy.file_regrid --filein "$tropomi_bc" \
+            --dim_format_in classic \
+            --fileout "$restart_ch4" \
+            --cs_res_out "${CS_RES}" \
+            --dim_format_out checkpoint > /dev/null 2>&1
+    fi
+
+    # Combine SPC_CH4 field and other fields, and rename final output
+    ncap2 -O -s 'SPC_CH4=float(SPC_CH4)' "$restart_ch4" "$restart_ch4"
+    ncks -A -v SPC_CH4 "$restart_ch4" "$restart_others"
+    mv "$restart_others" "${prefix}.c${CS_RES}.nc4"
+
+    # global attributes for STRETCH_GRID
+    if "$STRETCH_GRID"; then
+        ncatted -O -h -a ,global,d,, "${prefix}.c${CS_RES}.nc4"
+        ncatted -O \
+            -a STRETCH_FACTOR,global,o,f,$STRETCH_FACTOR \
+            -a TARGET_LAT,global,o,f,$TARGET_LAT \
+            -a TARGET_LON,global,o,f,$TARGET_LON \
+            "${prefix}.c${CS_RES}.nc4"
+    fi
+    # compress
+    nccopy -d1 "${prefix}.c${CS_RES}.nc4" tmp.nc
+    mv tmp.nc "${prefix}.c${CS_RES}.nc4"
+    # Remove redundant files
+    rm -rf conservative_*.nc "$tropomi_bc" "$restart_ch4" PET*.Log
+
+    return 0
+}
