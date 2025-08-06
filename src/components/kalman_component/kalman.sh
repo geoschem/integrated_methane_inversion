@@ -151,12 +151,6 @@ run_period() {
 
     run_posterior
 
-    # Make a copy of the posterior output/diags files for postproc_diags.py
-    copydir="${PosteriorRunDir}/OutputDir"
-    cp ${copydir}/GEOSChem.SpeciesConc.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.SpeciesConc.Copy.${EndDate_i}_0000z.nc4
-    cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
-    echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
-
     # Make link to restart file from posterior run directory in prior, OH, and background simulation
     # and link to 1ppb restart file for perturbations
     python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
