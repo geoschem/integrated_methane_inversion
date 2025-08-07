@@ -190,10 +190,7 @@ def imi_preview(
         preview=True,
         kf_index=None,
     )
-    mask = (state_vector_labels <= last_ROI_element).copy()
-    # set non-target face to be False as well (target face will be face_idx of 5)
-    if config['STRETCH_GRID']:
-        mask.values[:5,...] = False
+    mask = state_vector_labels <= last_ROI_element
 
     # ----------------------------------
     # Estimate dollar cost
@@ -446,7 +443,7 @@ def imi_preview(
     )
 
     # plot estimated averaging kernel sensitivities
-    sensitivities_da = map_sensitivities_to_sv(a, state_vector, mask)
+    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     if config['UseGCHP']:
@@ -505,14 +502,14 @@ def imi_preview(
         sys.exit(1)
 
 
-def map_sensitivities_to_sv(sensitivities, sv, mask):
+def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
     """
     Map sensitivities (1D) onto a 2D xarray DataArray for visualization.
 
     Parameters:
         sensitivities (array-like): 1D array of sensitivity values, indexed by ROI element (0-based).
         sv (xarray.Dataset): Dataset containing a 2D variable "StateVector".
-        mask (xarray.DataArray): valid mask of state vector elements to be mapped (1-based indexing)
+        last_ROI_element (int): Highest ROI index to include in mapping (1-based indexing assumed).
 
     Returns:
         xarray.Dataset: 2D DataArray with one DataArray 'Sensitivities'.
@@ -520,11 +517,14 @@ def map_sensitivities_to_sv(sensitivities, sv, mask):
     # Extract 2D index array (e.g., shape (lat, lon))
     sv_index = sv["StateVector"].astype(int)
 
+    # Mask invalid state vector elements
+    valid_mask = sv_index <= last_ROI_element
+
     # Create an output array filled with NaN
     mapped = xr.full_like(sv_index, fill_value=np.nan, dtype=float)
 
     # Fill valid state vector elements with sensitivities
-    for i in range(sv_index.values[mask.values].min(), sv_index.values[mask.values].max()+1):
+    for i in range(1, last_ROI_element + 1):
         mapped = mapped.where(~(sv_index == i), sensitivities[i - 1])
 
     return mapped.to_dataset(name='Sensitivities')
@@ -614,10 +614,7 @@ def estimate_averaging_kernel(
     use_water_obs = config["UseWaterObs"] if "UseWaterObs" in config.keys() else False
 
     # Define mask for ROI, to be used below
-    mask = (state_vector_labels <= last_ROI_element).copy()
-    # set non-target face to be False as well (target face will be face_idx of 5)
-    if config['STRETCH_GRID']:
-        mask.values[:5,...] = False
+    mask = state_vector_labels <= last_ROI_element
 
     # ----------------------------------
     # Total prior emissions
@@ -857,7 +854,7 @@ def estimate_averaging_kernel(
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
     result = Parallel(n_jobs=-1)(
-        delayed(process)(i) for i in range(int_sv_labels.values[mask.values].min(), int_sv_labels.values[mask.values].max() + 1)
+        delayed(process)(i) for i in range(1, last_ROI_element + 1)
     )
 
     # unpack list of tuples into individual lists
