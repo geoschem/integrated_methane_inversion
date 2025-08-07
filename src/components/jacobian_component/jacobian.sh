@@ -389,19 +389,10 @@ create_simulation_dir() {
         # create symlink to 1ppb restart file
         if "$UseGCHP"; then
             RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4
-            restart_fpath="Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4"
-            # Conditionally add tracers if missing
-            all_tracers_exist $start_element $end_element "$restart_fpath" || {
-                add_jacobian_tracers_restart_for_gchp "$start_element" "$end_element" "$RestartFile1ppb" "$restart_fpath"
-            }
-            cd Restarts
-            ln -nsf "GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4" "GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4"
-            cd ..
         else
             RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
-            RestartFile=$RestartFile1ppb
-            ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         fi
+        ln -nsf $RestartFile1ppb Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         # Also, set emissions to zero for default CH4 tracer by applying ZERO scale factor (id 5)
         sed -i -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
@@ -737,53 +728,4 @@ print(nRuns)
 is_number() {
     local s="$1"
     [[ $s =~ ^[0-9]+$ ]]
-}
-
-# Description: add restarts for all Jacobian tracers for GCHP
-# Usage:
-#   add_jacobian_tracers_restart_for_gchp <start_element> <end_element> <org_restart_fpath> <new_restart_fpath>
-add_jacobian_tracers_restart_for_gchp(){
-    local start=$1
-    local end=$2
-    local org_restart_fpath=$3
-    local new_restart_fpath=$4
-
-    # Make a copy of the original file to work on
-    cp "$org_restart_fpath" "$new_restart_fpath"
-
-    for ((i=start; i<=end; i++)); do
-        tracer=$(printf "SPC_CH4_%04d" "$i")
-        
-        # Duplicate variable using ncap2
-        ncap2 -O -s "${tracer}=SPC_CH4;" "$new_restart_fpath" "$new_restart_fpath"
-        
-        # Optionally update long_name attribute
-        ncatted -O -a long_name,"$tracer",o,c,"Dry mixing ratio of species CH4_$(printf "%04d" "$i")" "$new_restart_fpath"
-    done
-}
-
-# Function to check if all SPC_CH4_#### variables exist
-all_tracers_exist() {
-    local start=$1
-    local end=$2
-    local file=$3
-
-    if [ ! -f "$file" ]; then
-        # echo "File $file does not exist."
-        return 1
-    fi
-
-    # Extract variable names from file header
-    local vars
-    vars=$(ncdump -h "$file" | awk '/(float|double|int|char|byte)[[:space:]]+SPC_CH4_[0-9]{4}/ {gsub(/\(.*/, "", $2); print $2}')
-
-    for ((i=start; i<=end; i++)); do
-        tracer=$(printf "SPC_CH4_%04d" "$i")
-        if ! echo "$vars" | grep -q "^$tracer$"; then
-            # echo "Missing tracer: $tracer"
-            return 1
-        fi
-    done
-
-    return 0
 }
