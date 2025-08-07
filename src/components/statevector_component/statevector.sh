@@ -23,7 +23,11 @@ create_statevector() {
         if [ "$Res" = "0.125x0.15625" ]; then
             LandCoverSuffix="HEMCO/CH4/v2025-03/landcover/IMERG_land_sea_mask_0125x015625.nc"
         else
-            LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+            if [ "$RegionID" != "" ]; then
+                LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+            else
+                LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+            fi
         fi
     else
         LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
