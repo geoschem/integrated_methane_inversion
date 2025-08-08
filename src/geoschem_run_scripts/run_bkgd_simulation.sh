@@ -13,12 +13,6 @@ rm -f .error_status_file.txt
 
 ### Run GEOS-Chem in the directory corresponding to the cluster Id
 cd  ${RUNDIR}/{RunName}_${xstr}
-if {UseGCHP}; then
-    ./cleanRunDir.sh
-    echo "{StartDate} 000000" > cap_restart
-    sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"{RunDuration} 000000\"/" \
-        setCommonRunSettings.sh
-fi
 ./{RunName}_${xstr}.run
 
 # save the exit code of the prior simulation cmd

@@ -126,25 +126,3 @@ if outfpath is not None:
     )
 EOF
 }
-
-# Calculate RunDuration (YYYYMMDD) between two dates (YYYYMMDD)
-get_run_duration() {
-  local start_date=$1
-  local end_date=$2
-
-  # Convert to seconds since epoch
-  local start_sec=$(date -d "$start_date" +%s)
-  local end_sec=$(date -d "$end_date" +%s)
-
-  # Calculate total days difference
-  local diff_days=$(( (end_sec - start_sec) / 86400 ))
-
-  # Calculate years, months, days assuming:
-  # 1 year = 360 days (12 * 30), 1 month = 30 days
-  local years=$(( diff_days / 360 ))
-  local remainder=$(( diff_days % 360 ))
-  local months=$(( remainder / 30 ))
-  local days=$(( remainder % 30 ))
-
-  printf "%04d%02d%02d\n" $years $months $days
-}
