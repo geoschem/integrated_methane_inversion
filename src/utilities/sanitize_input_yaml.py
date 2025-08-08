@@ -2,7 +2,7 @@ import sys
 import yaml
 
 """
-A simple utility script that tests whether all required IMI variables are present 
+A simple utility script that tests whether all required IMI variables are present
 in the yaml config file given. Exits 1 if there are missing variables
 Arguments
     config_path   [String]   : path to yaml config file
@@ -84,7 +84,6 @@ config_required = [
     "LognormalErrors",
     "MakePeriodsCSV",
     "UseWaterObs",
-    "OptimizeSoil",
 ]
 
 # dict of variables that are required if another variable is set to true
