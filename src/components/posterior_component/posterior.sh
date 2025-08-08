@@ -215,7 +215,6 @@ run_posterior() {
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
     LatMaxInvDomain=$(ncmax lat ${RunDirs}/StateVector.nc)
-    
     nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
     if "$OptimizeBCs"; then
         nElements=$((nElements + 4))

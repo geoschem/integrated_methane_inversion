@@ -104,7 +104,6 @@ run_period() {
     ithDates=(${ithLine//,/ })
     StartDate_i=${ithDates[0]}
     EndDate_i=${ithDates[1]}
-    RunDuration_i=$(get_run_duration "$StartDate_i" "$EndDate_i")
     echo "Start, End: $StartDate_i, $EndDate_i"
 
     # check if precomputed prior emissions for this period exists already

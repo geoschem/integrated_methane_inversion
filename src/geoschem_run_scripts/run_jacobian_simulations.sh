@@ -80,9 +80,9 @@ else
     retVal=$?
 fi
 
-# Check whether the jacobian finished successfully. If not, write to a hidden file.
-# The presence of the .error_status_file.txt indicates whether an error ocurred.
-# This is needed because scripts that set off sbatch jobs have no knowledge of
+# Check whether the jacobian finished successfully. If not, write to a hidden file. 
+# The presence of the .error_status_file.txt indicates whether an error ocurred. 
+# This is needed because scripts that set off sbatch jobs have no knowledge of 
 # whether the job finished successfully.
 if [ $retVal -ne 0 ]; then
     rm -f .error_status_file.txt

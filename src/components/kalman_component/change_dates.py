@@ -1,6 +1,7 @@
 import os
 import sys
-import re
+import yaml
+
 
 def change_dates(new_start_date, new_end_date, directory_to_edit):
     """

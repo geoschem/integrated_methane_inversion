@@ -24,10 +24,10 @@ setup_jacobian() {
     if "$isRegional"; then
         mkdir -p jacobian_1ppb_ics_bcs/BCs
         OrigBCFile="${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
-        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_1ppb_ics_bcs/BCs $StartDate
     fi
     OrigRestartFile="${RestartFilePrefix}${StartDate}_0000z.nc4"
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $StartDate
     cd ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/
     if [ -f GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 ]; then
         mv GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4 GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
@@ -326,8 +326,7 @@ create_simulation_dir() {
     HcoPrevLine2='1 500'
     HcoPrevLine3="#300N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
-    ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
-
+    
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
     if is_number "$x"; then
@@ -434,12 +433,10 @@ run_jacobian() {
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
 
             cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh ./
-            RunDuration=$(get_run_duration "$StartDate" "$EndDate")
-
+            
             sed -i -e "s:{RunName}:${RunName}:g" \
                 -e "s:{InversionPath}:${InversionPath}:g" \
                 -e "s:{StartDate}:${StartDate}:g" \
-                -e "s:{RunDuration}:${RunDuration}:g" \
                 run_bkgd_simulation.sh
 
             sbatch --mem $RequestedMemory \
@@ -480,11 +477,9 @@ run_jacobian() {
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
         cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh ./
-        RunDuration=$(get_run_duration "$StartDate" "$EndDate")
         sed -i -e "s:{RunName}:${RunName}:g" \
             -e "s:{InversionPath}:${InversionPath}:g" \
             -e "s:{StartDate}:${StartDate}:g" \
-            -e "s:{RunDuration}:${RunDuration}:g" \
             run_prior_simulation.sh
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \

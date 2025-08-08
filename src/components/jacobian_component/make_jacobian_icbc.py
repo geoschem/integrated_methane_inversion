@@ -2,7 +2,6 @@ import os
 import sys
 import glob
 import xarray as xr
-import yaml
 
 
 def check_path_and_get_file(path, pattern="*"):
@@ -70,12 +69,9 @@ def make_jacobian_icbc(original_file_path, new_file_path, file_date):
 
 
 if __name__ == "__main__":
-    config_path = sys.argv[1]
-    original_file_path = sys.argv[2]
-    new_file_path = sys.argv[3]
-    file_date = sys.argv[4]
-
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    original_file_path = sys.argv[1]
+    new_file_path = sys.argv[2]
+    file_date = sys.argv[3]
 
     # default to getting the first file in the directory
     # or the file itself if it is a file
