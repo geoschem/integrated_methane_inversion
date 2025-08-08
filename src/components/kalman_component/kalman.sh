@@ -151,10 +151,16 @@ run_period() {
 
     run_posterior
 
+    # Make a copy of the posterior output/diags files for postproc_diags.py
+    copydir="${PosteriorRunDir}/OutputDir"
+    cp ${copydir}/GEOSChem.SpeciesConc.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.SpeciesConc.Copy.${EndDate_i}_0000z.nc4
+    cp ${copydir}/GEOSChem.LevelEdgeDiags.${EndDate_i}_0000z.nc4 ${copydir}/GEOSChem.LevelEdgeDiags.Copy.${EndDate_i}_0000z.nc4
+    echo "Made a copy of the final posterior SpeciesConc and LevelEdgeDiags files"
+
     # Make link to restart file from posterior run directory in prior, OH, and background simulation
     # and link to 1ppb restart file for perturbations
     org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $org_restart ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $org_restart ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
     rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
     for ((idx = 0; idx <= rundir_num; idx++)); do
         # Add zeros to string name
@@ -168,8 +174,7 @@ run_period() {
             idxstr="${idx}"
         fi
         # read the original symlink for period 1
-        restart_period1="${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4"
-        target=$(readlink $restart_period1)
+        target=$(readlink "${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4")
 
         # Extract the filename from the target path
         filename=$(basename "$target")

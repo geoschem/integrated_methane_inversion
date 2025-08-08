@@ -158,10 +158,10 @@ setup_template() {
         -e "s: 'Met_PFLLSAN: #'Met_PFLLSAN:g" HISTORY.rc
 
     # If turned on, save out hourly CH4 concentrations to daily files
-    # use time-average mode
     if "$HourlyCH4"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
-            -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' HISTORY.rc
+            -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
+            -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
     fi
 
     # Remove sample restart file
