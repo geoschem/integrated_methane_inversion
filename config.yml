@@ -58,6 +58,11 @@ LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: true
 OptimizeOH: false
+# optimize soil option when using normal errors, 
+# do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors, 
+# current version is not compatible with state vector clustering 
+# either through clustering algorithm or buffer cluster for regional case
+OptimizeSoil: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering

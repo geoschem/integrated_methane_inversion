@@ -61,8 +61,7 @@ def sum_total_emissions(emissions, areas, mask):
     emissions_in_kg_per_s = emissions * areas * mask
     total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
     return float(total)
-
-
+    
 def filter_obs_with_mask(mask, df):
     """
     Select observations lying within a boolean mask
@@ -549,7 +548,7 @@ def calculate_superobservation_error(sO, p):
     return s_super
 
 
-def get_posterior_emissions(prior, scale):
+def get_posterior_emissions(prior, scale, OptimizeSoil=False):
     """
     Function to calculate the posterior emissions from the prior
     and the scale factors. Properly accounting for no optimization
@@ -578,28 +577,37 @@ def get_posterior_emissions(prior, scale):
     else:
         raise ValueError("Scale factors must be an xarray DataArray or Dataset")
 
-    # we do not optimize soil absorbtion in the inversion. This
-    # means that we need to keep the soil sink constant and properly
-    # account for it in the posterior emissions calculation.
-    # To do this, we:
-
-    # make a copy of the original soil sink
-    prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
-
-    # remove the soil sink from the prior total before applying scale factors
-    prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
-
-    # scale the prior emissions for all sectors using the scale factors
     posterior = prior.copy()
-    for ds_var in list(prior.keys()):
-        if "EmisCH4" in ds_var:
+    if not OptimizeSoil:
+        # we do not optimize soil absorbtion in the inversion. This
+        # means that we need to keep the soil sink constant and properly
+        # account for it in the posterior emissions calculation.
+        # To do this, we:
+        # make a copy of the original soil sink
+        prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
+        
+        filtered_keys = [
+            key for key in prior.keys()
+            if "EmisCH4" in key and key != "EmisCH4_Total" and key != "EmisCH4_SoilAbsorb"
+        ]
+        # scale the prior emissions for all sectors except soil using the scale factors
+        for ds_var in filtered_keys:
             posterior[ds_var] = prior[ds_var] * scale_factors
 
-    # But reset the soil sink to the original value
-    posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
+        # But reset the soil sink to the original value
+        posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
 
-    # Add the original soil sink back to the total emissions
-    posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
+        # Add the original soil sink back to the total emissions
+        posterior["EmisCH4_Total"] = posterior["EmisCH4_Total_ExclSoilAbs"] + posterior["EmisCH4_SoilAbsorb"]
+    else:
+        filtered_keys = [
+            key for key in prior.keys()
+            if "EmisCH4" in key
+        ]
+        # scale the prior emissions for all sectors using the scale factors
+        for ds_var in filtered_keys:
+            posterior[ds_var] = prior[ds_var] * scale_factors
+
     return posterior
 
 
@@ -675,3 +683,24 @@ def ensure_float_list(variable):
         return [float(variable)]
     else:
         raise TypeError("Variable must be a string, float, int, or list.")
+
+def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error):
+    """
+    Update prior error for the case when OptimizeSoil is turned on
+
+    Args:
+        prior_ds (xarray.Dataset): prior emission dataset
+        org_prior_error (float): relative prior error
+    
+    Returns:
+        Updated prior error using the quadrature of the org_prior_error on total emissions and soil sinks
+    """
+    prior_soil = prior_ds['EmisCH4_SoilAbsorb'].values
+    prior_flux = prior_ds['EmisCH4_Total'].values
+    prior_emis = prior_flux - prior_soil
+    
+    prior_err = np.sqrt((org_prior_error * prior_emis) ** 2 + \
+        (org_prior_error * prior_soil) ** 2) / \
+        prior_flux
+    
+    return prior_err
