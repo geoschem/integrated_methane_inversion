@@ -187,20 +187,22 @@ def plot_ensemble(
     """
     # calculate the mean and standard deviation of the ensemble posterior totals
     ens_mean_emis = np.mean(ens_posterior_totals)
-    ens_totals_std = np.std(ens_posterior_totals)
+    ens_totals_min = np.min(ens_posterior_totals)
+    ens_totals_max = np.max(ens_posterior_totals)
 
     # Plot the prior emissions
     ax.bar(
         0, total_prior_emissions, width=0.5, color="goldenrod", label="Prior", zorder=1
     )
-    # Plot the ensemble mean and std error bars
+    # Plot the ensemble mean and min/max error bars
     ax.bar(
         1, ens_mean_emis, width=0.5, color="steelblue", label="Ensemble mean", zorder=2
     )
+    # plot the min/max error bars
     ax.errorbar(
         1,
         ens_mean_emis,
-        yerr=ens_totals_std,
+        yerr=[[ens_mean_emis - ens_totals_min], [ens_totals_max - ens_mean_emis]],
         fmt="none",
         color="k",
         capsize=4,

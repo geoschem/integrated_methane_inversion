@@ -199,14 +199,18 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         if optimize_bcs:
             bc_errors = sa_bc**2 * np.ones((BC_element_num, 1))
             base_sa_normal = np.concatenate((base_sa_normal, bc_errors), axis=0)
-            
+
         if optimize_oh:
             oh_errors = sa_oh**2 * np.ones((OH_element_num, 1))
             # weight the OH term(s) following Maasakkers et al. (2019)
-            oh_weight = OH_element_num / (num_normal_elems - OH_element_num) 
+            oh_weight = OH_element_num / (num_normal_elems - OH_element_num)
             oh_errors_constraint = (oh_weight * sa_oh**2) * np.ones((OH_element_num, 1))
-            sa_normal = np.concatenate((base_sa_normal, oh_errors), axis=0) # unweighted Sa vector
-            sa_normal_constraint = np.concatenate((base_sa_normal, oh_errors_constraint), axis=0) # weighted Sa vector
+            sa_normal = np.concatenate(
+                (base_sa_normal, oh_errors), axis=0
+            )  # unweighted Sa vector
+            sa_normal_constraint = np.concatenate(
+                (base_sa_normal, oh_errors_constraint), axis=0
+            )  # weighted Sa vector
         else:
             sa_normal = base_sa_normal.copy()
             sa_normal_constraint = base_sa_normal.copy()
@@ -218,8 +222,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # Create two separate lnSa matrices
         lnsa = np.zeros((n + num_normal_elems, n + num_normal_elems))
         lnsa_constraint = lnsa.copy()
-        np.fill_diagonal(lnsa, lnsa_arr) # unweighted
-        np.fill_diagonal(lnsa_constraint, lnsa_arr_constraint) # weighted
+        np.fill_diagonal(lnsa, lnsa_arr)  # unweighted
+        np.fill_diagonal(lnsa_constraint, lnsa_arr_constraint)  # weighted
         invlnsa = np.linalg.inv(lnsa)
         invlnsa_constraint = np.linalg.inv(lnsa_constraint)
 
@@ -329,6 +333,28 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # Define the default data variables as those with normalized Ja closest to 1
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
 
+    # Filter ensemble members to only members with Ja between 0.5 and 2
+    filter_ens_members = True  # set to False to turn off filtering
+    include_ens_members = [
+        i for i, Ja in enumerate(results_dict["Ja_normalized"]) if 0.5 <= Ja <= 2.0
+    ]
+
+    if filter_ens_members and len(include_ens_members) > 0:
+        for k in results_dict.keys():
+            results_dict[k] = [results_dict[k][i] for i in include_ens_members]
+    elif len(include_ens_members) == 0:
+        print(
+            "Warning: No ensemble members with 0.5 <= J_A/n <= 2.0, "
+            + "Returning all members in ensemble. This may lead to suboptimal results."
+            + " Consider adding additional ensemble members with different hyperparameters."
+        )
+    else:
+        print(
+            "Warning: Returning all members in ensemble without filtering "
+            + "Ja/n thresholds [0.5, 2.0]. This may lead to suboptimal results."
+            + " Consider adding ensemble filters."
+        )
+
     # Create an xarray dataset to store inversion results
     dataset = xr.Dataset()
     for k, v in results_dict.items():
@@ -343,16 +369,17 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # ensemble dimension to end
     dataset = dataset.transpose(..., "ensemble")
 
-    dataset_default = dataset.isel(ensemble=idx_default_Ja)
+    # also calculate the mean of the ensemble as the main result
+    dataset_mean = dataset.mean(dim="ensemble")
 
     dataset.to_netcdf(
         results_save_path.replace(".nc", "_ensemble.nc"),
         encoding={v: {"zlib": True, "complevel": 1} for v in dataset.data_vars},
     )
 
-    dataset_default.to_netcdf(
+    dataset_mean.to_netcdf(
         results_save_path,
-        encoding={v: {"zlib": True, "complevel": 1} for v in dataset_default.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in dataset_mean.data_vars},
     )
 
     # make gridded posterior
