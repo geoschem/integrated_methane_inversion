@@ -478,6 +478,8 @@ if __name__ == "__main__":
         start_date = config["StartDate"]
         end_date = config["EndDate"]
         prior_ds = get_mean_emissions(start_date, end_date, prior_cache)
+    else:
+        prior_ds = None
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
