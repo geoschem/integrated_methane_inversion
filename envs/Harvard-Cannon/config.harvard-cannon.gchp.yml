@@ -74,13 +74,6 @@ LandThreshold: 0.25
 OffshoreEmisThreshold: 0
 OptimizeBCs: false
 OptimizeOH: true
-# optimize soil option when using normal errors, 
-# do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors, 
-# do not use it either when it is GCC regional simulation with buffer cluster 
-# or when clustering sv elements is enabled
-# as median scaling factor for many state vector elements could result in strong positive scaling factor 
-# to be applied to a pixel with negative soil flux
-OptimizeSoil: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -226,7 +219,7 @@ DataPathTROPOMI: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
-CondaEnv: "imi-gchp"
+CondaEnv: "imi_env"
 CondaFile: "${HOME}/.bashrc"
 
 ## GCHP environment file (with fortran compiler, netcdf libraries, etc.)
