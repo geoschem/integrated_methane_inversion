@@ -454,7 +454,7 @@ add_new_tracer() {
 
     # Add lines to species_database.yml
     SpcNextLine='CHBr3:'
-    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
+    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane\n  Is_JacobianTracer: true'
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
     # Add lines for new tracers to HEMCO_Config.rc
