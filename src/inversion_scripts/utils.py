@@ -886,3 +886,23 @@ def ensure_float_list(variable):
         return [float(variable)]
     else:
         raise TypeError("Variable must be a string, float, int, or list.")
+
+def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error):
+    """
+    Update prior error for the case when OptimizeSoil is turned on
+    Args:
+        prior_ds (xarray.Dataset): prior emission dataset
+        org_prior_error (float): relative prior error
+    
+    Returns:
+        Updated prior error using the quadrature of the org_prior_error on total emissions and soil sinks
+    """
+    prior_soil = prior_ds['EmisCH4_SoilAbsorb'].values
+    prior_flux = prior_ds['EmisCH4_Total'].values
+    prior_emis = prior_flux - prior_soil
+
+    prior_err = np.sqrt((org_prior_error * prior_emis) ** 2 + \
+        (org_prior_error * prior_soil) ** 2) / \
+        prior_flux
+
+    return prior_err
