@@ -108,7 +108,7 @@ run_period() {
     echo "Start, End: $StartDate_i, $EndDate_i"
 
     # check if precomputed prior emissions for this period exists already
-    if $UseGCHP; then
+    if "$UseGCHP"; then
         if [[ ! -f ${RunDirs}/hemco_prior_emis/OutputDir/GEOSChem.Emissions.${StartDate_i}_0000z.nc4 ]]; then
             printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
             run_prior_gchp $StartDate_i $EndDate_i
@@ -125,7 +125,7 @@ run_period() {
     wait
     python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $UseGCHP $PosteriorRunDir
     wait
-    if $UseGCHP; then
+    if "$UseGCHP"; then
         echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
     else
         echo "Edited cap_restart and setCommonRunSettings.sh for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
@@ -164,7 +164,7 @@ run_period() {
 
     # Make link to restart file from posterior run directory in prior, OH, and background simulation
     # and link to 1ppb restart file for perturbations
-    if $UseGCHP; then
+    if "$UseGCHP"; then
         org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
     else
         org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
@@ -183,7 +183,7 @@ run_period() {
             idxstr="${idx}"
         fi
         # read the original symlink for period 1
-        if $UseGCHP; then
+        if "$UseGCHP"; then
             restart_period1="${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4"
         else
             restart_period1="${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4"
@@ -195,7 +195,7 @@ run_period() {
 
         # Check if the filename contains "1ppb". If so, use the 1ppb restart file
         # Otherwise use the posterior simulation as the restart file
-        if $UseGCHP; then
+        if "$UseGCHP"; then
             if [[ "$filename" == *1ppb* ]]; then
                 ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
             else
@@ -212,7 +212,7 @@ run_period() {
 
     # and conditionally background run directory
     if "$LognormalErrors"; then
-        if $UseGCHP; then
+        if "$UseGCHP"; then
             ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
         else
             ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_background/Restarts/.
