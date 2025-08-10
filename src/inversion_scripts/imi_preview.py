@@ -15,7 +15,6 @@ import matplotlib
 import colorcet as cc
 import cartopy.crs as ccrs
 from scipy.ndimage import binary_dilation
-from gcpy.constants import R_EARTH_km
 import gc
 
 matplotlib.use("Agg")
@@ -28,6 +27,7 @@ from src.inversion_scripts.utils import (
     plot_field_gchp, # note we need to set vmin and vmax to make it proper for all cubic faces
     filter_tropomi,
     filter_blended,
+    calculate_area_in_km,
     calculate_superobservation_error,
     get_mean_emissions,
     get_posterior_emissions,
@@ -205,6 +205,9 @@ def imi_preview(
     #       Thus, here we turn to get the ratio of the number of grid boxes relative to reference grid
     reference_cost = 20
     reference_num_compute_hours = 10
+    reference_area_km = calculate_area_in_km(
+        [(-111, 24), (-95, 24), (-95, 39), (-111, 39)]
+    )
     ref_nbox = ((39 - 24) / 0.25) * ((-95 + 111) / 0.3125)
 
     hours_in_month = 31 * 24
@@ -213,33 +216,44 @@ def imi_preview(
 
     if config['UseGCHP']:
         nbox = 6 * config['CS_RES'] ** 2
+        nbox_factor = nbox / ref_nbox
     else:
-        if config["Res"] == "0.125x0.15625":
-            deltalat = 0.125
-            deltalon = 0.15625
-        if config["Res"] == "0.25x0.3125":
-            deltalat = 0.25
-            deltalon = 0.3125
-        elif config["Res"] == "0.5x0.625":
-            deltalat = 0.5
-            deltalon = 0.625
-        elif config["Res"] == "2.0x2.5":
-            deltalat = 2.0
-            deltalon = 2.5
-        elif config["Res"] == "4.0x5.0":
-            deltalat = 4.0
-            deltalon = 5.0
         lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
         lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
-        nbox = (lats[1] - lats[0]) / deltalat * (lons[1] - lons[0]) / deltalon
-    nbox_factor = nbox / ref_nbox
+        coords = [
+            (lons[0], lats[0]),
+            (lons[1], lats[0]),
+            (lons[1], lats[1]),
+            (lons[0], lats[1]),
+        ]
+        inversion_area_km = calculate_area_in_km(coords)
+        if config["Res"] == "0.125x0.15625":
+            res_factor = 2
+        elif config["Res"] == "0.25x0.3125":
+            res_factor = 1
+        elif config["Res"] == "0.5x0.625":
+            res_factor = 0.5
+        elif config["Res"] == "2.0x2.5":
+            res_factor = 0.125
+        elif config["Res"] == "4.0x5.0":
+            res_factor = 0.0625
+
     additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
-    expected_cost = (
-        (reference_cost + additional_storage_cost)
-        * (num_state_variables / 243)
-        * nbox_factor
-        * (num_days / 31)
-    )
+    if config['UseGCHP']:
+        expected_cost = (
+            (reference_cost + additional_storage_cost)
+            * (num_state_variables / 243)
+            * nbox_factor
+            * (num_days / 31)
+        )
+    else:
+        expected_cost = (
+            (reference_cost + additional_storage_cost)
+            * (num_state_variables / 243)
+            * (inversion_area_km / reference_area_km)
+            * (num_days / 31)
+            * res_factor
+        )
 
     outstring6 = (
         f"approximate cost = ${np.round(expected_cost,2)} for on-demand instance"
@@ -639,7 +653,7 @@ def estimate_averaging_kernel(
         # use the nudged (prior) emissions for generating averaging kernel estimate
         sf = xr.load_dataset(f"{rundir_path}archive_sf/prior_sf_period{kf_index}.nc")
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
-        prior_ds = get_posterior_emissions(prior_ds, sf, config["OptimizeSoil"])
+        prior_ds = get_posterior_emissions(prior_ds, sf)
     else:
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
 
@@ -752,18 +766,23 @@ def estimate_averaging_kernel(
         # Set resolution specific variables
         # L_native = Rough length scale of native state vector element [m]
         if config["Res"] == "0.125x0.15625":
+            L_native = 12.5 * 1000
             lat_step = 0.125
             lon_step = 0.15625
         elif config["Res"] == "0.25x0.3125":
+            L_native = 25 * 1000
             lat_step = 0.25
             lon_step = 0.3125
         elif config["Res"] == "0.5x0.625":
+            L_native = 50 * 1000
             lat_step = 0.5
             lon_step = 0.625
         elif config["Res"] == "2.0x2.5":
+            L_native = 200 * 1000
             lat_step = 2.0
             lon_step = 2.5
         elif config["Res"] == "4.0x5.0":
+            L_native = 400 * 1000
             lat_step = 4.0
             lon_step = 5.0
 
@@ -845,11 +864,13 @@ def estimate_averaging_kernel(
         emissions_temp = sum_total_emissions(prior, areas, maski)
         # number of native state vector elements in each element
         size_temp = state_vector_labels.where(maski).count().item()
-        L_native = np.sqrt(np.nanmean(areas.where(maski).values)).item()
-
+        if config['UseGCHP']:
+            L_native = np.sqrt(np.nanmean(areas.where(maski).values)).item()
+        L_temp = L_native * size_temp
+        
         del maski
         gc.collect()
-        return emissions_temp, L_native, size_temp, num_obs_temp, n_success_obs_days
+        return emissions_temp, L_temp, size_temp, num_obs_temp, n_success_obs_days
 
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
@@ -910,7 +931,9 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * L ** 2)  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / np.power(
+        L, 2
+    )  # kg/m2/s from kg/s, per element
 
     # Use the first element of the error list if multiple values are provided
     sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
@@ -945,7 +968,7 @@ def estimate_averaging_kernel(
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
 
     # Places with 0 superobs should be 0
-    a = np.where(np.isclose(m_superi, 0.0, atol=1e-8), 0.0, a)
+    a = np.where(np.equal(m_superi, 0), float(0), a)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"

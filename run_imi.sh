@@ -63,6 +63,8 @@ source $CondaFile
 
 # Activate Conda environment
 printf "\nActivating conda environment: ${CondaEnv}\n"
+# To have a clean conda environment first 
+# to ensure successful activation of the conda environment
 conda init
 conda deactivate
 conda activate "${CondaEnv}"

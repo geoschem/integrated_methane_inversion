@@ -139,7 +139,8 @@ def make_state_vector_file(
     lon_max = config["LonMax"]
     is_regional = config["isRegional"]
     buffer_deg = config["BufferDeg"]
-    emis_threshold = config["EmisThreshold"]
+    land_threshold = config["LandThreshold"]
+    emis_threshold = config["OffshoreEmisThreshold"]
     k_buffer_clust = config["nBufferClusters"]
     buffer_min_lat = 0
     buffer_min_lon = 0
@@ -199,7 +200,7 @@ def make_state_vector_file(
             )
         lc = sparselt.xr.apply(transform, lc)
         hd = sparselt.xr.apply(transform, hd)
-        lc = (lc["FRLAND"]).drop_vars("time").squeeze()
+        lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
 
     else:
         # Select/ group fields together
@@ -207,9 +208,8 @@ def make_state_vector_file(
             lc = lc["landseamask"] #100% = all water and 0% = all land
             lc = np.round( -(lc/100.-1), decimals=5)
         else:
-            lc = (lc["FRLAND"]).drop_vars("time").squeeze()
-    # Emissions + abs(soil_sink)
-    hd = (hd["EmisCH4_Total"] - 2. * hd["EmisCH4_SoilAbsorb"]).drop_vars("time").squeeze()
+            lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
+    hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop_vars("time").squeeze()
 
     # Check compatibility of region of interest
     if is_regional:
@@ -265,8 +265,26 @@ def make_state_vector_file(
         statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
         statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
-    # Also set pixels with low emissions (< emis_threshold) to -9999
-    statevector.values[hd.values < emis_threshold] = -9999
+    # Also set pixels over water to 0, unless there are offshore emissions
+    if land_threshold > 0:
+        # Where there is neither land nor emissions, replace with 0
+        if is_regional:
+            land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+        else:
+            # handle half-width polar grid boxes for global,
+            # global files are same shape but different lat
+            # at poles in that case
+            if (
+                np.not_equal(hd.lat.values, lc.lat.values).any()
+                & np.equal(hd.lat.shape, lc.lat.shape).all()
+            ):
+                land = lc.where(
+                    (lc.values > land_threshold) | (hd.values > emis_threshold)
+                )
+            else:
+                land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+
+        statevector.values[land.isnull().values] = -9999
     
     # set state vector over non-target face to -9999 
     # (only optimize target face with face_idx 5)
@@ -327,8 +345,6 @@ def make_state_vector_file(
         ds_statevector.StateVector.attrs["_FillValue"] = -9999
     # Save
     if save_pth is not None:
-        if os.path.exists(save_pth):
-            os.remove(save_pth)
         print("Saving file {}".format(save_pth))
         ds_statevector.to_netcdf(
             save_pth,

@@ -31,7 +31,8 @@ config_required = [
     "CreateAutomaticRectilinearStateVectorFile",
     "nBufferClusters",
     "BufferDeg",
-    "EmisThreshold",
+    "LandThreshold",
+    "OffshoreEmisThreshold",
     "ReducedDimensionStateVector",
     "StateVectorFile",
     "ShapeFile",
@@ -83,7 +84,6 @@ config_required = [
     "LognormalErrors",
     "MakePeriodsCSV",
     "UseWaterObs",
-    "OptimizeSoil",
 ]
 
 # dict of variables that are required if another variable is set to true

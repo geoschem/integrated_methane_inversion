@@ -12,12 +12,12 @@
 # Usage:
 #   print_stats
 print_stats() {
-    printf "\nRuntime statistics (s):\n"
-    printf " Setup      : %s\n" $(( ${setup_end:-0} - ${setup_start:-0} ))
-    printf " Spinup     : %s\n" $(( ${spinup_end:-0} - ${spinup_start:-0} ))
-    printf " Jacobian   : %s\n" $(( ${jacobian_end:-0} - ${jacobian_start:-0} ))
-    printf " Inversion  : %s\n" $(( ${inversion_end:-0} - ${inversion_start:-0} ))
-    printf " Posterior  : %s\n\n" $(( ${posterior_end:-0} - ${posterior_start:-0} ))
+    printf "\nRuntime statistics (s):"
+    printf "\n Setup     : $([[ ! -z $setup_end ]] && echo $(($setup_end - $setup_start)) || echo 0)"
+    printf "\n Spinup     : $([[ ! -z $spinup_end ]] && echo $(($spinup_end - $spinup_start)) || echo 0)"
+    printf "\n Jacobian     : $([[ ! -z $jacobian_end ]] && echo $(($jacobian_end - $jacobian_start)) || echo 0)"
+    printf "\n Inversion     : $([[ ! -z $inversion_end ]] && echo $(($inversion_end - $inversion_start)) || echo 0)"
+    printf "\n Posterior     : $([[ ! -z $posterior_end ]] && echo $(($posterior_end - $posterior_start)) || echo 0)\n\n"
 }
 
 # Description: Print error message for if the IMI fails

@@ -300,7 +300,7 @@ setup_prior_gchp() {
 
 # Description: Run Prior Directory
 # Usage:
-#   run_prior_gchp
+#   run_prior_gchp <hemco_start> <hemco_end>
 run_prior_gchp() {
     hemco_start=$1
     hemco_end=$2

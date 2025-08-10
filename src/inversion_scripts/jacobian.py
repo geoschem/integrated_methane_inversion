@@ -118,8 +118,8 @@ if __name__ == "__main__":
         datetime.datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
         - datetime.timedelta(days=1)
     )
-    print("Start:", gc_startdate)
-    print("End:", gc_enddate)
+    print("Start:", start)
+    print("End:", end)
 
     # Get TROPOMI data filenames for the desired date range
     allfiles = glob.glob(f"{tropomi_cache}/*.nc")

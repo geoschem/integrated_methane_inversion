@@ -88,26 +88,20 @@ setup_posterior() {
     # But exclude soil absorption from the application of the scale factors
     # Read in soil absorption separately with MeMo_SOIL_ABSORPTION
     sed -i -e "s|\.\./\.\.|\.\.|g" \
+        -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
         -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
         -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
+        -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+        -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
         -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
-
+    
     if "$UseGCHP"; then
         sed -i -e "s|\.\./\.\.|\.\.|g" \
+            -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
             -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" ExtData.rc
     fi
 
-    if [ "$OptimizeSoil" != true ]; then
-        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-            -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
-            -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
-            HEMCO_Config.rc
-        if "$UseGCHP"; then
-            sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
-                ExtData.rc
-        fi
-    fi
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then

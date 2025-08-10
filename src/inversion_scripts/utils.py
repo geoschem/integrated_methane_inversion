@@ -737,7 +737,7 @@ def calculate_superobservation_error(sO, p):
     return s_super
 
 
-def get_posterior_emissions(prior, scale, OptimizeSoil=False):
+def get_posterior_emissions(prior, scale):
     """
     Function to calculate the posterior emissions from the prior
     and the scale factors. Properly accounting for no optimization
@@ -766,39 +766,29 @@ def get_posterior_emissions(prior, scale, OptimizeSoil=False):
     else:
         raise ValueError("Scale factors must be an xarray DataArray or Dataset")
 
+    # we do not optimize soil absorbtion in the inversion. This
+    # means that we need to keep the soil sink constant and properly
+    # account for it in the posterior emissions calculation.
+    # To do this, we:
+
+    # make a copy of the original soil sink
+    prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
+
+    # remove the soil sink from the prior total before applying scale factors
+    prior["EmisCH4_Total"] = prior["EmisCH4_Total"] - prior_soil_sink
+
+    # scale the prior emissions for all sectors using the scale factors
     posterior = prior.copy()
-    if not OptimizeSoil:
-        # we do not optimize soil absorbtion in the inversion. This
-        # means that we need to keep the soil sink constant and properly
-        # account for it in the posterior emissions calculation.
-        # To do this, we:
-        # make a copy of the original soil sink
-        prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
-        
-        filtered_keys = [
-            key for key in prior.keys()
-            if "EmisCH4" in key and key != "EmisCH4_Total" and key != "EmisCH4_SoilAbsorb"
-        ]
-        # scale the prior emissions for all sectors except soil using the scale factors
-        for ds_var in filtered_keys:
+    for ds_var in list(prior.keys()):
+        if "EmisCH4" in ds_var:
             posterior[ds_var] = prior[ds_var] * scale_factors
 
-        # But reset the soil sink to the original value
-        posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
+    # But reset the soil sink to the original value
+    posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
 
-        # Add the original soil sink back to the total emissions
-        posterior["EmisCH4_Total"] = posterior["EmisCH4_Total_ExclSoilAbs"] + posterior["EmisCH4_SoilAbsorb"]
-    else:
-        filtered_keys = [
-            key for key in prior.keys()
-            if "EmisCH4" in key
-        ]
-        # scale the prior emissions for all sectors using the scale factors
-        for ds_var in filtered_keys:
-            posterior[ds_var] = prior[ds_var] * scale_factors
-
+    # Add the original soil sink back to the total emissions
+    posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
     return posterior
-
 
 def get_strdate(current_time, date_threshold):
     # round observation time to nearest hour
