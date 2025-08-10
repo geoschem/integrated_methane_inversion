@@ -226,7 +226,6 @@ def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
     lons = statevector['lons']
     
     # Map the input vector (e.g., scale factors) to the state vector grid
-    # Map the input vector (e.g., scale factors) to the state vector grid
     if "time" in statevector.StateVector.dims:
         sv_index = statevector.StateVector.values
     else:
