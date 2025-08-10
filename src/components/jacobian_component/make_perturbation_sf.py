@@ -104,9 +104,9 @@ def calculate_perturbation_sfs(
     # Calculate perturbation SFs such that applying them to the original
     # emissions will result in a target_emission kg/m2/s2 emission.
     if not OptimizeSoil:
-        pert_sf = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+        pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
     else:
-        pert_sf = target_emission / emis_prior["EmisCH4_Total"]
+        pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total"]
 
     # Extract state vector labels
     state_vector_labels = state_vector["StateVector"]
