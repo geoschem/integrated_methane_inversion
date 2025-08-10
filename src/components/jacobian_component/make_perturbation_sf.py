@@ -221,7 +221,10 @@ def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
     lons = statevector['lons']
     
     # Map the input vector (e.g., scale factors) to the state vector grid
-    sv_index = statevector.StateVector.values
+    if "time" in statevector.StateVector.dims:
+        sv_index = statevector.StateVector.values
+    else:
+        sv_index = statevector.StateVector.values[None,...]
     valid_mask = ~np.isnan(sv_index)
     # Create a placeholder array for integer indices, initialize with -1
     sv_index_int = np.full_like(sv_index, fill_value=-1, dtype=int)
