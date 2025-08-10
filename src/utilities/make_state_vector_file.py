@@ -266,7 +266,7 @@ def make_state_vector_file(
         statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
     # Also set pixels with low emissions (< emis_threshold) to -9999
-    statevector.values[abs(hd.values) < emis_threshold] = -9999
+    statevector.values[hd.values < emis_threshold] = -9999
     
     # set state vector over non-target face to -9999 
     # (only optimize target face with face_idx 5)
