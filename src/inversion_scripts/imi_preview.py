@@ -504,30 +504,17 @@ def imi_preview(
 
 def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
     """
-    Map sensitivities (1D) onto a 2D xarray DataArray for visualization.
-
-    Parameters:
-        sensitivities (array-like): 1D array of sensitivity values, indexed by ROI element (0-based).
-        sv (xarray.Dataset): Dataset containing a 2D variable "StateVector".
-        last_ROI_element (int): Highest ROI index to include in mapping (1-based indexing assumed).
-
-    Returns:
-        xarray.Dataset: 2D DataArray with one DataArray 'Sensitivities'.
+    maps sensitivities onto 2D xarray Datarray for visualization
     """
-    # Extract 2D index array (e.g., shape (lat, lon))
-    sv_index = sv["StateVector"].astype(int)
-
-    # Mask invalid state vector elements
-    valid_mask = sv_index <= last_ROI_element
-
-    # Create an output array filled with NaN
-    mapped = xr.full_like(sv_index, fill_value=np.nan, dtype=float)
-
-    # Fill valid state vector elements with sensitivities
+    s = sv.copy().rename({"StateVector": "Sensitivities"})
+    mask = s["Sensitivities"] <= last_ROI_element
+    s["Sensitivities"] = s["Sensitivities"].where(mask)
+    # map sensitivities onto corresponding xarray DataArray
     for i in range(1, last_ROI_element + 1):
-        mapped = mapped.where(~(sv_index == i), sensitivities[i - 1])
+        mask = sv["StateVector"] == i
+        s = xr.where(mask, sensitivities[i - 1], s)
 
-    return mapped.to_dataset(name='Sensitivities')
+    return s
 
 def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     """
@@ -945,7 +932,7 @@ def estimate_averaging_kernel(
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
 
     # Places with 0 superobs should be 0
-    a = np.where(np.isclose(m_superi, 0.0, atol=1e-8), 0.0, a)
+    a = np.where(np.equal(m_superi, 0), float(0), a)
 
     outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
     outstring4 = f"a = {np.round(a,5)} \n"
