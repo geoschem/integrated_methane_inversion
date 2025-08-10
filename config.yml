@@ -54,8 +54,7 @@ CustomPeriodsCSV: "/path/to/periods.csv"
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
-LandThreshold: 0.25
-OffshoreEmisThreshold: 0
+EmisThreshold: 1.e-12
 OptimizeBCs: true
 OptimizeOH: false
 
