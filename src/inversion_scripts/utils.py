@@ -702,7 +702,7 @@ def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error, StateVectorFi
     prior_emis = prior_flux - prior_soil
     
     state_vector = xr.open_dataset(StateVectorFile).squeeze()
-    state_vector_labels = state_vector['StateVector'].values
+    state_vector_labels = state_vector['StateVector'].values.astype(int)
     
     prior_err = np.zeros(n_elements)
     
