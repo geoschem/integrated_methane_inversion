@@ -782,7 +782,7 @@ def estimate_averaging_kernel(
     )
     daily_observation_counts["obs_count"] = daily_observation_counts["obs_count"].fillna(0)
 
-    int_sv_labels = state_vector_labels.astype(int)
+    int_sv_labels = state_vector_labels.fillna(-9999).astype(int)
     structure = np.ones((5, 5))
     if config["UseGCHP"]:
         n_neighbors = structure.size
