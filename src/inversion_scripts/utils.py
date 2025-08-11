@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from pyproj import Geod
 import pandas as pd
+import gc
 
 
 def save_obj(obj, name):
@@ -684,23 +685,37 @@ def ensure_float_list(variable):
     else:
         raise TypeError("Variable must be a string, float, int, or list.")
 
-def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error):
+def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error, StateVectorFile, n_elements):
     """
-    Update prior error for the case when OptimizeSoil is turned on
+    Update prior error for the case when OptimizeSoil is turned on.
 
     Args:
         prior_ds (xarray.Dataset): prior emission dataset
         org_prior_error (float): relative prior error
+        StateVectorFile (str): Path to gridded state vector file
+        n_elements (int): number of state vector elements
     
     Returns:
-        Updated prior error using the quadrature of the org_prior_error on total emissions and soil sinks
+        np.ndarray: Updated relative prior error for each state vector element
     """
     prior_soil = prior_ds['EmisCH4_SoilAbsorb'].values
     prior_flux = prior_ds['EmisCH4_Total'].values
     prior_emis = prior_flux - prior_soil
     
-    prior_err = np.sqrt((org_prior_error * prior_emis) ** 2 + \
-        (org_prior_error * prior_soil) ** 2) / \
-        prior_flux
+    state_vector = xr.open_dataset(StateVectorFile).squeeze()
+    state_vector_labels = state_vector['StateVector'].values
     
+    prior_err = np.zeros(n_elements)
+    
+    for i in range(1, n_elements + 1):
+        mask = state_vector_labels == i
+        
+        # mean emissions & soil sinks for this state vector element
+        emisi = np.nanmean(prior_emis[mask])
+        soili = np.nanmean(prior_soil[mask])
+        fluxi = np.nanmean(prior_flux[mask])
+        
+        if abs(fluxi) > 0:
+            prior_err[i - 1] = np.sqrt((org_prior_error * emisi) ** 2 +
+                                       (org_prior_error * soili) ** 2) / fluxi
     return prior_err
