@@ -702,11 +702,12 @@ def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error, StateVectorFi
     prior_emis = prior_flux - prior_soil
     
     state_vector = xr.open_dataset(StateVectorFile).squeeze()
-    state_vector_labels = state_vector['StateVector'].values.astype(int)
+    state_vector_labels = state_vector['StateVector'].fillna(-9999).values.astype(int)
+    last_ROI_element = np.nanmax(state_vector_labels)
     
     prior_err = np.zeros(n_elements)
     
-    for i in range(1, n_elements + 1):
+    for i in range(1, last_ROI_element + 1):
         mask = state_vector_labels == i
         
         # mean emissions & soil sinks for this state vector element
