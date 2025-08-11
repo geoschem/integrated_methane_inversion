@@ -125,7 +125,7 @@ run_period() {
     wait
     python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $UseGCHP $PosteriorRunDir
     wait
-    if "$UseGCHP"; then
+    if ! "$UseGCHP"; then
         echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
     else
         echo "Edited cap_restart and setCommonRunSettings.sh for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
