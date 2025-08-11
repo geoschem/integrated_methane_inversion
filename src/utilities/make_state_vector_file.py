@@ -250,10 +250,6 @@ def make_state_vector_file(
     ds_statevector = da_statevector.to_dataset(name="StateVector")
 
     # Add attribute metadata
-    refyear = 2000
-    ds_statevector['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
-                                        delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
-                                        long_name='Time', calendar='standard')
     ds_statevector.lat.attrs["units"] = "degrees_north"
     ds_statevector.lat.attrs["long_name"] = "Latitude"
     ds_statevector.lon.attrs["units"] = "degrees_east"
