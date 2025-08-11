@@ -30,20 +30,20 @@ setup_posterior() {
     cd $runDir
 
     # Link to GEOS-Chem executable
-    ln -s ../GEOSChem_build/gcclassic .
+    ln -nsf ../GEOSChem_build/gcclassic .
 
     # Link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
-        ln -s $RestartFileFromSpinup Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        RestartFile=$RestartFileFromSpinup
     else
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-        ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
             sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
         fi
     fi
+    ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
 
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
@@ -148,21 +148,15 @@ run_posterior() {
             printf "OH optimized perturbation value set to: ${PerturbOHValue}\n"
         else
             # Apply hemispheric OH perturbation values using mask file
+            Output_fpath="./gridded_posterior_oh_scale.nc"
             oh_sfs=($PerturbOHValue)
-            cp Perturbations.txt PerturbationsOH.txt
-            sed -i -e "s|CH4_STATE_VECTOR|HEMIS_MASK|g" PerturbationsOH.txt
-            OHPertPrevLine='DEFAULT    0     1.0'
-            OHPertNewLine="N_HEMIS    1     ${oh_sfs[0]}\nS_HEMIS    2     ${oh_sfs[1]}"
-            sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
+            Hemis_mask_fpath="${DataPath}/HEMCO/MASKS/v2024-08/hemisphere_mask.01x01.nc"
+            OptimizeNorth='True'
+            OptimizeSouth='True'
+            gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth $STRETCH_GRID $STRETCH_FACTOR $TARGET_LAT $TARGET_LON
 
             # Modify OH scale factor in HEMCO config
-            sed -i -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" HEMCO_Config.rc
-            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
-
-            HcoPrevLineMask='CH4_STATE_VECTOR'
-            HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
-'
-            sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
 
             printf "OH optimized perturbation values set to:\n"
             printf " ${oh_sfs[0]} for Northern Hemisphere\n"

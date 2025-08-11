@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH -J {RunName}
-#SBATCH -N 1
 
 ## This sc
 ### Run directory

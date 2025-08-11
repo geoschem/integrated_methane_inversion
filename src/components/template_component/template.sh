@@ -36,6 +36,7 @@ setup_template() {
         printf "\n Options are GEOSFP or MERRA2.\n"
         exit 1
     fi
+
     if [ "$Res" = "4.0x5.0" ]; then
         cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
@@ -94,9 +95,18 @@ setup_template() {
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
 
     # Modify path to state vector file in HEMCO_Config.rc
-    OLD=" StateVector.nc"
+    OLD=" ./StateVector.nc"
     NEW=" ${RunDirs}/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
+
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+    else
+        jacobian_period=1
+    fi
+    scale_OLD=" ./gridded_pert_scale_1.nc"
+    scale_NEW=" ${RunDirs}/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
+    sed -i -e "s@$scale_OLD@$scale_NEW@g" HEMCO_Config.rc
 
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
@@ -123,7 +133,7 @@ setup_template() {
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
 
     # Add a new ZERO scale factor for use in jacobian simulations
-    sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" HEMCO_Config.rc
+    sed -i -E '/^1[[:space:]]+NEGATIVE[[:space:]]+-1\.0([[:space:]]+-){3}[[:space:]]+xy[[:space:]]+1[[:space:]]+1/a 5 ZERO      0.0 - - - xy 1 1' HEMCO_Config.rc
 
     # Modify path to BC files
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
@@ -136,15 +146,16 @@ setup_template() {
     sed -i -e "s|prior_run|hemco_prior_emis|g" HEMCO_Config.rc
     
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
-    sed -i -e "s:'CH4':#'CH4':g" \
-        -e "s:'Metrics:#'Metrics:g" \
-        -e "s:'StateMet:#'StateMet:g" \
-        -e "s:'SpeciesConcMND:#'SpeciesConcMND:g" \
-        -e "s:'Met_PEDGEDRY:#'Met_PEDGEDRY:g" \
-        -e "s:'Met_PFICU:#'Met_PFICU:g" \
-        -e "s:'Met_PFILSAN:#'Met_PFILSAN:g" \
-        -e "s:'Met_PFLCU:#'Met_PFLCU:g" \
-        -e "s:'Met_PFLLSAN:#'Met_PFLLSAN:g" HISTORY.rc
+    # use a space beforehand to avoid adding multiple #
+    sed -i -e "s: 'CH4': #'CH4':g" \
+        -e "s: 'Metrics: #'Metrics:g" \
+        -e "s: 'StateMet: #'StateMet:g" \
+        -e "s: 'SpeciesConcMND: #'SpeciesConcMND:g" \
+        -e "s: 'Met_PEDGEDRY: #'Met_PEDGEDRY:g" \
+        -e "s: 'Met_PFICU: #'Met_PFICU:g" \
+        -e "s: 'Met_PFILSAN: #'Met_PFILSAN:g" \
+        -e "s: 'Met_PFLCU: #'Met_PFLCU:g" \
+        -e "s: 'Met_PFLLSAN: #'Met_PFLLSAN:g" HISTORY.rc
 
     # If turned on, save out hourly CH4 concentrations to daily files
     if "$HourlyCH4"; then
@@ -159,26 +170,29 @@ setup_template() {
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
 
-    # Copy input file for applying emissions perturbations via HEMCO
-    cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
-
     # Compile GEOS-Chem and store executable in GEOSChem_build directory
-    printf "\nCompiling GEOS-Chem...\n"
-    cd build
-    cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
-    cmake . -DRUNDIR=.. >>build_geoschem.log 2>&1
-    make -j install >>build_geoschem.log 2>&1
-    cd ..
-    if [[ -f gcclassic ]]; then
+    if [[ -f "../GEOSChem_build/gcclassic" ]]; then
+        printf "\nGEOS-Chem executable is already built and stored in GEOSChem_build\n"
         rm -rf build
-        mv build_info ../GEOSChem_build
-        mv -v gcclassic ../GEOSChem_build/
     else
-        printf "\nGEOS-Chem build failed! \n\nSee ${RunTemplate}/build/build_geoschem.log for details\n"
-        exit 999
-    fi
-    printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build_info for details\n\n"
+        cd build
+        printf "\nCompiling GEOS-Chem...\n"
+        cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
 
+        cmake . -DRUNDIR=.. -DMECH=carbon >>build_geoschem.log 2>&1
+        make -j install >>build_geoschem.log 2>&1
+        cd ..
+        if [[ -f gcclassic ]]; then
+            mv build_info ../GEOSChem_build
+            mv -v gcclassic ../GEOSChem_build/
+            mv build/build_geoschem.log ../GEOSChem_build
+            rm -rf build
+        else
+            printf "\nGEOS-Chem build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
+            exit 999
+        fi
+        printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build for details\n\n"
+    fi
     # Navigate back to top-level directory
     cd ..
 
