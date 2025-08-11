@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from pyproj import Geod
 import pandas as pd
-import gc
 
 
 def save_obj(obj, name):
