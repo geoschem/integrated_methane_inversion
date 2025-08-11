@@ -66,7 +66,7 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
 
 
 def calculate_perturbation_sfs(
-    state_vector, emis_prior, target_emission=1e-8, prior_sf=None
+    state_vector, emis_prior, target_emission=1e-8, prior_sf=None, OptimizeSoil=False
 ):
     """
     Calculate the perturbation scale factors to perturb each state vector element based on the
@@ -103,7 +103,10 @@ def calculate_perturbation_sfs(
 
     # Calculate perturbation SFs such that applying them to the original
     # emissions will result in a target_emission kg/m2/s2 emission.
-    pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+    if not OptimizeSoil:
+        pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+    else:
+        pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total"]
 
     # Extract state vector labels
     state_vector_labels = state_vector["StateVector"]
@@ -126,6 +129,8 @@ def calculate_perturbation_sfs(
     # with reaching infinity. Replace any NaN values with 1.0
     max_sf_threshold = 15000000.0
     jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
+    if OptimizeSoil:
+        jacobian_pert_sf[jacobian_pert_sf < -max_sf_threshold] = -max_sf_threshold
     jacobian_pert_sf = np.nan_to_num(jacobian_pert_sf, nan=1.0)
 
     # If we are using a kalman filter and have nudged prior emissions,
@@ -200,7 +205,7 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
 
     # calculate the perturbation scale factors we perturb each state vector element by
     perturbation_dict = calculate_perturbation_sfs(
-        state_vector, hemco_emis, perturb_value, prior_sf
+        state_vector, hemco_emis, perturb_value, prior_sf, config["OptimizeSoil"]
     )
 
     # update jacobian perturbation files with new perturbation scale factors

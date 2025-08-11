@@ -10,6 +10,8 @@ from src.inversion_scripts.utils import (
     load_obj,
     calculate_superobservation_error,
     ensure_float_list,
+    get_mean_emissions,
+    update_prior_error_for_OptimizeSoil,
 )
 
 
@@ -28,6 +30,9 @@ def do_inversion(
     prior_err_bc=0.0,
     prior_err_oh=0.0,
     is_Regional=True,
+    OptimizeSoil=False,
+    prior_ds=None,
+    StateVectorFile=None,
     verbose=False,
 ):
     """
@@ -48,6 +53,9 @@ def do_inversion(
         prior_err_bc [float] : Prior error standard deviation (default 0.0)
         prior_err_oh [float] : Prior error standard deviation (default 0.0)
         is_Regional  [bool]  : Is this a regional simulation?
+        OptimizeSoil [bool]  : Optimize soil sink?
+        prior_ds     [xr.Dataset]: prior emission dataset
+        StateVectorFile [str]: Path to gridded state vector file
 
     Returns
         xhat         [float] : Posterior scaling factors
@@ -234,7 +242,11 @@ def do_inversion(
 
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
-    Sa_diag.fill(prior_err**2)
+    if OptimizeSoil:
+        prior_err_new = update_prior_error_for_OptimizeSoil(prior_ds, prior_err, StateVectorFile, n_elements)
+        Sa_diag = prior_err_new**2
+    else:
+        Sa_diag.fill(prior_err**2)
     Sa_diag_constraint = Sa_diag.copy() # constraint matrix to calculate the solution only
 
     # Number of elements to apply scale factor to
@@ -340,6 +352,9 @@ def do_inversion_ensemble(
     prior_errs_bc,
     prior_errs_oh,
     is_Regional,
+    OptimizeSoil=False,
+    prior_ds=None,
+    StateVectorFile=None,
 ):
     """
     Run series of inversions with hyperparameter vectors and save out the results.
@@ -387,6 +402,9 @@ def do_inversion_ensemble(
                 prior_err_bc,
                 prior_err_oh,
                 is_Regional,
+                OptimizeSoil,
+                prior_ds,
+                StateVectorFile,
                 verbose=False,
             )
         )
@@ -428,6 +446,7 @@ def do_inversion_ensemble(
 
 if __name__ == "__main__":
     import sys
+    import os
 
     config_path = sys.argv[1]
     n_elements = int(sys.argv[2])
@@ -439,6 +458,7 @@ if __name__ == "__main__":
     lat_max = float(sys.argv[8])
     res = sys.argv[9]
     jacobian_sf = sys.argv[10]
+    StateVectorFile = sys.argv[11]
 
     # read in config file
     with open(config_path, "r") as f:
@@ -455,6 +475,16 @@ if __name__ == "__main__":
     prior_err_OH = config["PriorErrorOH"] if config["OptimizeOH"] else 0.0
     prior_err_BC = ensure_float_list(prior_err_BC)
     prior_err_OH = ensure_float_list(prior_err_OH)
+    
+    OptimizeSoil = config["OptimizeSoil"]
+    if OptimizeSoil:
+        # prior emissions
+        prior_cache = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/hemco_prior_emis/OutputDir/"
+        start_date = config["StartDate"]
+        end_date = config["EndDate"]
+        prior_ds = get_mean_emissions(start_date, end_date, prior_cache)
+    else:
+        prior_ds = None
 
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
@@ -476,6 +506,9 @@ if __name__ == "__main__":
         prior_err_BC,
         prior_err_OH,
         is_Regional,
+        OptimizeSoil,
+        prior_ds,
+        StateVectorFile,
     )
 
     # Save the results of the ensemble inversion
