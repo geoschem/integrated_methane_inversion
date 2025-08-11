@@ -34,6 +34,7 @@ def do_inversion(
     is_Regional=True,
     OptimizeSoil=False,
     prior_ds=None,
+    StateVectorFile=None,
     verbose=False,
 ):
     """
@@ -56,6 +57,7 @@ def do_inversion(
         is_Regional  [bool]  : Is this a regional simulation?
         OptimizeSoil [bool]  : Optimize soil sink?
         prior_ds     [xr.Dataset]: prior emission dataset
+        StateVectorFile [str]: Path to gridded state vector file
 
     Returns
         xhat         [float] : Posterior scaling factors
@@ -246,8 +248,8 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     if OptimizeSoil:
-        prior_err_new = update_prior_error_for_OptimizeSoil(prior_ds, prior_err)
-        Sa_diag.fill(prior_err_new**2)
+        prior_err_new = update_prior_error_for_OptimizeSoil(prior_ds, prior_err, StateVectorFile, n_elements)
+        Sa_diag = prior_err_new**2
     else:
         Sa_diag.fill(prior_err**2)
     Sa_diag_constraint = Sa_diag.copy() # constraint matrix to calculate the solution only
@@ -357,6 +359,7 @@ def do_inversion_ensemble(
     is_Regional,
     OptimizeSoil=False,
     prior_ds=None,
+    StateVectorFile=None,
 ):
     """
     Run series of inversions with hyperparameter vectors and save out the results.
@@ -406,6 +409,7 @@ def do_inversion_ensemble(
                 is_Regional,
                 OptimizeSoil,
                 prior_ds,
+                StateVectorFile,
                 verbose=False,
             )
         )
@@ -459,6 +463,7 @@ if __name__ == "__main__":
     lat_max = float(sys.argv[8])
     res = sys.argv[9]
     jacobian_sf = sys.argv[10]
+    StateVectorFile = sys.argv[11]
 
     # read in config file
     with open(config_path, "r") as f:
@@ -524,6 +529,7 @@ if __name__ == "__main__":
         is_Regional,
         OptimizeSoil,
         prior_ds,
+        StateVectorFile,
     )
 
     # add atributes for stretching GCHP simulation
