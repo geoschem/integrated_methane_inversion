@@ -263,7 +263,7 @@ regrid_tropomi-BC-restart_gcc2gchp() {
         mv new_restart_file.nc "$restart_ch4"
     fi
 
-    # Combine SPC_CH4 field and other fields, and rename final output
+    # convert to float, and rename final output
     ncap2 -O -s 'SPC_CH4=float(SPC_CH4)' "$restart_ch4" "$restart_ch4"
     mv "$restart_ch4" "${prefix}.c${CS_RES}.nc4"
 
