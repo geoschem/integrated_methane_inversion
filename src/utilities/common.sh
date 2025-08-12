@@ -225,6 +225,8 @@ regrid_tropomi-BC-restart_gcc2gchp() {
     local template=${template_prefix}.c48.nc4
     local restart_ch4=$prefix.c${CS_RES}.ch4.nc4
     local src_grid="regular_lat_lon_91x144.nc"
+    local dst_prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
+    local dst_grid="${dst_prefix}_gridspec.nc"
     if [ ! -f "$src_grid" ]; then
         gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc 91 144 > /dev/null 2>&1
     fi

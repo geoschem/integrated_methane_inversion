@@ -63,7 +63,7 @@ setup_posterior() {
                 python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
                 regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
                 RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
-                cd "${RunDirs}/jacobian_runs/${name}"
+                cd $runDir
             else
                 RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
                 sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
