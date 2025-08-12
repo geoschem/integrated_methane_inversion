@@ -11,7 +11,7 @@ def vertical_interp_47_to_72(data_in, p_edge_47, p_edge_72):
     Parameters:
     -----------
     data_in : np.ndarray
-        Input array with shape (47, lat, lon)
+        Input array. Can be shape (47,), (47, lat, lon), or (47, ...).
     p_edge_47 : np.ndarray
         Pressure at edges of 47 levels (length 48)
     p_edge_72 : np.ndarray
@@ -27,15 +27,23 @@ def vertical_interp_47_to_72(data_in, p_edge_47, p_edge_72):
     p_mid_47 = 0.5 * (p_edge_47[:-1] + p_edge_47[1:])
     p_mid_72 = 0.5 * (p_edge_72[:-1] + p_edge_72[1:])
 
-    lev47, nlat, nlon = data_in.shape
-    data_reshaped = data_in.reshape(lev47, -1)  # (47, nlat*nlon)
+    data_in = np.asarray(data_in)
+    orig_shape = data_in.shape
+    if data_in.ndim == 1:
+        data_reshaped = data_in[:, None]  # (47, 1)
+    else:
+        data_reshaped = data_in.reshape(orig_shape[0], -1)  # (47, N)
 
-    # Interpolate along pressure dimension
+    # Interpolation along vertical axis
     interp_func = interp1d(p_mid_47, data_reshaped, axis=0,
-                           bounds_error=False, fill_value='extrapolate')
+                           bounds_error=False, fill_value="extrapolate")
     data_interp_reshaped = interp_func(p_mid_72)
 
-    return data_interp_reshaped.reshape(72, nlat, nlon)
+    # Reshape back
+    if len(orig_shape) == 1:
+        return data_interp_reshaped[:, 0]  # back to 1D
+    else:
+        return data_interp_reshaped.reshape((72,) + orig_shape[1:])
 
 def regrid_tropomi_bc_vert(input_path, output_path):
     var = 'SpeciesBC_CH4'
@@ -114,16 +122,17 @@ def regrid_tropomi_bc_vert(input_path, output_path):
     lon = ds['lon'].values
 
     data_interp = vertical_interp_47_to_72(data_in, p_edge_47, p_edge_72)
+    lev_interp = vertical_interp_47_to_72(ds['lev'].values, p_edge_47, p_edge_72)
 
     data_out = xr.DataArray(
         data_interp[None, ...],
         dims=['time', 'lev', 'lat', 'lon'],
-        coords=[[0.], np.flip(np.arange(1, 73)), lat, lon],
+        coords=[[0.], lev_interp, lat, lon],
         attrs=ds[var].attrs
     )
 
     dsout = xr.Dataset({var: data_out})
-    dsout['lev'].attrs = dict(axis='Z', long_name="GEOS-Chem level", positive="up", units="level")
+    dsout['lev'].attrs = ds['lev'].attrs
     dsout['lat'].attrs = ds['lat'].attrs
     dsout['lon'].attrs = ds['lon'].attrs
     dsout['time'].attrs = {
