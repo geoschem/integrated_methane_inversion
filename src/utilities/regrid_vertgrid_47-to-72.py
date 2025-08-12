@@ -118,7 +118,7 @@ def regrid_tropomi_bc_vert(input_path, output_path):
     data_out = xr.DataArray(
         data_interp[None, ...],
         dims=['time', 'lev', 'lat', 'lon'],
-        coords=[[0.], np.arange(1, 73), lat, lon],
+        coords=[[0.], np.flip(np.arange(1, 73)), lat, lon],
         attrs=ds[var].attrs
     )
 
