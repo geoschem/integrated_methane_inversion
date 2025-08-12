@@ -385,10 +385,11 @@ create_simulation_dir() {
         # create symlink to 1ppb restart file
         if "$UseGCHP"; then
             RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.c${CS_RES}.nc4
+            ln -nsf $RestartFile1ppb Restarts/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
         else
             RestartFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${StartDate}_0000z.nc4
+            ln -nsf $RestartFile1ppb Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         fi
-        ln -nsf $RestartFile1ppb Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         # Also, set emissions to zero for default CH4 tracer by applying ZERO scale factor (id 5)
         sed -i -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
