@@ -78,8 +78,13 @@ setup_template() {
     cp ${InversionPath}/src/utilities/download_gc_data.py download_gc_data.py
 
     # Modify geoschem_config.yml based on settings in config.yml
-    sed -i -e "s:20190101:${StartDate}:g" \
-        -e "s:20190201:${EndDate}:g" geoschem_config.yml
+    if [ "$Res" == "0.125x0.15625" ]; then
+	sed -i -e "s:20230101:${StartDate}:g" \
+               -e "s:20230201:${EndDate}:g" geoschem_config.yml
+    else
+	sed -i -e "s:20190101:${StartDate}:g" \
+               -e "s:20190201:${EndDate}:g" geoschem_config.yml
+    fi
 
     if "$isRegional"; then
         # Adjust lat/lon bounds because GEOS-Chem defines the domain
