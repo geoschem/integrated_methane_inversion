@@ -94,6 +94,7 @@ setup_posterior() {
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
     if "$UseGCHP"; then
+        sed -i -e "s|^#EMIS_SF|EMIS_SF|g" ExtData.rc
         sed -i -e "s|\.\./\.\.|\.\.|g" \
             -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" ExtData.rc
     fi
