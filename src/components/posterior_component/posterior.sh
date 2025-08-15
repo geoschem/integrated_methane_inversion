@@ -117,7 +117,9 @@ setup_posterior() {
                 -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
                 -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' \
                 HISTORY.rc
-            sed -i -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/' \
+            # turn on monthly checkpoint
+            sed -i -e 's/^Midrun_Checkpoint=OFF/Midrun_Checkpoint=ON/' \
+                -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=monthly/' \
                 setCommonRunSettings.sh
 
         else
