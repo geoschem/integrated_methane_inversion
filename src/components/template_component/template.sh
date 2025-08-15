@@ -101,6 +101,10 @@ setup_template() {
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             -e 's/^AutoUpdate_Diagnostics=.*$/AutoUpdate_Diagnostics=OFF/' \
             setCommonRunSettings.sh
+        # turn on monthly checkpoint
+        sed -i -e 's/^Midrun_Checkpoint=OFF/Midrun_Checkpoint=ON/' \
+            -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=monthly/' \
+            setCommonRunSettings.sh
         sed -i -e "s/monthly:[[:space:]]*1/monthly:        0/g" HISTORY.rc
         if "$STRETCH_GRID"; then
             sed -i -e "s/^STRETCH_GRID=.*/STRETCH_GRID=ON/" \
