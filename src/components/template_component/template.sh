@@ -142,6 +142,7 @@ setup_template() {
     sed -i -e "s@$scale_OLD@$scale_NEW@g" HEMCO_Config.rc
 
     if [ "$UseGCHP" = true ]; then
+        sed -i -e "s@^#SCALE_PERT@SCALE_PERT@g" ExtData.rc
         # Too long file name could be problematic in GCHP
         ln -nsf "${RunDirs}" RunDirs
         NEW_Ext=" ./RunDirs/StateVector.nc"
@@ -193,9 +194,10 @@ setup_template() {
     # hardcoded in the template HEMCO config file in GEOS-Chem)
     sed -i -e "s|prior_run|hemco_prior_emis|g" HEMCO_Config.rc
     if "$UseGCHP"; then
+        sed -i -e "s|^#CH4_Emis_Prior|CH4_Emis_Prior|g" ExtData.rc
         sed -i -e "s|prior_run|hemco_prior_emis|g" ExtData.rc
     fi
-    
+
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
     # use a space beforehand to avoid adding multiple #
     sed -i -e "s: 'CH4': #'CH4':g" \

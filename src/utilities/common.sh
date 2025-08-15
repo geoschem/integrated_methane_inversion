@@ -78,7 +78,7 @@ get_GridSpec_prefix() {
         echo "Usage: get_GridSpec_prefix <CS_RES> <STRETCH_GRID> [STRETCH_FACTOR TARGET_LAT TARGET_LON]" >&2
         return 1
     fi
-    
+
     if "$STRETCH_GRID"; then
         # Format stretch factor: e.g., 1.50 -> 1d50
         local sf_formatted
@@ -162,20 +162,20 @@ lon_b[lon_b < 0] += 360
 
 # Create xarray DataArrays
 area_da = xr.DataArray(
-    area, 
-    dims=['nf', 'Ydim', 'Xdim'], 
+    area,
+    dims=['nf', 'Ydim', 'Xdim'],
     coords={'lats': (['nf', 'Ydim', 'Xdim'], lat),
             'lons': (['nf', 'Ydim', 'Xdim'], lon)},
     attrs=dict(units='m2', long_name='Surface area of each grid box')
 )
 
 corner_lons_da = xr.DataArray(
-    lon_b, dims=['nf', 'YCdim', 'XCdim'], 
+    lon_b, dims=['nf', 'YCdim', 'XCdim'],
     attrs=dict(units='degrees_east', long_name='Longitude')
 )
 
 corner_lats_da = xr.DataArray(
-    lat_b, dims=['nf', 'YCdim', 'XCdim'], 
+    lat_b, dims=['nf', 'YCdim', 'XCdim'],
     attrs=dict(units='degrees_north', long_name='Latitude')
 )
 
@@ -218,9 +218,9 @@ regrid_tropomi-BC-restart_gcc2gchp() {
     local STRETCH_FACTOR="${6:-1.0}"
     local TARGET_LAT="${7:--90.0}"
     local TARGET_LON="${8:-170.0}"
-    
+
     echo "Regrid restart file for SPC_CH4"
-    
+
     ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 "$tropomi_bc"
     local template=${template_prefix}.c48.nc4
     local restart_ch4=$prefix.c${CS_RES}.ch4.nc4
@@ -230,7 +230,7 @@ regrid_tropomi-BC-restart_gcc2gchp() {
     if [ ! -f "$src_grid" ]; then
         gridspec-create latlon -b -180 -90 180 90 -pc -hp -dc 91 144 > /dev/null 2>&1
     fi
-    
+
     if "$STRETCH_GRID"; then
         if [ ! -f "$dst_grid" ]; then
             gridspec-create sgcs -s "${STRETCH_FACTOR}" -t "${TARGET_LAT}" "${TARGET_LON}" "$CS_RES" > /dev/null 2>&1
@@ -345,10 +345,6 @@ scaleds = maskds.drop_vars('Hemisphere').assign(
 
 scaleds['oh_scale'].attrs = dict(long_name='Scaling factor for OH', units='1')
 
-if STRETCH_GRID:
-    scaleds.attrs['STRETCH_FACTOR'] = np.float32(STRETCH_FACTOR)
-    scaleds.attrs['TARGET_LAT'] = np.float32(TARGET_LAT)
-    scaleds.attrs['TARGET_LON'] = np.float32(TARGET_LON)
 if outfpath is not None:
     print(f"Saving file {outfpath}")
     scaleds.to_netcdf(

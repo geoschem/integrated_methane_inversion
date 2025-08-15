@@ -76,7 +76,7 @@ setup_posterior() {
     else
         ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
     fi
-    
+
     # Update settings in HEMCO_Config.rc
     if "$LognormalErrors"; then
         gridded_posterior_filename="gridded_posterior_ln.nc"
@@ -95,8 +95,9 @@ setup_posterior() {
         -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
         -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
-    
+
     if "$UseGCHP"; then
+        sed -i -e "s|^#EMIS_SF|EMIS_SF|g" ExtData.rc
         sed -i -e "s|\.\./\.\.|\.\.|g" \
             -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
             -e "s|gridded_posterior.nc|${RunDirs}/inversion/${gridded_posterior_filename}|g" ExtData.rc
@@ -210,10 +211,10 @@ run_posterior() {
             OptimizeNorth='True'
             OptimizeSouth='True'
             gridded_optimized_OH ${oh_sfs[0]} ${oh_sfs[1]} $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth $STRETCH_GRID $STRETCH_FACTOR $TARGET_LAT $TARGET_LON
-            
+
             # Modify OH scale factor in HEMCO config
             sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
-            
+
             if "$UseGCHP"; then
                 # add entry in ExtData.rc for GCHP
                 sed -i -e "s|^#OH_pert_factor.*|OH_pert_factor 1 N Y - none none oh_scale ${Output_fpath}|" ExtData.rc
