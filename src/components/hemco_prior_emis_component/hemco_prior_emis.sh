@@ -237,8 +237,8 @@ setup_prior_gchp() {
     # Make the directory
     runDir="hemco_prior_emis"
     if [[ -d ${RunDirs}/${runDir} ]]; then
-        printf "\nERROR: ${RunDirs}/${runDir} already exists. Please remove or set 'DoHemcoPriorEmis: false' in config.yml.\n"
-        exit 9999
+        printf "\n${RunDirs}/${runDir} already exists. Skipping creation.\n"
+        return
     fi
     mkdir -p -v ${runDir}
 
