@@ -359,45 +359,32 @@ get_run_duration() {
   local start_date=$1
   local end_date=$2
 
-  # Convert to seconds since epoch
-  local start_sec=$(date -d "$start_date" +%s)
-  local end_sec=$(date -d "$end_date" +%s)
+  # Extract components
+  local y1=$(date -d "$start_date" +%Y)
+  local m1=$(date -d "$start_date" +%m)
+  local d1=$(date -d "$start_date" +%d)
 
-  # Calculate total days difference
-  local diff_days=$(( (end_sec - start_sec) / 86400 ))
+  local y2=$(date -d "$end_date" +%Y)
+  local m2=$(date -d "$end_date" +%m)
+  local d2=$(date -d "$end_date" +%d)
 
-  # Calculate years, months, days assuming:
-  # 1 year = 360 days (12 * 30), 1 month = 30 days
-  local years=$(( diff_days / 360 ))
-  local remainder=$(( diff_days % 360 ))
-  local months=$(( remainder / 30 ))
-  local days=$(( remainder % 30 ))
+  local years=$((y2 - y1))
+  local months=$((m2 - m1))
+  local days=$((d2 - d1))
 
-  printf "%04d%02d%02d\n" $years $months $days
-}
-
-# Add one day to a RunDuration string YYYYMMDD (duration, not date)
-add_one_day_to_duration() {
-  local run_duration=$1
-
-  local years=${run_duration:0:4}
-  local months=${run_duration:4:2}
-  local days=${run_duration:6:2}
-
-  years=$((10#$years))
-  months=$((10#$months))
-  days=$((10#$days + 1))
-
-  # Handle day rollover (30 days = 1 month)
-  if [ $days -ge 30 ]; then
-    days=0
-    months=$((months + 1))
+  # Adjust negative days
+  if (( days < 0 )); then
+    months=$((months - 1))
+    # Days in previous month of end_date
+    local prev_month_days=$(cal $(date -d "$end_date -1 month" +%m) \
+                                 $(date -d "$end_date -1 month" +%Y) | awk 'NF {DAYS=$NF}; END{print DAYS}')
+    days=$((days + prev_month_days))
   fi
 
-  # Handle month rollover (12 months = 1 year)
-  if [ $months -ge 12 ]; then
-    months=0
-    years=$((years + 1))
+  # Adjust negative months
+  if (( months < 0 )); then
+    years=$((years - 1))
+    months=$((months + 12))
   fi
 
   printf "%04d%02d%02d\n" $years $months $days
