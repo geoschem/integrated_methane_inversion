@@ -36,19 +36,45 @@ imi_failed() {
 # Description: Print max value of given variable in netCDF file
 #   Returns int if only trailing zeros, float otherwise
 # Usage:
-#   ncmax <variable> <netCDF file path>
+#   ncmax <variable> <netCDF file path> 
 ncmax() {
-    python -c "import sys; import xarray;\
-    print('%g' % xarray.open_dataset(sys.argv[2])[sys.argv[1]].max())" $1 $2
+    python -c "
+import sys
+import xarray as xr
+
+fname = sys.argv[2]
+ds = xr.open_dataset(fname)
+
+var = ds[sys.argv[1]]
+maskvar = ds['StateVector']
+
+# keep only where StateVector is not NaN
+masked = var.where((maskvar.notnull()) & (maskvar > 0))
+
+print('%g' % masked.max().item())
+" $1 $2
 }
 
 # Description: Print min value of given variable in netCDF file
 #   Returns int if only trailing zeros, float otherwise
 # Usage:
-#   ncmax <variable> <netCDF file path>
+#   ncmin <variable> <netCDF file path>
 ncmin() {
-    python -c "import sys; import xarray; \
-    print('%g' % xarray.open_dataset(sys.argv[2])[sys.argv[1]].min())" $1 $2
+    python -c "
+import sys
+import xarray as xr
+
+fname = sys.argv[2]
+ds = xr.open_dataset(fname)
+
+var = ds[sys.argv[1]]
+maskvar = ds['StateVector']
+
+# keep only where StateVector is not NaN
+masked = var.where((maskvar.notnull()) & (maskvar > 0))
+
+print('%g' % masked.min().item())
+" $1 $2
 }
 
 # Description: Add/Subtract half the spacing between coordinate values
