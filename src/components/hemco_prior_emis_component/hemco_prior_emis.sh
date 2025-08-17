@@ -268,7 +268,8 @@ setup_prior_gchp() {
 
     # a temporary fix for GCHP: get day+1 emissions for running GCHP
     RunDuration=$(get_run_duration "$StartDate" "$EndDate")
-    NextRunDuration=$(add_one_day_to_duration "$RunDuration")
+    NextEndDate=$(date -d "$EndDate +1 day" +%Y%m%d)
+    NextRunDuration=$(get_run_duration "$StartDate" "$NextEndDate")
     sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
         -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
         -e "s/Do_Advection=.*/Do_Advection=false/" \
@@ -312,8 +313,9 @@ run_prior_gchp() {
 
     echo "$hemco_start 000000" > cap_restart
     # a temporary fix for GCHP: get day+1 emissions for running GCHP
-    RunDuration=$(get_run_duration "$hemco_start" "$hemco_end")
-    NextRunDuration=$(add_one_day_to_duration "$RunDuration")
+    RunDuration=$(get_run_duration "$StartDate" "$EndDate")
+    NextEndDate=$(date -d "$EndDate +1 day" +%Y%m%d)
+    NextRunDuration=$(get_run_duration "$StartDate" "$NextEndDate")
     sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
         -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
         -e "s/Do_Advection=.*/Do_Advection=false/" \
