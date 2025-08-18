@@ -10,6 +10,8 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
     latlon_to_cartesian,
 )
 
+warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+
 # common utilities for using different operators
 def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
     """
@@ -234,16 +236,12 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     )
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
-        dsmf = xr.open_dataset("/".join([j_dir, file_stub]))
-    if 'anchor' in dsmf:
-        dsmf = dsmf.drop_vars('anchor')
+    filepath = os.path.join(j_dir, file_stub)
+    
+    # Construct the list of CH4 vars to request
     keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
-    is_Regional = config["isRegional"]
-
     if len(keepvars) == 1:
-
+        is_Regional = config["isRegional"]
         is_OH_element = check_is_OH_element(
             sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
         )
@@ -255,24 +253,37 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
             is_OH_element,
             is_Regional,
         )
-
-        # for BC and OH elems, no number in var name
         if is_OH_element or is_BC_element:
             keepvars = ["SpeciesConcVV_CH4"]
 
     if baserun:
         keepvars = ["SpeciesConcVV_CH4"]
 
-    try:
-        dsmf = dsmf.isel(time=gc_date.hour, drop=True)  # subset hour of interest
-    except Exception as e:
-        print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
-        raise e
+    # It would fail if open all variables with chunks with GCHP,
+    # as ncontact is duplicate for GCHP output dimensions
+    with xr.open_dataset(filepath, decode_cf=False) as tmp:
+        other_vars = [v for v in tmp.variables if "SpeciesConcVV_CH4" not in v]
+    
+    # Open only these variables
+    with xr.open_dataset(
+        filepath,
+        chunks="auto",
+        drop_variables=other_vars,
+    ) as dsmf:
+        try:
+            dsmf = dsmf.isel(time=gc_date.hour, drop=True)
+        except Exception as e:
+            print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
+            raise
 
-    ds_concat = xr.concat([dsmf[v] for v in keepvars], "element").rename("ch4")
-    ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
+        ds_concat = xr.concat((dsmf[v] for v in keepvars), dim="element").rename("ch4")
+        ds_concat = ds_concat.to_dataset(name="ch4").assign_attrs(dsmf.attrs)
+
     if not baserun:
         ds_concat = ds_concat.assign_coords({"element": sv_elems})
+    else:
+        ds_concat = ds_concat.assign_coords({"element": [0]})
+
     return ds_concat
 
 
