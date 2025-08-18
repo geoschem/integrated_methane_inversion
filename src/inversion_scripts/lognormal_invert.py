@@ -44,9 +44,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         "prior_err_buffer": [],
     }
 
-    state_vector = xr.load_dataset(state_vector_filepath)
+    state_vector = xr.load_dataset(state_vector_filepath).squeeze()
     state_vector_labels = state_vector["StateVector"]
-    lats, lons = state_vector_labels.lat, state_vector_labels.lon
 
     # used to determine convergence of xn 5e-3 is .5%
     convergence_threshold = 5e-3

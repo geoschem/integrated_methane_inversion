@@ -66,7 +66,7 @@ def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_s
 
 
 def calculate_perturbation_sfs(
-    state_vector, emis_prior, target_emission=1e-8, prior_sf=None
+    state_vector, emis_prior, target_emission=1e-8, prior_sf=None, OptimizeSoil=False
 ):
     """
     Calculate the perturbation scale factors to perturb each state vector element based on the
@@ -103,7 +103,10 @@ def calculate_perturbation_sfs(
 
     # Calculate perturbation SFs such that applying them to the original
     # emissions will result in a target_emission kg/m2/s2 emission.
-    pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+    if not OptimizeSoil:
+        pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total_ExclSoilAbs"]
+    else:
+        pert_sf["ScaleFactor"] = target_emission / emis_prior["EmisCH4_Total"]
 
     # Extract state vector labels
     state_vector_labels = state_vector["StateVector"]
@@ -126,6 +129,8 @@ def calculate_perturbation_sfs(
     # with reaching infinity. Replace any NaN values with 1.0
     max_sf_threshold = 15000000.0
     jacobian_pert_sf[jacobian_pert_sf > max_sf_threshold] = max_sf_threshold
+    if OptimizeSoil:
+        jacobian_pert_sf[jacobian_pert_sf < -max_sf_threshold] = -max_sf_threshold
     jacobian_pert_sf = np.nan_to_num(jacobian_pert_sf, nan=1.0)
 
     # If we are using a kalman filter and have nudged prior emissions,
@@ -196,17 +201,11 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
         prior_sf = None
 
     # load the state vector dataset
-    state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
+    state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc")).squeeze()
 
     # calculate the perturbation scale factors we perturb each state vector element by
     perturbation_dict = calculate_perturbation_sfs(
-        state_vector, hemco_emis, perturb_value, prior_sf
-    )
-
-    # update jacobian perturbation files with new perturbation scale factors
-    # before we run the jacobian simulations
-    update_jacobian_perturbation_files(
-        jacobian_dir, state_vector["StateVector"], perturbation_dict["jacobian_pert_sf"]
+        state_vector, hemco_emis, perturb_value, prior_sf, config["OptimizeSoil"]
     )
 
     # archive npz file of perturbation scale factor dictionary for later calculation of sensitivity
@@ -216,6 +215,98 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
         os.path.join(archive_dir, f"pert_sf_{period_number}.npz"), **perturbation_dict
     )
 
+    grid_pert_fpath = os.path.join(archive_dir, f"gridded_pert_scale_{period_number}.nc")
+    if config['UseGCHP']:
+        make_gridded_perturbation_sf_CSgrid(perturbation_dict["jacobian_pert_sf"], state_vector, grid_pert_fpath)
+    else:
+        make_gridded_perturbation_sf_latlon(perturbation_dict["jacobian_pert_sf"], state_vector, grid_pert_fpath)
+
+def make_gridded_perturbation_sf_CSgrid(pert_vector, statevector, save_pth):
+    lats = statevector['lats']
+    lons = statevector['lons']
+    
+    # Map the input vector (e.g., scale factors) to the state vector grid
+    if "time" in statevector.StateVector.dims:
+        sv_index = statevector.StateVector.values
+    else:
+        sv_index = statevector.StateVector.values[None,...]
+    valid_mask = ~np.isnan(sv_index)
+    # Create a placeholder array for integer indices, initialize with -1
+    sv_index_int = np.full_like(sv_index, fill_value=-1, dtype=int)
+    sv_index_int[valid_mask] = sv_index[valid_mask].astype(int)
+
+    gridded_pert = np.ones_like(sv_index, dtype=float)
+    gridded_pert[valid_mask] = pert_vector[sv_index_int[valid_mask] - 1]
+    
+    refyear = 2000
+    gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'nf', 'Ydim', 'Xdim'], 
+                                coords=dict(time=(['time'], [0.]), lats=(['nf', 'Ydim', 'Xdim'], lats.values), lons=(['nf', 'Ydim', 'Xdim'], lons.values)),
+                                attrs=dict(units='1', long_name='scaling factor for state vector elements'))
+    gridded_pert_ds = xr.Dataset({'scale': gridded_pert})
+    # Add attribute metadata
+    gridded_pert_ds.lats.attrs["units"] = "degrees_north"
+    gridded_pert_ds.lats.attrs["long_name"] = "Latitude"
+    gridded_pert_ds.lons.attrs["units"] = "degrees_east"
+    gridded_pert_ds.lons.attrs["long_name"] = "Longitude"
+    gridded_pert_ds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
+                                        delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
+                                        long_name='Time', calendar='standard')
+    gridded_pert_ds['corner_lats'] = statevector['corner_lats']
+    gridded_pert_ds['corner_lons'] = statevector['corner_lons']
+
+    # copy global attributes from state vector dataset
+    if statevector.attrs:
+        gridded_pert_ds.attrs = statevector.attrs
+    # Save
+    if save_pth is not None:
+        print("Saving file {}".format(save_pth))
+        gridded_pert_ds.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 1} for v in gridded_pert_ds.data_vars
+            },
+        )
+
+def make_gridded_perturbation_sf_latlon(pert_vector, statevector, save_pth):
+    lat = statevector['lat'].values
+    lon = statevector['lon'].values
+    
+    # Map the input vector (e.g., scale factors) to the state vector grid
+    if "time" in statevector.StateVector.dims:
+        sv_index = statevector.StateVector.values
+    else:
+        sv_index = statevector.StateVector.values[None,...]
+    valid_mask = ~np.isnan(sv_index)
+    # Create a placeholder array for integer indices, initialize with -1
+    sv_index_int = np.full_like(sv_index, fill_value=-1, dtype=int)
+    sv_index_int[valid_mask] = sv_index[valid_mask].astype(int)
+
+    gridded_pert = np.ones_like(sv_index, dtype=float)
+    gridded_pert[valid_mask] = pert_vector[sv_index_int[valid_mask] - 1]
+    
+    refyear = 2000
+    gridded_pert = xr.DataArray(gridded_pert, dims=['time', 'lat', 'lon'], 
+                                coords=dict(time=(['time'], [0.]), lat=(['lat'], lat), lon=(['lon'], lon)),
+                                attrs=dict(units='1', long_name='scaling factor for state vector elements'))
+    gridded_pert_ds = xr.Dataset({'scale': gridded_pert})
+    # Add attribute metadata
+    gridded_pert_ds.lat.attrs["units"] = "degrees_north"
+    gridded_pert_ds.lat.attrs["long_name"] = "Latitude"
+    gridded_pert_ds.lon.attrs["units"] = "degrees_east"
+    gridded_pert_ds.lon.attrs["long_name"] = "Longitude"
+    gridded_pert_ds['time'].attrs = dict(units='days since {}-01-01 00:00:00'.format(refyear),
+                                        delta_t='0000-01-00 00:00:00', axis='T', standard_name='Time',
+                                        long_name='Time', calendar='standard')
+
+    # Save
+    if save_pth is not None:
+        print("Saving file {}".format(save_pth))
+        gridded_pert_ds.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 1} for v in gridded_pert_ds.data_vars
+            },
+        )
 
 if __name__ == "__main__":
     config_path = sys.argv[1]

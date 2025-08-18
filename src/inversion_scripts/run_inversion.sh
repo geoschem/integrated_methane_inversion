@@ -47,7 +47,6 @@ nElements={STATE_VECTOR_ELEMENTS}
 nTracers={NUM_JACOBIAN_TRACERS}
 OutputPath={OUTPUT_PATH}
 Res={RES}
-SpinupDir="${OutputPath}/${RunName}/spinup_run"
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
@@ -79,42 +78,6 @@ if [[ ! -f ${StateVectorFile} ]]; then
     printf "${StateVectorFile} does not exist. Please fix StateVectorFile in run_inversion.sh.\n"
     exit 1
 fi
-
-#=======================================================================
-# Postprocess the SpeciesConc and LevelEdgeDiags files from GEOS-Chem
-#=======================================================================
-
-printf "Calling postproc_diags.py, FSS=$FirstSimSwitch\n"
-if "$FirstSimSwitch"; then
-    if [[ ! -d ${SpinupDir} ]]; then
-	printf "${SpinupDir} does not exist. Please fix SpinupDir or set FirstSimSwitch to False in run_inversion.sh.\n"
-	exit 1
-    fi
-    PrevDir=$SpinupDir
-else
-    PrevDir=$PosteriorRunDir
-    if [[ ! -d ${PosteriorRunDir} ]]; then
-	printf "${PosteriorRunDir} does not exist. Please fix PosteriorRunDir in run_inversion.sh.\n"
-	exit 1
-    fi
-fi
-printf "  - Hour 0 for ${StartDate} will be obtained from ${PrevDir}\n"
-
-if ! "$PrecomputedJacobian"; then
-
-    # Postprocess all the Jacobian simulations
-    python postproc_diags.py $RunName $JacobianRunsDir $PrevDir $StartDate $Res; wait
-
-else
-
-    # Only postprocess the Prior simulation
-    python postproc_diags.py $RunName $PriorRunDir $PrevDir $StartDate $Res; wait
-    if "$LognormalErrors"; then
-        # for lognormal errors we need to postprocess the background run too
-        python postproc_diags.py $RunName $BackgroundRunDir $PrevDir $StartDate $Res; wait
-    fi
-fi
-printf "DONE -- postproc_diags.py\n\n"
 
 #=======================================================================
 # Setup GC data directory in workdir
@@ -174,7 +137,7 @@ if "$LognormalErrors"; then
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
-    python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf)
+    python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile)
     
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
