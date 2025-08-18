@@ -8,14 +8,26 @@
 # Usage:
 #   create_statevector
 create_statevector() {
-    printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    if "$UseGCHP"; then
+        if "$STRETCH_GRID"; then
+            printf "\n=== CREATING Cubed-Sphere C${CS_RES}.s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E STATE VECTOR FILE ===\n"
+        else
+            printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        fi
+    else
+        printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    fi
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then
         if [ "$Res" = "0.125x0.15625" ]; then
             LandCoverSuffix="HEMCO/CH4/v2025-03/landcover/IMERG_land_sea_mask_0125x015625.nc"
         else
-            LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+            if [ "$RegionID" != "" ]; then
+                LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+            else
+                LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+            fi
         fi
     else
         LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
@@ -49,7 +61,15 @@ create_statevector() {
     printf "\nCalling make_state_vector_file.py\n"
     python make_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
 
-    printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    if "$UseGCHP"; then
+        if "$STRETCH_GRID"; then
+            printf "\n=== DONE CREATING Cubed-Sphere C${CS_RES}.s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E STATE VECTOR FILE ===\n"
+        else
+            printf "\n=== DONE CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        fi
+    else
+        printf "\n=== DONE CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    fi
 }
 
 # Description: Reduce dimension of state vector with clustering method
@@ -75,7 +95,7 @@ reduce_dimension() {
     fi
 
     # conditionally add period_i to python args
-    python_args=($aggregation_file $InversionPath $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
+    python_args=($aggregation_file $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
     archive_sv=false
     if ("$KalmanMode" && "$DynamicKFClustering"); then
         if [ -n "$period_i" ]; then

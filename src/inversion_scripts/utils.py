@@ -11,7 +11,12 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from pyproj import Geod
 import pandas as pd
-
+import re
+import warnings
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
+    latlon_to_cartesian,
+    build_kdtree,
+)
 
 def save_obj(obj, name):
     """Save something with Pickle."""
@@ -63,29 +68,47 @@ def sum_total_emissions(emissions, areas, mask):
     return float(total)
 
 
-def filter_obs_with_mask(mask, df):
+def filter_obs_with_mask(mask, df, UseGCHP=False):
     """
     Select observations lying within a boolean mask
     mask is boolean xarray data array
     df is pandas dataframe with lat, lon, etc.
     """
 
-    reference_lat_grid = mask["lat"].values
-    reference_lon_grid = mask["lon"].values
-
     # Query lats/lons
     query_lats = df["lat"].values
     query_lons = df["lon"].values
 
-    # Loop
-    bad_ind = []
-    for k in range(len(df)):
-        # Find closest reference coordinates to selected lat/lon bounds
-        ref_lat_ind = np.abs(reference_lat_grid - query_lats[k]).argmin()
-        ref_lon_ind = np.abs(reference_lon_grid - query_lons[k]).argmin()
-        # If not in mask, save as bad index
-        if mask[ref_lat_ind, ref_lon_ind] == 0:
-            bad_ind.append(k)
+    if UseGCHP:
+        lats = mask["lats"].values
+        lons = mask["lons"].values
+        
+        # Loop
+        bad_ind = []
+        for k in range(len(df)):
+            # Find closest reference coordinates to selected lat/lon bounds
+            # Build KDTree and polygons
+            kdtree, shape = build_kdtree(lats, lons)
+            query_cart = latlon_to_cartesian(query_lats[k], query_lons[k])
+            _, neighbor_idx = kdtree.query(query_cart, k=1)
+            neighbor_idx = neighbor_idx.flatten()
+            f, j, i = np.unravel_index(neighbor_idx, shape)
+            # If not in mask, save as bad index
+            if mask[f,j,i] == 0:
+                bad_ind.append(k)
+
+    else:
+        reference_lat_grid = mask["lat"].values
+        reference_lon_grid = mask["lon"].values
+        # Loop
+        bad_ind = []
+        for k in range(len(df)):
+            # Find closest reference coordinates to selected lat/lon bounds
+            ref_lat_ind = np.abs(reference_lat_grid - query_lats[k]).argmin()
+            ref_lon_ind = np.abs(reference_lon_grid - query_lons[k]).argmin()
+            # If not in mask, save as bad index
+            if mask[ref_lat_ind, ref_lon_ind] == 0:
+                bad_ind.append(k)
 
     # Drop bad indexes and count remaining entries
     df_filtered = df.copy()
@@ -94,14 +117,14 @@ def filter_obs_with_mask(mask, df):
     return df_filtered
 
 
-def count_obs_in_mask(mask, df):
+def count_obs_in_mask(mask, df, UseGCHP=False):
     """
     Count the number of observations in a boolean mask
     mask is boolean xarray data array
     df is pandas dataframe with lat, lon, etc.
     """
 
-    df_filtered = filter_obs_with_mask(mask, df)
+    df_filtered = filter_obs_with_mask(mask, df, UseGCHP)
     n_obs = len(df_filtered)
 
     return n_obs
@@ -258,6 +281,7 @@ def plot_field(
     is_regional=True,
     save_path=None,
     clean_title=None,
+    UseGCHP=False,
 ):
     """
     Function to plot inversion results.
@@ -280,7 +304,7 @@ def plot_field(
         save_path  : path to save the plot
         clean_title: title without special characters
     """
-
+    field = field.squeeze()
     # Select map features
     if is_regional:
         oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
@@ -327,7 +351,7 @@ def plot_field(
         ax.set_extent(extent, crs=ccrs.PlateCarree())
 
     # Show boundary of ROI?
-    if mask is not None:
+    if (mask is not None) and (not UseGCHP) and (is_regional):
         mask.plot.contour(levels=1, colors="k", linewidths=4, ax=ax)
 
     # Remove duplicated axis labels
@@ -373,6 +397,168 @@ def plot_field(
         plt.savefig(full_save_path, format="png", bbox_inches="tight")
         print(f"Plot saved to {full_save_path}")
 
+def plot_field_gchp(
+    ax,
+    corner_lons,
+    corner_lats,
+    field,
+    cmap,
+    plot_type="pcolormesh",
+    lon_bounds=None,
+    lat_bounds=None,
+    levels=None,
+    vmin=None,
+    vmax=None,
+    title=None,
+    point_sources=None,
+    cbar_label=None,
+    only_ROI=False,
+    state_vector_labels=None,
+    last_ROI_element=None,
+    is_regional=True,
+    stretch_grid=False,
+    save_path=None,
+    clean_title=None,
+):
+    """
+    Function to plot inversion results.
+
+    Arguments
+        ax         : matplotlib axis object
+        corner_lons: xarray dataarraycorner_lons in GCHP
+        corner_lats: xarray dataarray corner_lats in GCHP
+        field      : xarray dataarray
+        cmap       : colormap to use, e.g. 'viridis'
+        plot_type  : 'pcolormesh' or 'imshow'
+        lon_bounds : [lon_min, lon_max]
+        lat_bounds : [lat_min, lat_max]
+        levels     : number of colormap levels (None for continuous)
+        vmin       : colorbar lower bound
+        vmax       : colorbar upper bound
+        title      : plot title
+        point_sources: plot given point sources on map
+        cbar_label : colorbar label
+        mask       : mask for region of interest, boolean dataarray
+        only_ROI   : zero out data outside the region of interest, true or false
+        save_path  : path to save the plot
+        clean_title: title without special characters
+    """
+
+    # Select map features
+    if (is_regional | stretch_grid):
+        oceans_50m = cartopy.feature.NaturalEarthFeature("physical", "ocean", "50m")
+        lakes_50m = cartopy.feature.NaturalEarthFeature("physical", "lakes", "50m")
+        states_provinces_50m = cartopy.feature.NaturalEarthFeature(
+            "cultural", "admin_1_states_provinces_lines", "50m"
+        )
+        ax.add_feature(cartopy.feature.BORDERS, facecolor="none")
+        ax.add_feature(oceans_50m, facecolor="none", edgecolor="black")
+        ax.add_feature(lakes_50m, facecolor="none", edgecolor="black")
+        ax.add_feature(states_provinces_50m, facecolor="none", edgecolor="black")
+    else:
+        ax.coastlines(resolution="110m")
+
+    # Show only ROI values?
+    if only_ROI:
+        field = field.where((state_vector_labels <= last_ROI_element))
+
+    # Plot
+    if plot_type == "pcolormesh":
+        for face in range(6):
+            x = corner_lons.isel(nf=face)
+            y = corner_lats.isel(nf=face)
+            v = field.squeeze().isel(nf=face)
+            mesh = ax.pcolormesh(
+                x, y, v, 
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                transform=ccrs.PlateCarree()
+            )
+        # Add colorbar
+        cbar = ax.get_figure().colorbar(
+            mesh,
+            ax=ax,
+            label=cbar_label,
+            fraction=0.041,
+            pad=0.04
+        )
+        
+    elif plot_type == "imshow":
+        for face in range(6):
+            x = corner_lons.isel(nf=face)
+            y = corner_lats.isel(nf=face)
+            v = field.squeeze().isel(nf=face)
+
+            img = ax.imshow(
+                v,
+                origin="lower",
+                extent=[x.min(), x.max(), y.min(), y.max()],
+                cmap=cmap,
+                vmin=vmin,
+                vmax=vmax,
+                transform=ccrs.PlateCarree(),
+                interpolation="none"  
+            )
+
+        # Mimic xarray's automatic colorbar
+        cbar = ax.get_figure().colorbar(
+            img,
+            ax=ax,
+            fraction=0.041,
+            pad=0.04
+        )
+        cbar.set_label(cbar_label)
+    else:
+        raise ValueError('plot_type must be "pcolormesh" or "imshow"')
+
+    # Zoom on ROI?
+    if lon_bounds and lat_bounds:
+        extent = [lon_bounds[0], lon_bounds[1], lat_bounds[0], lat_bounds[1]]
+        ax.set_extent(extent, crs=ccrs.PlateCarree())
+
+    # Remove duplicated axis labels
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, alpha=0)
+    gl.right_labels = False
+    gl.top_labels = False
+
+    # Title
+    if title:
+        ax.set_title(title)
+
+    # Marks any specified high-resolution coordinates on the preview observation density map
+    if point_sources:
+        for coord in point_sources:
+            ax.plot(coord[1], coord[0], marker="x", markeredgecolor="black")
+        point = Line2D(
+            [0],
+            [0],
+            label="point source",
+            marker="x",
+            markersize=10,
+            markeredgecolor="black",
+            markerfacecolor="k",
+            linestyle="",
+        )
+        ax.legend(handles=[point])
+
+    # Save plot
+    if save_path:
+        # Ensure the directory exists
+        os.makedirs(save_path, exist_ok=True)
+
+        # Replace spaces in the title or clean title with underscores
+        if clean_title:
+            sanitized_title = clean_title.replace(" ", "_") + ".png"
+        else:
+            sanitized_title = title.replace(" ", "_") + ".png"
+
+        # Construct the full file path
+        full_save_path = os.path.join(save_path, sanitized_title.lower())
+
+        # Save the plot
+        plt.savefig(full_save_path, format="png", bbox_inches="tight")
+        print(f"Plot saved to {full_save_path}")
 
 def plot_time_series(
     x_data,
@@ -464,6 +650,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
         & (tropomi_data["qa_value"] >= 0.5)
         & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
         & (tropomi_data["latitude"] > -60)
+        & (tropomi_data["surface_classification_249"] != 184) # exclude land+snow_or_ice
     )
 
     if use_water_obs:
@@ -502,6 +689,7 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
             )
         )
         & (blended_data["latitude"] > -60)
+        & (blended_data["surface_classification_249"] != 184) # exclude land+snow_or_ice
     )
 
     if use_water_obs:
@@ -602,7 +790,6 @@ def get_posterior_emissions(prior, scale):
     posterior["EmisCH4_Total"] = posterior["EmisCH4_Total"] + prior_soil_sink
     return posterior
 
-
 def get_strdate(current_time, date_threshold):
     # round observation time to nearest hour
     strdate = current_time.round("60min").strftime("%Y%m%d_%H")
@@ -623,10 +810,15 @@ def filter_prior_files(filenames, start_date, end_date):
 
     filtered_files = []
     for file in filenames:
+        match1 = re.search(r"\.(\d{8}_\d{4})z", file)
+        match2 = re.search(r"\.(\d{12})", file)
         # Extract the date part from the filename
-        date_str = file.split(".")[1]
-        file_date = datetime.strptime(date_str, "%Y%m%d%H%M")
-
+        file_date = None
+        if match1:
+            file_date = datetime.strptime(match1.group(1), "%Y%m%d_%H%M")
+        elif match2:
+            file_date = datetime.strptime(match2.group(1), "%Y%m%d%H%M")
+        
         # Check if the file date is within the specified range
         if start_date <= file_date <= end_date:
             filtered_files.append(file)
@@ -640,12 +832,21 @@ def get_mean_emissions(start_date, end_date, prior_cache_path):
     """
     # find all prior files in the specified date range
     prior_files = [
-        f for f in os.listdir(prior_cache_path) if "HEMCO_sa_diagnostics" in f
+        f for f in os.listdir(prior_cache_path)
+        if "HEMCO_sa_diagnostics" in f or "GEOSChem.Emissions" in f
     ]
     prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
-    hemco_diags = [
-        xr.load_dataset(os.path.join(prior_cache_path, f)) for f in prior_files
-    ]
+
+    # drop anchor with duplicate dimensions of ncontact from GCHP outputs
+    hemco_diags = []
+    for f in prior_files:
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+            ds = xr.load_dataset(os.path.join(prior_cache_path, f))
+
+        if 'anchor' in ds.data_vars:
+            ds = ds.drop_vars('anchor')
+        hemco_diags.append(ds)
 
     # concatenate all datasets and aggregate into the mean prior
     # emissions for the specified date range

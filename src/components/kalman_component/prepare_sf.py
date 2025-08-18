@@ -42,7 +42,15 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
 
     # Get state vector, grid-cell areas, mask
     statevector = xr.load_dataset(statevector_path)
-    areas = original_emis_ds["AREA"]
+    if config['UseGCHP']:
+        CSgrids = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"], "CS_grids")
+        )
+        gridpath = CSgrids + '/grids.c{}.nc'.format(config['CS_RES'])
+        gridds = xr.open_dataset(gridpath)
+        areas = gridds['area']
+    else:
+        areas = original_emis_ds["AREA"]
     state_vector_labels = statevector["StateVector"]
     last_ROI_element = int(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
@@ -131,10 +139,16 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor):
     print(f"Total prior emission = {total_emis} Tg a-1")
 
     # Ensure good netcdf attributes for HEMCO
-    sf.lat.attrs["units"] = "degrees_north"
-    sf.lat.attrs["long_name"] = "Latitude"
-    sf.lon.attrs["units"] = "degrees_east"
-    sf.lon.attrs["long_name"] = "Longitude"
+    if config['UseGCHP']:
+        sf.lats.attrs["units"] = "degrees_north"
+        sf.lats.attrs["long_name"] = "Latitude"
+        sf.lons.attrs["units"] = "degrees_east"
+        sf.lons.attrs["long_name"] = "Longitude"
+    else:
+        sf.lat.attrs["units"] = "degrees_north"
+        sf.lat.attrs["long_name"] = "Latitude"
+        sf.lon.attrs["units"] = "degrees_east"
+        sf.lon.attrs["long_name"] = "Longitude"
     sf.ScaleFactor.attrs["units"] = "1"
 
     # Save final scale factors

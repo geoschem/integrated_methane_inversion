@@ -10,21 +10,38 @@ def do_gridding(vector, statevector):
     """
 
     # Map the input vector (e.g., scale factors) to the state vector grid
-    sv_index = np.nan_to_num(statevector.StateVector.values, nan=0).astype(int)
+    missing_val = statevector.StateVector.attrs.get("missing_value", np.nan)
+    fill_val = statevector.StateVector.attrs.get("_FillValue", np.nan)
+
+    # Create a mask for invalid values (either NaN, missing_value, or _FillValue)
+    sv_org = statevector.StateVector.values
+    invalid_mask = np.isnan(sv_org) | (sv_org == missing_val) | (sv_org == fill_val)
+
+    # Replace invalids with 0, then cast to int
+    sv_index = np.where(invalid_mask, 0, sv_org).astype(int)
+    
     outarr = vector[sv_index - 1]
-    outarr = np.where(
-        np.isnan(statevector.StateVector.values)[:,:,None],
-        np.nan,
-        outarr
-    )
+    outarr = np.where(np.expand_dims(invalid_mask, -1), np.nan, outarr)
 
     # to dataarray    
-    target_array = xr.DataArray(
-        outarr,
-        dims = ('lat', 'lon', 'ensemble'),
-        coords = {'lat': statevector.lat.values, 'lon': statevector.lon.values},
-        attrs={"units": "none"}
-    )
+    if statevector.StateVector.dims == ('time', 'lat', 'lon'):
+        target_array = xr.DataArray(
+            outarr,
+            dims = ('time', 'lat', 'lon', 'ensemble'),
+            coords = {'time': statevector.time.values, 'lat': statevector.lat.values, 'lon': statevector.lon.values},
+            attrs={"units": "1"}
+        )
+    elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
+        target_array = xr.DataArray(
+            outarr,
+            dims = ('time', 'nf', 'Ydim', 'Xdim', 'ensemble'),
+            coords=dict(time=(['time'], statevector.time.values),
+                        lats=(['nf', 'Ydim', 'Xdim'], statevector.lats.values),
+                        lons=(['nf', 'Ydim', 'Xdim'], statevector.lons.values)),
+            attrs={"units": "1"}
+        )
+    else:
+        print('StateVector is not in GCClassic (lat, lon) dimension, nor in GCHP (nf, Ydim, Xdim) dimension')
 
     return target_array
 
@@ -65,29 +82,50 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         if var.startswith("A") or var.startswith("S_post"):
             # get the diagonals of the S_post and A matrices
             gridded_data = do_gridding(np.diagonal(inv_results[var].values).transpose(), statevector)
-            data_dict[var] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
+            if statevector.StateVector.dims == ('time', 'lat', 'lon'):
+                data_dict[var] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
+            elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
+                data_dict[var] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
         elif var.startswith("xhat"):
             # get the scale factors
             # fill nan in SF with 1 to prevent GEOS-Chem error
             gridded_data = do_gridding(inv_results[var].values, statevector).fillna(1)
             # change key to ScaleFactor to match HEMCO expectations
             new_SF_key = f"ScaleFactor{var[len('xhat'):]}"
-            data_dict[new_SF_key] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
+            if statevector.StateVector.dims == ('time', 'lat', 'lon'):
+                data_dict[new_SF_key] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
+            elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
+                data_dict[new_SF_key] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
 
     # Create dataset
-    lat = statevector["lat"].values
-    lon = statevector["lon"].values
+    if statevector.StateVector.dims == ('time', 'lat', 'lon'):
+        time = statevector["time"].values
+        lat = statevector["lat"].values
+        lon = statevector["lon"].values
 
-    ds = xr.Dataset(
-        data_dict,
-        coords={"lon": ("lon", lon), "lat": ("lat", lat)},
-    )
+        ds = xr.Dataset(
+            data_dict,
+            coords={"time": ("time", time), "lon": ("lon", lon), "lat": ("lat", lat)},
+        )
 
-    # Add attribute metadata for coordinates
-    ds.lat.attrs["units"] = "degrees_north"
-    ds.lat.attrs["long_name"] = "Latitude"
-    ds.lon.attrs["units"] = "degrees_east"
-    ds.lon.attrs["long_name"] = "Longitude"
+        # Add attribute metadata for coordinates
+        ds.lat.attrs["units"] = "degrees_north"
+        ds.lat.attrs["long_name"] = "Latitude"
+        ds.lon.attrs["units"] = "degrees_east"
+        ds.lon.attrs["long_name"] = "Longitude"
+    elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
+        ds = xr.Dataset(
+            data_dict,
+            coords=dict(time=(['time'], statevector.time.values),
+                        lats=(['nf', 'Ydim', 'Xdim'], statevector.lats.values),
+                        lons=(['nf', 'Ydim', 'Xdim'], statevector.lons.values)),
+        )
+
+        # Add attribute metadata for coordinates
+        ds.lats.attrs["units"] = "degrees_north"
+        ds.lats.attrs["long_name"] = "Latitude"
+        ds.lons.attrs["units"] = "degrees_east"
+        ds.lons.attrs["long_name"] = "Longitude"
     ds.attrs = inv_results.attrs
 
     # Create netcdf for ensemble results

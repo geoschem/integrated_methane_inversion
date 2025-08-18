@@ -15,6 +15,8 @@ config_required = [
     "UseSlurm",
     "SafeMode",
     "S3Upload",
+    "UseGCHP",
+    "STRETCH_GRID",
     "StartDate",
     "EndDate",
     "SpinupMonths",
@@ -107,7 +109,17 @@ conditional_dict["S3Upload"] = [
 conditional_dict["OptimizeBCs"] = ["PerturbValueBCs", "PriorErrorBCs"]
 conditional_dict["LognormalErrors"] = ["PriorErrorBufferElements"]
 conditional_dict["OptimizeOH"] = ["PerturbValueOH", "PriorErrorOH"]
-
+conditional_dict["UseGCHP"] = [
+    "CS_RES",
+    "TOTAL_CORES",
+    "NUM_NODES",
+    "NUM_CORES_PER_NODE"
+]
+conditional_dict["STRETCH_GRID"] = [
+    "STRETCH_FACTOR",
+    "TARGET_LAT",
+    "TARGET_LON"
+]
 
 def raise_error_message(var):
     """

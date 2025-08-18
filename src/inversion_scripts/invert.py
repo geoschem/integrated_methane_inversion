@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import glob
 import yaml
+import re
+import datetime
 import numpy as np
 import xarray as xr
 from itertools import product
@@ -15,7 +17,7 @@ from src.inversion_scripts.utils import (
 
 def do_inversion(
     n_elements,
-    jacobian_dir,
+    jacobian_files,
     lon_min,
     lon_max,
     lat_min,
@@ -35,7 +37,7 @@ def do_inversion(
 
     Arguments
         n_elements   [int]   : Number of state vector elements
-        jacobian_dir [str]   : Directory where the data from jacobian.py are stored
+        jacobian_files [list]  : Jacobian files generated from jacobian.py
         lon_min      [float] : Minimum longitude
         lon_max      [float] : Maximum longitude
         lat_min      [float] : Minimum latitude
@@ -65,26 +67,29 @@ def do_inversion(
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
-    # This assumes 0.125x0.15625, 0.25x0.3125, and 0.5x0.625 simulations are always regional
-    if "0.125x0.15625" in res:
-        degx = 4 * 0.15625
-        degy = 4 * 0.125
-    elif "0.25x0.3125" in res:
-        degx = 4 * 0.3125
-        degy = 4 * 0.25
-    elif "0.5x0.625" in res:
-        degx = 4 * 0.625
-        degy = 4 * 0.5
+    # This assumes 0.25x0.3125 and 0.5x0.625 simulations are always regional
+    if not config['UseGCHP']:
+        if "0.125x0.15625" in res:
+            degx = 4 * 0.15625
+            degy = 4 * 0.125
+        elif "0.25x0.3125" in res:
+            degx = 4 * 0.3125
+            degy = 4 * 0.25
+        elif "0.5x0.625" in res:
+            degx = 4 * 0.625
+            degy = 4 * 0.5
+        else:
+            degx = 0
+            degy = 0
     else:
         degx = 0
         degy = 0
-
     xlim = [lon_min + degx, lon_max - degx]
     ylim = [lat_min + degy, lat_max - degy]
 
     # Read output data from jacobian.py (virtual & true TROPOMI columns, Jacobian matrix)
-    files = glob.glob(f"{jacobian_dir}/*.pkl")
-    files.sort()
+    
+    files = jacobian_files
 
     # ==========================================================================================
     # Now we will assemble two different expressions needed for the analytical inversion.
@@ -327,7 +332,7 @@ def do_inversion(
 
 def do_inversion_ensemble(
     n_elements,
-    jacobian_dir,
+    jacobian_files,
     lon_min,
     lon_max,
     lat_min,
@@ -374,7 +379,7 @@ def do_inversion_ensemble(
         xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, Ja_normalized = (
             do_inversion(
                 n_elements,
-                jacobian_dir,
+                jacobian_files,
                 lon_min,
                 lon_max,
                 lat_min,
@@ -460,10 +465,26 @@ if __name__ == "__main__":
     if jacobian_sf == "None":
         jacobian_sf = None
 
+    # make it robust to read output files in the defined time range
+    # Get TROPOMI data filenames for the desired date range
+    gc_startdate = np.datetime64(datetime.datetime.strptime(str(config['StartDate']), "%Y%m%d"))
+    gc_enddate = np.datetime64(datetime.datetime.strptime(str(config['EndDate']), "%Y%m%d"))
+    allfiles = glob.glob(f"{jacobian_dir}/*.pkl")
+    jacobian_files = []
+    for index in range(len(allfiles)):
+        filename = allfiles[index]
+        shortname = re.split(r"\/", filename)[-1]
+        shortname = re.split(r"\.", shortname)[0]
+        strdate = re.split(r"\.|_+|T", shortname)[4]
+        strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
+        if (strdate >= gc_startdate) and (strdate < gc_enddate):
+            jacobian_files.append(filename)
+    jacobian_files.sort()
+    
     # Run the inversion code
     out_ds, out_ds_default = do_inversion_ensemble(
         n_elements,
-        jacobian_dir,
+        jacobian_files,
         lon_min,
         lon_max,
         lat_min,
@@ -478,6 +499,15 @@ if __name__ == "__main__":
         is_Regional,
     )
 
+    # add atributes for stretching GCHP simulation
+    if config['STRETCH_GRID']:
+        out_ds.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        out_ds.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        out_ds.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
+        
+        out_ds_default.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        out_ds_default.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        out_ds_default.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
     # Save the results of the ensemble inversion
     out_ds.to_netcdf(
         output_path.replace(".nc", "_ensemble.nc"),

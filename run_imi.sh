@@ -63,7 +63,11 @@ source $CondaFile
 
 # Activate Conda environment
 printf "\nActivating conda environment: ${CondaEnv}\n"
-conda activate ${CondaEnv}
+# To have a clean conda environment first 
+# to ensure successful activation of the conda environment
+conda init
+conda deactivate
+conda activate "${CondaEnv}"
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
