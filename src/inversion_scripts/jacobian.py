@@ -8,6 +8,7 @@ import re
 import os
 import datetime
 import yaml
+import gc
 from src.inversion_scripts.utils import save_obj
 from src.inversion_scripts.operators.TROPOMI_operator import (
     apply_average_tropomi_operator,
@@ -118,8 +119,8 @@ if __name__ == "__main__":
         datetime.datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
         - datetime.timedelta(days=1)
     )
-    print("Start:", start)
-    print("End:", end)
+    print("Start:", gc_startdate)
+    print("End:", gc_enddate)
 
     # Get TROPOMI data filenames for the desired date range
     allfiles = glob.glob(f"{tropomi_cache}/*.nc")
@@ -195,6 +196,9 @@ if __name__ == "__main__":
             print("Saving .pkl file")
             save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
             save_obj(viz_output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
+        
+        del output, viz_output
+        gc.collect()
         return 0
 
     results = Parallel(n_jobs=-1)(delayed(process)(filename) for filename in sat_files)
