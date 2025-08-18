@@ -280,19 +280,10 @@ run_posterior() {
 
     # Sample GEOS-Chem atmosphere with TROPOMI
     if "$UseGCHP"; then
-        LonMinInvDomain=$(ncmin lons ${RunDirs}/StateVector.nc)
-        LonMaxInvDomain=$(ncmax lons ${RunDirs}/StateVector.nc)
-        LatMinInvDomain=$(ncmin lats ${RunDirs}/StateVector.nc)
-        LatMaxInvDomain=$(ncmax lats ${RunDirs}/StateVector.nc)
-
-        # Adjust longitude values if > 180
-        if (( $(echo "$LonMinInvDomain > 180" | bc -l) )); then
-            LonMinInvDomain=$(echo "$LonMinInvDomain - 360" | bc -l)
-        fi
-
-        if (( $(echo "$LonMaxInvDomain > 180" | bc -l) )); then
-            LonMaxInvDomain=$(echo "$LonMaxInvDomain - 360" | bc -l)
-        fi
+        LonMinInvDomain=-180
+        LonMaxInvDomain=180
+        LatMinInvDomain=-90
+        LatMaxInvDomain=90
     else
         LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
         LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
