@@ -119,7 +119,7 @@ setup_posterior() {
                 HISTORY.rc
             # turn on monthly checkpoint
             sed -i -e 's/^Midrun_Checkpoint=OFF/Midrun_Checkpoint=ON/' \
-                -e 's/^Midrun_Checkpoint=.*/Midrun_Checkpoint=monthly/' \
+                -e 's/^Checkpoint_Freq=.*/Checkpoint_Freq=monthly/' \
                 setCommonRunSettings.sh
 
         else
