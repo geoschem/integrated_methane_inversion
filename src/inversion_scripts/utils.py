@@ -679,3 +679,193 @@ def ensure_float_list(variable):
         return [float(variable)]
     else:
         raise TypeError("Variable must be a string, float, int, or list.")
+
+def compute_min_max_ensemble_sectors(
+    prior_ds: xr.Dataset,
+    ens_posterior_ds: xr.Dataset,
+    ens_scale_ds: xr.Dataset,
+    areas: xr.DataArray,
+    mask: xr.DataArray,
+    num_ensemble_members: int,
+) -> tuple[dict[str, float], dict[str, float]]:
+    """
+    Compute the minimum and maximum posterior emissions for each sector across the ensemble.
+
+    Returns
+    -------
+    sector_mins : dict
+        Minimum posterior emissions for each sector.
+    sector_maxes : dict
+        Maximum posterior emissions for each sector.
+    """
+    # Identify sectors (EmisCH4 variables, excluding totals/exclusions)
+    sectors = [
+        var
+        for var in list(ens_posterior_ds.keys())
+        if "EmisCH4" in var and not ("Total" in var or "Excl" in var)
+    ]
+
+    sector_mins = {sector: float("inf") for sector in sectors}
+    sector_maxes = {sector: float("-inf") for sector in sectors}
+
+    for member in range(num_ensemble_members):
+        active_ds = get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=member))
+
+        for sector in sectors:
+            post_val = sum_total_emissions(active_ds[sector], areas, mask)
+            # Update sector min and max values
+            if np.isfinite(post_val):
+                sector_mins[sector] = min(sector_mins[sector], post_val)
+                sector_maxes[sector] = max(sector_maxes[sector], post_val)
+
+    # Remove sectors with inf or -inf values from the results
+    sector_mins = {f"{k.replace('EmisCH4_', '')}_ensMin": v for k, v in sector_mins.items() if np.isfinite(v)}
+    sector_maxes = {f"{k.replace('EmisCH4_', '')}_ensMax": v for k, v in sector_maxes.items() if np.isfinite(v)}
+
+    return sector_mins, sector_maxes
+
+
+def export_visualization_outputs(
+    *,
+    plot_save_path: str,
+    start_date,
+    end_date,
+    total_prior_emissions: float,
+    total_posterior_emissions: float,
+    DOFS: float,
+    prior_bias: float,
+    posterior_bias: float,
+    prior_std: float,
+    posterior_std: float,
+    prior_RMSE: float,
+    posterior_RMSE: float,
+    df_for_count: pd.DataFrame,
+    mask: xr.DataArray,
+    combined_sorted: list,
+    prior_ds: xr.Dataset,
+    posterior_ds: xr.Dataset,
+    areas: xr.DataArray,
+    # Ensemble (optional)
+    num_ensemble_members: int = 0,
+    ens_totals_posterior: np.ndarray | None = None,
+    ens_inv_result: xr.Dataset | None = None,
+    ens_scale_ds: xr.Dataset | None = None,
+    # Artifacts to save (optional)
+    state_vector_labels: xr.DataArray | None = None,
+    scale: xr.DataArray | None = None,
+    avkern_ROI: xr.DataArray | None = None,
+    ds_obs: xr.Dataset | None = None,
+    ds_obs_regridded: xr.Dataset | None = None,
+) -> pd.DataFrame:
+    """
+    Export statistics CSVs and NetCDF artifacts for the visualization notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The single-row statistics DataFrame written to `viz_notebook_statistics.csv`.
+    """
+    # Create output dirs
+    os.makedirs(plot_save_path, exist_ok=True)
+
+    # 1) Build the statistics dictionary (mirrors the notebook)
+    statistics: dict[str, object] = {
+        "StartDate": start_date,
+        "EndDate": end_date,
+        "PriorEmissions": float(total_prior_emissions),
+        "PosteriorEmissions": float(total_posterior_emissions),
+        "DOFS": float(DOFS),
+        "BiasPrior": float(prior_bias),
+        "BiasPosterior": float(posterior_bias),
+        "BiasPrior_std": float(prior_std),
+        "BiasPosterior_std": float(posterior_std),
+        "RMSEPrior": float(prior_RMSE),
+        "RMSEPosterior": float(posterior_RMSE),
+        "NumSuperObservations": int(count_obs_in_mask(mask, df_for_count)),
+    }
+
+    # 2) Sector totals (use provided combined_sorted and append domain totals like the notebook)
+    sector_totals: dict[str, float] = {}
+    combined_plus = list(combined_sorted)
+
+    if "EmisCH4_Total" in prior_ds and "EmisCH4_Total" in posterior_ds:
+        combined_plus.append((
+            "Total",
+            float(sum_total_emissions(prior_ds["EmisCH4_Total"], areas, mask)),
+            float(sum_total_emissions(posterior_ds["EmisCH4_Total"], areas, mask)),
+        ))
+
+    if ("EmisCH4_Total_ExclSoilAbs" in prior_ds and
+        "EmisCH4_Total_ExclSoilAbs" in posterior_ds):
+        combined_plus.append((
+            "TotalExclSoilAbs",
+            float(sum_total_emissions(prior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask)),
+            float(sum_total_emissions(posterior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask)),
+        ))
+
+    for name, prior_val, post_val in combined_plus:
+        sector_totals[f"{name}Prior"] = float(prior_val)
+        sector_totals[f"{name}Posterior"] = float(post_val)
+
+    statistics.update(sector_totals)
+
+    # 3) Ensemble stats (optional) + CSV
+    if (num_ensemble_members and num_ensemble_members > 1 and
+        ens_totals_posterior is not None and ens_inv_result is not None):
+
+        statistics["EnsemblePosterior_Mean"] = float(np.mean(ens_totals_posterior))
+        statistics["EnsemblePosterior_Std"] = float(np.std(ens_totals_posterior))
+        statistics["EnsemblePosterior_Max"] = float(np.max(ens_totals_posterior))
+        statistics["EnsemblePosterior_Min"] = float(np.min(ens_totals_posterior))
+        statistics["EnsemblePosteriorsArray"] = ",".join([str(x) for x in ens_totals_posterior])
+
+        rows = []
+        value_names = ["Ja_normalized", "prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh"]
+        for member in ens_inv_result.ensemble.values:
+            row = {"EnsembleMember": int(member)}
+            # Mirror notebook's indexing assumption (member integer indexes into ens_totals_posterior)
+            try:
+                row["posterior"] = float(ens_totals_posterior[int(member)])
+            except Exception:
+                # Fallback to last element if out-of-range / non-contiguous IDs
+                row["posterior"] = float(ens_totals_posterior[-1])
+            for vn in value_names:
+                if vn in ens_inv_result:
+                    row[vn] = np.asarray(ens_inv_result.sel(ensemble=member)[vn]).item()
+            rows.append(row)
+
+        pd.DataFrame(rows).to_csv(
+            os.path.join(plot_save_path, "ensemble_statistics.csv"), index=False
+        )
+
+        sector_mins, sector_maxes = compute_min_max_ensemble_sectors(
+            prior_ds, get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0)), ens_scale_ds, areas, mask, num_ensemble_members
+        )
+
+        statistics.update(sector_mins)
+        statistics.update(sector_maxes)
+
+    # 4) Write the main statistics CSV
+    stats_pd = pd.DataFrame(statistics, index=[0])
+    stats_pd.to_csv(os.path.join(plot_save_path, "viz_notebook_statistics.csv"), index=False)
+
+    # 5) NetCDF artifacts (optional)
+    netcdf_path = os.path.join(plot_save_path, "netCDF")
+    os.makedirs(netcdf_path, exist_ok=True)
+
+    if state_vector_labels is not None:
+        state_vector_labels.to_netcdf(os.path.join(netcdf_path, "state_vector.nc"))
+    if prior_ds is not None:
+        prior_ds.to_netcdf(os.path.join(netcdf_path, "prior.nc"))
+    if posterior_ds is not None:
+        posterior_ds.to_netcdf(os.path.join(netcdf_path, "posterior.nc"))
+    if scale is not None:
+        scale.to_netcdf(os.path.join(netcdf_path, "scale.nc"))
+    if avkern_ROI is not None:
+        avkern_ROI.to_netcdf(os.path.join(netcdf_path, "avkern.nc"))
+    if ds_obs is not None:
+        ds_obs.to_netcdf(os.path.join(netcdf_path, "obs_ds.nc"))
+    if ds_obs_regridded is not None:
+        ds_obs_regridded.to_netcdf(os.path.join(netcdf_path, "obs_ds_regridded.nc"))
+
+    return stats_pd
