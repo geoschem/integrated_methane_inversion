@@ -235,7 +235,9 @@ def do_inversion(
     # Inverse of prior error covariance matrix, inv(S_a)
     Sa_diag = np.zeros(n_elements)
     Sa_diag.fill(prior_err**2)
-    Sa_diag_constraint = Sa_diag.copy() # constraint matrix to calculate the solution only
+    Sa_diag_constraint = (
+        Sa_diag.copy()
+    )  # constraint matrix to calculate the solution only
 
     # Number of elements to apply scale factor to
     scale_factor_idx = n_elements
@@ -252,8 +254,10 @@ def do_inversion(
             scale_factor_idx -= 1
         else:
             OH_weight = 2 / (n_elements - 2)
-            Sa_diag_constraint[-2:] = OH_weight * prior_err_oh**2 # weighted constraint matrix
-            Sa_diag[-2:] = prior_err_oh**2 # unweighted matrix
+            Sa_diag_constraint[-2:] = (
+                OH_weight * prior_err_oh**2
+            )  # weighted constraint matrix
+            Sa_diag[-2:] = prior_err_oh**2  # unweighted matrix
             scale_factor_idx -= 2
 
     # If optimizing boundary conditions, adjust for it in the inversion
@@ -273,11 +277,15 @@ def do_inversion(
             Sa_diag[-4:] = prior_err_bc**2
             Sa_diag_constraint[-4:] = prior_err_bc**2
 
-    inv_Sa_constraint = np.diag(1 / Sa_diag_constraint)  # Inverse of weighted constraint matrix
+    inv_Sa_constraint = np.diag(
+        1 / Sa_diag_constraint
+    )  # Inverse of weighted constraint matrix
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of unweighted prior error covariance matrix
 
     # Solve for posterior scale factors xhat using the weighted constraint matrix
-    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (gamma * KTinvSoyKxA)
+    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (
+        gamma * KTinvSoyKxA
+    )
 
     # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + delta_optimized
@@ -407,6 +415,27 @@ def do_inversion_ensemble(
         + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_default_Ja]}"
     )
 
+    # Filter ensemble members to only members with Ja between 0.5 and 2
+    filter_ens_members = True  # set to False to turn off filtering
+    include_ens_members = [
+        i for i, Ja in enumerate(results_dict["Ja_normalized"]) if 0.5 <= Ja <= 2.0
+    ]
+    if filter_ens_members and len(include_ens_members) > 0:
+        for k in results_dict.keys():
+            results_dict[k] = [results_dict[k][i] for i in include_ens_members]
+    elif len(include_ens_members) == 0:
+        print(
+            "Warning: No ensemble members with 0.5 <= J_A/n <= 2.0, "
+            + "Returning all members in ensemble. This may lead to suboptimal results."
+            + " Consider adding additional ensemble members with different hyperparameters."
+        )
+    else:
+        print(
+            "Warning: Returning all members in ensemble without filtering "
+            + "Ja/n thresholds [0.5, 2.0]. This may lead to suboptimal results."
+            + " Consider adding ensemble filters."
+        )
+
     # Create an xarray.Dataset
     dataset = xr.Dataset()
     for k, v in results_dict.items():
@@ -421,9 +450,10 @@ def do_inversion_ensemble(
     # ensemble dimension to end
     dataset = dataset.transpose(..., "ensemble")
 
-    dataset_default = dataset.isel(ensemble=idx_default_Ja)
+    # also calculate the mean of the ensemble as the main result
+    dataset_mean = dataset.mean(dim="ensemble")
 
-    return dataset, dataset_default
+    return dataset, dataset_mean
 
 
 if __name__ == "__main__":
@@ -461,7 +491,7 @@ if __name__ == "__main__":
         jacobian_sf = None
 
     # Run the inversion code
-    out_ds, out_ds_default = do_inversion_ensemble(
+    out_ds, out_ds_mean = do_inversion_ensemble(
         n_elements,
         jacobian_dir,
         lon_min,
@@ -484,8 +514,8 @@ if __name__ == "__main__":
         encoding={v: {"zlib": True, "complevel": 1} for v in out_ds.data_vars},
     )
 
-    out_ds_default.to_netcdf(
+    out_ds_mean.to_netcdf(
         output_path,
-        encoding={v: {"zlib": True, "complevel": 1} for v in out_ds.data_vars},
+        encoding={v: {"zlib": True, "complevel": 1} for v in out_ds_mean.data_vars},
     )
     print(f"Saved results to {output_path}")
