@@ -4,7 +4,6 @@ import xarray as xr
 import pandas as pd
 from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
 
-
 # common utilities for using different operators
 def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
     """
@@ -234,7 +233,6 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
         ds_concat = ds_concat.assign_coords({"element": sv_elems})
     return ds_concat
 
-
 def get_gridcell_list(lons, lats):
     """
     Create a 2d array of dictionaries, with each dictionary representing a GC gridcell.
@@ -273,7 +271,6 @@ def get_gridcell_list(lons, lats):
             )
     gridcells = np.array(gridcells).reshape(len(lons), len(lats))
     return gridcells
-
 
 def get_gc_lat_lon(gc_cache, start_date):
     """
@@ -457,6 +454,51 @@ def remap_sensitivities(sensi_lonlat, data_type, p_merge, edge_index, first_gc_e
 
     return sat_deltaCH4
 
+def _ensure_descending_pedges(edges):
+    # edges: (N, K+1). Flip to descending (surface -> TOA) if needed.
+    need_flip = edges[:, 0] < edges[:, 1]
+    if np.any(need_flip):
+        edges = edges.copy()
+        edges[need_flip] = edges[need_flip, ::-1]
+    return edges
+
+def remapping_weights(p_sat_edges, p_gc_edges):
+    """
+    p_sat_edges : (N, S+1)  TROPOMI pressure edges
+    p_gc_edges  : (N, G+1)  GEOS-Chem pressure edges
+    Returns     : (N, S, G) weights; for each n,s, sum_g W[n,s,g] == 1 (or 0 if no overlap)
+    """
+    p_sat_edges = _ensure_descending_pedges(np.asarray(p_sat_edges))
+    p_gc_edges  = _ensure_descending_pedges(np.asarray(p_gc_edges))
+
+    sat_bot = p_sat_edges[:, :-1]    # (N, S)
+    sat_top = p_sat_edges[:,  1:]    # (N, S)
+    gc_bot  = p_gc_edges[:, :-1]     # (N, G)
+    gc_top  = p_gc_edges[:,  1:]     # (N, G)
+
+    # Overlap thickness for descending pressures: max(0, min(bots) - max(tops))
+    overlap = np.maximum(
+        0.0,
+        np.minimum(sat_bot[:, :, None], gc_bot[:, None, :])
+        - np.maximum(sat_top[:, :, None], gc_top[:, None, :])
+    )  # (N, S, G)
+    
+    # Bottom-fill: only layers *entirely below* GC domain
+    # A TROPOMI layer is entirely below GC 
+    # if its TOP pressure > GC surface bottom edge pressure.
+    gc_bottom_edge = p_gc_edges[:, 0]                  # (N,) surface pressure edge of GC
+    below_mask = sat_top >= gc_bottom_edge[:, None]    # (N, S) True -> bottom-fill
+
+    if np.any(below_mask):
+        sat_thick = (sat_bot - sat_top)                    # (N,S)
+        overlap[below_mask, :]  = 0.0
+        overlap[below_mask, 0]  = sat_thick[below_mask]
+
+    denom = overlap.sum(axis=2, keepdims=True)  # (N, S, 1)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        W = np.where(denom > 0, overlap / denom, 0.0)
+        
+    return W
 
 def nearest_loc(query_location, reference_grid, tolerance=0.5):
     """Find the index of the nearest grid location to a query location, with some tolerance."""
