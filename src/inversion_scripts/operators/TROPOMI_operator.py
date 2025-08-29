@@ -1006,11 +1006,11 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
     # Read lat, lon, CH4 from the SpeciecConc collection
     filename = f"{gc_cache}/{file_species}"
 
-    with xr.open_dataset(filename) as gc_data_all:
+    with xr.open_dataset(filename, chunks='auto') as gc_data_all:
         jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
         iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
         gc_data = gc_data_all.isel(
-            time=0,
+            time=0).squeeze().isel(
             lat=jGC,
             lon=iGC,
             drop=True
@@ -1023,9 +1023,9 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
 
     # Read PEDGE from the LevelEdgeDiags collection
     filename = f"{gc_cache}/{file_pedge}"
-    with xr.open_dataset(filename) as gc_data_all:
+    with xr.open_dataset(filename, chunks='auto') as gc_data_all:
         gc_data = gc_data_all.isel(
-            time=0,
+            time=0).squeeze().isel(
             lat=jGC,
             lon=iGC,
             drop=True
@@ -1204,41 +1204,45 @@ def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n
     with xr.open_dataset(
         filepath,
         drop_variables=other_vars,
+        chunks='auto',
     ) as dsmf_all:
         try:
             jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
             iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
-            dsmf = dsmf_all.isel(
-                time=gc_date.hour).squeeze().isel( 
-                lat=jGC,
-                lon=iGC,
-                drop=True
+            dsmf = (
+                dsmf_all
+                .isel(time=gc_date.hour)
+                .squeeze()
+                .isel(lat=jGC, lon=iGC, drop=True)
             )
         except Exception as e:
             print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
             raise
-        
-        n_superobs = len(gridcell_dict)
-        n_ele = len(keepvars)
-        virtual_tropomi_all = np.empty([n_superobs, n_ele], dtype=np.float32)
-        virtual_tropomi_all.fill(np.nan)
-        
-        for elei in range(n_ele):
-            CH4_da = dsmf[keepvars[elei]]
-            if CH4_da.dims[1] == "lev":
-                CH4 = CH4_da.values
-            else:
-                CH4 = np.transpose(CH4_da.values, (1, 0))   # (lev, obs) -> (obs, lev)
-            
-            dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # mol m-2
-            apriori = gridcell_dict["apriori"]  # mol m-2
-            avkern = gridcell_dict["avkern"]
-            
-            sat_CH4 = np.einsum("nsg,ng->ns", vertical_weights, CH4)         # (N, S)
-            sat_CH4_molm2 = sat_CH4 * dry_air_subcolumns                     # (N, S)
-            virtual_tropomi_all[:,elei] = (
-                np.sum(apriori + avkern * (sat_CH4_molm2 - apriori), axis=1) / \
-                np.sum(dry_air_subcolumns, axis=1)
-            ).astype(np.float32)                      # (N,), unitless mixing ratio
-                
-    return virtual_tropomi_all
+        # ---- Batch read all CH4 tracers and standardize to (elem, obs, lev)
+        da_list = []
+        for v in keepvars:
+            da = dsmf[v]
+            # Ensure shape is (obs, lev)
+            arr = da.transpose("obs","lev").values
+            da_list.append(arr)
+        CH4_all = np.stack(da_list, axis=0)   # (elem, obs, lev)
+
+        dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # (N, S)
+        apriori = gridcell_dict["apriori"]                        # (N, S)
+        avkern = gridcell_dict["avkern"]                          # (N, S)
+        denom = np.sum(dry_air_subcolumns, axis=1)                # (N,)
+
+        # ---- Remap levels to TROPOMI layers in batch:
+        # vertical_weights: (N, S, G)
+        # CH4_all:          (E, N, G)
+        # -> sat_CH4_all:   (E, N, S)
+        sat_CH4_all = np.einsum("nsg,eng->ens", vertical_weights, CH4_all)
+
+        # Convert to column units and apply AKs, batched over E
+        sat_CH4_molm2_all = sat_CH4_all * dry_air_subcolumns[None, :, :]  # (E, N, S)
+        numer_all = np.sum(apriori[None, :, :] +
+                           avkern[None, :, :] * (sat_CH4_molm2_all - apriori[None, :, :]),
+                           axis=2)  # (E, N)
+        virtual_tropomi_all = (numer_all / denom[None, :]).T.astype(np.float32)  # (N, E)
+
+    return virtual_tropomi_all # unitless mixing ratio
