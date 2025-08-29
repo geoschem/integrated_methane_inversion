@@ -422,6 +422,12 @@ create_simulation_dir() {
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
             done
+            # remove redundant SpeciesConcVV_CH4 when $x > 1
+            if "$UseGCHP"; then
+                if [ $x -gt 1 ]; then
+                    sed -i -e "s|'SpeciesConcVV_CH4    '|#'SpeciesConcVV_CH4    '|g" HISTORY.rc
+                fi
+            fi
         fi
     fi
 
