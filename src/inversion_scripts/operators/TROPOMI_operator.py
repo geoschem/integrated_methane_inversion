@@ -4,8 +4,8 @@ import xarray as xr
 import pandas as pd
 import datetime
 import gc
+import pygeohash as pgh
 from shapely.geometry import Polygon
-from spherical_geometry.polygon import SphericalPolygon
 from src.inversion_scripts.utils import (
     filter_tropomi,
     filter_blended,
@@ -16,20 +16,17 @@ from src.inversion_scripts.utils import (
 
 from src.inversion_scripts.operators.operator_utilities import (
     get_gc_lat_lon,
-    read_geoschem,
+    read_all_geoschem,
     merge_pressure_grids,
     remap,
     remap_sensitivities,
+    remapping_weights,
     get_gridcell_list,
-    get_gridcell_list_gchp,
     nearest_loc,
-    precompute_CSgrid_polygons,
+    get_overlap_area_CSgrid,
 )
-
-from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
-    latlon_to_cartesian,
-    build_kdtree,
-)
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
 def apply_average_tropomi_operator(
     filename,
@@ -96,6 +93,9 @@ def apply_average_tropomi_operator(
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
+    if n_obs == 0:
+        print(f"No TROPOMI observations found in {filename}. Skipping.")
+        return None
     print("Found", n_obs, "TROPOMI observations.")
 
     # Define time threshold (hour 00 after the inversion period)
@@ -107,12 +107,18 @@ def apply_average_tropomi_operator(
     # map tropomi obs into gridcells and average the observations
     # into each gridcell. Only returns gridcells containing observations
     if config["UseGCHP"]:
-        CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
-        gridfpath = f"{CSgridDir}/grids.c{config['CS_RES']}.nc"
-        obs_mapped_to_gc = average_tropomi_observations_to_CSgrid(
-            TROPOMI, gridfpath, sat_ind, time_threshold
-        )
+        if config['STRETCH_GRID']:
+            sf_formatted = f"{config['STRETCH_FACTOR']:.2f}".replace(".", "d")
+            target_geohash = pgh.encode(config['TARGET_LAT'], config['TARGET_LON'])
+            gridspec_path = f"c{config['CS_RES']}_s{sf_formatted}_t{target_geohash}_gridspec.nc"
+        else:
+            gridspec_path = f"c{config['CS_RES']}_gridspec.nc"
         GC_shape = (6, config['CS_RES'], config['CS_RES'])
+        CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
+        
+        obs_mapped_to_gc = average_tropomi_observations_to_CSgrid(
+            TROPOMI, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
+        )
     else:
         # get the lat/lons of gc gridcells
         gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
@@ -124,9 +130,8 @@ def apply_average_tropomi_operator(
 
     if build_jacobian:
         # Initialize Jacobian K
-        jacobian_K = np.zeros([n_gridcells, n_elements], dtype=np.float32)
+        jacobian_K = np.empty([n_gridcells, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
-
         pertf = os.path.expandvars(
             f'{config["OutputPath"]}/{config["RunName"]}/'
             f"archive_perturbation_sfs/pert_sf_{period_i}.npz"
@@ -134,186 +139,115 @@ def apply_average_tropomi_operator(
 
         emis_perturbations_dict = np.load(pertf, mmap_mode='r')
         emis_perturbations = emis_perturbations_dict["effective_pert_sf"]
+        
+        # Calculate sensitivities and save in K matrix
+        # determine which elements are for emis,
+        # BCs, and OH
+        oh_indices = []
+        bc_indices = []
+        emis_indices = []
 
+        for e in range(n_elements):
+            i_elem = e + 1
+            # booleans for whether this element is a
+            # BC element or OH element
+            is_OH_element = check_is_OH_element(
+                i_elem, n_elements, config["OptimizeOH"], config["isRegional"]
+            )
 
+            is_BC_element = check_is_BC_element(
+                i_elem,
+                n_elements,
+                config["OptimizeOH"],
+                config["OptimizeBCs"],
+                is_OH_element,
+                config["isRegional"],
+            )
+
+            if is_OH_element:
+                oh_indices.append(e)
+            elif is_BC_element:
+                bc_indices.append(e)
+            else:
+                emis_indices.append(e)
+    
     # Initialize array with n_gridcells rows and 5 columns. Columns are
     # TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
-    obs_GC = np.zeros([n_gridcells, 5], dtype=np.float32)
+    obs_GC = np.empty([n_gridcells, 5], dtype=np.float32)
     obs_GC.fill(np.nan)
-
-    GC_index = np.zeros([n_gridcells, ], dtype=int)
-    GC_index.fill(-9999)
     
-    # For each gridcell dict with tropomi obs:
-    for i, gridcell_dict in enumerate(obs_mapped_to_gc):
-        # Get GEOS-Chem data for the date of the observation:
-        p_sat = gridcell_dict["p_sat"]
-        dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # mol m-2
-        apriori = gridcell_dict["apriori"]  # mol m-2
-        avkern = gridcell_dict["avkern"]
-        strdate = gridcell_dict["time"]
-        GEOSCHEM = read_geoschem(strdate, gc_cache, n_elements, config, build_jacobian)
-
-        if config['UseGCHP']:
-            # Get GEOS-Chem pressure edges for the cell
-            p_gc = GEOSCHEM["PEDGE"][gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"], :]
-            # Get GEOS-Chem methane for the cell
-            gc_CH4 = GEOSCHEM["CH4"][gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"], :]
-            
-            flat_index = np.ravel_multi_index((gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"]), GC_shape)
-        else:
-            # Get GEOS-Chem pressure edges for the cell
-            p_gc = GEOSCHEM["PEDGE"][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
-            # Get GEOS-Chem methane for the cell
-            gc_CH4 = GEOSCHEM["CH4"][gridcell_dict["iGC"], gridcell_dict["jGC"], :]
-            
-            flat_index = np.ravel_multi_index((gridcell_dict["jGC"], gridcell_dict["iGC"]), GC_shape)
-        GC_index[i] = flat_index
-        # Get merged GEOS-Chem/TROPOMI pressure grid for the cell
-        merged = merge_pressure_grids(p_sat, p_gc)
-        # Remap GEOS-Chem methane to TROPOMI pressure levels
-        sat_CH4 = remap(
-            gc_CH4,
-            merged["data_type"],
-            merged["p_merge"],
-            merged["edge_index"],
-            merged["first_gc_edge"],
-        )  # ppb
-        # Convert ppb to mol m-2
-        sat_CH4_molm2 = sat_CH4 * 1e-9 * dry_air_subcolumns  # mol m-2
-        # Derive the column-averaged XCH4 that TROPOMI would see over this ground cell
-        # using eq. 46 from TROPOMI Methane ATBD, Hasekamp et al. 2019
-        virtual_tropomi = (
-            sum(apriori + avkern * (sat_CH4_molm2 - apriori))
-            / sum(dry_air_subcolumns)
-            * 1e9
-        )  # ppb
-
-        # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
+    if config['UseGCHP']:
+        GC_index = np.ravel_multi_index((obs_mapped_to_gc["nfi"], 
+                                         obs_mapped_to_gc["Ydimi"], 
+                                         obs_mapped_to_gc["Xdimi"]), GC_shape)
+    else:
+        GC_index = np.ravel_multi_index((obs_mapped_to_gc["jGC"], #lat
+                                         obs_mapped_to_gc["iGC"] # lon
+                                         ), GC_shape)
+    
+    all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
+    all_strdate = list(set(all_strdate))
+    
+    for strdate in all_strdate:
+        gridcell_dict = obs_mapped_to_gc[obs_mapped_to_gc["time"] == strdate]
+        sel_idx = np.where(obs_mapped_to_gc["time"] == strdate)[0]
         if build_jacobian:
-
-            # TODO: Eliminate redundant code mapping GC to
-            #       TROPOMI when build_jacobian=True
-
-            if config["OptimizeOH"]:
-                vars_to_xch4 = ["jacobian_ch4", "emis_base_ch4", "oh_base_ch4"]
-            else:
-                vars_to_xch4 = ["jacobian_ch4", "emis_base_ch4"]
-
-            xch4 = {}
-
-            for v in vars_to_xch4:
-                # Get GEOS-Chem jacobian ch4 at this lat/lon, for all vertical levels and state vector elements
-                if config['UseGCHP']:
-                    jacobian_lonlat = GEOSCHEM[v][
-                        gridcell_dict["nfi"], gridcell_dict["Ydimi"], gridcell_dict["Xdimi"], :, :
-                    ]
-                else:
-                    jacobian_lonlat = GEOSCHEM[v][
-                        gridcell_dict["iGC"], gridcell_dict["jGC"], :, :
-                    ]
-                # Map the sensitivities to TROPOMI pressure levels
-                sat_deltaCH4 = remap_sensitivities(
-                    jacobian_lonlat,
-                    merged["data_type"],
-                    merged["p_merge"],
-                    merged["edge_index"],
-                    merged["first_gc_edge"],
-                )  # mixing ratio, unitless
-                # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
-                xch4[v] = np.sum(avkern[:, None] * sat_deltaCH4 * \
-                    dry_air_subcolumns[:, None], 0) / dry_air_subcolumns.sum() # mixing ratio, unitless
-
-            # separate variables for convenience later
-            pert_jacobian_xch4 = xch4["jacobian_ch4"]
-            emis_base_xch4 = xch4["emis_base_ch4"]
-            if config["OptimizeOH"]:
-                oh_base_xch4 = xch4["oh_base_ch4"]
-
-            # Calculate sensitivities and save in K matrix
-            # determine which elements are for emis,
-            # BCs, and OH
-            is_oh = np.full(n_elements, False, dtype=bool)
-            is_bc = np.full(n_elements, False, dtype=bool)
-            is_emis = np.full(n_elements, False, dtype=bool)
-
-            for e in range(n_elements):
-                i_elem = e + 1
-                # booleans for whether this element is a
-                # BC element or OH element
-                is_OH_element = check_is_OH_element(
-                    i_elem, n_elements, config["OptimizeOH"], config["isRegional"]
-                )
-
-                is_BC_element = check_is_BC_element(
-                    i_elem,
-                    n_elements,
-                    config["OptimizeOH"],
-                    config["OptimizeBCs"],
-                    is_OH_element,
-                    config["isRegional"],
-                )
-
-                is_oh[e] = is_OH_element
-                is_bc[e] = is_BC_element
-            is_emis = ~np.equal(is_oh | is_bc, True)
-
+            virtual_tropomi_pert, virtual_tropomi_base, virtual_tropomi = get_virtual_tropomi(
+                strdate, gc_cache, gridcell_dict, n_elements, config, build_jacobian
+            )
+        else:
+            virtual_tropomi = get_virtual_tropomi(
+                strdate, gc_cache, gridcell_dict, n_elements, config, build_jacobian
+            )
+        # Save actual and virtual TROPOMI data
+        obs_GC[sel_idx, 0] = gridcell_dict[
+            "methane"
+        ]  # Actual TROPOMI methane column observation
+        obs_GC[sel_idx, 1] = virtual_tropomi * 1e9  # Virtual TROPOMI methane column observation and convert to ppb
+        obs_GC[sel_idx, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
+        obs_GC[sel_idx, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
+        obs_GC[sel_idx, 4] = gridcell_dict["observation_count"]  # observation counts
+        
+        if build_jacobian:
+            pert_jacobian_xch4 = virtual_tropomi_pert # (n_superobs, n_element)
+            emis_base_xch4 = virtual_tropomi_base # emis_base and BC_base is "RunName_0001" and "SpeciesConcVV_CH4"
+            oh_base_xch4 = virtual_tropomi # OH base is "RunName_0000"
+            
             # get perturbations and calculate sensitivities
-            perturbations = np.full(n_elements, 1.0, dtype=float)
+            perturbations = np.ones((len(gridcell_dict), n_elements), dtype=np.float32)
 
             # fill pert base array with values
             # array contains 1 entry for each state vector element
             # fill array with nans
-            base_xch4 = np.full(n_elements, np.nan)
+            base_xch4 = np.full((len(gridcell_dict), n_elements), np.nan, dtype=np.float32)
             # fill emission elements with the base value
-            base_xch4 = np.where(is_emis, emis_base_xch4, base_xch4)
+            base_xch4[:,emis_indices] = np.repeat(emis_base_xch4[:, None], 
+                                                  np.asarray(emis_indices).size, axis=1)
 
             # emissions perturbations
-            perturbations[0 : is_emis.sum()] = emis_perturbations
+            perturbations[:,emis_indices] = np.repeat(emis_perturbations[None,:],
+                                                      len(gridcell_dict), axis=0)
 
             # OH perturbations
             if config["OptimizeOH"]:
                 # fill OH elements with the OH base value
-                base_xch4 = np.where(is_oh, oh_base_xch4, base_xch4)
-            
-                # compute BC perturbation for jacobian construction
-                oh_perturbation = float(config["PerturbValueOH"]) - 1.0
-
+                base_xch4[:,oh_indices] = np.repeat(oh_base_xch4[:,None],
+                                                    np.asarray(oh_indices).size, axis=1)
                 # update perturbations array to include OH perturbations
-                perturbations = np.where(is_oh, oh_perturbation, perturbations)
+                perturbations[:,oh_indices] = float(config["PerturbValueOH"]) - 1.0
 
             # BC perturbations
             if config["OptimizeBCs"]:
                 # fill BC elements with the base value, which is same as emis value
-                base_xch4 = np.where(is_bc, emis_base_xch4, base_xch4)
+                base_xch4[:,bc_indices] = np.repeat(emis_base_xch4[:,None],
+                                                    np.asarray(bc_indices).size, axis=1)
 
                 # compute BC perturbation for jacobian construction
-                bc_perturbation = config["PerturbValueBCs"]
-
-                # update perturbations array to include OH perturbations
-                perturbations = np.where(is_bc, bc_perturbation, perturbations)
-
-            # calculate difference
-            delta_xch4 = pert_jacobian_xch4 - base_xch4
+                perturbations[:,bc_indices] = config["PerturbValueBCs"]
 
             # calculate sensitivities
-            sensi_xch4 = delta_xch4 / perturbations
-
-            # fill jacobian array
-            jacobian_K[i, :] = sensi_xch4
+            jacobian_K[sel_idx,:] = ((pert_jacobian_xch4 - base_xch4) / perturbations).astype(np.float32)
             
-            del GEOSCHEM, gc_CH4, sat_CH4, sat_CH4_molm2, merged, xch4
-            gc.collect()
-            
-        # Save actual and virtual TROPOMI data
-        obs_GC[i, 0] = gridcell_dict[
-            "methane"
-        ]  # Actual TROPOMI methane column observation
-        obs_GC[i, 1] = virtual_tropomi  # Virtual TROPOMI methane column observation
-        obs_GC[i, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
-        obs_GC[i, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
-        obs_GC[i, 4] = gridcell_dict["observation_count"]  # observation counts
-
     # Output
     output = {}
 
@@ -393,6 +327,8 @@ def apply_tropomi_operator(
 
     # Number of TROPOMI observations
     n_obs = len(sat_ind[0])
+    if n_obs == 0:
+        return None
     # print("Found", n_obs, "TROPOMI observations.")
 
     # If need to build Jacobian from GEOS-Chem perturbation simulation sensitivity data:
@@ -401,88 +337,71 @@ def apply_tropomi_operator(
         jacobian_K = np.zeros([n_obs, n_elements], dtype=np.float32)
         jacobian_K.fill(np.nan)
 
+    # Initialize a list to store the dates we want to look at
+    all_strdate = []
+    
     # Define time threshold (hour 00 after the inversion period)
     date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
         "-", ""
     )
     time_threshold = f"{date_after_inversion}_00"
 
+    # For each TROPOMI observation
+    for k in range(n_obs):
+        # Get the date and hour
+        iSat = sat_ind[0][k]  # lat index
+        jSat = sat_ind[1][k]  # lon index
+        time = pd.to_datetime(str(TROPOMI["time"][iSat, jSat]))
+        strdate = get_strdate(time, time_threshold)
+        all_strdate.append(strdate)
+    all_strdate = list(set(all_strdate))
+
+    # Read GEOS_Chem data for the dates of interest
+    all_date_gc = read_all_geoschem(
+        all_strdate, gc_cache, n_elements, config, build_jacobian
+    )
+    
     # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
     obs_GC = np.zeros([n_obs, 6], dtype=np.float32)
     obs_GC.fill(np.nan)
 
     if config['UseGCHP']:
+        if config['STRETCH_GRID']:
+            sf_formatted = f"{config['STRETCH_FACTOR']:.2f}".replace(".", "d")
+            target_geohash = pgh.encode(config['TARGET_LAT'], config['TARGET_LON'])
+            gridspec_path = f"c{config['CS_RES']}_s{sf_formatted}_t{target_geohash}_gridspec.nc"
+        else:
+            gridspec_path = f"c{config['CS_RES']}_gridspec.nc"
+        GC_shape = (6, config['CS_RES'], config['CS_RES'])
         CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
-        gridfpath = f"{CSgridDir}/grids.c{config['CS_RES']}.nc"
-        grid_ds = xr.open_dataset(gridfpath)
-        # Read simulation grid
-        lats = np.array(grid_ds["lats"])
-        lons = np.array(grid_ds["lons"])
-        corner_lats = np.array(grid_ds["corner_lats"])
-        corner_lons = np.array(grid_ds["corner_lons"])
-        corner_lons[corner_lons>180] -= 360
         
-        # Build KDTree and polygons
-        kdtree, shape = build_kdtree(lats, lons)
-        polygons_3d, polygons_2d, cross_dateline = precompute_CSgrid_polygons(corner_lats, corner_lons)
-    
+        overlap_area_all = get_overlap_area_CSgrid(TROPOMI, filename, sat_ind, CSgridDir, 
+                            gridspec_path, GC_shape) # (n_dst, n_valid_obs)
+        
     # For each TROPOMI observation:
     for k in range(n_obs):
-
         # Get GEOS-Chem data for the date of the observation:
         iSat = sat_ind[0][k]
         jSat = sat_ind[1][k]
-        sat_lon = TROPOMI["longitude"][iSat, jSat]
-        sat_lat = TROPOMI["latitude"][iSat, jSat]
         longitude_bounds = TROPOMI["longitude_bounds"][iSat, jSat, :]
         latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
 
-        # Polygon representing TROPOMI pixel
-        if not config['UseGCHP']:
-            polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
-            polygon_tropomi_area = polygon_tropomi.area
-        
         p_sat = TROPOMI["pressures"][iSat, jSat, :]
         dry_air_subcolumns = TROPOMI["dry_air_subcolumns"][iSat, jSat, :]  # mol m-2
         apriori = TROPOMI["methane_profile_apriori"][iSat, jSat, :]  # mol m-2
         avkern = TROPOMI["column_AK"][iSat, jSat, :]
         time = pd.to_datetime(str(TROPOMI["time"][iSat, jSat]))
         strdate = get_strdate(time, time_threshold)
-        GEOSCHEM = read_geoschem(strdate, gc_cache, n_elements, config, build_jacobian)
+        GEOSCHEM = all_date_gc[strdate]
 
         if config['UseGCHP']:
-            obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
-            _, neighbor_idx = kdtree.query(obs_cart, k=9) # increase k to be more safe to include all overlap
-            neighbor_idx = neighbor_idx.flatten()
-            
-            # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
-            overlap_area = np.zeros(len(neighbor_idx))
-            
-            if cross_dateline.flatten()[neighbor_idx].any():
-                xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-                polygon_tropomi = SphericalPolygon(xyz_bounds)
-                polygon_tropomi_area = polygon_tropomi.area()
-                for ii in range(len(neighbor_idx)):
-                    f, j, i = np.unravel_index(neighbor_idx[ii], shape)
-                    polygon_gchp = polygons_3d[f,j,i]
-                    inter_poly = polygon_gchp.intersection(polygon_tropomi)
-                    if inter_poly is not None:
-                        overlap_area[ii] = inter_poly.area()
-            else:
-                polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
-                polygon_tropomi_area = polygon_tropomi.area
-                for ii in range(len(neighbor_idx)):
-                    f, j, i = np.unravel_index(neighbor_idx[ii], shape)
-                    polygon_gchp = polygons_2d[f,j,i]
-                    
-                    if polygon_gchp.intersects(polygon_tropomi):
-                        overlap_area[ii] = polygon_tropomi.intersection(
-                            polygon_gchp
-                        ).area
-                
-            gc_coords = neighbor_idx
-        
+            overlap_area_csr = overlap_area_all[:, k]
+            gc_coords = overlap_area_csr.nonzero()[0]       # row indices of non-zero entries
+            overlap_area = overlap_area_csr.data
         else:
+            # Polygon representing TROPOMI pixel
+            polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
+            
             dlon = np.median(np.diff(GEOSCHEM["lon"]))  # GEOS-Chem lon resolution
             dlat = np.median(np.diff(GEOSCHEM["lat"]))  # GEOS-Chem lon resolution
 
@@ -506,7 +425,7 @@ def apply_tropomi_operator(
             gc_coords = [(GEOSCHEM["lon"][i], GEOSCHEM["lat"][j]) for i, j in ij_GC]
 
             # Compute the overlapping area between the TROPOMI pixel and GEOS-Chem grid cells it touches
-            overlap_area = np.zeros(len(gc_coords))
+            overlap_area = np.zeros(len(gc_coords), dtype=np.float32)
             # For each GEOS-Chem grid cell that touches the TROPOMI pixel:
             for gridcellIndex in range(len(gc_coords)):
                 # Define polygon representing the GEOS-Chem grid cell
@@ -539,7 +458,7 @@ def apply_tropomi_operator(
                     ).area
 
         # If there is no overlap between GEOS-Chem and TROPOMI, skip to next observation:
-        if sum(overlap_area) == 0:
+        if np.sum(overlap_area) == 0:
             continue
 
         # =======================================================
@@ -548,7 +467,8 @@ def apply_tropomi_operator(
 
         # Otherwise, initialize tropomi virtual xch4 and virtual sensitivity as zero
         area_weighted_virtual_tropomi = 0  # virtual tropomi xch4
-        area_weighted_virtual_tropomi_sensitivity = 0  # virtual tropomi sensitivity
+        area_weighted_virtual_tropomi_sensitivity = \
+            np.zeros(n_elements, dtype=np.float32) if build_jacobian else None  # virtual tropomi sensitivity
 
         # For each GEOS-Chem grid cell that touches the TROPOMI pixel:
         for gridcellIndex in range(len(gc_coords)):
@@ -556,7 +476,7 @@ def apply_tropomi_operator(
                 continue
             if config['UseGCHP']:
                 # Get GEOS-Chem lat/lon indices for the cell
-                f, j, x = np.unravel_index(gc_coords[gridcellIndex], shape)
+                f, j, x = np.unravel_index(gc_coords[gridcellIndex], GC_shape)
 
                 # Get GEOS-Chem pressure edges for the cell
                 p_gc = GEOSCHEM["PEDGE"][f, j, x, :]
@@ -620,6 +540,7 @@ def apply_tropomi_operator(
                 )  # mixing ratio, unitless
 
                 # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
+                # in shape of (n_elements,)
                 tropomi_sensitivity_gridcellIndex = np.sum(avkern[:, None] * sat_deltaCH4 * \
                     dry_air_subcolumns[:, None], axis=0) / np.sum(dry_air_subcolumns)  # mixing ratio, unitless
 
@@ -631,13 +552,6 @@ def apply_tropomi_operator(
         # Compute virtual TROPOMI observation as weighted mean by overlapping area
         # i.e., need to divide out area [m2] from the previous step
         virtual_tropomi = area_weighted_virtual_tropomi / sum(overlap_area)
-
-        # For global inversions, area of overlap should equal area of TROPOMI pixel
-        # This is because the GEOS-Chem grid is continuous
-        rel_diff = abs(sum(overlap_area) - polygon_tropomi_area) / polygon_tropomi_area
-        if not config['isRegional'] and rel_diff > 0.01:
-            print(f"Skipping obs #{k} at lat {sat_lat:.2f} and lon {sat_lon:.2f} due to poor overlap: {rel_diff:.4f}")
-            continue  # Skip this observation
 
         # Save actual and virtual TROPOMI data
         obs_GC[k, 0] = TROPOMI["methane"][
@@ -655,9 +569,6 @@ def apply_tropomi_operator(
             jacobian_K[k, :] = area_weighted_virtual_tropomi_sensitivity / sum(
                 overlap_area
             )
-
-        del GEOSCHEM
-        gc.collect()
 
     # Output
     output = {}
@@ -886,22 +797,30 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
         sat_ind        [int]    : index list of Tropomi data that passes filters
 
     Returns
-        output         [dict[]]   : flat list of dictionaries the following fields:
-                                    - lat                 : gridcell latitude
-                                    - lon                 : gridcell longitude
-                                    - iGC                 : longitude index value
-                                    - jGC                 : latitude index value
-                                    - lat_sat             : averaged tropomi latitude
-                                    - lon_sat             : averaged tropomi longitude
-                                    - overlap_area        : averaged overlap area with gridcell
-                                    - p_sat               : averaged pressure for sat
-                                    - dry_air_subcolumns  : averaged
-                                    - apriori             : averaged
-                                    - avkern              : averaged average kernel
-                                    - time                : averaged time
-                                    - methane             : averaged methane
-                                    - observation_count   : number of observations averaged in cell
-                                    - observation_weights : area weights for the observation
+        numpy.ndarray
+            Structured array of grid-cell-averaged values with fields:
+
+            - iGC, jGC : int
+                GEOS-Chem longitude and latitude indices
+            - lat, lon : float
+                Grid cell center coordinates
+            - lat_sat, lon_sat : float
+                Weighted-average satellite footprint center
+            - methane : float
+                Weighted-average methane column
+            - time : str
+                Averaged observation time (string from `get_strdate`)
+            - p_sat : float[n_lev]
+                Weighted-average vertical pressure profile
+            - dry_air_subcolumns : float[n_lev]
+                Weighted-average dry-air subcolumn profile
+            - apriori : float[n_lev]
+                Weighted-average a priori methane profile
+            - avkern : float[n_lev]
+                Weighted-average averaging kernel
+            - observation_count : float
+                Effective number of contributing observations (fractional if
+                split across multiple grid cells)
 
     """
     n_obs = len(sat_ind[0])
@@ -1053,178 +972,515 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
             axis=0,
             weights=gridcell_dict["observation_weights"],
         )
-    return gridcell_dicts
+    if not gridcell_dicts:
+        # nothing to return
+        return np.zeros(0, dtype=[
+            ("iGC","i4"), ("jGC","i4"),
+            ("lat_sat","f4"), ("lon_sat","f4"),
+            ("methane","f4"), ("time","U13"),
+            ("p_sat","f4",(0,)),
+            ("dry_air_subcolumns","f4",(0,)),
+            ("apriori","f4",(0,)),
+            ("avkern","f4",(0,)),
+            ("observation_count","f4"),
+            ("lat","f4"), ("lon","f4"),
+        ])
 
-def average_tropomi_observations_to_CSgrid(TROPOMI, gridfpath, sat_ind, time_threshold):
+    # infer vertical sizes from the first item
+    n_lev_p       = len(gridcell_dicts[0]["p_sat"])
+    n_lev_dryair  = len(gridcell_dicts[0]["dry_air_subcolumns"])
+    n_lev_apriori = len(gridcell_dicts[0]["apriori"])
+    n_lev_avkern  = len(gridcell_dicts[0]["avkern"])
+
+    dtype_latlon = [
+        ("iGC","i4"), ("jGC","i4"),
+        ("lat_sat","f4"), ("lon_sat","f4"),
+        ("methane","f4"), ("time","U13"),
+        ("p_sat","f4",(n_lev_p,)),
+        ("dry_air_subcolumns","f4",(n_lev_dryair,)),
+        ("apriori","f4",(n_lev_apriori,)),
+        ("avkern","f4",(n_lev_avkern,)),
+        ("observation_count","f4"),
+        ("lat","f4"), ("lon","f4"),
+    ]
+
+    arr = np.zeros(len(gridcell_dicts), dtype=dtype_latlon)
+
+    for idx, cell in enumerate(gridcell_dicts):
+        arr["iGC"][idx]   = cell["iGC"]
+        arr["jGC"][idx]   = cell["jGC"]
+        arr["lat_sat"][idx] = np.float32(cell["lat_sat"])
+        arr["lon_sat"][idx] = np.float32(cell["lon_sat"])
+        arr["methane"][idx] = np.float32(cell["methane"])
+        arr["time"][idx]    = cell["time"]  # already a short string from get_strdate
+        arr["p_sat"][idx]   = np.asarray(cell["p_sat"], dtype=np.float32)
+        arr["dry_air_subcolumns"][idx] = np.asarray(cell["dry_air_subcolumns"], dtype=np.float32)
+        arr["apriori"][idx] = np.asarray(cell["apriori"], dtype=np.float32)
+        arr["avkern"][idx]  = np.asarray(cell["avkern"], dtype=np.float32)
+        arr["observation_count"][idx] = np.float32(cell["observation_count"])
+        # Optional: also store the GC cell center (useful for plotting/debug)
+        arr["lat"][idx] = np.float32(cell["lat"])
+        arr["lon"][idx] = np.float32(cell["lon"])
+
+    return arr
+
+def average_tropomi_observations_to_CSgrid(TROPOMI, filename, sat_ind, time_threshold, 
+                                           CSgridDir, gridspec_path, GC_shape):
     """
-    Map TROPOMI observations into appropriate gc gridcells. Then average all
-    observations within a gridcell for processing. Use area weighting if
-    observation overlaps multiple gridcells.
+    Map TROPOMI observations into appropriate GCHP gridcells. Then average all
+    observations within a gridcell for processing. 
+    Use area weighting (conservative regridding weights x destination area) 
+    if observation overlaps multiple gridcells.
 
-    Arguments
-        TROPOMI        [dict]   : Dict of tropomi data
-        gridfpath      [str]    : path to file containing the simulation cubed-sphere grid coordinates
-        sat_ind        [int]    : index list of Tropomi data that passes filters
+    Parameters
+    ----------
+    TROPOMI : dict
+        Dictionary of TROPOMI satellite data.
+    filename : str
+        Path to the TROPOMI dataset file.
+    sat_ind : int
+        Indices of valid TROPOMI observations (after filtering).
+    time_threshold : str or float
+        Threshold used to bin/average times into representative strings.
+    CSgridDir : str
+        Path to cubed-sphere grid definitions.
+    gridspec_path : str
+        Path to the GCHP gridspec file.
+    GC_shape : tuple
+        Shape of the GEOS-Chem cubed-sphere grid.
 
     Returns
-        output         [dict[]]   : flat list of dictionaries the following fields:
-                                    - lat                 : gridcell latitude
-                                    - lon                 : gridcell longitude
-                                    - nfi                 : face index value
-                                    - Ydimi               : Ydim index value
-                                    - Xdimi               : Xdim index value
-                                    - lat_sat             : averaged tropomi latitude
-                                    - lon_sat             : averaged tropomi longitude
-                                    - overlap_area        : averaged overlap area with gridcell
-                                    - p_sat               : averaged pressure for sat
-                                    - dry_air_subcolumns  : averaged
-                                    - apriori             : averaged
-                                    - avkern              : averaged average kernel
-                                    - time                : averaged time
-                                    - methane             : averaged methane
-                                    - observation_count   : number of observations averaged in cell
-                                    - observation_weights : area weights for the observation
-
+    -------
+    output_dicts : np.ndarray of dict-like records
+        Array of per-gridcell averaged observation data with fields:
+            - nfi, Ydimi, Xdimi : cubed-sphere indices
+            - lat_sat, lon_sat  : averaged satellite coordinates
+            - methane           : averaged methane column
+            - time              : averaged time string
+            - p_sat             : averaged pressure grid
+            - dry_air_subcolumns: averaged dry air columns
+            - apriori           : averaged prior methane profiles
+            - avkern            : averaged averaging kernels
+            - observation_count : number of obs contributing to the average
     """
-    n_obs = len(sat_ind[0])
+    Sat_shape = TROPOMI["longitude"].shape
+    # flatten indices to valid obs
+    sat_ind_flat = np.ravel_multi_index(sat_ind, Sat_shape)
+    sat_mask = np.zeros(np.product(Sat_shape), dtype=bool)
+    sat_mask[sat_ind_flat] = True
     
-    grid_ds = xr.open_dataset(gridfpath)
-    lats = np.array(grid_ds["lats"])
-    lons = np.array(grid_ds["lons"])
-    corner_lats = np.array(grid_ds["corner_lats"])
-    corner_lons = np.array(grid_ds["corner_lons"])
-    corner_lons[corner_lons>180] -= 360
-    del grid_ds
-    gc.collect()
+    overlap_area = get_overlap_area_CSgrid(TROPOMI, filename, sat_ind, CSgridDir, 
+                            gridspec_path, GC_shape) # (n_dst, n_valid_obs)
+    
+    # Observation-centric weights
+    # observation weights w_ij = overlap_ij / sum_j(overlap_ij)
+    # where w_ij is the observation weight for destination grid cell j from the observation cell i
+    # overlap_ij is the overlap area between destination cell j and the observation cell i
+    # total overlap area for each observation is the sum of the overlapping area 
+    # between observation cell i and all its overlapping destination grid cell j
+    total_overlap_area = np.asarray(overlap_area.sum(axis=0)).ravel() # (n_valid_obs)
+    inv_total_overlap_area = np.zeros_like(total_overlap_area, dtype=np.float32)
+    valid_obs = total_overlap_area > 0
+    inv_total_overlap_area[valid_obs] = 1.0 / total_overlap_area[valid_obs]
+    
+    # obs_weight: each obs contributes fully across overlapping cells
+    # element-wise multiplication:
+    obs_weights = overlap_area.multiply(inv_total_overlap_area).tocsr() # (n_dst × n_valid_obs)
+    
+    sum_obs_weights = np.asarray(obs_weights.sum(axis=1)).ravel() # (n_dst)
+    GC_mask = sum_obs_weights > 0
+    GC_indices = np.where(GC_mask)[0]  # only valid destination cells
+    n_valid_GC = len(GC_indices)
+    
+    # ---------- Scalars ----------
+    sat_lon_flat = TROPOMI["longitude"].ravel()[sat_mask]
+    sat_lat_flat = TROPOMI["latitude"].ravel()[sat_mask]
+    sat_ch4_flat = TROPOMI["methane"].ravel()[sat_mask]
+    sat_time_flat = pd.to_datetime(TROPOMI["time"].ravel()[sat_mask])
 
-    gridcell_dicts = get_gridcell_list_gchp(lons, lats)
+    # For each destination grid cell j which overlap with at least one observation cell i,
+    # weighted_obs_j = sum_i(obs_weights_ij * obs_i) / sum_i(obs_weights_ij)
+    sat_lon_avg = (obs_weights[GC_indices, :] @ sat_lon_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    sat_lat_avg = (obs_weights[GC_indices, :] @ sat_lat_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    sat_ch4_avg = (obs_weights[GC_indices, :] @ sat_ch4_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    sat_time_avg = (obs_weights[GC_indices, :] @ sat_time_flat.astype(np.int64)) / sum_obs_weights[GC_indices]
 
-    kdtree, shape = build_kdtree(lats, lons)
-    polygons_3d, polygons_2d, cross_dateline = precompute_CSgrid_polygons(corner_lats, corner_lons)
+    sat_time_avg = pd.to_datetime(sat_time_avg)  # convert back to datetime
+    sat_time_str = np.array([get_strdate(t, time_threshold) for t in sat_time_avg])
 
-    for k in range(n_obs):
-        iSat, jSat = sat_ind[0][k], sat_ind[1][k]
+    # --- Multi-dimensional arrays ---
+    def weighted_avg_profiles(var_flat):
+        # var_flat: (n_valid_obs, n_lev)
+        # obs_weights: (n_dst, n_valid_obs)
+        # sum_obs_weights: (n_dst,)
+        # result: (n_valid_GC,)
+        result = obs_weights[GC_indices, :] @ var_flat
+        result /= sum_obs_weights[GC_indices, None]
+        return result.astype(np.float32)
+    
+    p_sat_flat = TROPOMI["pressures"].reshape(-1, TROPOMI["pressures"].shape[-1])[sat_mask, :]
+    dryair_flat = TROPOMI["dry_air_subcolumns"].reshape(-1, TROPOMI["dry_air_subcolumns"].shape[-1])[sat_mask, :]
+    apriori_flat = TROPOMI["methane_profile_apriori"].reshape(-1, TROPOMI["methane_profile_apriori"].shape[-1])[sat_mask, :]
+    avkern_flat = TROPOMI["column_AK"].reshape(-1, TROPOMI["column_AK"].shape[-1])[sat_mask, :]
 
-        sat_lon = TROPOMI["longitude"][iSat, jSat]
-        sat_lat = TROPOMI["latitude"][iSat, jSat]
-        longitude_bounds = TROPOMI["longitude_bounds"][iSat, jSat, :]
-        latitude_bounds = TROPOMI["latitude_bounds"][iSat, jSat, :]
-        
-        obs_cart = latlon_to_cartesian(sat_lat, sat_lon)
-        _, neighbor_idx = kdtree.query(obs_cart, k=9)
-        neighbor_idx = neighbor_idx.flatten()
+    p_sat_avg = weighted_avg_profiles(p_sat_flat)
+    dryair_avg = weighted_avg_profiles(dryair_flat)
+    apriori_avg = weighted_avg_profiles(apriori_flat)
+    avkern_avg = weighted_avg_profiles(avkern_flat)
 
-        overlap_area = np.zeros(len(neighbor_idx), dtype=np.float32)
-        
-        if cross_dateline.flatten()[neighbor_idx].any():
-            xyz_bounds = latlon_to_cartesian(latitude_bounds, longitude_bounds)
-            polygon_tropomi = SphericalPolygon(xyz_bounds)
-            polygon_tropomi_area = polygon_tropomi.area()
-            for ii, idx in enumerate(neighbor_idx):
-                f, j, i = np.unravel_index(idx, shape)
-                polygon_gchp = polygons_3d[f,j,i]
-                inter_poly = polygon_gchp.intersection(polygon_tropomi)
-                if inter_poly is not None:
-                    overlap_area[ii] = inter_poly.area()
-        else:
-            polygon_tropomi = Polygon(np.column_stack((longitude_bounds, latitude_bounds)))
-            polygon_tropomi_area = polygon_tropomi.area
-            for ii, idx in enumerate(neighbor_idx):
-                f, j, i = np.unravel_index(idx, shape)
-                polygon_gchp = polygons_2d[f,j,i]
-                if polygon_gchp.intersects(polygon_tropomi):
-                    overlap_area[ii] = polygon_tropomi.intersection(polygon_gchp).area
+    # --- Fill dictionaries ---
+    f_idx, j_idx, x_idx = np.unravel_index(GC_indices, GC_shape)
+    n_lev_p = p_sat_avg.shape[1]
+    n_lev_dryair = dryair_avg.shape[1]
+    n_lev_apriori = apriori_avg.shape[1]
+    n_lev_avkern = avkern_avg.shape[1]
 
-        total_overlap_area = np.sum(overlap_area)
-        if total_overlap_area == 0:
-            continue
-
-        rel_diff = abs(total_overlap_area - polygon_tropomi_area) / polygon_tropomi_area
-        if rel_diff > 0.01:
-            print(f"Skipping obs #{k} at lat {sat_lat:.2f} lon {sat_lon:.2f} due to poor overlap {rel_diff:.4f}")
-            continue
-
-        # iterate through any gridcells with observation overlap
-        # weight each observation if observation extent overlaps with multiple
-        # gridcells
-        for index, overlap in enumerate(overlap_area):
-            if not overlap == 0:
-                # get the matching dictionary for the gridcell with the overlap
-                f, j, x = np.unravel_index(neighbor_idx[index], shape)
-                gridcell_dict = gridcell_dicts[f,j,x]
-                gridcell_dict["lat_sat"].append(TROPOMI["latitude"][iSat, jSat])
-                gridcell_dict["lon_sat"].append(TROPOMI["longitude"][iSat, jSat])
-                gridcell_dict["overlap_area"].append(overlap)
-                gridcell_dict["p_sat"].append(TROPOMI["pressures"][iSat, jSat, :])
-                gridcell_dict["dry_air_subcolumns"].append(
-                    TROPOMI["dry_air_subcolumns"][iSat, jSat, :]
-                )
-                gridcell_dict["apriori"].append(
-                    TROPOMI["methane_profile_apriori"][iSat, jSat, :]
-                )
-                gridcell_dict["avkern"].append(TROPOMI["column_AK"][iSat, jSat, :])
-                gridcell_dict[
-                    "time"
-                ].append(  # convert times to epoch time to make taking the mean easier
-                    int(pd.to_datetime(str(TROPOMI["time"][iSat, jSat])).strftime("%s"))
-                )
-                gridcell_dict["methane"].append(
-                    TROPOMI["methane"][iSat, jSat]
-                )  # Actual TROPOMI methane column observation
-                # record weights for averaging later
-                gridcell_dict["observation_weights"].append(
-                    overlap / total_overlap_area
-                )
-                # increment the observation count based on overlap area
-                gridcell_dict["observation_count"] += overlap / total_overlap_area
-
-    # filter out gridcells without any observations
-    gridcell_dicts = [
-        item for item in gridcell_dicts.flatten() if item["observation_count"] > 0
+    dtype = [
+        ("nfi", "i4"), ("Ydimi", "i4"), ("Xdimi", "i4"),
+        ("lat_sat", "f4"), ("lon_sat", "f4"), ("methane", "f4"),
+        ("time", "U13"), ("p_sat", "f4", (n_lev_p,)),
+        ("dry_air_subcolumns", "f4", (n_lev_dryair,)),
+        ("apriori", "f4", (n_lev_apriori,)), ("avkern", "f4", (n_lev_avkern,)),
+        ("observation_count", "f4")
     ]
-    # weighted average observation values for each gridcell
-    for gridcell_dict in gridcell_dicts:
-        gridcell_dict["lat_sat"] = np.average(
-            gridcell_dict["lat_sat"],
-            weights=gridcell_dict["observation_weights"],
+
+    output_dicts = np.zeros(n_valid_GC, dtype=dtype)
+    output_dicts["nfi"] = f_idx
+    output_dicts["Ydimi"] = j_idx
+    output_dicts["Xdimi"] = x_idx
+    output_dicts["lat_sat"] = sat_lat_avg
+    output_dicts["lon_sat"] = sat_lon_avg
+    output_dicts["methane"] = sat_ch4_avg
+    output_dicts["time"] = sat_time_str
+    output_dicts["p_sat"] = p_sat_avg
+    output_dicts["dry_air_subcolumns"] = dryair_avg
+    output_dicts["apriori"] = apriori_avg
+    output_dicts["avkern"] = avkern_avg
+    output_dicts["observation_count"] = sum_obs_weights[GC_indices]
+
+    return output_dicts
+
+def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build_jacobian=False):
+    """
+    Generate virtual TROPOMI methane observations from GEOS-Chem.
+
+    Extracts CH4 and pressure from GEOS-Chem, remaps to TROPOMI layers, 
+    and applies averaging kernels. Optionally computes Jacobian using 
+    perturbation runs.
+
+    Parameters
+    ----------
+    date : str
+        Date of interest ("YYYYMMDD_HH").
+    gc_cache : str
+        Path to GEOS-Chem output files.
+    gridcell_dict : dict
+        Gridcell info with obs indices and satellite data.
+    n_elements : int
+        Number of state vector elements.
+    config : dict
+        Inversion configuration options.
+    build_jacobian : bool, optional
+        Whether to compute sensitivities (default False).
+
+    Returns
+    -------
+    If build_jacobian=False:
+        ndarray (N,) of virtual TROPOMI columns.
+    If build_jacobian=True:
+        (perturbation columns, base columns, final columns).
+    """
+
+    UseGCHP = config['UseGCHP']
+    # Assemble file paths to GEOS-Chem output collections for input data
+    file_species = f"GEOSChem.SpeciesConc.{date}00z.nc4"
+    file_pedge = f"GEOSChem.LevelEdgeDiags.{date}00z.nc4"
+
+    # Read lat, lon, CH4 from the SpeciecConc collection
+    filename = f"{gc_cache}/{file_species}"
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        with xr.open_dataset(filename, chunks='auto') as gc_data_all:
+            if UseGCHP:
+                nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
+                Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
+                Xdimi = xr.DataArray(gridcell_dict["Xdimi"], dims="obs")
+    
+                gc_data = gc_data_all.isel(
+                    time=0).squeeze().isel(
+                    nf=nfi,
+                    Ydim=Ydimi,
+                    Xdim=Xdimi,
+                    drop=True
+                )
+            else:
+                jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
+                iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
+                gc_data = gc_data_all.isel(
+                    time=0).squeeze().isel(
+                    lat=jGC,
+                    lon=iGC,
+                    drop=True
+                )
+            CH4_da = gc_data["SpeciesConcVV_CH4"]
+            if CH4_da.dims[1] == "lev":
+                CH4 = CH4_da.values
+            else:
+                CH4 = np.transpose(CH4_da.values, (1, 0))   # (lev, obs) -> (obs, lev)  
+
+    # Read PEDGE from the LevelEdgeDiags collection
+    filename = f"{gc_cache}/{file_pedge}"
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        with xr.open_dataset(filename, chunks='auto') as gc_data_all:
+            if UseGCHP:
+                gc_data = gc_data_all.isel(
+                    time=0).squeeze().isel(
+                    nf=nfi,
+                    Ydim=Ydimi,
+                    Xdim=Xdimi,
+                    drop=True
+                )
+            else:
+                gc_data = gc_data_all.isel(
+                    time=0).squeeze().isel(
+                    lat=jGC,
+                    lon=iGC,
+                    drop=True
+                )
+            PEDGE_da = gc_data["Met_PEDGE"]
+            if PEDGE_da.dims[1] == "lev":
+                PEDGE = PEDGE_da.values
+            else:
+                PEDGE = np.transpose(PEDGE_da.values, (1, 0))   # (lev, obs) -> (obs, lev)
+
+    n_superobs = len(gridcell_dict)
+    virtual_tropomi = np.empty([n_superobs, ], dtype=np.float32)
+    virtual_tropomi.fill(np.nan)
+    
+    p_sat = gridcell_dict["p_sat"]
+    dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # mol m-2
+    apriori = gridcell_dict["apriori"]  # mol m-2
+    avkern = gridcell_dict["avkern"]
+
+    # (N, S, G)  sums to 1 along G, where 
+    # N is the number of super observations
+    # S is the number of TROPOMI pressure edges
+    # G is the number of GEOS-Chem pressure edges
+    vertical_weights = remapping_weights(p_sat, PEDGE)
+    sat_CH4 = np.einsum("nsg,ng->ns", vertical_weights, CH4)         # (N, S)
+    sat_CH4_molm2 = sat_CH4 * dry_air_subcolumns                     # (N, S)
+    virtual_tropomi = (
+        np.sum(apriori + avkern * (sat_CH4_molm2 - apriori), axis=1) / \
+        np.sum(dry_air_subcolumns, axis=1)
+    ).astype(np.float32)                      # (N,), unitless mixing ratio
+    
+    # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
+    if build_jacobian:
+        emis_elements = n_elements
+        if config['OptimizeOH']:
+            emis_elements -= 2 if config['isRegional'] else 1
+        if config['OptimizeBCs']:
+            emis_elements -= 4
+        ntracers = config["NumJacobianTracers"]
+        opt_OH = config["OptimizeOH"]
+        opt_BC = config["OptimizeBCs"]
+        is_Regional = config["isRegional"]
+
+        num_BC = 4
+        if is_Regional:
+            num_OH = 1
+        else:
+            num_OH = 2
+
+        n_base_runs = (
+            n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
+        ) / ntracers
+
+        nruns = (
+            np.ceil(n_base_runs).astype(int)
+            + (int(opt_OH) * num_OH)
+            + (int(opt_BC) * num_BC)
         )
-        gridcell_dict["lon_sat"] = np.average(
-            gridcell_dict["lon_sat"],
-            weights=gridcell_dict["observation_weights"],
+
+        # Dictionary that stores mapping of state vector elements to
+        # perturbation simulation numbers
+        pert_simulations_dict = {}
+        for e in range(n_elements):
+            # State vector elements are numbered 1..nelements
+            sv_elem = e + 1
+
+            is_OH_element = check_is_OH_element(
+                sv_elem, n_elements, opt_OH, is_Regional
+            )
+            is_BC_element = check_is_BC_element(
+                sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
+            )
+            # Determine which run directory to look in
+            if is_OH_element:
+                if is_Regional:
+                    run_number = nruns
+                else:
+                    num_back = n_elements % sv_elem
+                    run_number = nruns - num_back
+            elif is_BC_element:
+                num_back = n_elements % sv_elem
+                run_number = nruns - num_back
+            else:
+                run_number = np.ceil(sv_elem / ntracers).astype(int)
+
+            run_num = str(run_number).zfill(4)
+
+            # add the element to the dictionary for the relevant simulation number
+            if run_num not in pert_simulations_dict:
+                pert_simulations_dict[run_num] = [sv_elem]
+            else:
+                pert_simulations_dict[run_num].append(sv_elem)
+    
+        gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
+        virtual_tropomi_pert = [
+            get_virtual_tropomi_pert(gc_date, k, gridcell_dict, config, v, n_elements, vertical_weights)
+            for k, v in pert_simulations_dict.items()
+        ]
+
+        virtual_tropomi_pert = np.concatenate(virtual_tropomi_pert, axis=1)
+        
+        virtual_tropomi_base = get_virtual_tropomi_pert(
+            gc_date, "0001", gridcell_dict, config, [0], n_elements, vertical_weights, baserun=True
+        ).squeeze() # make it 1D
+    
+    if build_jacobian:
+        return virtual_tropomi_pert, virtual_tropomi_base, virtual_tropomi
+    else:
+        return virtual_tropomi
+
+def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n_elements, vertical_weights, baserun=False):
+    """
+    Compute virtual TROPOMI methane columns from a single GEOS-Chem Jacobian run.
+
+    Extracts CH4 tracer(s) from the specified perturbation (or base) simulation, 
+    remaps them to TROPOMI pressure layers using vertical weights, and applies 
+    averaging kernels to generate virtual TROPOMI observations.
+
+    Parameters
+    ----------
+    gc_date : pd.Datetime
+        Date and time of the simulation output.
+    run_id : str
+        ID of the Jacobian GEOS-Chem run (e.g., "0001").
+    gridcell_dict : dict
+        Gridcell info containing observation indices and TROPOMI data.
+    config : dict
+        Inversion configuration options.
+    sv_elems : list
+        State vector elements included in this simulation.
+    n_elements : int
+        Total number of state vector elements.
+    vertical_weights : np.ndarray
+        Weights to remap GEOS-Chem levels to TROPOMI layers.
+    baserun : bool, optional
+        If True, only process the base CH4 tracer (default False).
+
+    Returns
+    -------
+    virtual_tropomi_all : np.ndarray, shape (N, n_tracers)
+        Virtual TROPOMI columns for all super-observations (N) and 
+        tracer elements in this run, in unitless mixing ratio.
+    """
+    prefix = os.path.expandvars(
+        config["OutputPath"] + "/" + config["RunName"] + "/jacobian_runs"
+    )
+    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
+    file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
+    filepath = os.path.join(j_dir, file_stub)
+    
+    # Construct the list of CH4 vars to request
+    keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
+    if len(keepvars) == 1:
+        is_Regional = config["isRegional"]
+        is_OH_element = check_is_OH_element(
+            sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
         )
-        gridcell_dict["overlap_area"] = np.average(
-            gridcell_dict["overlap_area"],
-            weights=gridcell_dict["observation_weights"],
+        is_BC_element = check_is_BC_element(
+            sv_elems[0],
+            n_elements,
+            config["OptimizeOH"],
+            config["OptimizeBCs"],
+            is_OH_element,
+            is_Regional,
         )
-        gridcell_dict["methane"] = np.average(
-            gridcell_dict["methane"],
-            weights=gridcell_dict["observation_weights"],
-        )
-        # take mean of epoch times and then convert gc filename time string
-        time = pd.to_datetime(
-            datetime.datetime.fromtimestamp(int(np.mean(gridcell_dict["time"])))
-        )
-        gridcell_dict["time"] = get_strdate(time, time_threshold)
-        # for multi-dimensional arrays, we only take the average across the 0 axis
-        gridcell_dict["p_sat"] = np.average(
-            gridcell_dict["p_sat"],
-            axis=0,
-            weights=gridcell_dict["observation_weights"],
-        )
-        gridcell_dict["dry_air_subcolumns"] = np.average(
-            gridcell_dict["dry_air_subcolumns"],
-            axis=0,
-            weights=gridcell_dict["observation_weights"],
-        )
-        gridcell_dict["apriori"] = np.average(
-            gridcell_dict["apriori"],
-            axis=0,
-            weights=gridcell_dict["observation_weights"],
-        )
-        gridcell_dict["avkern"] = np.average(
-            gridcell_dict["avkern"],
-            axis=0,
-            weights=gridcell_dict["observation_weights"],
-        )
-    gc.collect()
-    return gridcell_dicts
+        if is_OH_element or is_BC_element:
+            keepvars = ["SpeciesConcVV_CH4"]
+
+    if baserun:
+        keepvars = ["SpeciesConcVV_CH4"]
+
+    # It would fail if open all variables with chunks with GCHP,
+    # as ncontact is duplicate for GCHP output dimensions
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        with xr.open_dataset(filepath, decode_cf=False) as tmp:
+            other_vars = [v for v in tmp.variables if "SpeciesConcVV_CH4" not in v]
+    
+    # Open only these variables
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+        with xr.open_dataset(
+            filepath,
+            drop_variables=other_vars,
+            chunks="auto"
+        ) as dsmf_all:
+            try:
+                if config['UseGCHP']:
+                    nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
+                    Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
+                    Xdimi = xr.DataArray(gridcell_dict["Xdimi"], dims="obs")
+                    dsmf = dsmf_all.isel(
+                        time=gc_date.hour).squeeze().isel( 
+                        nf=nfi,
+                        Ydim=Ydimi,
+                        Xdim=Xdimi,
+                        drop=True
+                    )
+                else:
+                    jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
+                    iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
+                    dsmf = dsmf_all.isel(
+                        time=gc_date.hour).squeeze().isel( 
+                        lat=jGC,
+                        lon=iGC,
+                        drop=True
+                    )
+            except Exception as e:
+                print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
+                raise
+            
+            # ---- Batch read all CH4 tracers and standardize to (elem, obs, lev)
+            da_list = []
+            for v in keepvars:
+                da = dsmf[v]
+                # Ensure shape is (obs, lev)
+                arr = da.transpose("obs","lev").values
+                da_list.append(arr)
+            CH4_all = np.stack(da_list, axis=0)   # (elem, obs, lev)
+
+            dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # (N, S)
+            apriori = gridcell_dict["apriori"]                        # (N, S)
+            avkern = gridcell_dict["avkern"]                          # (N, S)
+            denom = np.sum(dry_air_subcolumns, axis=1)                # (N,)
+
+            # ---- Remap levels to TROPOMI layers in batch:
+            # vertical_weights: (N, S, G)
+            # CH4_all:          (E, N, G)
+            # -> sat_CH4_all:   (E, N, S)
+            sat_CH4_all = np.einsum("nsg,eng->ens", vertical_weights, CH4_all)
+
+            # Convert to column units and apply AKs, batched over E
+            sat_CH4_molm2_all = sat_CH4_all * dry_air_subcolumns[None, :, :]  # (E, N, S)
+            numer_all = np.sum(apriori[None, :, :] +
+                            avkern[None, :, :] * (sat_CH4_molm2_all - apriori[None, :, :]),
+                            axis=2)  # (E, N)
+            virtual_tropomi_all = (numer_all / denom[None, :]).T.astype(np.float32)  # (N, E)
+
+    return virtual_tropomi_all # unitless mixing ratio

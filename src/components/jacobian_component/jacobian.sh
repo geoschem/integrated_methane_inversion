@@ -205,13 +205,15 @@ create_simulation_dir() {
     # absorption back in below
     sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
         -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
-        -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
 
-    if "$UseGCHP"; then
-        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
+    if [ "$OptimizeSoil" != true ]; then
+        sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
+            HEMCO_Config.rc
+        if "$UseGCHP"; then
+            sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
     fi
-    
+    fi
     # Determine which elements are BC perturbations
     BC_elem=false
     bcThreshold=$nElements
@@ -241,21 +243,21 @@ create_simulation_dir() {
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
-        if "$HourlyCH4"; then
-            if "$UseGCHP"; then
-                sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                    -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
-                    -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' HISTORY.rc
-            else
-                sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                    -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                    -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
-            fi
+        if "$UseGCHP"; then
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
+                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' HISTORY.rc
+        else
+            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
+                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
+                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
         fi
     fi
     # disable Restart for all runs
     if ! "$UseGCHP"; then
-        sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
+        if "$HourlyCH4"; then
+            sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
+        fi
     fi
 
     # for background simulation, disable the emissions
@@ -355,8 +357,10 @@ create_simulation_dir() {
     # and, in the case, of kalman mode the prior is scaled by the nudged scale factors
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]] || [[ $OH_elem = true ]]; then
         # Use MeMo soil absorption for the prior simulation
-        sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
-            -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+        if [ "$OptimizeSoil" != true ]; then
+            sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
+                -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+        fi
 
         # create a break in EMISSIONS logic block for MeMo in background simulation
         if [[ "$x" = "background" ]]; then
@@ -418,6 +422,12 @@ create_simulation_dir() {
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
             done
+            # remove redundant SpeciesConcVV_CH4 when $x > 1
+            if "$UseGCHP"; then
+                if [ $x -gt 1 ]; then
+                    sed -i -e "s|'SpeciesConcVV_CH4    '|#'SpeciesConcVV_CH4    '|g" HISTORY.rc
+                fi
+            fi
         fi
     fi
 
