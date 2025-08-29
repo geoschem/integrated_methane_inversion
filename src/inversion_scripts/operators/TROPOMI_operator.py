@@ -740,22 +740,30 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
         sat_ind        [int]    : index list of Tropomi data that passes filters
 
     Returns
-        output         [dict[]]   : flat list of dictionaries the following fields:
-                                    - lat                 : gridcell latitude
-                                    - lon                 : gridcell longitude
-                                    - iGC                 : longitude index value
-                                    - jGC                 : latitude index value
-                                    - lat_sat             : averaged tropomi latitude
-                                    - lon_sat             : averaged tropomi longitude
-                                    - overlap_area        : averaged overlap area with gridcell
-                                    - p_sat               : averaged pressure for sat
-                                    - dry_air_subcolumns  : averaged
-                                    - apriori             : averaged
-                                    - avkern              : averaged average kernel
-                                    - time                : averaged time
-                                    - methane             : averaged methane
-                                    - observation_count   : number of observations averaged in cell
-                                    - observation_weights : area weights for the observation
+        numpy.ndarray
+            Structured array of grid-cell-averaged values with fields:
+
+            - iGC, jGC : int
+                GEOS-Chem longitude and latitude indices
+            - lat, lon : float
+                Grid cell center coordinates
+            - lat_sat, lon_sat : float
+                Weighted-average satellite footprint center
+            - methane : float
+                Weighted-average methane column
+            - time : str
+                Averaged observation time (string from `get_strdate`)
+            - p_sat : float[n_lev]
+                Weighted-average vertical pressure profile
+            - dry_air_subcolumns : float[n_lev]
+                Weighted-average dry-air subcolumn profile
+            - apriori : float[n_lev]
+                Weighted-average a priori methane profile
+            - avkern : float[n_lev]
+                Weighted-average averaging kernel
+            - observation_count : float
+                Effective number of contributing observations (fractional if
+                split across multiple grid cells)
 
     """
     n_obs = len(sat_ind[0])
@@ -907,24 +915,88 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
             axis=0,
             weights=gridcell_dict["observation_weights"],
         )
-    return gridcell_dicts
+    
+    if not gridcell_dicts:
+        # nothing to return
+        return np.zeros(0, dtype=[
+            ("iGC","i4"), ("jGC","i4"),
+            ("lat_sat","f4"), ("lon_sat","f4"),
+            ("methane","f4"), ("time","U13"),
+            ("p_sat","f4",(0,)),
+            ("dry_air_subcolumns","f4",(0,)),
+            ("apriori","f4",(0,)),
+            ("avkern","f4",(0,)),
+            ("observation_count","f4"),
+            ("lat","f4"), ("lon","f4"),
+        ])
+
+    # infer vertical sizes from the first item
+    n_lev_p       = len(gridcell_dicts[0]["p_sat"])
+    n_lev_dryair  = len(gridcell_dicts[0]["dry_air_subcolumns"])
+    n_lev_apriori = len(gridcell_dicts[0]["apriori"])
+    n_lev_avkern  = len(gridcell_dicts[0]["avkern"])
+
+    dtype_latlon = [
+        ("iGC","i4"), ("jGC","i4"),
+        ("lat_sat","f4"), ("lon_sat","f4"),
+        ("methane","f4"), ("time","U13"),
+        ("p_sat","f4",(n_lev_p,)),
+        ("dry_air_subcolumns","f4",(n_lev_dryair,)),
+        ("apriori","f4",(n_lev_apriori,)),
+        ("avkern","f4",(n_lev_avkern,)),
+        ("observation_count","f4"),
+        ("lat","f4"), ("lon","f4"),
+    ]
+
+    arr = np.zeros(len(gridcell_dicts), dtype=dtype_latlon)
+
+    for idx, cell in enumerate(gridcell_dicts):
+        arr["iGC"][idx]   = cell["iGC"]
+        arr["jGC"][idx]   = cell["jGC"]
+        arr["lat_sat"][idx] = np.float32(cell["lat_sat"])
+        arr["lon_sat"][idx] = np.float32(cell["lon_sat"])
+        arr["methane"][idx] = np.float32(cell["methane"])
+        arr["time"][idx]    = cell["time"]  # already a short string from get_strdate
+        arr["p_sat"][idx]   = np.asarray(cell["p_sat"], dtype=np.float32)
+        arr["dry_air_subcolumns"][idx] = np.asarray(cell["dry_air_subcolumns"], dtype=np.float32)
+        arr["apriori"][idx] = np.asarray(cell["apriori"], dtype=np.float32)
+        arr["avkern"][idx]  = np.asarray(cell["avkern"], dtype=np.float32)
+        arr["observation_count"][idx] = np.float32(cell["observation_count"])
+        # Optional: also store the GC cell center (useful for plotting/debug)
+        arr["lat"][idx] = np.float32(cell["lat"])
+        arr["lon"][idx] = np.float32(cell["lon"])
+
+    return arr
 
 def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build_jacobian=False):
     """
-    Read GEOS-Chem data and save important variables to dictionary.
+    Generate virtual TROPOMI methane observations from GEOS-Chem.
 
-    Arguments
-        date           [str]   : Date of interest, format "YYYYMMDD_HH"
-        gc_cache       [str]   : Path to GEOS-Chem output data
-        gridcell_dict  [dict]  : Dictionary of a specific gridcell with sampled satellite observations
-        build_jacobian [log]   : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
+    Extracts CH4 and pressure from GEOS-Chem, remaps to TROPOMI layers, 
+    and applies averaging kernels. Optionally computes Jacobian using 
+    perturbation runs.
+
+    Parameters
+    ----------
+    date : str
+        Date of interest ("YYYYMMDD_HH").
+    gc_cache : str
+        Path to GEOS-Chem output files.
+    gridcell_dict : dict
+        Gridcell info with obs indices and satellite data.
+    n_elements : int
+        Number of state vector elements.
+    config : dict
+        Inversion configuration options.
+    build_jacobian : bool, optional
+        Whether to compute sensitivities (default False).
 
     Returns
-        dat            [dict]  : Dictionary of important variables from GEOS-Chem:
-                                    - CH4
-                                    - Latitude
-                                    - Longitude
-                                    - PEDGE
+    -------
+    If build_jacobian=False:
+        ndarray (N,) of virtual TROPOMI columns.
+    If build_jacobian=True:
+        (perturbation columns, base columns, final columns).
     """
 
     # Assemble file paths to GEOS-Chem output collections for input data
@@ -1066,29 +1138,36 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
 
 def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n_elements, vertical_weights, baserun=False):
     """
-    Concatenate CH4 tracers from all jacobian GEOS-Chem simulations.
-    Tracers are assigned a new dimension: "element"
+    Compute virtual TROPOMI methane columns from a single GEOS-Chem Jacobian run.
 
-    Arguments
-        gc_date    [pd.Datetime] : date object, specifies Ymd_h
-        run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
-        gridcell_dict  [dict]    : Dictionary of a specific gridcell with sampled satellite observations
-        config     [dict]        : dictionary of IMI config file
-        sv_elems   [list]        : list of state vector element tracers in this simulations
-        n_elements [int]         : number of state vector elements in this inversion
-        vertical_weights [np.array]: vertical weights to remap GC to TROPOMI
-        baserun    [bool]        : If True, only the base variable in the simulation will
-                                 be opened, and the function will just return this one
-                                 variable instead of concatenating all elements. Used to
-                                 get the base for calculating the sensitivities.
+    Extracts CH4 tracer(s) from the specified perturbation (or base) simulation, 
+    remaps them to TROPOMI pressure layers using vertical weights, and applies 
+    averaging kernels to generate virtual TROPOMI observations.
+
+    Parameters
+    ----------
+    gc_date : pd.Datetime
+        Date and time of the simulation output.
+    run_id : str
+        ID of the Jacobian GEOS-Chem run (e.g., "0001").
+    gridcell_dict : dict
+        Gridcell info containing observation indices and TROPOMI data.
+    config : dict
+        Inversion configuration options.
+    sv_elems : list
+        State vector elements included in this simulation.
+    n_elements : int
+        Total number of state vector elements.
+    vertical_weights : np.ndarray
+        Weights to remap GEOS-Chem levels to TROPOMI layers.
+    baserun : bool, optional
+        If True, only process the base CH4 tracer (default False).
 
     Returns
-        virtual_tropomi_all [np.array] : array of all virtual TROPOMI at this timestep for
-                                     all tracer runs. Has dimensions
-                                        - n_superobs
-                                        - element
-
-
+    -------
+    virtual_tropomi_all : np.ndarray, shape (N, n_tracers)
+        Virtual TROPOMI columns for all super-observations (N) and 
+        tracer elements in this run, in unitless mixing ratio.
     """
     prefix = os.path.expandvars(
         config["OutputPath"] + "/" + config["RunName"] + "/jacobian_runs"
