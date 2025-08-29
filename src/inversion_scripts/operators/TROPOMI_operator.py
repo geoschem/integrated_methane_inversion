@@ -1018,7 +1018,6 @@ def average_tropomi_observations(TROPOMI, gc_lat_lon, sat_ind, time_threshold):
         arr["apriori"][idx] = np.asarray(cell["apriori"], dtype=np.float32)
         arr["avkern"][idx]  = np.asarray(cell["avkern"], dtype=np.float32)
         arr["observation_count"][idx] = np.float32(cell["observation_count"])
-        # Optional: also store the GC cell center (useful for plotting/debug)
         arr["lat"][idx] = np.float32(cell["lat"])
         arr["lon"][idx] = np.float32(cell["lon"])
 
@@ -1223,11 +1222,7 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
                     lon=iGC,
                     drop=True
                 )
-            CH4_da = gc_data["SpeciesConcVV_CH4"]
-            if CH4_da.dims[1] == "lev":
-                CH4 = CH4_da.values
-            else:
-                CH4 = np.transpose(CH4_da.values, (1, 0))   # (lev, obs) -> (obs, lev)  
+            CH4 = gc_data["SpeciesConcVV_CH4"].transpose("obs","lev").values
 
     # Read PEDGE from the LevelEdgeDiags collection
     filename = f"{gc_cache}/{file_pedge}"
@@ -1249,11 +1244,7 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
                     lon=iGC,
                     drop=True
                 )
-            PEDGE_da = gc_data["Met_PEDGE"]
-            if PEDGE_da.dims[1] == "lev":
-                PEDGE = PEDGE_da.values
-            else:
-                PEDGE = np.transpose(PEDGE_da.values, (1, 0))   # (lev, obs) -> (obs, lev)
+            PEDGE = gc_data["Met_PEDGE"].transpose("obs","lev").values
 
     n_superobs = len(gridcell_dict)
     virtual_tropomi = np.empty([n_superobs, ], dtype=np.float32)
