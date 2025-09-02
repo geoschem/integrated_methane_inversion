@@ -425,7 +425,8 @@ create_simulation_dir() {
             # remove redundant SpeciesConcVV_CH4 when $x > 1
             if "$UseGCHP"; then
                 if [ $x -gt 1 ]; then
-                    sed -i -e "s|'SpeciesConcVV_CH4    '|#'SpeciesConcVV_CH4    '|g" HISTORY.rc
+                    perl -0777 -pe "s/'SpeciesConcVV_CH4\s*',\s*'GCHPchem',\s*\n\s*('SpeciesConcVV_CH4_\d{4}',\s*'GCHPchem',)/\1/" \
+                    -i HISTORY.rc
                 fi
             fi
         fi
