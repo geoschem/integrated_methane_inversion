@@ -147,7 +147,12 @@ run_spinup() {
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
-
+    
+    if [ -f "Restarts/gcchem_internal_checkpoint" ]; then
+        cd Restarts
+        mv gcchem_internal_checkpoint GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
+        cd ..
+    fi
     printf "\n=== DONE SPINUP SIMULATION ===\n"
     spinup_end=$(date +%s)
 }
