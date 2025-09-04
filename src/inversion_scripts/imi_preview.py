@@ -15,7 +15,6 @@ import matplotlib
 import colorcet as cc
 import cartopy.crs as ccrs
 from scipy.ndimage import binary_dilation
-from gcpy.constants import R_EARTH_km
 import gc
 
 matplotlib.use("Agg")

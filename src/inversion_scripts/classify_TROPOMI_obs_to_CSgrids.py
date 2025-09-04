@@ -7,7 +7,6 @@ Classify observations into a cubed-sphere grid based on geographic location.
 import numpy as np
 import pandas as pd
 import xarray as xr
-from shapely.geometry import Point, Polygon
 from scipy.spatial import cKDTree
 
 

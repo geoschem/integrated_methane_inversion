@@ -1201,6 +1201,8 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
         with xr.open_dataset(filename, chunks='auto') as gc_data_all:
+            if gc_data_all.sizes.get("time", 0) == 0:
+                print(f"ERROR: {filename}: empty time dimension", flush=True)
             if UseGCHP:
                 nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
                 Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
@@ -1244,7 +1246,8 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
                     lon=iGC,
                     drop=True
                 )
-            PEDGE = gc_data["Met_PEDGE"].transpose("obs","lev").values
+            lev_dim = "lev" if "lev" in gc_data.dims else "ilev"
+            PEDGE = gc_data["Met_PEDGE"].transpose("obs", lev_dim).values
 
     n_superobs = len(gridcell_dict)
     virtual_tropomi = np.empty([n_superobs, ], dtype=np.float32)
@@ -1423,6 +1426,8 @@ def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n
             chunks="auto"
         ) as dsmf_all:
             try:
+                if dsmf_all.sizes.get("time", 0) == 0:
+                    print(f"ERROR: {filepath}: empty time dimension", flush=True)
                 if config['UseGCHP']:
                     nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
                     Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
