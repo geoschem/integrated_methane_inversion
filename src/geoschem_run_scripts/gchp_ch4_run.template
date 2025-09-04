@@ -20,6 +20,18 @@ set -e
 # Debug option to print all commands executed in this script
 #set -x
 
+function has_checkpoint() {
+    compgen -G "./Restarts/gcchem_internal_checkpoint*.nc4" > /dev/null
+}
+
+function last_checkpoint() {
+    ls -1 ./Restarts/gcchem_internal_checkpoint*.nc4 | tail -n 1
+}
+
+function last_checkpoint_datetime() {
+    last_checkpoint | sed 's/\.\/Restarts\/gcchem_internal_checkpoint.\([1-9][0-9][0-9][0-9][0-9][0-9][0123][0-9]\)_\([0-9][0-9]00\).*/\1 \200/'
+}
+
 # Define version ID
 id=namename
 
@@ -46,35 +58,28 @@ planeCount=$(( ${coreCount} / ${SLURM_NNODES} ))
 if [[ $(( ${coreCount} % ${SLURM_NNODES} )) > 0 ]]; then
     planeCount=$(( ${planeCount} + 1 ))
 fi
-time srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> ${log}
 
-# Rename mid-run checkpoint files, if any. Discard file if time corresponds
-# to run start time since duplicate with initial restart file.
-chkpnts=$(ls Restarts)
-for chkpnt in ${chkpnts}
-do
-    if [[ "$chkpnt" == *"gcchem_internal_checkpoint."* ]]; then
-       chkpnt_time=${chkpnt:27:13}
-       if [[ "${chkpnt_time}" = "${start_str:0:13}" ]]; then
-          rm ./Restarts/${chkpnt}
-       else
-          new_chkpnt=./Restarts/GEOSChem.Restart.${chkpnt_time}z.c${N}.nc4
-          mv ./Restarts/${chkpnt} ${new_chkpnt}
-       fi
-    fi
-done
-
-# Rename restart file and update restart symlink if new start time ok
-new_start_str=$(sed 's/ /_/g' cap_restart)
-if [[ "${new_start_str}" = "${start_str}" || "${new_start_str}" = "" ]]; then
-   echo "ERROR: GCHP failed to run to completion. Check the log file for more information."
-   rm -f Restarts/gcchem_internal_checkpoint
-   exit 1
-else
-    N=$(grep "CS_RES=" setCommonRunSettings.sh | cut -c 8- | xargs )    
-    mv Restarts/gcchem_internal_checkpoint Restarts/GEOSChem.Restart.${new_start_str:0:13}z.c${N}.nc4
-    source setRestartLink.sh
+START_DATE=$(cat cap_restart)
+if [[ "${START_DATE}" = "" ]]; then
+    echo "ERROR: cap_restart is empty! Write your simulation start date 'YYYYMMDD 000000' to cap_restart." >> $log
 fi
+N=$(grep "CS_RES=" setCommonRunSettings.sh | cut -c 8- | xargs)
+initial_restart=./Restarts/GEOSChem.Restart.${START_DATE:0:8}_0000z.c${N}.nc4
+if [ ! -f $initial_restart ]; then
+    echo "ERROR: inital restart file of ${initial_restart} does not exist! Set a soft link for your initial restart file." >> $log
+fi
+
+if has_checkpoint; then
+    RESTART_FILE=$(last_checkpoint)
+    RESTART_DATE=$(last_checkpoint_datetime)
+    echo "$RESTART_DATE" > cap_restart
+    ln -nsf ${RESTART_FILE} gchp_restart.nc4
+else
+    ./setCommonRunSettings.sh
+    ln -nsf ${initial_restart} gchp_restart.nc4
+fi
+
+time srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> ${log}
 
 retVal=$?
 if [ $retVal -ne 0 ]; then
