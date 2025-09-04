@@ -1246,7 +1246,7 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
                     lon=iGC,
                     drop=True
                 )
-            lev_dim = "lev" if "lev" in gc_data.dims else "ilev"
+            lev_dim = "lev" if "lev" in gc_data["Met_PEDGE"].dims else "ilev"
             PEDGE = gc_data["Met_PEDGE"].transpose("obs", lev_dim).values
 
     n_superobs = len(gridcell_dict)
