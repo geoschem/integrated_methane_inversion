@@ -1231,6 +1231,8 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
         with xr.open_dataset(filename, chunks='auto') as gc_data_all:
+            if gc_data_all.sizes.get("time", 0) == 0:
+                print(f"ERROR: {filename}: empty time dimension", flush=True)
             if UseGCHP:
                 gc_data = gc_data_all.isel(
                     time=0).squeeze().isel(
