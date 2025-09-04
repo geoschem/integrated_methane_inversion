@@ -221,7 +221,7 @@ def apply_average_tropomi_operator(
             # fill array with nans
             base_xch4 = np.full((len(gridcell_dict), n_elements), np.nan, dtype=np.float32)
             # fill emission elements with the base value
-            base_xch4[:,emis_indices] = np.repeat(emis_base_xch4[:, None], 
+            base_xch4[:,emis_indices] = np.repeat(emis_base_xch4, 
                                                   np.asarray(emis_indices).size, axis=1)
 
             # emissions perturbations
@@ -239,7 +239,7 @@ def apply_average_tropomi_operator(
             # BC perturbations
             if config["OptimizeBCs"]:
                 # fill BC elements with the base value, which is same as emis value
-                base_xch4[:,bc_indices] = np.repeat(emis_base_xch4[:,None],
+                base_xch4[:,bc_indices] = np.repeat(emis_base_xch4,
                                                     np.asarray(bc_indices).size, axis=1)
 
                 # compute BC perturbation for jacobian construction
@@ -1344,7 +1344,7 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
         
         virtual_tropomi_base = get_virtual_tropomi_pert(
             gc_date, "0001", gridcell_dict, config, [0], n_elements, vertical_weights, baserun=True
-        ).squeeze() # make it 1D
+        )
     
     if build_jacobian:
         return virtual_tropomi_pert, virtual_tropomi_base, virtual_tropomi
