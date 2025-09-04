@@ -28,6 +28,7 @@ dependencies:
 - xarray=2024.6.0
 - xesmf=0.8.6
 - geoschem-gcpy=1.6.1
+- pypdf<5
 - pip=24.0
 - pip:
   - git+https://github.com/LiamBindle/gridspec.git
