@@ -149,8 +149,9 @@ run_spinup() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 
     if [ -f "Restarts/gcchem_internal_checkpoint" ]; then
+        new_start_str=$(sed 's/ /_/g' cap_restart)
         cd Restarts
-        mv gcchem_internal_checkpoint GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
+        mv gcchem_internal_checkpoint GEOSChem.Restart.${new_start_str:0:13}z.c${CS_RES}.nc4
         cd ..
     fi
     printf "\n=== DONE SPINUP SIMULATION ===\n"
