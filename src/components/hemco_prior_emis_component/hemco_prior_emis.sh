@@ -236,10 +236,6 @@ setup_prior_gchp() {
 
     # Make the directory
     runDir="hemco_prior_emis"
-    if [[ -d ${RunDirs}/${runDir} ]]; then
-        printf "\n${RunDirs}/${runDir} already exists. Skipping creation.\n"
-        return
-    fi
     mkdir -p -v ${runDir}
 
     # Copy run directory files

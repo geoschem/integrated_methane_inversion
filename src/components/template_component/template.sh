@@ -25,8 +25,8 @@ setup_template() {
     fi
 
     if [[ -d ${RunTemplate} ]]; then
-        printf "\n${RunTemplate} already exists. Skipping creation.\n"
-        return
+        printf "\nERROR: ${RunTemplate} already exists. Please remove or set 'SetupTemplateRunDir: false' in config.yml.\n"
+        exit 9999
     fi
 
     # Commands to feed to createRunDir.sh
