@@ -236,10 +236,6 @@ setup_prior_gchp() {
 
     # Make the directory
     runDir="hemco_prior_emis"
-    if [[ -d ${RunDirs}/${runDir} ]]; then
-        printf "\n${RunDirs}/${runDir} already exists. Skipping creation.\n"
-        return
-    fi
     mkdir -p -v ${runDir}
 
     # Copy run directory files
@@ -316,6 +312,7 @@ run_prior_gchp() {
     RunDuration=$(get_run_duration "$StartDate" "$EndDate")
     NextEndDate=$(date -d "$EndDate +1 day" +%Y%m%d)
     NextRunDuration=$(get_run_duration "$StartDate" "$NextEndDate")
+    
     sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
         -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
         -e "s/Do_Advection=.*/Do_Advection=false/" \

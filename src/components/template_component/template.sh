@@ -24,11 +24,6 @@ setup_template() {
         source ${HOME}/.geoschem/config
     fi
 
-    if [[ -d ${RunTemplate} ]]; then
-        printf "\n${RunTemplate} already exists. Skipping creation.\n"
-        return
-    fi
-
     # Commands to feed to createRunDir.sh
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metNum="1"
@@ -82,9 +77,13 @@ setup_template() {
     fi
 
     # Create run directory
-    printf ${cmd} | ./createRunDir.sh >>createRunDir.log 2>&1
-    rm -f createRunDir.log
-    printf "\nCreated ${RunTemplate}\n"
+    if [[ ! -d ${RunTemplate} ]]; then
+        printf ${cmd} | ./createRunDir.sh >>createRunDir.log 2>&1
+        rm -f createRunDir.log
+        printf "\nCreated ${RunTemplate}\n"
+    else
+        printf "\n${RunTemplate} already exists. Skipping creation.\n"
+    fi
 
     cd ${RunTemplate}
 
