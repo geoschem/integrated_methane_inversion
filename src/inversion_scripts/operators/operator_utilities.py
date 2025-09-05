@@ -733,8 +733,12 @@ def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridsp
         os.environ["ESMF_TMP"] = CSgridDir
         os.environ["TMPDIR"] = CSgridDir
         print(f"Running ESMF_RegridWeightGen for {date}...")
+        if "SLURM_JOB_ID" in os.environ:
+            LAUNCHER = "srun"
+        else:
+            LAUNCHER = "mpirun"
         subprocess.run([
-            "mpirun", "-n", "1",
+            LAUNCHER, "-n", "1",
             "ESMF_RegridWeightGen",
             "-s", SCRIP_grid_fpath,
             "-d", gridspec_path,
