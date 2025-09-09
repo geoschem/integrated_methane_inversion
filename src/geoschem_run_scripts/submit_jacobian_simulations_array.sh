@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "running {END} jacobian simulations" >> {InversionPath}/imi_output.log
+echo "running {END} jacobian simulations" >> {InversionPath}/ici_output.log
 
 # remove error status file if present
 rm -f .error_status_file.txt
@@ -9,7 +9,7 @@ if [[ $SchedulerType = "slurm" | $SchedulerType = "tmux" ]]; then
         -c $RequestedCPUs \
         -t $RequestedTime \
         -p $SchedulerPartition \
-        -o imi_output.tmp \
+        -o ici_output.tmp \
         --open-mode=append \
         -W run_jacobian_simulations.sh
 elif [[ $SchedulerType = "PBS" ]]; then
@@ -20,10 +20,10 @@ elif [[ $SchedulerType = "PBS" ]]; then
         -l walltime=$RequestedTime \
         -l site=needed=$SitesNeeded \
         -l model=ivy \
-        -o imi_output.tmp \
+        -o ici_output.tmp \
         -j oe -k oe \  
         -W run_jacobian_simulations.sh
 fi
 
-cat imi_output.tmp >> {InversionPath}/imi_output.log
-rm imi_output.tmp
+cat ici_output.tmp >> {InversionPath}/ici_output.log
+rm ici_output.tmp
