@@ -23,7 +23,7 @@ Enter your IMI version here.
 Describe any modifications to the IMI here.
 
 ### Attach relevant files
-- imi_output.log
+- ici_output.log
 - imi config.yml file
 - any other relevant log files to your issue
 ```

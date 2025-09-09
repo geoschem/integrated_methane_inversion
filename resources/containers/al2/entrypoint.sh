@@ -64,7 +64,7 @@ chmod +x src/utilities/override_config_variables.py
 python src/utilities/override_config_variables.py $config_file $config_file
 
 # sbatch -W --mem 2000 -c 1 run_imi.sh resources/containers/container_config.yml; wait;
-./run_imi.sh $config_file | tee imi_output.log
+./run_imi.sh $config_file | tee ici_output.log
 
 # Fix issue when switching instance types where node claims to be drained
 # scontrol update nodename=$HOSTNAME state=idle

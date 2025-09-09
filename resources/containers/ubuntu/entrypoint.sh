@@ -41,4 +41,4 @@ chmod +x src/utilities/override_config_variables.py
 python src/utilities/override_config_variables.py $config_file $config_file
 
 # runs an imi preview
-./run_imi.sh | tee imi_output.log
+./run_imi.sh | tee ici_output.log
