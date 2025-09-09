@@ -112,7 +112,7 @@ setup_imi() {
             exit 1
         fi
         cd ..
-    fi
+    fi 
 
     # Define path to GEOS-Chem run directory files
     GCClassicPath="${InversionPath}/GCClassic"
@@ -136,12 +136,21 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if [[ $PerturbationType = "eigenvector" ]]; then
+        nElements=$nPerturbations
+    elif [[ $PerturbationType = "grid" ]]; then
+        nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    else
+        printf "\nPerturbationType $PerturbationType is not supported\n"
+        exit 1
+    fi
+
+    #  Add elements if BCs or OH are optimized
     if "$OptimizeBCs"; then
-	nElements=$((nElements+4))
+        nElements=$((nElements+4))
     fi
     if "$OptimizeOH";then
-	nElements=$((nElements+1))
+        nElements=$((nElements+1))
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
 
@@ -158,6 +167,19 @@ setup_imi() {
     RunTemplate="${RunDirs}/${runDir}"
     if "$SetupTemplateRundir"; then
         setup_template
+
+        if [[ $HEMCOPath != "None" ]]; then
+            cp $HEMCOPath $RunTemplate
+        fi
+
+        if [[ $HEMCODiagnPath != "None" ]]; then
+            cp $HEMCODiagnPath $RunTemplate
+        fi
+
+        if [[ $RunTemplatePath != "None" ]]; then
+            cp $RunTemplatePath $RunTemplate
+        fi
+
     fi
 
     ##=======================================================================
