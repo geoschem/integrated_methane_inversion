@@ -78,6 +78,7 @@ config_required = [
     "GOSAT",
     "TCCON",
     "AIRS",
+    "ObsPack",
     "UseBCsForRestart",
     "OutputPath",
     "DataPath",
