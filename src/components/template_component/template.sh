@@ -49,9 +49,9 @@ setup_template() {
 
     # Set resolution
     if [ "$Res" = "4.0x5.0" ]; then
-        cmd="3\n${specNum}\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        cmd="${specNum}\n${specNum}\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "2.0x2.5" ]; then
-        cmd="3\n${specNum}\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+        cmd="${specNum}\n${specNum}\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
     elif [ "$Res" == "0.5x0.625" ]; then
         # Set lat/lon bounds
         if "$isRegional"; then
@@ -90,6 +90,15 @@ setup_template() {
     sed -i -e "s:20190101:${StartDate}:g" \
            -e "s:20190201:${EndDate}:g" geoschem_config.yml
 
+    # If CO2, turn off chemical sources 
+    # TODO HON: For a full carbon simulation, we will need to turn these on
+    if [[ $Species -eq "CO2" ]]; then
+        sed -i -e "s|use_archived_PCO2_from_CO: true|use_archived_PCO2_from_CO: false|g" geoschem_config.yml
+    fi
+
+    # Set obspack files
+    sed -i -e "s|input_file: ./obspack_input_for_testing.20190701.nc|input_file: ${DataPathObsPack}|g" geoschem_config.yml
+
     if "$isRegional"; then
         # Adjust lat/lon bounds because GEOS-Chem defines the domain 
         # based on grid cell edges (not centers) for the lat/lon bounds
@@ -115,8 +124,8 @@ setup_template() {
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
     if "$isRegional"; then
-	sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
-	sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+        sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
+        sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
         sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
     fi
 
@@ -132,11 +141,10 @@ setup_template() {
     sed -i -e "s:\$ROOT/SAMPLE_BCs/v2021-07/CH4:${fullBCpath}:g" HEMCO_Config.rc
 
     # If reading total prior emissions (as in the jacobian and posterior), read a new file each month
-    sed -i -e "s|EmisCH4_Total \$YYYY/\$MM/\$DD/0|EmisCH4_Total 1900-2050/1-12/1/0|g" HEMCO_Config.rc
+    sed -i -e "s|Emis${Species}_Total \$YYYY/\$MM/\$DD/0|Emis${Species}_Total 1900-2050/1-12/1/0|g" HEMCO_Config.rc
 
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
-    sed -i -e "s:'CH4':#'CH4':g" \
-           -e "s:'Metrics:#'Metrics:g" \
+    sed -i -e "s:'Metrics:#'Metrics:g" \
            -e "s:'StateMet:#'StateMet:g" \
            -e "s:'SpeciesConcMND:#'SpeciesConcMND:g" \
            -e "s:'Met_PEDGEDRY:#'Met_PEDGEDRY:g" \
@@ -158,8 +166,19 @@ setup_template() {
     # Copy template run script
     cp ${InversionPath}/src/geoschem_run_scripts/run.template .
 
+    if [[ $SchedulerType != "slurm" ]]; then
+        sed -i -e "s|export OMP_NUM_THREADS|# export OMP_NUM_THREADS|g" run.template
+    fi
+
     # Copy input file for applying emissions perturbations via HEMCO
-    cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
+    if [[ $PerturbationType = "grid" ]]; then
+        cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
+    fi
+
+    if [[ $Species = "CO2" ]]; then
+        sed -i -e "s|CH4_STATE_VECTOR|CO2_STATE_VECTOR|g" HEMCO_Config.rc
+        sed -i -e "s|CH4_STATE_VECTOR|CO2_STATE_VECTOR|g" Perturbations.txt
+    fi
     
     # Compile GEOS-Chem and store executable in GEOSChem_build directory
     printf "\nCompiling GEOS-Chem...\n"
@@ -179,6 +198,23 @@ setup_template() {
     fi
     printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build_info for details\n\n"
     
+    # Create a symbolic link to the satellite operator and copy the config file
+    # into the run directory
+    ln -s ${InversionPath}/src/inversion_scripts/satellite_operator .
+    cp ${InversionPath}/src/inversion_scripts/satellite_operator/config.yaml config_satellite_operator.yaml    
+
+    # Change default settings
+    sed -i -e "s|SAVE_SATELLITE_DATA: 'True'|SAVE_SATELLITE_DATA: 'False'|g" \
+        -e "s|SAVE_INTERPOLATION: 'True'|SAVE_INTERPOLATION: 'False'|g" \
+        -e "s|satellitesatellite|'$SatelliteProduct'|g" \
+        -e "s|obsdirobsdir|'$DataPathObs'|g" \
+        -e "s|filefile|'$DataFormatObs'|g" \
+        -e "s|moddirmoddir|'OutputDir'|g" \
+        -e "s|priordirpriordir|'$RunDirs/jacobian_runs/${RunName}_0000/OutputDir'|g" \
+        -e "s|savedirsavedir|'ProcessedDir'|g" \
+        -e "s|FILE_LENGTH_THRESHOLD: 1.0e+6|FILE_LENGTH_THRESHOLD: 1.0e+5|g" \
+        config_satellite_operator.yaml
+
     # Navigate back to top-level directory
     cd ..
 
