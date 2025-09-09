@@ -13,7 +13,7 @@
 # Description: 
 #   Submit a job with default ICI settings using either SBATCH or PBS
 # Usage:
-#   submit_job $SchedulerType $SaveOutput $JobArguments
+#   submit_job $SchedulerType $SaveOutput $ReqMem $ReqCPUs $ReqTime $JobArguments
 submit_job() {
     if [[ $1 = "slurm" || $1 = "tmux" ]]; then
         submit_slurm_job "${@:2}"
@@ -25,8 +25,8 @@ submit_job() {
 
     # If output was saved, concatenate it to imi_output
     if [[ $2 = "true" ]]; then
-        cat imi_output.tmp >> ${InversionPath}/imi_output.log
-        rm imi_output.tmp
+        cat ici_output.tmp >> ${InversionPath}/ici_output.log
+        rm ici_output.tmp
     fi
 }
 
@@ -37,20 +37,20 @@ submit_job() {
 submit_slurm_job() {
     if [[ $1 = "true" ]]; then
         sbatch -N 1 \
-            --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
+            --mem $2 \
+            -c $3 \
+            -t $4 \
             -p $SchedulerPartition \
-            -o imi_output.tmp \
-            -W ${@:2}; wait;
+            -o ici_output.tmp \
+            -W ${@:5}; wait;
     else
         sbatch -N 1 \
-            --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
+            --mem $2 \
+            -c $3 \
+            -t $4 \
             -p $SchedulerPartition \
-            -o imi_output.tmp \
-            -W ${@:2}; wait;
+            -o ici_output.tmp \
+            -W ${@:5}; wait;
     fi
 }
 
@@ -61,13 +61,13 @@ submit_slurm_job() {
 submit_pbs_job() {
     # If save output
     if [[ $1 = "true" ]]; then
-        qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
-            -l walltime=$RequestedTime -q devel -o imi_output.tmp \
-            -Wblock=true -- ${@:2}; wait;
+        qsub -lselect=1:ncpus=${2}:mem=${3}:model=ivy \
+            -l walltime=${4} -q devel -o ici_output.tmp \
+            -Wblock=true -- ${@:5}; wait;
     else
-        qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
-            -l walltime=$RequestedTime -q devel \
-            -Wblock=true -- ${@:2}; wait;
+        qsub -lselect=1:ncpus=${2}:mem=${3}:model=ivy \
+            -l walltime=${4} -q devel \
+            -Wblock=true -- ${@:5}; wait;
     fi
 }
 
@@ -75,7 +75,7 @@ convert_sbatch_to_pbs() {
     DataPaths=($OutputPath $DataPath $DataPathObs $HOME)
     declare -a SitesNeeded=()
     for DP in ${DataPaths[@]}; do
-        SitesNeeded_DP=$( find $DP/ -type l -exec realpath {} \; | cut -d/ -f2 | sort -u )
+        SitesNeeded_DP=$( find $DP/ -not -path '*/archive*' -type l -exec realpath {} \; | cut -d/ -f2 | sort -u )
         for NS in ${SitesNeeded_DP[*]}; do
             if ! [[ ${SitesNeeded[@]} =~ $NS ]]; then
                 SitesNeeded+=("${NS}+")
@@ -134,7 +134,7 @@ imi_failed() {
     file=`basename "$0"`
     printf "\nFATAL ERROR on line number ${1} of ${file}: IMI exiting."
     if [ -d "${OutputPath}/${RunName}" ]; then
-        cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
+        cp "${InversionPath}/ici_output.log" "${OutputPath}/${RunName}/ici_output.log"
     fi
     exit 1
 }
