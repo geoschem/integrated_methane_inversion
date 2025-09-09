@@ -15,3 +15,4 @@ slurm-*.out
 config.yml
 config.aws.yml
 src/utilities/download_files.py
+src/inversion_scripts/satellite_operator
