@@ -9,7 +9,7 @@ RUNDIR=$(pwd -P)
 ### Get current task ID
 xstr="background"
 
-output_log_file={InversionPath}/imi_output.log
+output_log_file={InversionPath}/ici_output.log
 
 # This checks for the presence of the error status file. If present, this indicates 
 # a previous prior sim exited with an error, so this prior will not run
