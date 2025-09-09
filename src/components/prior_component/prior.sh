@@ -137,11 +137,7 @@ run_hemco_sa() {
         -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 00:00:00|g" HEMCO_sa_Time.rc
 
     # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Prior.run
+    submit_job $SchedulerType ${RunName}_Prior.run
     wait
 
     # check if exited with non-zero exit code
