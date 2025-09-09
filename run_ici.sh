@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#PBS -l nodes=1,ncpus=1
-#PBS -o "imi_output.log"
+# PBS -l nodes=1,ncpus=1
+# PBS -o "ici_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -128,7 +128,7 @@ mkdir -p -v ${RunDirs}
 
 # Set/Collect information about the GEOS-Chem version, IMI version,
 # and TROPOMI processor version
-GEOSCHEM_VERSION=14.4.1
+GEOSCHEM_VERSION=dev/no-diff-to-benchmark
 IMI_VERSION=$(git describe --tags)
 TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
     sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |
@@ -168,7 +168,9 @@ else
 fi
 
 # Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
-python src/utilities/test_TROPOMI_dir.py $satelliteCache
+if [[ $SatelliteProduct = "TROPOMI" ]] || [[ $SatelliteProduct = "BlendedTROPOMI" ]]; then
+    python src/utilities/test_TROPOMI_dir.py $satelliteCache
+fi
 
 ##=======================================================================
 ##  Run the setup script
@@ -227,8 +229,8 @@ if ! "$KalmanMode"; then
 fi
 
 # Copy output log to run directory for storage
-if [[ -f ${InversionPath}/imi_output.log ]]; then
-    cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
+if [[ -f ${InversionPath}/ici_output.log ]]; then
+    cp "${InversionPath}/ici_output.log" "${RunDirs}/ici_output.log"
 fi
 
 # copy config file to run directory
