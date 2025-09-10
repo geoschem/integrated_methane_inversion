@@ -46,7 +46,7 @@ setup_jacobian() {
     fi
 
     # Create directory that will contain all Jacobian run directories
-    mkdir -p -v jacobian_runs
+    mkdir -p -v jacobian_runs_${PerturbationType}
 
     if [ $NumJacobianTracers -gt 1 ]; then
         nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH)
@@ -58,10 +58,10 @@ setup_jacobian() {
     fi
 
     # Copy run scripts
-    cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
+    cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs_${PerturbationType}/
     sed -i -e "s:{START}:0:g" \
         -e "s:{END}:${nRuns}:g" \
-        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs_${PerturbationType}/submit_jacobian_simulations_array.sh
 
 
     if [ $MaxSimultaneousRuns -gt 0 ]; then
@@ -70,18 +70,18 @@ setup_jacobian() {
             printf "\MaxSimultaneousRuns=${MaxSimultaneousRuns} is greater than the total runs=${nRuns}. Please modify MaxSimultenaousRuns in config.yml"
             exit 9999
         fi
-        sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+        sed -i -e "s:{JOBS}:%${MaxSimultaneousRuns}:g" jacobian_runs_${PerturbationType}/submit_jacobian_simulations_array.sh
     else
-        sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
+        sed -i -e "s:{JOBS}::g" jacobian_runs_${PerturbationType}/submit_jacobian_simulations_array.sh
     fi
 
 
-    cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
+    cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs_${PerturbationType}/
     sed -i -e "s:{RunName}:${RunName}:g" \
-        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
-    cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh jacobian_runs/
+        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs_${PerturbationType}/run_prior_simulation.sh
+    cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh jacobian_runs_${PerturbationType}/
     sed -i -e "s:{RunName}:${RunName}:g" \
-        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_bkgd_simulation.sh
+        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs_${PerturbationType}/run_bkgd_simulation.sh
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
@@ -133,7 +133,7 @@ create_simulation_dir() {
     name="${RunName}_${xstr}"
 
     # Make the directory
-    runDir="./jacobian_runs/${name}"
+    runDir="./jacobian_runs_${PerturbationType}/${name}"
     mkdir -p -v ${runDir}
 
     # Copy run directory files
@@ -449,12 +449,12 @@ run_jacobian() {
     # Copy run scripts
     # need to re-copy since config vars are
     # hardcoded and redojacobian might have changed
-    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
+    cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs_${Perturbation_Type}/
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" \
         -e "s:{KalmanMode}:${KalmanMode}:g" \
         -e "s:{EndDate}:${EndDate}:g" \
-        -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+        -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs_${Perturbation_Type}/run_jacobian_simulations.sh
 
     popd
 
@@ -471,7 +471,7 @@ run_jacobian() {
         printf "\n=== UPDATING PERTURBATION SFs ===\n"
         python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
 
-        cd ${RunDirs}/jacobian_runs
+        cd ${RunDirs}/jacobian_runs_${Perturbation_Type}
 
         # # create lowbg restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
@@ -480,7 +480,7 @@ run_jacobian() {
         if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
             mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
         fi
-        cd ${RunDirs}/jacobian_runs
+        cd ${RunDirs}/jacobian_runs_${Perturbation_Type}
         set +e
 
         printf "\n=== SUBMITTING JACOBIAN SIMULATIONS ===\n"
