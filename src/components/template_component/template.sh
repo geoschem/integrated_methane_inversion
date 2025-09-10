@@ -111,10 +111,10 @@ setup_template() {
     # Update time cycling flags to use most recent year
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
     
-    # Modify path to state vector file in HEMCO_Config.rc
-    OLD=" StateVector.nc"
-    NEW=" ${RunDirs}/StateVector.nc"
-    sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
+    # # Modify path to state vector file in HEMCO_Config.rc
+    # OLD=" StateVector.nc"
+    # NEW=" ${RunDirs}/StateVector.nc"
+    # sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
     
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
@@ -210,7 +210,7 @@ setup_template() {
         -e "s|obsdirobsdir|'$DataPathObs'|g" \
         -e "s|filefile|'$DataFormatObs'|g" \
         -e "s|moddirmoddir|'OutputDir'|g" \
-        -e "s|priordirpriordir|'$RunDirs/jacobian_runs/${RunName}_0000/OutputDir'|g" \
+        -e "s|priordirpriordir|'$RunDirs'/jacobian_runs_'$PerturbationType'/'$RunName'_0000/OutputDir'|g" \
         -e "s|savedirsavedir|'ProcessedDir'|g" \
         -e "s|FILE_LENGTH_THRESHOLD: 1.0e+6|FILE_LENGTH_THRESHOLD: 1.0e+5|g" \
         config_satellite_operator.yaml
