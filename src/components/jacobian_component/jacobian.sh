@@ -27,6 +27,24 @@ setup_jacobian() {
         python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_lowbg_ics_bcs/BCs $StartDate $Species
     fi
 
+    if [[ $PerturbationType = "eigenvector" ]]; then
+        # create lowbg restart file (normally this is done when running the
+        # Jacobian for Kalman filter reasons, but when using eigenvectors,
+        # the prior run is run first before the Jacobian directories.)
+        OrigRestartFile=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+        if test -f "$OrigRestartFile" || "$DoSpinup"; then
+            OrigRestartFile=$OrigRestartFile
+        else
+            OrigRestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+        fi
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate $Species
+        cd jacobian_lowbg_ics_bcs/Restarts/
+        if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
+            mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
+        fi
+        cd ../..
+    fi
+
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
@@ -44,6 +62,8 @@ setup_jacobian() {
     sed -i -e "s:{START}:0:g" \
         -e "s:{END}:${nRuns}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+
+
     if [ $MaxSimultaneousRuns -gt 0 ]; then
         # Error check
         if [ $MaxSimultaneousRuns -gt $nRuns ]; then
@@ -54,6 +74,8 @@ setup_jacobian() {
     else
         sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
     fi
+
+
     cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh jacobian_runs/
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/run_prior_simulation.sh
@@ -92,6 +114,14 @@ setup_jacobian() {
         create_simulation_dir
     fi
 
+    # HN: We don't do this because I don't use multiplicative scale factors
+    # if [[ $Species = "CO2" ]]; then
+    #     set -e
+    #     # update perturbation values before running jacobian simulations
+    #     printf "\n=== UPDATING PERTURBATION SFs ===\n"
+    #     python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath 1 $PerturbValue
+    # fi
+
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
 }
 
@@ -113,6 +143,13 @@ create_simulation_dir() {
     # Link to GEOS-Chem executable instead of having a copy in each rundir
     ln -s ../../GEOSChem_build/gcclassic .
 
+    # If it's the prior run, save out the satellite data 
+    if [[ $x -eq 0 ]]; then
+        sed -i -e "s|SAVE_SATELLITE_DATA: 'False'|SAVE_SATELLITE_DATA: 'True'|g" \
+            -e "s|SAVE_INTERPOLATION: 'False'|SAVE_INTERPOLATION: 'True'|g" \
+        config_satellite_operator.yaml
+    fi
+
     # link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
@@ -129,11 +166,36 @@ create_simulation_dir() {
     # and use total emissions (without soil absorption) saved out from prior
     # emissions simulation instead. For the prior and OH sims we add soil
     # absorption back in below
-    printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
-    sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
-        -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
+    # If CO2, don't use total prior emissions because of a HEMCO bug. Also,
+    # we turn off the AnalyticalInversion even though really this should be 
+    # a flag that depends on whether eigenvectors are being used.
+    if [[ $Species = "CO2" ]]; then
+        BoolFlag='false'
+    else
+        printf "\nTurning on use of total prior emissions in HEMCO_Config.rc.\n"
+        BoolFlag='true'
+    fi
+    sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       ${BoolFlag}|g" \
         -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
+    # HN: Removing this because we removed state vector specification in 
+    # HEMCO_Config one way or another, and otherwise the AnalyticalInversion
+    # flag isn't a problem
+    # if $PerturbEigenvectors; then
+    #     sed -i -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       ${BoolFlag}|g" HEMCO_Config.rc
+    # fi
+
+    # We no longer need this, either
+    # if [[ $x -gt 0 ]]; then
+    #     sed -i -e "s|UseEigenvectors        :       false|UseEigenvectors        :       ${PerturbEigenvectors}|g" \
+    #     HEMCO_Config.rc
+    # fi
+
+    # Add in Obspack
+    if $ObsPack; then
+        sed -i -e "s|\./obspack_co2_1_OCO2MIP_2018-11-28\.YYYYMMDD\.nc|$DataPathObsPack|g" geoschem_config.yml
+        sed -i '/obspack:/!b;n;s/activate: false/activate: true/' geoschem_config.yml
+    fi
 
     # Determine which elements are BC perturbations
     BC_elem=false
@@ -179,6 +241,11 @@ create_simulation_dir() {
 
     # Create run script from template
     sed -e "s:namename:${name}:g" run.template >${name}.run
+    if [[ $x -eq 0 ]]; then
+        sed -i -e "s|cleanup=true|cleanup=false|g" \
+            -e "s|##|#|g" ${name}.run
+        sed -i "/grid_perturbation_outputs/d" ${name}.run
+    fi
     rm -f run.template
     chmod 755 ${name}.run
 
@@ -253,30 +320,44 @@ create_simulation_dir() {
         # Note that we use the timecycle flag C to avoid having to make additional files
         RestartFile=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
         BCFilelowbg=${RunDirs}/jacobian_lowbg_ics_bcs/BCs/GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4
-        BCSettingslowbg="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
-        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFilelowbg} ${BCSettingslowbg}|g" HEMCO_Config.rc
+        BCSettingslowbg="SpeciesBC_${Species}  1980-2024/1-12/1-31/* C xyz 1 ${Species} - 1 1"
+        sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_${Species} ${BCFilelowbg} ${BCSettingslowbg}|g" HEMCO_Config.rc
         # create symlink to lowbg restart file
         ln -sf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
-        # Also, set emissions to zero for default CH4 tracer by applying new ZERO scale factor
-        sed -i -e "/1 NEGATIVE       -1.0 - - - xy 1 1/a 5 ZERO            0.0 - - - xy 1 1" \
-            -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
+        # Also, set emissions to zero for default tracer by applying new ZERO scale factor
+        sed -i -e "/1 NEGATIVE -1.0 - - - xy 1 1/a 5 ZERO 0.0 - - - xy 1 1" \
+            -e "s|CH4 - 1 500|CH4 5 1 500|g" \
+            -e "s|CO2 - \([1-3]\) 500|CO2 5 \1 500|g" HEMCO_Config.rc 
+        # HON this works for totalprioremis and for HEMCO defined emissions
     fi
 
-    # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
+    # Modify restart and BC entries in HEMCO_Config.rc to look for CH4/CO2 only
     # instead of all advected species
-    sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
-    sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
+    sed -i -e "s/SPC_/SPC_${Species}/g" -e "s/?ALL?/${Species}/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 ${Species}/g" HEMCO_Config.rc
+    sed -i -e "s/BC_ /BC_${Species} /g" -e "s/?ADV?/${Species}/g" -e "s/EFY xyz 1 \*/EFY xyz 1 ${Species}/g" HEMCO_Config.rc
+    
+    # # Modify statevector to look for Species
+    # sed -i -e "s|CH4_STATE_VECTOR|${Species}_STATE_VECTOR|g" \
+    #     -e "s|StateVector.nc|../../StateVector.nc|g" HEMCO_Config.rc
 
     # Initialize previous lines to search
-    GcPrevLine='- CH4'
-    HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
-    HcoPrevLine2='CH4 5 1 500'
+    GcPrevLine='- '${Species}
+    HcoPrevLine1='EFYO xyz 1 '${Species}' - 1 '
+    # if ! $PerturbEigenvectors; then
+    if [[ $PerturbationType = "grid" ]]; then
+        HcoPrevLine2='0 FOSSIL '
+    elif [[ $PerturbationType = "eigenvector" ]]; then
+        HcoPrevLine2='${Species} 5 1 500'
+    else
+        printf "PerturbationType $PerturbationType not supported"
+        exit 1
+    fi
     HcoPrevLine3='Perturbations.txt - - - xy count 1'
-    HcoPrevLine4='\* BC_CH4'
+    HcoPrevLine4='\* BC_'${Species}
     PertPrevLine='DEFAULT    0     0.0'
 
     # Loop over state vector element numbers for this run and add each element
-    # as a CH4 tracer in the configuraton files
+    # as a $Species tracer in the configuraton files
     if is_number "$x"; then
         if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
             for i in $(seq $start_element $end_element); do
@@ -284,6 +365,15 @@ create_simulation_dir() {
             done
         fi
     fi
+
+    # HON 9/9/25: This is no longer necessary because we both background files 
+    # are 0 emissions
+    # Add in the background tracer to the first file
+    # If the species is CO2, we don't use total prior emis. Otherwise, we do.
+#     PostLine='--- '${Species}':'
+#     NewLine='\
+# 0 '${Species}'_Emis_Prior '${EigenvectorPath}'0/eigenvector_0000.nc evec 1990-2025/1-12/1/0 C xy kg/m2/s '${Species}' - 1 500'
+#     sed -i "/$PrevLine/a $NewLine" HEMCO_Config.rc
 
     # Navigate back to top-level directory
     cd ../..
@@ -302,62 +392,68 @@ add_new_tracer() {
         istr="${i}"
     fi
 
-    # by default remove all emissions except for in the prior simulation
-    # and the OH perturbation simulation
-    if [ $x -gt 0 ]; then
-        sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
-    fi
+    # # by default remove all emissions except for in the prior simulation
+    # # and the OH perturbation simulation
+    # if [ $x -gt 0 ] && [ $PerturbEigenvectors == "false" ]; then
+    #     sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
+    # fi
 
     # Start HEMCO scale factor ID at 2000 to avoid conflicts with
     # preexisting scale factors/masks
-    SFnum=$((2000 + i))
+    # if ! ${PerturbEigenvectors}; then
+    if [[ $PerturbationType = "grid" ]]; then
+        SFnum=$((2000 + i))
+    else
+        SFnum='-'
+    fi
 
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
     GcNewLine='\
-      - ${Species}_'$istr
+      - '${Species}'_'$istr
     sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
-    GcPrevLine='- ${Species}_'$istr
+    GcPrevLine='- '${Species}'_'$istr
 
     # Add lines to species_database.yml
-    SpcNextLine='CHBr3:'
+    if [ ${Species} = "CH4" ]; then
+        SpcNextLine='CHBr3:'
+    elif [ ${Species} = "CO2" ]; then
+        SpcNextLine='CO_PROP'
+    else
+        printf "${Species} is not supported."
+    fi
+
     if [[ $Species = "CH4" ]]; then
         bg_vv="1.8e-6"
         fullname="Methane"
     elif [[ $Species = "CO2" ]]; then
-        bg_vv="4.0e-6"
+        bg_vv="3.55e-4"
         fullname="Carbon dioxide"
     fi
-    SpcNewLines='${Species}_'$istr':\n  << : *${Species}properties\n  Background_VV: ${bg_vv}\n  FullName: ${fullname}'
+    SpcNewLines=${Species}'_'$istr':\n  << : *'${Species}'properties\n  Background_VV: '${bg_vv}'\n  FullName: '${fullname}''
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
-    # Add lines to HEMCO_Config.yml
     HcoNewLine1='\
-* SPC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
+* SPC_'${Species}'_'$istr' - - - - - - '${Species}'_'$istr' - 1 1'
     sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_${Species}_'$istr
+    HcoPrevLine1='SPC_'${Species}'_'$istr
 
+    # Add perturbation lines to HEMCO_Config.yml
+    if [[ $PerturbationType = "grid" ]]; then
+        pert_str='perturbations'
+    elif [[ $PerturbationType = "eigenvector" ]]; then
+        pert_str='eigenvectors0'
+    fi
     HcoNewLine2='\
-0 ${Species}_Emis_Prior_'$istr' - - - - - - ${Species}_'$istr' '$SFnum' 1 500'
+0 '${Species}'_Emis_Prior_'$istr' '${pert_str}'/perturbation_'$istr'.nc pert 1990-2025/1-12/1/0 C xy kg/m2/s '${Species}'_'$istr' - 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
-    HcoPrevLine2='${Species}_'$istr' '$SFnum' 1 500'
+    HcoPrevLine2=${Species}'_'$istr' - 1 500'
 
-    HcoNewLine3='\
-'$SFnum' SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
-    sed -i "/$HcoPrevLine3/a $HcoNewLine3" HEMCO_Config.rc
-    HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
-
-    HcoNewLine4='\
-* BC_${Species}_'$istr' - - - - - - ${Species}_'$istr' - 1 1'
-    sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-    HcoPrevLine4='BC_${Species}_'$istr
-
-    # Add new Perturbations.txt and update for non prior runs
-    cp Perturbations.txt Perturbations_${istr}.txt
-    if [ $x -gt 0 ]; then
-        PertNewLine='\
-ELEM_'$istr'  '$i'     '0.0''
-        sed -i "/$PertPrevLine/a $PertNewLine" Perturbations_${istr}.txt
+    if $isRegional; then
+        HcoNewLine4='\
+    * BC_'${Species}'_'$istr' - - - - - - '${Species}'_'$istr' - 1 1'
+        sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
+        HcoPrevLine4='BC_'${Species}'_'$istr
     fi
 
 }
@@ -396,9 +492,9 @@ run_jacobian() {
 
         cd ${RunDirs}/jacobian_runs
 
-        # create lowbg restart file
+        # # create lowbg restart file
         OrigRestartFile=$(readlink ${RunName}_0000/Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4)
-        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate $Species
         cd ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/
         if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
             mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
@@ -527,3 +623,20 @@ is_number() {
     local s="$1"
     [[ $s =~ ^[0-9]+$ ]]
 }
+
+
+# get_month_of_state_vector_index() {
+#     python -c "
+# import xarray as xr 
+# import sys
+
+# state_vector_file = sys.argv[1]
+# index = int(sys.argv[2])
+
+# state_vector = xr.open_dataarray(state_vector_file)
+# time = state_vector.where(state_vector == index, drop=True)['time']
+# year = f'{time.dt.year.values[0]:d}'
+# month = f'{time.dt.month.values[0]:02d}'
+# print(f'{year}/{month}')
+# " $1 $2
+# }
