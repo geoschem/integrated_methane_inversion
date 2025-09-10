@@ -336,10 +336,6 @@ create_simulation_dir() {
     sed -i -e "s/SPC_/SPC_${Species}/g" -e "s/?ALL?/${Species}/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 ${Species}/g" HEMCO_Config.rc
     sed -i -e "s/BC_ /BC_${Species} /g" -e "s/?ADV?/${Species}/g" -e "s/EFY xyz 1 \*/EFY xyz 1 ${Species}/g" HEMCO_Config.rc
     
-    # # Modify statevector to look for Species
-    # sed -i -e "s|CH4_STATE_VECTOR|${Species}_STATE_VECTOR|g" \
-    #     -e "s|StateVector.nc|../../StateVector.nc|g" HEMCO_Config.rc
-
     # Initialize previous lines to search
     GcPrevLine='- '${Species}
     HcoPrevLine1='EFYO xyz 1 '${Species}' - 1 '
@@ -366,15 +362,6 @@ create_simulation_dir() {
         fi
     fi
 
-    # HON 9/9/25: This is no longer necessary because we both background files 
-    # are 0 emissions
-    # Add in the background tracer to the first file
-    # If the species is CO2, we don't use total prior emis. Otherwise, we do.
-#     PostLine='--- '${Species}':'
-#     NewLine='\
-# 0 '${Species}'_Emis_Prior '${EigenvectorPath}'0/eigenvector_0000.nc evec 1990-2025/1-12/1/0 C xy kg/m2/s '${Species}' - 1 500'
-#     sed -i "/$PrevLine/a $NewLine" HEMCO_Config.rc
-
     # Navigate back to top-level directory
     cd ../..
 }
@@ -391,12 +378,6 @@ add_new_tracer() {
     else
         istr="${i}"
     fi
-
-    # # by default remove all emissions except for in the prior simulation
-    # # and the OH perturbation simulation
-    # if [ $x -gt 0 ] && [ $PerturbEigenvectors == "false" ]; then
-    #     sed -i -e "s/DEFAULT    0     1.0/$PertPrevLine/g" Perturbations.txt
-    # fi
 
     # Start HEMCO scale factor ID at 2000 to avoid conflicts with
     # preexisting scale factors/masks
@@ -623,20 +604,3 @@ is_number() {
     local s="$1"
     [[ $s =~ ^[0-9]+$ ]]
 }
-
-
-# get_month_of_state_vector_index() {
-#     python -c "
-# import xarray as xr 
-# import sys
-
-# state_vector_file = sys.argv[1]
-# index = int(sys.argv[2])
-
-# state_vector = xr.open_dataarray(state_vector_file)
-# time = state_vector.where(state_vector == index, drop=True)['time']
-# year = f'{time.dt.year.values[0]:d}'
-# month = f'{time.dt.month.values[0]:02d}'
-# print(f'{year}/{month}')
-# " $1 $2
-# }
