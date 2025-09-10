@@ -161,11 +161,10 @@ PerturbValue: 1.0
 PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
 
-## Use eigenvector perturbations instead of grid cell perturbations in the 
-## GEOSChem run
-PerturbEigenvectors: false
-EigenvectorPath: '/nobackupnfs1/hnesser/CO2_inversion/eigenvectors'
-nEigenvectors: 5000
+## Specify whether the perturbations are elements of the grid ("grid") or 
+## eigenvectors of the averaging kernel ("eigenvectors")
+PerturbationType: 'eigenvector'
+nPerturbations: 5000 # Could be replaced by NumberOfElements?
 
 ## Save out hourly diagnostics from GEOS-Chem?
 ## For use in satellite operators via post-processing -- required for TROPOMI
