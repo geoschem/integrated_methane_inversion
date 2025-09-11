@@ -612,6 +612,9 @@ def spherical_excess_area(ll, ul, ur, lr, radius=6371000.):
     return area
 
 def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
+    FILLF = np.float64(-9999.0)
+    FILLI = np.int32(-9999)
+
     grid_rank = 1
     grid_corners = 4
     grid_center_lat = TROPOMI["latitude"]
@@ -620,7 +623,6 @@ def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
     grid_corner_lat = TROPOMI["latitude_bounds"]
     
     grid_imask = np.zeros_like(grid_center_lat, dtype=int)
-    
     grid_imask[sat_ind] = 1
 
     grid_size = len(grid_center_lat.flatten())
@@ -629,8 +631,8 @@ def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
     # calculate grid_area
     ll = np.stack([grid_corner_lat[...,0], grid_corner_lon[...,0]], axis=-1)
     lr = np.stack([grid_corner_lat[...,1], grid_corner_lon[...,1]], axis=-1)
-    ul = np.stack([grid_corner_lat[...,2], grid_corner_lon[...,2]], axis=-1)
-    ur = np.stack([grid_corner_lat[...,3], grid_corner_lon[...,3]], axis=-1)
+    ur = np.stack([grid_corner_lat[...,2], grid_corner_lon[...,2]], axis=-1)
+    ul = np.stack([grid_corner_lat[...,3], grid_corner_lon[...,3]], axis=-1)
     grid_area = spherical_excess_area(ll, ul, ur, lr)
     grid_area = grid_area.flatten()
 
@@ -655,54 +657,58 @@ def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
     # Set grid_imask=0 for all invalid cells
     grid_imask[invalid_cells] = 0
     
+    grid_area[~np.isfinite(grid_area)] = 0.0
+    grid_area[invalid_cells] = 0.0
+
+    # Replace NaNs in corner arrays with FillValue (don’t leave NaNs)
+    grid_corner_lat = np.where(np.isfinite(grid_corner_lat), grid_corner_lat, FILLF)
+    grid_corner_lon = np.where(np.isfinite(grid_corner_lon), grid_corner_lon, FILLF)
     # make dataset
     SCRIP_ds = xr.Dataset(
-        data_vars={
-            "grid_dims": xr.DataArray(
-                [grid_size], dims=("grid_rank",)
+        data_vars=dict(
+            grid_dims=xr.DataArray(
+                np.asarray([grid_size], dtype=np.int32),
+                dims=("grid_rank",),
+                attrs={"long_name": "grid dimensions"}
             ),
-            "grid_center_lat": xr.DataArray(
-                grid_center_lat, dims=("grid_size",),
+            grid_center_lat=xr.DataArray(
+                grid_center_lat.astype(np.float64), dims=("grid_size",),
                 attrs={"units": "degrees"}
             ),
-            "grid_center_lon": xr.DataArray(
-                grid_center_lon, dims=("grid_size",),
+            grid_center_lon=xr.DataArray(
+                grid_center_lon.astype(np.float64), dims=("grid_size",),
                 attrs={"units": "degrees"}
             ),
-            "grid_corner_lat": xr.DataArray(
-                grid_corner_lat, dims=("grid_size", "grid_corners"),
-                attrs={"units": "degrees", "_FillValue": -9999.}
+            grid_corner_lat=xr.DataArray(
+                grid_corner_lat.astype(np.float64), dims=("grid_size", "grid_corners"),
+                attrs={"units": "degrees", "_FillValue": float(FILLF)}
             ),
-            "grid_corner_lon": xr.DataArray(
-                grid_corner_lon, dims=("grid_size", "grid_corners"),
-                attrs={"units": "degrees", "_FillValue": -9999.}
+            grid_corner_lon=xr.DataArray(
+                grid_corner_lon.astype(np.float64), dims=("grid_size", "grid_corners"),
+                attrs={"units": "degrees", "_FillValue": float(FILLF)}
             ),
-            "grid_imask": xr.DataArray(
-                grid_imask, dims=("grid_size",),
-                attrs={"_FillValue": -9999}
+            grid_imask=xr.DataArray(
+                grid_imask.astype(np.int32), dims=("grid_size",),
+                attrs={"_FillValue": int(FILLI)}
             ),
-            "grid_area": xr.DataArray(
-                grid_area, dims=("grid_size",),
+            grid_area=xr.DataArray(
+                grid_area.astype(np.float64), dims=("grid_size",),
                 attrs={"units": "m^2", "long_name": "grid box area"}
             ),
+        ),
+        attrs={
+            "title": "Unstructured SCRIP grid from TROPOMI footprints",
+            "conventions": "SCRIP",
+            "history": "created by create_SCRIP_grid()",
         },
-        coords={
-            "grid_size": np.arange(grid_size),
-            "grid_corners": np.arange(grid_corners),
-            "grid_rank": np.arange(grid_rank),
-        }
     )
-    
-    if save_pth is not None:
-        print("Saving file {}".format(save_pth))
-        SCRIP_ds.to_netcdf(
-            save_pth,
-            encoding={
-                v: {"zlib": True, "complevel": 1} for v in SCRIP_ds.data_vars
-            },
-        )
 
-def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridspec_path):
+    if save_pth is not None:
+        print(f"Saving file {save_pth}")
+        enc = {v: {"zlib": True, "complevel": 1} for v in SCRIP_ds.data_vars}
+        SCRIP_ds.to_netcdf(save_pth, encoding=enc)
+
+def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridspec_path, debug=False):
     """Generate the regridding weights from TROPOMI grids to GCHP grids
 
     Args:
@@ -732,13 +738,19 @@ def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridsp
             os.remove(tmp_esmf)
         os.environ["ESMF_TMP"] = CSgridDir
         os.environ["TMPDIR"] = CSgridDir
+        if debug:
+            os.environ["ESMF_LOGFILE"] = "stdout"
+            os.environ["ESMF_LOGLEVEL"] = "DEBUG"
+            os.environ["ESMF_LOGKIND"]  = "MULTI"
+            os.environ["ESMF_RUNTIME_PROFILE"] = "ON"
+        ncores = int(os.environ.get("SLURM_NTASKS", "1"))
         print(f"Running ESMF_RegridWeightGen for {date}...")
         if "SLURM_JOB_ID" in os.environ:
             LAUNCHER = "srun"
         else:
             LAUNCHER = "mpirun"
         subprocess.run([
-            LAUNCHER, "-n", "1",
+            LAUNCHER, "-n", str(ncores),
             "ESMF_RegridWeightGen",
             "-s", SCRIP_grid_fpath,
             "-d", gridspec_path,
