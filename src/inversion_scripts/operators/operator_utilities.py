@@ -612,7 +612,7 @@ def spherical_excess_area(ll, ul, ur, lr, radius=6371000.):
     return area
 
 def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
-    FILLF = np.float64(-9999.0)
+    FILLF = np.float32(-9999.0)
     FILLI = np.int32(-9999)
 
     grid_rank = 1
@@ -672,19 +672,19 @@ def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
                 attrs={"long_name": "grid dimensions"}
             ),
             grid_center_lat=xr.DataArray(
-                grid_center_lat.astype(np.float64), dims=("grid_size",),
+                grid_center_lat.astype(np.float32), dims=("grid_size",),
                 attrs={"units": "degrees"}
             ),
             grid_center_lon=xr.DataArray(
-                grid_center_lon.astype(np.float64), dims=("grid_size",),
+                grid_center_lon.astype(np.float32), dims=("grid_size",),
                 attrs={"units": "degrees"}
             ),
             grid_corner_lat=xr.DataArray(
-                grid_corner_lat.astype(np.float64), dims=("grid_size", "grid_corners"),
+                grid_corner_lat.astype(np.float32), dims=("grid_size", "grid_corners"),
                 attrs={"units": "degrees", "_FillValue": float(FILLF)}
             ),
             grid_corner_lon=xr.DataArray(
-                grid_corner_lon.astype(np.float64), dims=("grid_size", "grid_corners"),
+                grid_corner_lon.astype(np.float32), dims=("grid_size", "grid_corners"),
                 attrs={"units": "degrees", "_FillValue": float(FILLF)}
             ),
             grid_imask=xr.DataArray(
@@ -692,7 +692,7 @@ def create_SCRIP_grid(TROPOMI, sat_ind, save_pth):
                 attrs={"_FillValue": int(FILLI)}
             ),
             grid_area=xr.DataArray(
-                grid_area.astype(np.float64), dims=("grid_size",),
+                grid_area.astype(np.float32), dims=("grid_size",),
                 attrs={"units": "m^2", "long_name": "grid box area"}
             ),
         ),
@@ -732,12 +732,6 @@ def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridsp
 
     # check if regridding weights file exists
     if not os.path.exists(os.path.join(CSgridDir, regrid_weight_fpath)):
-        # remove stale .esmf.nc if it exists
-        tmp_esmf = os.path.join(CSgridDir, ".esmf.nc")
-        if os.path.exists(tmp_esmf):
-            os.remove(tmp_esmf)
-        os.environ["ESMF_TMP"] = CSgridDir
-        os.environ["TMPDIR"] = CSgridDir
         if debug:
             os.environ["ESMF_LOGFILE"] = "stdout"
             os.environ["ESMF_LOGLEVEL"] = "DEBUG"
@@ -757,7 +751,11 @@ def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridsp
             "-m", "conserve",
             "--ignore_unmapped",
             "-w", regrid_weight_fpath
-        ], check=True, cwd=CSgridDir, stdout=subprocess.DEVNULL)
+            ], 
+            check=True, cwd=CSgridDir, 
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, 
+        )
     return regrid_weight_fpath
 
 def get_overlap_area_CSgrid(TROPOMI, filename, sat_ind, CSgridDir, 
