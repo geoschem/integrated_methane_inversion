@@ -151,9 +151,6 @@ def calculate_perturbation_sfs(
     # calculate the effective perturbation SFs
     effective_pert_sf = jacobian_pert_sf / flat_prior_sf
 
-    # make the effective perturbations relative to 0, as expected in the inversion
-    effective_pert_sf = effective_pert_sf - 1.0
-
     # return dictionary of perturbation scale factor arrays
     perturbation_dict = {
         "effective_pert_sf": effective_pert_sf,
