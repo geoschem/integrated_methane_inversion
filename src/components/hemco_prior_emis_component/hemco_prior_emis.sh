@@ -265,6 +265,7 @@ setup_prior_gchp() {
     # a temporary fix for GCHP: get day+1 emissions for running GCHP
     RunDuration=$(get_run_duration "$StartDate" "$EndDate")
     NextEndDate=$(date -d "$EndDate +1 day" +%Y%m%d)
+    sed -i -e "s/^END_DATE:.*/END_DATE:     $NextEndDate 000000/" CAP.rc
     NextRunDuration=$(get_run_duration "$StartDate" "$NextEndDate")
     sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${NextRunDuration} 000000\"/" \
         -e "s/Do_Chemistry=.*/Do_Chemistry=false/" \
@@ -297,7 +298,7 @@ setup_prior_gchp() {
 
 # Description: Run Prior Directory
 # Usage:
-#   run_prior_gchp
+#   run_prior_gchp <hemco_start> <hemco_end>
 run_prior_gchp() {
     hemco_start=$1
     hemco_end=$2

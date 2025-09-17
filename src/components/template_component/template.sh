@@ -93,6 +93,8 @@ setup_template() {
 
     if "$UseGCHP"; then
         RunDuration=$(get_run_duration "$StartDate" "$EndDate")
+        sed -i -e "s/^BEG_DATE:.*/BEG_DATE:     ${StartDate} 000000/" \
+            -e "s/^END_DATE:.*/END_DATE:     ${EndDate} 000000/" CAP.rc
         echo "$StartDate 000000" > cap_restart
         sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
             -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
