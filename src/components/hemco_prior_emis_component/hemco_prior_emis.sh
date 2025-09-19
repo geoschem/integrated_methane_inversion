@@ -9,6 +9,15 @@
 # Usage:
 #   run_hemco_prior_emis
 run_hemco_prior_emis() {
+
+    # Ensure a template run directory exists
+    if [[ ! -d ${RunDirs}/template_run ]]; then
+        printf "\n A template run directory is required for running the HEMCO standalone simulation to generate prior emissions. Generating one now.\n"
+	runDir="template_run"
+	RunTemplate="${RunDirs}/${runDir}"
+        setup_template
+    fi
+
     hemco_prior_emis_start=$(date +%s)
     
     HEMCOdir="hemco_prior_emis"

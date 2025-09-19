@@ -56,6 +56,14 @@ create_statevector() {
 # Usage:
 #   reduce_dimension
 reduce_dimension() {
+
+    # First run the HEMCO standalone if necessary to get prior emissions
+    # needed for prepare_sf.py
+    if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
+        printf "\n hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for reducing dimensions of state vector.\n"
+        run_hemco_prior_emis
+    fi
+
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
     # set input variables
