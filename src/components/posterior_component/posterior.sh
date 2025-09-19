@@ -65,6 +65,7 @@ setup_posterior() {
             -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
             -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
             HEMCO_Config.rc
+    fi
     # Turn on LevelEdgeDiags output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
