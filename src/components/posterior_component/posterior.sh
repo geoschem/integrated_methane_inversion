@@ -70,7 +70,6 @@ setup_posterior() {
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
             -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
             -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
             -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
             -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi
@@ -186,25 +185,13 @@ run_posterior() {
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
-        if ((period_i == 1)); then
-            PrevDir="${RunDirs}/spinup_run"
-        else
-            PrevDir="${RunDirs}/posterior_run"
-        fi
     else
         StartDate_i=$StartDate
         EndDate_i=$EndDate
         cd ${RunDirs}/inversion
-        PrevDir="${RunDirs}/spinup_run"
     fi
 
-    # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
-    printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res
-    wait
-    printf "\n=== DONE -- postproc_diags.py ===\n"
-
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
     mkdir -p data_visualization_posterior
