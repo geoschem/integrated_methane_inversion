@@ -13,6 +13,7 @@ CS_RES: 48
 STRETCH_GRID: false
 STRETCH_FACTOR: 10.0
 TARGET_LAT: 32.0
+# note that target_lon needs to be in range of [-180,180) to accommandate the use of pygeohash for the convection of naming for gridspec file creation, the names for all target_lon > 180 would be the same with pygeohash
 TARGET_LON: 256.0
 
 #------------------------------------------------
