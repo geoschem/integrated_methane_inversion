@@ -3,6 +3,7 @@
 #SBATCH -N 1
 #SBATCH -c 1
 #SBATCH --mem=2000
+#SBATCH --mail-type=END
 #SBATCH -o "imi_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
