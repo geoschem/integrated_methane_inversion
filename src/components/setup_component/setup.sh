@@ -133,9 +133,15 @@ setup_imi() {
     if "$CreateAutomaticRectilinearStateVectorFile"; then
         create_statevector
     else
-        # Copy custom state vector to $RunDirs directory for later use
-        printf "\nCopying state vector file\n"
-        cp -v $StateVectorFile ${RunDirs}/StateVector.nc
+	if [ ! -f "$StateVectorFile" ]; then
+	    printf "\nERROR: Cannot find ${StateVectorFile}"
+            printf "\n Please fix StateVectorFile or set CreateAutomaticRectilinearStateVectorFile: true in config.yml\n"
+            exit 1
+	else
+	    # Copy custom state vector to $RunDirs directory for later use
+            printf "\nCopying state vector file\n"
+            cp -v $StateVectorFile ${RunDirs}/StateVector.nc
+	fi
     fi
 
     # Determine number of elements in state vector file

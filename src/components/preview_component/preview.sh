@@ -12,7 +12,7 @@ run_preview() {
     # First run the HEMCO standalone if necessary to get prior emissions
     # needed for prepare_sf.py
     if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
-        printf "\hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
+        printf "\n hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
         run_hemco_prior_emis
     fi
 
