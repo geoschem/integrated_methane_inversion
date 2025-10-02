@@ -22,6 +22,8 @@ def latlon_to_cartesian(lat, lon):
 
 def build_kdtree(lats, lons):
     """Build KDTree from flattened simulation grid."""
+    if lats.ndim == 1 and lons.ndim == 1:
+        lats, lons = np.meshgrid(lats, lons, indexing="ij")  # (nlat,nlon)
     lat_flat = lats.reshape(-1)
     lon_flat = lons.reshape(-1)
     cart_coords = latlon_to_cartesian(lat_flat, lon_flat)
