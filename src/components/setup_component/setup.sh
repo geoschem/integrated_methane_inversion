@@ -51,7 +51,7 @@ setup_imi() {
     if "$RestartDownload"; then
         RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
         if [ ! -f "$RestartFile" ]; then
-            aws s3 cp --no-sign-request s3://imi-boundary-conditions/${BCversion}/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
+            python src/utilities/download_aws_file.py s3://imi-boundary-conditions/${BCversion}/GEOSChem.BoundaryConditions.${SpinupStart}_0000z.nc4 $RestartFile
         fi
     fi
 
@@ -74,7 +74,10 @@ setup_imi() {
         exit 1
     fi
 
-    if [ "$Res" == "0.25x0.3125" ]; then
+    if [ "$Res" == "0.125x0.15625" ]; then
+        gridDir="${Res}"
+        gridFile="0125x015625" 
+    elif [ "$Res" == "0.25x0.3125" ]; then
         gridDir="${Res}"
         gridFile="025x03125"
     elif [ "$Res" == "0.5x0.625" ]; then
@@ -88,11 +91,11 @@ setup_imi() {
         gridFile="4x5"
     else
         printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-        printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+        printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
         exit 1
     fi
     # Use cropped met for regional simulations instead of using global met
-    if "$isRegional"; then
+    if [ "$RegionID" != "" ]; then
         gridDir="${gridDir}_${RegionID}"
     fi
 
@@ -132,9 +135,15 @@ setup_imi() {
     if "$CreateAutomaticRectilinearStateVectorFile"; then
         create_statevector
     else
-        # Copy custom state vector to $RunDirs directory for later use
-        printf "\nCopying state vector file\n"
-        cp -v $StateVectorFile ${RunDirs}/StateVector.nc
+	if [ ! -f "$StateVectorFile" ]; then
+	    printf "\nERROR: Cannot find ${StateVectorFile}"
+            printf "\n Please fix StateVectorFile or set CreateAutomaticRectilinearStateVectorFile: true in config.yml\n"
+            exit 1
+	else
+	    # Copy custom state vector to $RunDirs directory for later use
+            printf "\nCopying state vector file\n"
+            cp -v $StateVectorFile ${RunDirs}/StateVector.nc
+	fi
     fi
 
     # Determine number of elements in state vector file
@@ -225,11 +234,6 @@ setup_imi() {
         setup_inversion
     fi
 
-    # Remove temporary files
-    if "$isAWS"; then
-        rm -f /home/ubuntu/foo.nc
-    fi
-
     # Run time
     echo "Statistics (setup):"
     echo "Preview runtime (s): $(($preview_end - $preview_start))"
@@ -268,5 +272,12 @@ activate_observations() {
         NEW="output_file: Plane_Logs\/plane.log.YYYYMMDD"
         sed -i "s/$OLD/$NEW/g" geoschem_config.yml
     fi
+    if "$DoObsPack"; then
+	sed -i "/obspack/{N;s/activate: false/activate: true/}" geoschem_config.yml
+	ln -s ${DataPath}/Observations/ObsPack ObsPack
+	OLD="input_file: .\/obspack_co2_1_OCO2MIP_2018-11-28.YYYYMMDD.nc"
+	NEW="input_file: .\/ObsPack\/CH4\/YYYY\/obspack_ch4.YYYYMMDD.nc"
+	sed -i "s|$OLD|$NEW|g" geoschem_config.yml
+    fi 
 
 }

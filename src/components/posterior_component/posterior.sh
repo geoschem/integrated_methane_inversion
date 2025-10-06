@@ -70,7 +70,6 @@ setup_posterior() {
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
             -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
             -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' \
             -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
             -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi
@@ -91,7 +90,7 @@ setup_posterior() {
         # prevent restart file from getting downloaded since
         # we don't want to overwrite the one we link to above
         sed -i '/GEOSChem.Restart/d' log.dryrun
-        ./download_data.py log.dryrun aws
+        python download_gc_data.py log.dryrun aws
     fi
 
     # Navigate back to top-level directory
@@ -154,6 +153,16 @@ run_posterior() {
             OHPertPrevLine='DEFAULT    0     1.0'
             OHPertNewLine="N_HEMIS    1     ${oh_sfs[0]}\nS_HEMIS    2     ${oh_sfs[1]}"
             sed -i "/$OHPertPrevLine/a $OHPertNewLine" PerturbationsOH.txt
+
+            # Modify OH scale factor in HEMCO config
+            sed -i -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" HEMCO_Config.rc
+            sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor PerturbationsOH.txt - - - xy 1 1|g" HEMCO_Config.rc
+
+            HcoPrevLineMask='CH4_STATE_VECTOR'
+            HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
+'
+            sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
+
             printf "OH optimized perturbation values set to:\n"
             printf " ${oh_sfs[0]} for Northern Hemisphere\n"
             printf " ${oh_sfs[1]} for Southern Hemisphere\n"
@@ -163,7 +172,7 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime ${RunName}_Posterior.run
+    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition ${RunName}_Posterior.run
     
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
@@ -171,25 +180,13 @@ run_posterior() {
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}
-        if ((period_i == 1)); then
-            PrevDir="${RunDirs}/spinup_run"
-        else
-            PrevDir="${RunDirs}/posterior_run"
-        fi
     else
         StartDate_i=$StartDate
         EndDate_i=$EndDate
         cd ${RunDirs}/inversion
-        PrevDir="${RunDirs}/spinup_run"
     fi
 
-    # Fill missing data (first hour of simulation) in posterior output
     PosteriorRunDir="${RunDirs}/posterior_run"
-    printf "\n=== Calling postproc_diags.py for posterior ===\n"
-    python ${InversionPath}/src/inversion_scripts/postproc_diags.py $RunName $PosteriorRunDir $PrevDir $StartDate_i $Res
-    wait
-    printf "\n=== DONE -- postproc_diags.py ===\n"
-
     # Build directory for hourly posterior GEOS-Chem output data
     mkdir -p data_converted_posterior
     mkdir -p data_visualization_posterior

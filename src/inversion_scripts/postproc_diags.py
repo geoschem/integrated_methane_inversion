@@ -62,7 +62,9 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
     ]
 
     # Determine timestamp in filename
-    if "0.25x0.3125" in res:
+    if "0.125x0.15625" in res:
+        timestamp = "0002"
+    elif "0.25x0.3125" in res:
         timestamp = "0005"
     elif "0.5x0.625" in res:
         timestamp = "0005"
@@ -144,7 +146,9 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
 def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
 
     # Determine timestamp in filename
-    if "0.25x0.3125" in res:
+    if "0.125x0.15625" in res:
+        timestamp = "0002"
+    elif "0.25x0.3125" in res:
         timestamp = "0005"
     elif "0.5x0.625" in res:
         timestamp = "0005"
@@ -205,7 +209,7 @@ if __name__ == "__main__":
     res = sys.argv[5]
 
     # Check if this is a posterior run, background run, or prior run
-    accepted_rundirs = ("posterior_run", f"{run_name}_0000", f"{run_name}_background")
+    accepted_rundirs = ("posterior_run", f"{run_name}_0000", f"{run_name}_background", "osse_observations_run")
 
     if run_dirs_pth.endswith((accepted_rundirs)):
         fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res)

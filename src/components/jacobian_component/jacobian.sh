@@ -30,13 +30,18 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
-    if [ $NumJacobianTracers -gt 1 ]; then
-        nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
+    if ! "$PrecomputedJacobian"; then
+        if [ $NumJacobianTracers -gt 1 ]; then
+            nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
 
-        # Determine approx. number of CH4 tracers per Jacobian run
-        printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
-    else
-        nRuns=$nElements
+            # Determine approx. number of CH4 tracers per Jacobian run
+            printf "\nCombining Jacobian runs: Generating $nRuns run directories with approx. $NumJacobianTracers CH4 tracers (representing state vector elements) per run\n"
+        else
+            nRuns=$nElements
+        fi
+    else 
+        # only need to set up the prior run directory
+        nRuns=0
     fi
 
     # Copy run scripts
@@ -168,7 +173,7 @@ create_simulation_dir() {
                 -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
                 -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
                 -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-                -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+                HISTORY.rc
         fi
     # For all other runs, just disable Restarts
     else
@@ -207,7 +212,7 @@ create_simulation_dir() {
                 # prevent restart file from getting downloaded since
                 # we don't want to overwrite the one we link to above
                 sed -i '/GEOSChem.Restart/d' log.dryrun
-                ./download_data.py log.dryrun aws
+                python download_gc_data.py log.dryrun aws
             fi
         fi
 
@@ -269,6 +274,13 @@ create_simulation_dir() {
         # Use MeMo soil absorption for the prior simulation
         sed -i -e "/(((MeMo_SOIL_ABSORPTION/i ))).not.UseTotalPriorEmis" \
             -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
+
+        # create a break in EMISSIONS logic block for MeMo in background simulation
+        if [[ "$x" = "background" ]]; then
+            sed -i -e "/(((MeMo_SOIL_ABSORPTION/i )))EMISSIONS" HEMCO_Config.rc
+            sed -i -e "/)))MeMo_SOIL_ABSORPTION/a (((EMISSIONS" HEMCO_Config.rc
+        fi
+
         if "$KalmanMode"; then
             # Use nudged scale factors for the prior simulation and OH simulation for kalman mode
             sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
@@ -445,7 +457,7 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
         source submit_jacobian_simulations_array.sh
 
         if "$LognormalErrors"; then
-            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime run_bkgd_simulation.sh
+            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_bkgd_simulation.sh
             wait
         fi
 
@@ -470,18 +482,20 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
         ln -s $precomputedJacobianCache data_converted_reference
 
         # Run the prior simulation
+        JacobianRunsDir=${RunDirs}/jacobian_runs
         cd ${JacobianRunsDir}
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime run_prior_simulation.sh
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_prior_simulation.sh
+
         [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
         printf "=== DONE PRIOR SIMULATION ===\n"
 
         # Run the background simulation if lognormal errors enabled
         if "$LognormalErrors"; then
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
-            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime run_bkgd_simulation.sh
+            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_bkgd_simulation.sh
             # check if background simulation exited with non-zero exit code
             [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
             printf "=== DONE BACKGROUND SIMULATION ===\n"

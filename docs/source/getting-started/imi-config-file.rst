@@ -14,7 +14,8 @@ General
      - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
    * - ``SchedulerType``
      - String defining the type of scheduler used to run the IMI.
-        Currently supported options are "slurm" or "PBS".
+        Currently supported options are "slurm", "PBS", or "tmux". Select "tmux"
+        to run the IMI with "./run_imi.sh" instead of PBS or slurm.
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
    * - ``S3Upload``
@@ -83,6 +84,8 @@ Kalman filter options
      - Option to automatically create ``periods.csv`` based on the constant number of days in ``UpdateFreqDays``. Default is ``true``. If ``false``, a custom ``periods.csv`` will be used instead.
    * - ``CustomPeriodsCSV``
      - Path to custom ``periods.csv`` with user-defined start and end dates for each Kalman filter update period.
+   * - ``FirstPeriod``
+     - Optional variable to specify which Kalman period to start on, if restarting an inversion. Default is ``1``.
 
 State vector 
 ~~~~~~~~~~~~
@@ -163,19 +166,21 @@ Inversion
    * - ``LognormalErrors``
      - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
-     - Error in the prior estimates (1-sigma; relative). Default is ``0.5`` (50%) error.
+     - Vector of errors in the prior estimates (1-sigma; relative). Default is ``[0.5]`` (50%) error.
    * - ``PriorErrorOH``
-     - Error in the prior estimates (relative percent). Default is ``0.5`` (50%) error.
+     - Vector of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
    * - ``PriorErrorBCs``
-     - Error in the prior estimates (using ppb). Default is ``10`` ppb error.
+     - Vector of errors in the prior estimates (using ppb). Default is ``[10]`` ppb error.
    * - ``PriorErrorBufferElements``
-     - Error in the prior estimates for buffer elements (1-sigma; relative). Default is ``0.5`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
+     - Vector of errors in the prior estimates for buffer elements (1-sigma; relative). Default is ``[0.5]`` (50%) error. Note: only used if ``LognormalErrors`` is ``true``.
    * - ``ObsError``
-     - Observational error (1-sigma; absolute; ppb). Default value is ``15`` ppb error.
+     - Vector of observational errors (1-sigma; absolute; ppb). Default value is ``[15]`` ppb error.
    * - ``Gamma``
-     - Regularization parameter; typically between 0 and 1. Default value is ``1.0``.
+     - Vector of regularization parameters; typically between 0 and 1. Default value is ``[1.0]``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``ReferenceRunDir``
+     - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
 
 Grid
 ~~~~
@@ -218,7 +223,7 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    :widths: 30, 70
    :class: tight-table
 
-   * - ``DoPriorEmis``
+   * - ``DoHemcoPriorEmis``
      - Boolean to run a HEMCO standalone simulation to generate the
        prior emissions.
    * - ``DoSpinup``
@@ -266,9 +271,9 @@ variables can be convenient.
    * - ``InversionCPUs``
      - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
    * - ``InversionMemory``
-     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
+     - Optional Variable. Amount of memory to allocate to inversion sbatch job (in MB) if different from ``RequestedMemory``.
    * - ``InversionTime``
-     - Optional Variable. Amount of memory to allocate to the inversion job (in MB) if different from ``RequestedMemory``.
+     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
    * - ``SchedulerPartition``
      - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
    * - ``MaxSimultaneousRuns``
@@ -278,7 +283,31 @@ variables can be convenient.
        will create and submit a jacobian run for each state vector element. 
        Specifying a value greater than 1 will combine state vector elements 
        into fewer runs. The default values is 5 tracers per simulation.
-       
+
+Advanced settings: Observing System Simulation Experiment (OSSE)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+These settings are intended for advanced users who wish to run an OSSE. This effectively runs the inversion 
+using simulated pseudo-observations with a known prior emissions field. The IMI will generate synthetic observations
+by randomly perturbing the prior emissions and adding noise to the generated observations based on user specification.
+
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``EnableOSSE``
+     - Boolean to enable running the IMI with pseudo-observations. Default value is ``false``.
+   * - ``DoOSSE``
+     - Boolean to run the simulation that pseudo-observations will be generated on. This should be run after the SpinupSimulation. Default value is ``false``.
+   * - ``EmisPerturbationOSSE``
+     - Amount of random perturbation to apply to the prior emissions to generate synthetic observations. Uses a Gaussian distribution to assign, unless ``LognormalErrors`` is set to true, then it uses a log-normal distribution. Default value is ``0.5`` (50%).
+   * - ``ObsErrorOSSE``
+     - Amount of random gaussian error to apply to the observations sampled from the OSSE simulation. Default value is ``15`` ppb.
+   * - ``CreateAutomaticScaleFactorFileOSSE``
+      - Boolean to create a scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Default value is ``true``.
+   * - ``ScaleFactorFileOSSE``
+      - Path to the scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Only used if ``CreateAutomaticScaleFactorFileOSSE`` is ``false``.
+
+
 Advanced settings: GEOS-Chem options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 These settings are intended for advanced users who wish to modify additional GEOS-Chem options.
@@ -296,7 +325,9 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
-     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in input.geos. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
+     - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in geoschem_config.yml. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
+   * - ``DoObsPack``
+     - Boolean to save out the ObsPack diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against NOAA ObsPack data. The path to those data must be specified in geoschem_config.yml. See the `ObsPack diagnostic <https://geos-chem.readthedocs.io/en/stable/gcclassic-user-guide/obspack.html>`_ documentation for details. Default value is ``false``. A sample python notebook for plotting GEOS-Chem against ObsPack can be found at ``src/notebooks/NOAA_ObsPack_MBL_compare.ipnyb``.
    * - ``GOSAT``
      - Boolean to turn on the GOSAT observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
    * - ``TCCON``
@@ -330,7 +361,7 @@ the IMI on a local cluster<../advanced/local-cluster>`).
    * - ``BCpath``
      - Path to GEOS-Chem boundary condition files (for regional simulations).
    * - ``BCversion``
-     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2024-06``). Note: this will be appended onto BCpath as a subdirectory.
+     - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2025-06``). Note: this will be appended onto BCpath as a subdirectory.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``SpinupDryRun``
@@ -343,5 +374,3 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
    * - ``PreviewDryRun``
      - Boolean to download missing GEOS-Chem boundary condition files. Default value is ``true``.
-
-Note for ``*DryRun`` options: If you are running on AWS, you will be charged if your ec2 instance is not in the us-east-1 region. If running on a local cluster you must have AWS CLI enabled or you can modify the ``./download_data.py`` commands in ``setup_imi.sh`` to use ``washu`` instead of ``aws``. See the `GEOS-Chem documentation <https://geos-chem.readthedocs.io/en/latest/inputs/dry-run.html>`_ for more details.

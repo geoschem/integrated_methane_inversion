@@ -9,6 +9,15 @@
 # Usage:
 #   run_hemco_prior_emis
 run_hemco_prior_emis() {
+
+    # Ensure a template run directory exists
+    if [[ ! -d ${RunDirs}/template_run ]]; then
+        printf "\n A template run directory is required for running the HEMCO standalone simulation to generate prior emissions. Generating one now.\n"
+	runDir="template_run"
+	RunTemplate="${RunDirs}/${runDir}"
+        setup_template
+    fi
+
     hemco_prior_emis_start=$(date +%s)
     
     HEMCOdir="hemco_prior_emis"
@@ -26,7 +35,7 @@ run_hemco_prior_emis() {
         sed -i '/GEOSChem.Restart/d' log.dryrun
         # prevent download of GEOS met fields
         sed -i "/GEOS_${Res}/d" log.dryrun
-        ./download_data.py log.dryrun aws
+        python download_gc_data.py log.dryrun aws
         popd
     fi
 
@@ -52,11 +61,13 @@ run_hemco_prior_emis() {
     elif [ "$Res" == "0.5x0.625" ]; then
         resnum="3"
     elif [ "$Res" == "0.25x0.3125" ]; then
-        resnum="4"
+	resnum="4"
+    elif [ "$Res" == "0.125x0.15625" ]; then
+       resnum="5"
     else
-        printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-        printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
-        exit 1
+       printf "\nERROR: Grid resolution ${Res} is not supported by the IMI."
+       printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+       exit 1
     fi
     HEMCOconfig=${RunTemplate}/HEMCO_Config.rc
 
@@ -75,7 +86,7 @@ run_hemco_prior_emis() {
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
         -e "/Negative values:     0/d" HEMCO_sa_Config.rc
     sed -i -e "s/METEOROLOGY            :       true/METEOROLOGY            :       false/g" \
-        -e "s|DiagnFreq:                   End|DiagnFreq:                   Daily|g" HEMCO_Config.rc
+           -e "s|DiagnFreq:                   End|DiagnFreq:                   Daily|g" HEMCO_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
@@ -159,7 +170,7 @@ run_hemco_sa() {
     rm -f .error_status_file.txt
     
     # Submit job to job scheduler
-    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime ${RunDirs}/${HEMCOdir}/${RunName}_HEMCO_Prior_Emis.run
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition ${RunDirs}/${HEMCOdir}/${RunName}_HEMCO_Prior_Emis.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

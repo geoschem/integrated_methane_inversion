@@ -17,7 +17,7 @@ from botocore.client import Config
 #     $ python download_TROPOMI.py 20190101 20190214 TROPOMI_data
 
 s3 = None
-VALID_TROPOMI_PROCESSOR_VERSIONS = ["020400", "020500", "020600"]
+VALID_TROPOMI_PROCESSOR_VERSIONS = ["020400", "020500", "020600", "020701", "020800"]
 
 
 def initialize_boto3():
@@ -110,7 +110,17 @@ def get_s3_paths(start_date, end_date, bucket):
         elif len(subset["ProcessingMode"].unique()) > 1:
             index_to_drop = subset.loc[subset["ProcessingMode"] != "RPRO"].index
             df = df.drop(index_to_drop)
+    
+    # If there are multiple processor versions for the same orbit number,
+    # keep the one with the latest version.
+    df = df.loc[df.groupby("OrbitNumber")["ProcessorVersion"].idxmax()]
+    df.reset_index(drop=True, inplace=True)
 
+    # For the final duplicates, choose the later modification date
+    df["ModificationDate"] = pd.to_datetime(df["ModificationDate"])
+    df = df.loc[df.groupby("OrbitNumber")["ModificationDate"].idxmax()]
+    df.reset_index(drop=True, inplace=True)
+        
     assert len(df) == len(df["OrbitNumber"].unique())
     df = df.reset_index(drop=True)
     df["S3Path"] = df["Prefix"] + df["Name"]

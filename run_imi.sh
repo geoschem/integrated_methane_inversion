@@ -22,6 +22,7 @@ source src/components/jacobian_component/jacobian.sh
 source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
 source src/components/kalman_component/kalman.sh
+source src/components/osse_component/osse_sim.sh
 
 # trap and exit on errors
 trap 'imi_failed $LINENO' ERR
@@ -58,7 +59,10 @@ export PYTHONPATH=${PYTHONPATH}:$(pwd -P)
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
 
-if ! "$isAWS"; then
+if [[ -z "$GEOSChemEnv" ]]; then
+    printf "\nWarning: GEOS-Chem environment not specified in config file.\n"
+    printf "GEOS-Chem dependencies are assumed to be preloaded\n"
+else
     # Load environment for compiling and running GEOS-Chem
     if [ ! -f "${GEOSChemEnv}" ]; then
         printf "\nGEOS-Chem environment file ${GEOSChemEnv} does not exist!"
@@ -123,6 +127,7 @@ fi
 # Path to inversion setup
 InversionPath=$(pwd -P)
 ConfigPath=${InversionPath}/${ConfigFile}
+
 # add inversion path to python path
 export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 
@@ -131,7 +136,7 @@ mkdir -p -v ${RunDirs}
 
 # Set/Collect information about the GEOS-Chem version, IMI version,
 # and TROPOMI processor version
-GEOSCHEM_VERSION=14.4.1
+GEOSCHEM_VERSION=14.6.2
 IMI_VERSION=$(git describe --tags)
 TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilities/download_TROPOMI.py |
     sed 's/VALID_TROPOMI_PROCESSOR_VERSIONS = //' |
@@ -148,25 +153,24 @@ echo "# TROPOMI/blended processor version(s): ${TROPOMI_PROCESSOR_VERSION}" >>"$
 ##  Download the TROPOMI data
 ##=======================================================================
 # Download TROPOMI or blended dataset from AWS
-mkdir -p -v ${RunDirs}
 satelliteCache=${RunDirs}/satellite_data
 
-mkdir -p -v $satelliteCache
+if [[ -z "$DataPathObs" ]]; then
+    mkdir -p -v $satelliteCache
 
-if [[ "$SatelliteProduct" == "BlendedTROPOMI" ]]; then
-    downloadScript=src/utilities/download_blended_TROPOMI.py
-elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
-    downloadScript=src/utilities/download_TROPOMI.py
+    if [[ "$SatelliteProduct" == "BlendedTROPOMI" ]]; then
+        downloadScript=src/utilities/download_blended_TROPOMI.py
+    elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
+        downloadScript=src/utilities/download_TROPOMI.py
+    else
+        printf "$SatelliteProduct is not currently supported for download"
+    fi
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $satelliteCache
 else
-    printf "$SatelliteProduct is not currently supported for download --HON"
+    # use existing tropomi data and create a symlink to it
+    if [[ ! -L $satelliteCache ]]; then
+        ln -s $DataPathObs $satelliteCache
 fi
-
-# submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $satelliteCache
-
-# # use existing tropomi data and create a symlink to it
-# if [[ ! -L $satelliteCache ]]; then
-#     ln -s $DataPathObs $satelliteCache
-# fi
 
 # Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
 python src/utilities/test_TROPOMI_dir.py $satelliteCache
@@ -184,6 +188,11 @@ setup_end=$(date +%s)
 ##=======================================================================
 if "$DoSpinup"; then
     run_spinup
+fi
+
+if ("$DoOSSE" && "$EnableOSSE"); then
+    setup_osse
+    run_osse
 fi
 
 ##=======================================================================

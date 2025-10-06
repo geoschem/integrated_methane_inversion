@@ -146,6 +146,8 @@ def make_state_vector_file(
             deg_lat, deg_lon = 0.5, 0.625
         elif config["Res"] == "0.25x0.3125":
             deg_lat, deg_lon = 0.25, 0.3125
+        elif config["Res"] == "0.125x0.15625":
+            deg_lat, deg_lon = 0.125, 0.15625
         buffer_min_lat = deg_lat * 3
         buffer_min_lon = deg_lon * 3
 
@@ -158,9 +160,16 @@ def make_state_vector_file(
     lc = xr.load_dataset(land_cover_pth)
     hd = xr.load_dataset(hemco_diag_pth)
 
-    # Select / group fields together
-    lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
-    hd = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).drop_vars("time").squeeze()
+    # Select/ group fields together
+    if config['Res'] == '0.125x0.15625':
+        lc = lc["landseamask"] #100% = all water and 0% = all land
+        lc = np.round( -(lc/100.-1), decimals=5)
+    else:
+        lc = (lc["FRLAKE"] + lc["FRLAND"] + lc["FRLANDIC"]).drop_vars("time").squeeze()
+
+    # Save total emissions and oil/gas separately for handling offshore emissions
+    hd_og = (hd["EmisCH4_Oil"] + hd["EmisCH4_Gas"]).mean(dim="time")
+    hd    = hd["EmisCH4_Total"].mean(dim="time")
 
     # Check compatibility of region of interest
     if is_regional:
@@ -208,11 +217,11 @@ def make_state_vector_file(
         statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
         statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
 
-    # Also set pixels over water to 0, unless there are offshore emissions
+    # Also set pixels over water to 0, unless there are offshore oil/gas emissions
     if land_threshold > 0:
         # Where there is neither land nor emissions, replace with 0
         if is_regional:
-            land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+            land = lc.where((lc > land_threshold) | (hd_og > emis_threshold))
         else:
             # handle half-width polar grid boxes for global,
             # global files are same shape but different lat
@@ -222,10 +231,10 @@ def make_state_vector_file(
                 & np.equal(hd.lat.shape, lc.lat.shape).all()
             ):
                 land = lc.where(
-                    (lc.values > land_threshold) | (hd.values > emis_threshold)
+                    (lc.values > land_threshold) | (hd_og.values > emis_threshold)
                 )
             else:
-                land = lc.where((lc > land_threshold) | (hd > emis_threshold))
+                land = lc.where((lc > land_threshold) | (hd_og > emis_threshold))
 
         statevector.values[land.isnull().values] = -9999
 

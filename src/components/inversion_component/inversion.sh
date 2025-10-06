@@ -30,7 +30,6 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/jacobian.py inversion/
     cp ${InversionPath}/src/inversion_scripts/operators/*.py inversion/operators/
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
-    cp ${InversionPath}/src/inversion_scripts/postproc_diags.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
     cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
@@ -85,8 +84,10 @@ run_inversion() {
     InvMem="${InversionMemory:-$RequestedMemory}"
     InvCPU="${InversionCPUs:-$RequestedCPUs}"
     InvTime="${InversionTime:-$RequestedTime}"
+    InvPartition="${InvSchedulerPartition:-$SchedulerPartition}"
     # Execute inversion driver script
-    submit_job $SchedulerType false $InvMem $InvCPU $InvTime ${RunDirs}/inversion/run_inversion.sh $FirstSimSwitch
+    submit_job $SchedulerType false $InvMem $InvCPU $InvTime $InvPartition ${RunDirs}/inversion/run_inversion.sh $FirstSimSwitch
+
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
 

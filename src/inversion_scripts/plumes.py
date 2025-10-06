@@ -372,7 +372,10 @@ class PlumeObserver:
                 infile = f"{basedir}/{self.myname}_plumes/plumes.geojson"
             try:
                 gdf = gpd.read_file(infile)
-                gdf["time"] = pd.to_datetime(gdf["time"])
+                if self.myname == 'IMEO':
+                    gdf['time'] = pd.to_datetime(gdf['time'], format = 'mixed')
+                else:
+                    gdf["time"] = pd.to_datetime(gdf["time"])
                 self.gdf = gdf
             except:
                 msg = f"Cannot open cached file at {infile}, fetching new data."
@@ -567,7 +570,7 @@ class CarbonMapper(PlumeObserver):
         # optionally filter out aircraft data
         if self.sat_only:
             print("Dropping aircraft data from CarbonMapper dataset")
-            aircraft_instruments = ["GAO", "ang"]
+            aircraft_instruments = ["GAO", "ang", "av3"]
             self.gdf = self.gdf[~self.gdf.instrument.isin(aircraft_instruments)].copy()
 
     def _get_data(self):
@@ -591,21 +594,30 @@ class CarbonMapper(PlumeObserver):
                 int(ds.lon.max().values),
                 int(ds.lat.max().values),
             ]
+        exclude_columns = [
+            'plume_tif',
+            'plume_png',
+            'con_tif',
+            'rgb_tif',
+            'rgb_png'
+        ]
         q_opts = lambda dlimit, offset: [
             "bbox=" + "&bbox=".join([str(i) for i in bbox]),
             "plume_gas=CH4",
+            "exclude_columns="+"&exclude_columns=".join([i for i in exclude_columns]),
             f"limit={dlimit}",
             f"offset={offset}",
         ]
         base_url = "https://api.carbonmapper.org"
-        endpoint = "/api/v1/catalog/plumes/annotated"
+        endpoint_checksize = "/api/v1/catalog/plumes/annotated"
+        endpoint = "/api/v1/catalog/plume-csv"
 
         # get data
         print("Fetching plumes from CarbonMapper...")
 
         # first check how much data
         q_params = "?" + "&".join(q_opts(1, 0))
-        url = base_url + endpoint + q_params
+        url = base_url + endpoint_checksize + q_params
         response = requests.get(url)
         # Raise an exception if the API call returns an HTTP error status
         response.raise_for_status()
@@ -635,18 +647,22 @@ class CarbonMapper(PlumeObserver):
                 print("Continuing WITHOUT CarbonMapper plumes.")
                 return None
             # Process the API response
-            data = response.json()
-            rawdat += data["items"]
+            content = io.StringIO(response.content.decode())
+            df_tmp = pd.read_csv(content)
+            rawdat.append(df_tmp)
         print()
+        df_raw = pd.concat(rawdat)
 
         # geodataframe from json data
-        df_raw = pd.json_normalize(rawdat)
-        lonlats = np.array(df_raw["geometry_json.coordinates"].tolist())
+        lonlats = np.vstack((df_raw.plume_longitude, df_raw.plume_latitude))
         gdf = gpd.GeoDataFrame(
             df_raw,
-            geometry=gpd.points_from_xy(lonlats[:, 0], lonlats[:, 1]),
+            geometry=gpd.points_from_xy(lonlats[0, :], lonlats[1, :]),
             crs="EPSG:4326",
         )
+
+        # we don't want tanager first-light data
+        gdf = gdf.loc[~gdf.mission_phase.str.contains('first_light')]
 
         # keep only vars we want (subject to change...)
         keepv = [
@@ -659,9 +675,9 @@ class CarbonMapper(PlumeObserver):
         ]
         gdf = gdf.rename(
             {
-                "scene_timestamp": "time",
-                "emission_auto": "emission_rate",
-                "emission_uncertainty_auto": "emission_rate_std",
+                'datetime': 'time',
+                'emission_auto': 'emission_rate',
+                'emission_uncertainty_auto': 'emission_rate_std',
             },
             axis=1,
         )[keepv]

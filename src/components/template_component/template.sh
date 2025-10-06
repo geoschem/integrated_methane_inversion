@@ -29,7 +29,8 @@ setup_template() {
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
-        metNum="2"
+	# Add y to metNum to skip prompt about GEOS-FP discontinuity
+        metNum="2\ny"
     else
         printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
         printf "\n Options are GEOSFP or MERRA2.\n"
@@ -54,9 +55,16 @@ setup_template() {
         else
             cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
         fi
+    elif [ "$Res" == "0.125x0.15625" ]; then
+        if "$isRegional"; then
+            # Use NA domain by default and adjust lat/lon below
+            cmd="9\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
+        else
+            cmd="9\n${metNum}\n5\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+        fi
     else
         printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
-        printf "\n Options are 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
+        printf "\n Options are 0.125x0.15625, 0.25x0.3125, 0.5x0.625, 2.0x2.5, or 4.0x5.0.\n"
         exit 1
     fi
 
@@ -67,12 +75,17 @@ setup_template() {
 
     cd ${RunTemplate}
 
-    # Update GC data download to silence output from aws commands
-    sed -i "s/command: 'aws s3 cp '/command: 'aws s3 cp --no-sign-request --only-show-errors '/" download_data.yml
+    # Copy download script to run directory
+    cp ${InversionPath}/src/utilities/download_gc_data.py download_gc_data.py
 
     # Modify geoschem_config.yml based on settings in config.yml
-    sed -i -e "s:20190101:${StartDate}:g" \
-        -e "s:20190201:${EndDate}:g" geoschem_config.yml
+    if [ "$Res" == "0.125x0.15625" ]; then
+	sed -i -e "s:20230101:${StartDate}:g" \
+               -e "s:20230201:${EndDate}:g" geoschem_config.yml
+    else
+	sed -i -e "s:20190101:${StartDate}:g" \
+               -e "s:20190201:${EndDate}:g" geoschem_config.yml
+    fi
 
     if "$isRegional"; then
         # Adjust lat/lon bounds because GEOS-Chem defines the domain
@@ -98,11 +111,16 @@ setup_template() {
 
     # Modify HEMCO_Config.rc based on settings in config.yml
     # Use cropped met fields (add the region to both METDIR and the met files)
-    if "$isRegional"; then
-        sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc
-        sed -i -e "s:GEOS_${Res}:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
-        sed -i -e "s:\$RES:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
-    fi
+    if [ "$RegionID" != "" ]; then
+	if [ "$Res" != "0.125x0.15625" ]; then
+           sed -i -e "s:GEOS_${Res}_NA:GEOS_${Res}_${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+           sed -i -e "s:\$RES.NA:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields
+        # Modify the METDIR for 0.125x0.15625 simulation
+        elif [ "$Res" = "0.125x0.15625" ]; then
+           sed -i -e "s:GEOS_0.25x0.3125_NA:GEOS_0.25x0.3125_${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125
+           sed -i -e "s:GEOS_0.125x0.15625_NA:GEOS_0.125x0.15625_${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125
+	fi
+   fi
 
     # By default, only output emissions at the end of the simulation
     sed -i -e "s|DiagnFreq:                   Monthly|DiagnFreq:                   End|g" HEMCO_Config.rc
@@ -135,7 +153,7 @@ setup_template() {
     if "$HourlySpecies"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
             -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
-            -e 's/SpeciesConc.mode:           '\''time-averaged/SpeciesConc.mode:           '\''instantaneous/g' HISTORY.rc
+            HISTORY.rc
     fi
 
     # Remove sample restart file

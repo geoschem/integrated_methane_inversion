@@ -44,13 +44,10 @@ setup_spinup() {
     sed -i -e "s|${StartDate}|${SpinupStart}|g" \
         -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
 
-    # Turn on LevelEdgeDiags output
-    if "$HourlySpecies"; then
-        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
-    fi
+    # Disable diagnostic outputs from spinup (we only need restart file from spin up)
+    sed -i -e 's/'\''LevelEdgeDiags/#'\''LevelEdgeDiags/g' \
+        -e 's/'\''SpeciesConc/#'\''SpeciesConc/g' \
+        HISTORY.rc
 
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
@@ -77,7 +74,7 @@ cd ${RunDirs}/${runDir}/
         # prevent restart file from getting downloaded since
         # we don't want to overwrite the one we link to above
         sed -i '/GEOSChem.Restart/d' log.dryrun
-        ./download_data.py log.dryrun aws
+        python download_gc_data.py log.dryrun aws
     fi
 
     # Navigate back to top-level directory
@@ -96,7 +93,7 @@ run_spinup() {
     cd ${RunDirs}/spinup_run
 
     # Submit job to job scheduler
-    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime ${RunDirs}/spinup_run/${RunName}_Spinup.run
+    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition ${RunDirs}/spinup_run/${RunName}_Spinup.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

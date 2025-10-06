@@ -12,20 +12,28 @@ create_statevector() {
 
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then
-        LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        if [ "$Res" = "0.125x0.15625" ]; then
+            LandCoverSuffix="HEMCO/CH4/v2025-03/landcover/IMERG_land_sea_mask_0125x015625.nc"
+        else
+            LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
+        fi
     else
-        LandCoverFile="${DataPath}/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
+        LandCoverSuffix="GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${LandCoverFileExtension}"
     fi
+    LandCoverFile="${DataPath}/${LandCoverSuffix}"
 
     # Use archived HEMCO standalone emissions output
-    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-
-    if "$isAWS"; then
-        # Download land cover and HEMCO diagnostics files
-        s3_lc_path="s3://gcgrid/GEOS_${gridDir}/${metDir}/${constYr}/01/${Met}.${constYr}0101.CN.${gridFile}.${RegionID}.${LandCoverFileExtension}"
-        aws s3 cp --no-sign-request ${s3_lc_path} ${LandCoverFile}
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-        aws s3 cp --no-sign-request ${s3_hd_path} ${HemcoDiagFile}
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+    
+    # Download land cover and HEMCO diagnostics files
+    # if the files do not exist
+    if [ ! -f "$LandCoverFile" ]; then
+        s3_lc_path="s3://gcgrid/${LandCoverSuffix}"
+        python ${InversionPath}/src/utilities/download_aws_file.py ${s3_lc_path} ${LandCoverFile}
+    fi
+    if [ ! -f "$HemcoDiagFile" ]; then
+        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+        python ${InversionPath}/src/utilities/download_aws_file.py ${s3_hd_path} ${HemcoDiagFile}
     fi
 
     # Output path and filename for state vector file
@@ -48,6 +56,14 @@ create_statevector() {
 # Usage:
 #   reduce_dimension
 reduce_dimension() {
+
+    # First run the HEMCO standalone if necessary to get prior emissions
+    # needed for prepare_sf.py
+    if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
+        printf "\n hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for reducing dimensions of state vector.\n"
+        run_hemco_prior_emis
+    fi
+
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
     # set input variables
@@ -82,7 +98,7 @@ reduce_dimension() {
     if [[ "$SchedulerType" = "slurm" || "$SchedulerType" = "PBS" ]]; then
         rm -f .aggregation_error.txt
         chmod +x $aggregation_file
-        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime "${python_args[@]}"
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition "${python_args[@]}"
         # check for any errors
         [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
     else

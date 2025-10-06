@@ -31,8 +31,11 @@ def download_landcover_files(config):
         gridDir = "0.5x0.625"
         gridFile = "05x0625"
     elif config["Res"] == "0.25x0.3125":
-        gridDir = "0.25x0.3125"
-        gridFile = "025x03125"
+        gridDir= "0.25x0.3125"
+        gridFile= "025x03125"
+    elif config["Res"] == "0.125x0.15625":
+        gridDir= "0.125x0.15625"
+        gridFile= "0125x015625"
 
     # determine the path to the landcover file
     if len(config["RegionID"]) == 2:
@@ -70,7 +73,7 @@ def download_hemcodiags_files(config):
         gridFile = "025x03125"
 
     s3_hd_path = (
-        f"HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"
+        f"HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"
     )
     HemcoDiagFile = os.path.join(config["DataPath"], s3_hd_path)
     target_dir = os.path.dirname(HemcoDiagFile)

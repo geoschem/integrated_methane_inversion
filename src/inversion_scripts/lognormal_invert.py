@@ -12,6 +12,8 @@ import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
 from scipy.sparse import spdiags
+from src.inversion_scripts.utils import ensure_float_list
+from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -25,6 +27,23 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         state_vector_filepath [String] : path to state vector netcdf file
         jacobian_sf           [String] : path to numpy array of scale factors
     """
+    results_save_path = f"inversion_result_ln.nc"
+    # dictionary to store inversion results
+    results_dict = {
+        "xhat": [],
+        "lnxn": [],
+        "S_post": [],
+        "A": [],
+        "DOFS": [],
+        "Ja_normalized": [],
+        "prior_err": [],
+        "obs_err": [],
+        "gamma": [],
+        "prior_err_bc": [],
+        "prior_err_oh": [],
+        "prior_err_buffer": [],
+    }
+
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector["StateVector"]
     lats, lons = state_vector_labels.lat, state_vector_labels.lon
@@ -45,13 +64,20 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # normal elements.
     optimize_bcs = config["OptimizeBCs"]
     optimize_oh = config["OptimizeOH"]
-    OH_element_num = 1 if optimize_oh else 0
+    is_regional = config["isRegional"]
+    if optimize_oh:
+        if is_regional:
+            OH_element_num = 1
+        else:
+            OH_element_num = 2
+    else:
+        OH_element_num = 0
     BC_element_num = 4 if optimize_bcs else 0
     num_sv_elems = (
-        int(state_vector_labels.max().item()) + OH_element_num + BC_element_num
+        int(state_vector_labels.max().item()) + BC_element_num + OH_element_num
     )
     num_buffer_elems = int(config["nBufferClusters"])
-    num_normal_elems = num_buffer_elems + OH_element_num + BC_element_num
+    num_normal_elems = num_buffer_elems + BC_element_num + OH_element_num
     ds = np.load("full_jacobian_K.npz")
     K_temp = np.array(ds["K"]) * 1e9
 
@@ -67,24 +93,17 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         scaling_matrix = np.tile(scale_factors, (reps, 1))
         K_temp *= scaling_matrix
 
-    # The levenberg-marquardt method assumes that the prior emissions is
-    # the median prior emissions, but typically priors are the mean emission.
-    # To account for this we convert xa to a median. This can be done by
-    # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
-    # Here, we calculate this scaling factor
-    prior_scale = 1 / np.exp((np.log(float(config["PriorError"])) ** 2) / 2)
+    # Define Sa, gamma, So, and Sa_bc values to iterate through
+    prior_errors = ensure_float_list(config["PriorError"])
+    sa_buffer_elems = ensure_float_list(config["PriorErrorBufferElements"])
+    sa_bc_vals = ensure_float_list(config["PriorErrorBCs"]) if optimize_bcs else [0.0]
+    sa_oh_vals = ensure_float_list(config["PriorErrorOH"]) if optimize_oh else [0.0]
+    gamma_vals = ensure_float_list(config["Gamma"])
+    obs_err_keys = [
+        f"so_{obs_err}" for obs_err in ensure_float_list(config["ObsError"])
+    ]
 
-    # split K based on whether we are solving for lognormal or normal elements
-    # K_ROI is the matrix for the lognormal elements (the region of interest)
-    # the lognormal part of K gets scaled by prior_scale to convert to median
-    K_ROI = K_temp[:, :-num_normal_elems]
-    K_ROI = prior_scale * K_ROI
-    K_normal = K_temp[:, -num_normal_elems:]
-    K_full = np.concatenate((K_ROI, K_normal), axis=1)
-
-    # get the So matrix
-    ds = np.load("so_super.npz")
-    so = ds["so"]
+    so_dict = np.load("so_super.npz")
 
     # Calculate the difference between tropomi and the background
     # simulation, which has no emissions
@@ -97,35 +116,73 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # fixed kappa of 10 following Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
     kappa = 10
-    m, n = np.shape(K_ROI)
-
-    # Create base xa and lnxa matrices
-    # Note: the resulting xa vector has lognormal elements until the final bc elements
-    xa = np.ones((n, 1)) * 1.0
-    lnxa = np.log(xa)
-    xa_normal = np.zeros((num_normal_elems, 1)) * 1.0
-    xa = np.concatenate((xa, xa_normal), axis=0)
-    lnxa = np.concatenate((lnxa, xa_normal), axis=0)
-
-    # Create inverted So matrix
-    Soinv = spdiags(1 / so, 0, m, m)
-
-    # Define Sa, gamma, and Sa_bc values to iterate through
-    prior_errors = [float(config["PriorError"])]
-    sa_buffer_elems = [float(config["PriorErrorBufferElements"])]
-    sa_bc_vals = [float(config["PriorErrorBCs"])] if optimize_bcs else [None]
-    sa_oh_vals = [float(config["PriorErrorOH"])] if optimize_oh else [None]
-    gamma_vals = [float(config["Gamma"])]
 
     # iterate through different combination of gamma, lnsa, and sa_bc
-    # TODO: for now we will only allow one value for each of these
     # TODO: parallelize this once we allow vectorization of these values
     combinations = list(
-        product(gamma_vals, prior_errors, sa_bc_vals, sa_buffer_elems, sa_oh_vals)
+        product(
+            gamma_vals,
+            prior_errors,
+            obs_err_keys,
+            sa_bc_vals,
+            sa_buffer_elems,
+            sa_oh_vals,
+        )
     )
-    for gamma, sa, sa_bc, sa_buffer, sa_oh in combinations:
+    for gamma, sa, so_key, sa_bc, sa_buffer, sa_oh in combinations:
+        # params dict to store hyperparameters
+        params = {
+            "prior_err": sa,
+            "obs_err": float(so_key.removeprefix("so_")),
+            "gamma": gamma,
+            "prior_err_bc": sa_bc,
+            "prior_err_oh": sa_oh,
+            "prior_err_buffer": sa_buffer,
+        }
+        # The levenberg-marquardt method assumes that the prior emissions is
+        # the median prior emissions, but typically priors are the mean emission.
+        # To account for this we convert xa to a median. This can be done by
+        # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
+        # Here, we calculate this scaling factor
+        prior_scale = 1 / np.exp((np.log(float(sa)) ** 2) / 2)
+
+        # split K based on whether we are solving for lognormal or normal elements
+        # K_ROI is the matrix for the lognormal elements (the region of interest)
+        # the lognormal part of K gets scaled by prior_scale to convert to median
+        K_ROI = K_temp[:, :-num_normal_elems]
+        K_normal = K_temp[:, -num_normal_elems:]
+        K_ROI = prior_scale * K_ROI
+        K_full = np.concatenate((K_ROI, K_normal), axis=1)
+
+        m, n = np.shape(K_ROI)
+
+        # Create base xa and lnxa matrices
+        # Note: the resulting xa vector has lognormal elements until the
+        # final Buffer, BCs, and OH elements
+        xa = np.ones((n, 1)) * 1.0
+        lnxa = np.log(xa)
+
+        # Create normal elements for buffer, BCs, and OH
+        # BC elements are relative to 0 because they are in concentration space
+        # Other elements are in scale factor space where 1 is the prior
+        xa_normal_buffer = np.ones((num_buffer_elems, 1)) * 1.0
+        xa_normal_BCs = np.ones((BC_element_num, 1)) * 0.0
+        xa_normal_OH = np.ones((OH_element_num, 1)) * 1.0
+        xa_normal = np.concatenate(
+            (xa_normal_buffer, xa_normal_BCs, xa_normal_OH), axis=0
+        )
+
+        # concatenate normal elements to xa and lnxa
+        xa = np.concatenate((xa, xa_normal), axis=0)
+        lnxa = np.concatenate((lnxa, xa_normal), axis=0)
+
+        # get the So matrix
+        so = so_dict[so_key]
+
+        # Create inverted So matrix
+        Soinv = spdiags(1 / so, 0, m, m)
+
         lnsa_val = np.log(sa)
-        results_save_path = f"inversion_result_ln.nc"
 
         # Create lnSa matrix
         # lnsa = lnsa_val**2 * np.ones((n, 1))
@@ -134,25 +191,41 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # For the buffer elems, BCs, and OH elements
         # we apply a different Sa value
         # In the most basic we only generate Sa for buffer elements
-        sa_normal = sa_buffer**2 * np.ones(
+        base_sa_normal = sa_buffer**2 * np.ones(
             (num_normal_elems - (BC_element_num + OH_element_num), 1)
         )
 
         # conditionally add BC and OH elements
         if optimize_bcs:
             bc_errors = sa_bc**2 * np.ones((BC_element_num, 1))
-            sa_normal = np.concatenate((sa_normal, bc_errors), axis=0)
+            base_sa_normal = np.concatenate((base_sa_normal, bc_errors), axis=0)
+
         if optimize_oh:
             oh_errors = sa_oh**2 * np.ones((OH_element_num, 1))
-            sa_normal = np.concatenate((sa_normal, oh_errors), axis=0)
+            # weight the OH term(s) following Maasakkers et al. (2019)
+            oh_weight = OH_element_num / (num_normal_elems - OH_element_num)
+            oh_errors_constraint = (oh_weight * sa_oh**2) * np.ones((OH_element_num, 1))
+            sa_normal = np.concatenate(
+                (base_sa_normal, oh_errors), axis=0
+            )  # unweighted Sa vector
+            sa_normal_constraint = np.concatenate(
+                (base_sa_normal, oh_errors_constraint), axis=0
+            )  # weighted Sa vector
+        else:
+            sa_normal = base_sa_normal.copy()
+            sa_normal_constraint = base_sa_normal.copy()
 
         # concatenate lognormal prior errors with normal prior errors
         lnsa_arr = np.concatenate((lnsa, sa_normal), axis=0)
+        lnsa_arr_constraint = np.concatenate((lnsa, sa_normal_constraint), axis=0)
 
-        # Create lnSa matrix
+        # Create two separate lnSa matrices
         lnsa = np.zeros((n + num_normal_elems, n + num_normal_elems))
-        np.fill_diagonal(lnsa, lnsa_arr)
+        lnsa_constraint = lnsa.copy()
+        np.fill_diagonal(lnsa, lnsa_arr)  # unweighted
+        np.fill_diagonal(lnsa_constraint, lnsa_arr_constraint)  # weighted
         invlnsa = np.linalg.inv(lnsa)
+        invlnsa_constraint = np.linalg.inv(lnsa_constraint)
 
         # we start with lnxa using the prior values (scale factors of ln(1))
         lnxn = lnxa
@@ -187,11 +260,11 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
             # Compute the next xn_update
             term1 = gamma_K_prime_transpose_Soinv @ K_prime
-            term2 = (1 + kappa) * invlnsa
+            term2 = (1 + kappa) * invlnsa_constraint
             inv_term = np.linalg.inv(term1 + term2)
 
             term3 = gamma_K_prime_transpose_Soinv @ (y_ybkg_diff - K_full @ xn)
-            term4 = invlnsa @ (lnxn - lnxa)
+            term4 = invlnsa_constraint @ (lnxn - lnxa)
 
             # put it all together to calculate lnxn_update
             lnxn_update = lnxn + inv_term @ (term3 - term4)
@@ -214,7 +287,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # Calculate averaging kernel and degrees of freedom for signal
         K_primeT_so = gamma * np.transpose(K_prime) @ Soinv
+        # posterior error covariance matrix (uses unweighted Sa)
         lns = np.linalg.inv(K_primeT_so @ K_prime + invlnsa)
+        # Averaging kernel (uses unweighted Sa)
         G = lns @ K_primeT_so
         ak = G @ K_prime
         dofs = np.trace(ak)
@@ -243,73 +318,76 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             + f"sa: {sa}, sa_bc: {sa_bc}, sa_oh: {sa_oh_vals} sa_buffer: {sa_buffer})"
         )
 
-        # Create gridded datarrays of S_post, xhat, and A
+        # Append results to results_dict
         xhat = xnmean
         print(f"xhat = {xhat.sum()}")
-        xhat_arr = np.zeros((len(lats), len(lons)))
-        ak_sensitivities = np.diagonal(ak)
-        ak_arr = np.zeros((len(lats), len(lons)))
-        lnS_post = np.diagonal(lns)
-        lnS_post_arr = np.zeros((len(lats), len(lons)))
-        for i in range(np.shape(xhat)[0]):
-            idx = np.where(state_vector_labels == float(i + 1))
-            xhat_arr[idx] = xhat[i]
-            ak_arr[idx] = ak_sensitivities[i]
-            lnS_post_arr[idx] = lnS_post[i]
+        results_dict["xhat"].append(xhat.flatten()),
+        results_dict["lnxn"].append(lnxn.flatten()),
+        results_dict["S_post"].append(lns),
+        results_dict["A"].append(ak),
+        results_dict["DOFS"].append(dofs),
+        results_dict["Ja_normalized"].append(Ja.item() / num_sv_elems),
+        for k, v in params.items():
+            results_dict[k].append(v)
 
-        # lambda function to make a DataArray from numpy array
-        make_dataArray = lambda arr: xr.DataArray(
-            data=arr,
-            dims=["lat", "lon"],
-            coords=dict(
-                lon=(["lon"], lons.values),
-                lat=(["lat"], lats.values),
-            ),
+    # Define the default data variables as those with normalized Ja closest to 1
+    idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
+
+    # Filter ensemble members to only members with Ja between 0.5 and 2
+    filter_ens_members = True  # set to False to turn off filtering
+    include_ens_members = [
+        i for i, Ja in enumerate(results_dict["Ja_normalized"]) if 0.5 <= Ja <= 2.0
+    ]
+
+    if filter_ens_members and len(include_ens_members) > 0:
+        for k in results_dict.keys():
+            results_dict[k] = [results_dict[k][i] for i in include_ens_members]
+    elif len(include_ens_members) == 0:
+        print(
+            "Warning: No ensemble members with 0.5 <= J_A/n <= 2.0, "
+            + "Returning all members in ensemble. This may lead to suboptimal results."
+            + " Consider adding additional ensemble members with different hyperparameters."
+        )
+    else:
+        print(
+            "Warning: Returning all members in ensemble without filtering "
+            + "Ja/n thresholds [0.5, 2.0]. This may lead to suboptimal results."
+            + " Consider adding ensemble filters."
         )
 
-        # transform to data arrays
-        scale_factors = make_dataArray(xhat_arr)
-        ak_arr = make_dataArray(ak_arr)
-        lnS_post_arr = make_dataArray(lnS_post_arr)
+    # Create an xarray dataset to store inversion results
+    dataset = xr.Dataset()
+    for k, v in results_dict.items():
+        v = np.array(v)
+        dims = ["ensemble"] + [f"nvar{i}" for i in range(1, v.ndim)]
+        dataset[k] = (dims, v)
 
-        # create gridded posterior
-        ds = xr.Dataset(
-            {
-                "ScaleFactor": (["lat", "lon"], scale_factors.data),
-                "A": (["lat", "lon"], ak_arr.data),
-                "S_post": (["lat", "lon"], lnS_post_arr.data),
-            },
-            coords={"lon": ("lon", lons.data), "lat": ("lat", lats.data)},
-        )
+    # save index number of ens member with J_A/n
+    # closes to 1 as the default member
+    dataset.attrs = {"default_member_index": idx_default_Ja}
 
-        # Add attribute metadata
-        ds.lat.attrs["units"] = "degrees_north"
-        ds.lat.attrs["long_name"] = "Latitude"
-        ds.lon.attrs["units"] = "degrees_east"
-        ds.lon.attrs["long_name"] = "Longitude"
-        ds.ScaleFactor.attrs["units"] = "1"
+    # ensemble dimension to end
+    dataset = dataset.transpose(..., "ensemble")
 
-        # save to netcdf file
-        ds.to_netcdf("gridded_posterior_ln.nc")
+    # also calculate the mean of the ensemble as the main result
+    dataset_mean = dataset.mean(dim="ensemble")
 
-        # Save (ungridded) inversion results
-        dataset = Dataset(results_save_path, "w", format="NETCDF4_CLASSIC")
-        dataset.createDimension("nvar1", num_sv_elems)
-        dataset.createDimension("nvar2", num_sv_elems)
-        dataset.createDimension("float", 1)
-        nc_xn = dataset.createVariable("xhat", np.float32, ("nvar1"))
-        nc_lnxn = dataset.createVariable("lnxn", np.float32, ("nvar1"))
-        nc_lnS_post = dataset.createVariable("S_post", np.float32, ("nvar1", "nvar2"))
-        nc_A = dataset.createVariable("A", np.float32, ("nvar1", "nvar2"))
-        nc_dofs = dataset.createVariable("DOFS", np.float32, ("float",))
-        nc_Ja = dataset.createVariable("Ja", np.float32, ("float",))
-        nc_xn[:] = xnmean.flatten()
-        nc_lnxn[:] = lnxn.flatten()
-        nc_lnS_post[:, :] = lns
-        nc_A[:, :] = ak
-        nc_dofs[0] = dofs
-        nc_Ja[0] = Ja
-        dataset.close()
+    dataset.to_netcdf(
+        results_save_path.replace(".nc", "_ensemble.nc"),
+        encoding={v: {"zlib": True, "complevel": 1} for v in dataset.data_vars},
+    )
+
+    dataset_mean.to_netcdf(
+        results_save_path,
+        encoding={v: {"zlib": True, "complevel": 1} for v in dataset_mean.data_vars},
+    )
+
+    # make gridded posterior
+    make_gridded_posterior(
+        results_save_path.replace(".nc", "_ensemble.nc"),
+        state_vector_filepath,
+        "gridded_posterior_ln.nc",
+    )
 
 
 if __name__ == "__main__":

@@ -22,14 +22,12 @@ from src.inversion_scripts.utils import (
     sum_total_emissions,
     plot_field,
     read_and_filter_satellite,
-    calculate_area_in_km,
     calculate_superobservation_error,
     species_molar_mass,
     mixing_ratio_conv_factor,
     get_mean_emissions,
     get_posterior_emissions,
 )
-from joblib import Parallel, delayed
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -101,8 +99,8 @@ def imi_preview(
         if isinstance(config[key], str):
             config[key] = os.path.expandvars(config[key])
 
-    # Open the state vector file
-    state_vector = xr.load_dataset(state_vector_path)
+    # Open the state vector file and squeeze time dimension
+    state_vector = xr.load_dataset(state_vector_path).squeeze()
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
@@ -134,38 +132,37 @@ def imi_preview(
     # Reference area = area of 24-39 N 95-111W
     reference_cost = 20
     reference_num_compute_hours = 10
-    reference_area_km = calculate_area_in_km(
-        [(-111, 24), (-95, 24), (-95, 39), (-111, 39)]
-    )
+    ref_nbox = ((39 - 24) / 0.25) * ((-95 + 111) / 0.3125)
     hours_in_month = 31 * 24
     reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
     num_state_variables = np.nanmax(state_vector_labels.values)
 
     lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
     lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
-    coords = [
-        (lons[0], lats[0]),
-        (lons[1], lats[0]),
-        (lons[1], lats[1]),
-        (lons[0], lats[1]),
-    ]
-    inversion_area_km = calculate_area_in_km(coords)
 
+    if config["Res"] == "0.125x0.15625":
+        deltalat = 0.125
+        deltalon = 0.15625
     if config["Res"] == "0.25x0.3125":
-        res_factor = 1
+        deltalat = 0.25
+        deltalon = 0.3125
     elif config["Res"] == "0.5x0.625":
-        res_factor = 0.5
+        deltalat = 0.5
+        deltalon = 0.625
     elif config["Res"] == "2.0x2.5":
-        res_factor = 0.125
+        deltalat = 2.0
+        deltalon = 2.5
     elif config["Res"] == "4.0x5.0":
-        res_factor = 0.0625
+        deltalat = 4.0
+        deltalon = 5.0
+    nbox = (lats[1] - lats[0]) / deltalat * (lons[1] - lons[0]) / deltalon
+    nbox_factor = nbox / ref_nbox
     additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
     expected_cost = (
         (reference_cost + additional_storage_cost)
         * (num_state_variables / 243)
-        * (inversion_area_km / reference_area_km)
+        * nbox_factor
         * (num_days / 31)
-        * res_factor
     )
 
     outstring6 = (
@@ -260,6 +257,8 @@ def imi_preview(
         dpi=150,
     )
 
+   
+
     # Plot albedo
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
@@ -349,6 +348,8 @@ def imi_preview(
         dpi=150,
     )
 
+    
+
     # calculate expected DOFS
     expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
@@ -379,6 +380,65 @@ def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
 
     return s
 
+def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
+    """
+    Get sectoral emissions from the prior dataset
+    """
+    # Plot sectoral emissions
+    sectors = [
+        var
+        for var in list(prior_ds.keys())
+        if "EmisCH4" in var and not ("Total" in var or "Excl" in var)
+    ]
+
+    # Calculate total emissions for each sector
+    prior_sector_vals = []
+    positive_sectors = []
+    for sector in sectors:
+        prior_val = sum_total_emissions(prior_ds[sector], areas, mask)
+        if prior_val > 0:
+            prior_sector_vals.append(prior_val)
+            positive_sectors.append(sector.replace("EmisCH4_", ""))
+
+    # Combine the lists into tuples and sort them based on prior_sector_vals
+    combined = list(zip(positive_sectors, prior_sector_vals))
+    combined_sorted = sorted(combined, key=lambda x: x[1])
+    positive_sectors, prior_sector_vals = zip(*combined_sorted)
+
+    # Plot bars for prior emissions
+    fig = plt.figure(figsize=(10, 5))
+    ax = fig.subplots(1, 1)
+    bar_height = 0.35
+    ind = np.arange(len(positive_sectors))
+    bars1 = ax.barh(
+        ind,
+        prior_sector_vals,
+        bar_height,
+        color="goldenrod",
+        label="Prior Emissions",
+    )
+
+    # Add labels and title
+    ax.set_xlabel("Emissions ($Tg\ a^{-1}$)")
+    ax.set_ylabel("Sector")
+    ax.set_title("Sectoral Emissions (Prior Inventory)")
+    ax.set_yticks(ind)
+    ax.set_yticklabels(positive_sectors)
+
+    plt.savefig(f"{preview_dir}/prior_sectoral_emissions.png", bbox_inches="tight")
+
+    sector_totals = {}
+
+    for item in combined_sorted:
+        category = item[0]
+        sector_prior = item[1]
+        sector_totals[f"{category}Prior"] = sector_prior
+
+    # Save the statistics to a file
+    stats_pd = pd.DataFrame(sector_totals, index=[0])
+    stats_pd.to_csv(f"{preview_dir}/prior_sectoral_statistics.csv", index=False)
+
+    return
 
 def estimate_averaging_kernel(
     config, species, state_vector_path, preview_dir, satellite_cache, preview=False, kf_index=None
@@ -442,6 +502,11 @@ def estimate_averaging_kernel(
         f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y \n"
     )
     print(outstring1)
+    
+    
+    # calculate sectoral totals if running preview
+    if preview:
+        get_sectoral_outputs(prior_ds, areas, mask, preview_dir)
 
     # ----------------------------------
     # Observations in region of interest
@@ -518,20 +583,19 @@ def estimate_averaging_kernel(
 
     # Set resolution specific variables
     # L_native = Rough length scale of native state vector element [m]
-    if config["Res"] == "0.25x0.3125":
-        L_native = 25 * 1000
+    if config["Res"] == "0.125x0.15625":
+        lat_step = 0.125
+        lon_step = 0.15625
+    elif config["Res"] == "0.25x0.3125":
         lat_step = 0.25
         lon_step = 0.3125
     elif config["Res"] == "0.5x0.625":
-        L_native = 50 * 1000
         lat_step = 0.5
         lon_step = 0.625
     elif config["Res"] == "2.0x2.5":
-        L_native = 200 * 1000
         lat_step = 2.0
         lon_step = 2.5
     elif config["Res"] == "4.0x5.0":
-        L_native = 400 * 1000
         lat_step = 4.0
         lon_step = 5.0
 
@@ -586,7 +650,7 @@ def estimate_averaging_kernel(
         # number of native state vector elements in each element
         size_temp = state_vector_labels.where(mask).count().item()
         # append the calculated length scale of element
-        L_temp = L_native * size_temp
+        L_native = np.sqrt(np.nanmean(areas.where(mask).values)).item()
         # append the number of obs in each element
         num_obs_temp = np.nansum(
             daily_observation_counts["obs_count"].where(buffered_mask).values
@@ -595,7 +659,7 @@ def estimate_averaging_kernel(
         n_success_obs_days = np.nansum(
             daily_observation_counts["superobs_count"].where(buffered_mask).values
         ).item()
-        return emissions_temp, L_temp, size_temp, num_obs_temp, n_success_obs_days
+        return emissions_temp, L_native, size_temp, num_obs_temp, n_success_obs_days
 
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
@@ -655,13 +719,14 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * mixing_ratio_conv_factor(species) / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / np.power(
-        L, 2
+    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * L ** 2)
     )  # kg/m2/s from kg/s, per element
 
+    # Use the first element of the error list if multiple values are provided
+    sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
     # Error standard deviations with updated units
-    sA = config["PriorError"] * emissions_kgs_per_m2
-    sO = config["ObsError"]
+    sA = sigmaA * emissions_kgs_per_m2
+    sO = config["ObsError"][0] if isinstance(config["ObsError"], list) else config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
     # from P observations per grid cell = number of observations per grid cell / number of super-observations

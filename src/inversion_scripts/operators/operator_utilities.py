@@ -141,8 +141,10 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
             concat_tracers(k, gc_date, config, v, n_elements)
             for k, v in pert_simulations_dict.items()
         ]
+
+        ds_all = [ds.load() for ds in ds_all]
+
         ds_sensi = xr.concat(ds_all, "element")
-        ds_sensi.load()
 
         sensitivities = ds_sensi[config["Species"]].values
         # Reshape so the data have dimensions (lon, lat, lev, grid_element)
@@ -153,7 +155,6 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         ds_emis_base = concat_tracers(
             "0001", gc_date, config, [0], n_elements, baserun=True
         )
-        ds_emis_base.load()
         dat["emis_base_species"] = np.einsum(
             "klji->ijlk", ds_emis_base[config["Species"]].values
         )
@@ -164,7 +165,6 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
         ds_oh_base = concat_tracers(
             "0000", gc_date, config, [0], n_elements, baserun=True
         )
-        ds_oh_base.load()
         dat["oh_base_species"] = np.einsum(
             "klji->ijlk", ds_oh_base[config["Species"]].values
         )
@@ -181,7 +181,7 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
         run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
         gc_date    [pd.Datetime] : date object, specifies Ymd_h
         config     [dict]        : dictionary of IMI config file
-        sv_elems   [list]        : list of state vector element tracers in this simulations
+        sv_elems   [list]        : list of state vector element tracers in this simulation
         n_elements [int]         : number of state vector elements in this inversion
         baserun    [bool]        : If True, only the base variable in the simulation will
                                  be opened, and the function will just return this one
@@ -203,36 +203,43 @@ def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False)
     )
     j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
     file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-    dsmf = xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto")
-    keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
-    is_Regional = config["isRegional"]
 
-    if len(keepvars) == 1:
+    with xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto") as dsmf:
+        try:
+            dsmf = dsmf.isel(time=gc_date.hour, drop=True)  # subset hour of interest
+        except Exception as e:
+            print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
+            raise e
 
-        is_OH_element = check_is_OH_element(
-            sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
-        )
-        is_BC_element = check_is_BC_element(
-            sv_elems[0],
-            n_elements,
-            config["OptimizeOH"],
-            config["OptimizeBCs"],
-            is_OH_element,
-            is_Regional,
-        )
+        keepvars = [f"SpeciesConcVV_{config['Species']}_{i:04}" for i in sv_elems]
+        is_Regional = config["isRegional"]
 
-        # for BC and OH elems, no number in var name
-        if is_OH_element or is_BC_element:
-            keepvars = ["SpeciesConcVV_CH4"]
+        if len(keepvars) == 1:
 
-    if baserun:
-        keepvars = ["SpeciesConcVV_CH4"]
+            is_OH_element = check_is_OH_element(
+                sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
+            )
+            is_BC_element = check_is_BC_element(
+                sv_elems[0],
+                n_elements,
+                config["OptimizeOH"],
+                config["OptimizeBCs"],
+                is_OH_element,
+                is_Regional,
+            )
 
-    ds_concat = xr.concat(
-        [dsmf[v] for v in keepvars], "element"
-    ).rename(config["Species"])
-    ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
-    ds_concat = ds_concat.isel(time=gc_date.hour, drop=True)  # subset hour of interest
+            # for BC and OH elems, no number in var name
+            if is_OH_element or is_BC_element:
+                keepvars = [f"SpeciesConcVV_{config['Species']}"]
+
+        if baserun:
+            keepvars = [f"SpeciesConcVV_{config['Species']}"]
+
+        ds_concat = xr.concat(
+            [dsmf[v] for v in keepvars], "element"
+        ).rename(config["Species"])
+        ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
+
     if not baserun:
         ds_concat = ds_concat.assign_coords({"element": sv_elems})
     return ds_concat
@@ -376,14 +383,14 @@ def remap(gc_species, data_type, p_merge, edge_index, first_gc_edge):
     Remap GEOS-Chem methane to the TROPOMI vertical grid.
 
     Arguments
-        gc_species        [float]   : Methane from GEOS-Chem
+        gc_species    [float]   : Simualted concentrations from GEOS-Chem
         p_merge       [float]   : Merged TROPOMI + GEOS-Chem pressure levels, from merge_pressure_grids()
-        data_type     [int]     : Labels for pressure edges of merged grid. 1=TROPOMI, 2=GEOS-Chem, from merge_pressure_grids()
+        data_type     [int]     : Labels for pressure edges of merged grid. 1=satellite, 2=GEOS-Chem, from merge_pressure_grids()
         edge_index    [int]     : Indexes of pressure edges, from merge_pressure_grids()
         first_gc_edge [int]     : Index of first GEOS-Chem pressure edge in merged grid, from merge_pressure_grids()
 
     Returns
-        sat_CH4       [float]   : GEOS-Chem methane in TROPOMI pressure coordinates
+        sat_species   [float]   : GEOS-Chem concentrations in satellite pressure coordinates
     """
 
     # Define CH4 concentrations in the layers of the merged pressure grid

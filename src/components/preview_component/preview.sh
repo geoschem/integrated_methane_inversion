@@ -12,7 +12,7 @@ run_preview() {
     # First run the HEMCO standalone if necessary to get prior emissions
     # needed for prepare_sf.py
     if [[ ! -d ${RunDirs}/hemco_prior_emis/OutputDir ]]; then
-        printf "\hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
+        printf "\n hemco_prior_emis directory not detected. Running HEMCO for prior emissions as a prerequisite for IMI Preview.\n"
         run_hemco_prior_emis
     fi
 
@@ -37,7 +37,15 @@ run_preview() {
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
-    python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
+    if [[ $SchedulerType = "slurm" || $SchedulerType = "PBS" ]]; then
+        rm -f .preview_error_status.txt
+        chmod +x $preview_file
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
+        # check for any errors
+        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
+    else
+        python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
+    fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
     # check if sbatch commands exited with non-zero exit code

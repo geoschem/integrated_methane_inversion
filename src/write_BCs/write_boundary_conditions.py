@@ -25,16 +25,15 @@ def get_satellite_times(filename):
     Example input (str): S5P_RPRO_L2__CH4____20220725T152751_20220725T170921_24775_03_020400_20230201T100624.nc
     Example output (tuple): (np.datetime64('2022-07-25T15:27:51'), np.datetime64('2022-07-25T17:09:21'))
     """
+    ftimes = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
+    assert ftimes is not None
+    begint = np.datetime64(datetime.datetime.strptime(ftimes.group(1), "%Y%m%dT%H%M%S"))
+    endt = np.datetime64(datetime.datetime.strptime(ftimes.group(2), "%Y%m%dT%H%M%S"))
 
-    file_times = re.search(r'(\d{8}T\d{6})_(\d{8}T\d{6})', filename)
-    assert file_times is not None, "check satellite filename - wasn't able to find start and end times in the filename"
-    start_satellite_time = np.datetime64(datetime.datetime.strptime(file_times.group(1), "%Y%m%dT%H%M%S"))
-    end_satellite_time = np.datetime64(datetime.datetime.strptime(file_times.group(2), "%Y%m%dT%H%M%S"))
-    
-    return start_satellite_time, end_satellite_time
+    return begint, endt
+
 
 def apply_satellite_operator_to_one_satellite_file(filename, satellite_product, species):
-    
     """
     Run apply_satellite_operator from src/inversion_scripts/operators/satellite_operator.py for a single satellite file
     Example input (str): S5P_RPRO_L2__CH4____20220725T152751_20220725T170921_24775_03_020400_20230201T100624.nc
@@ -45,32 +44,29 @@ def apply_satellite_operator_to_one_satellite_file(filename, satellite_product, 
         species=species,
         satellite_product=satellite_product,
         n_elements=False, # Not relevant
-        gc_startdate=start_time_of_interest,
-        gc_enddate=end_time_of_interest,
+        gc_startdate=start_time,
+        gc_enddate=end_time,
         xlim=[-180, 180],
         ylim=[-90, 90],
         gc_cache=os.path.join(config["workDir"], "gc_run", "OutputDir"),
         build_jacobian=False, # Not relevant
-        sensi_cache=False) # Not relevant
-    
-    return result["obs_GC"],filename
+        period_i=False, # Not relevanat
+        config=False # Not relevant
+    )
 
-def create_daily_means(satelliteDir, satellite_product, species, start_time_of_interest, end_time_of_interest):
+    return result["obs_GC"], filename
+
+
+def create_daily_means(satelliteDir, satellite_product, species, 
+                       start_time, end_time):
 
     # List of all satellite files that interesct our time period of interest
     satellite_files = sorted(
         [
-            file for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
-            if (
-                start_time_of_interest 
-                <= get_satellite_times(file)[0] 
-                <= end_time_of_interest
-            )
-            or (
-                start_time_of_interest 
-                <= get_satellite_times(file)[1] 
-                <= end_time_of_interest
-            )
+            file 
+            for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
+            if (start_time <= get_satellite_times(file)[0] <= end_time)
+            or (start_time <= get_satellite_times(file)[1] <= end_time)
         ]
     )
     print(f"First satellite file -> {satellite_files[0]}")
@@ -97,9 +93,7 @@ def create_daily_means(satelliteDir, satellite_product, species, start_time_of_i
         LAT = data["lat"].values
 
     # List of all days in our time range of interest
-    alldates = np.arange(
-        start_time_of_interest, end_time_of_interest, dtype="datetime64[D]"
-    )
+    alldates = np.arange(start_time, end_time, dtype="datetime64[D]")
     alldates = [day.astype(datetime.datetime).strftime("%Y%m%d") for day in alldates]
 
     # Initialize arrays for regridding
@@ -118,15 +112,19 @@ def create_daily_means(satelliteDir, satellite_product, species, start_time_of_i
         for iNN in range(NN):
 
             # Which day are we on (this is not perfect right now because orbits can cross from one day to the next...
-            # but it is the best we can do right now without changing apply_satellite_operator)
-            file_times = re.search(r'(\d{8}T\d{6})_(\d{8}T\d{6})', filename)
-            assert (
-                file_times is not None
-            ), "check satellite filename - wasn't able to find start and end times in the filename"
-            date = datetime.datetime.strptime(
-                file_times.group(1), "%Y%m%dT%H%M%S"
-            ).strftime("%Y%m%d")
-            time_ind = alldates.index(date)
+            # but it is the best we can do right now without changing apply_tropomi_operator)
+            file_times = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
+            assert file_times is not None
+            try:
+                date = datetime.datetime.strptime(
+                    file_times.group(1), "%Y%m%dT%H%M%S"
+                ).strftime("%Y%m%d")
+                time_ind = alldates.index(date)
+            except:
+                date = datetime.datetime.strptime(
+                    file_times.group(2), "%Y%m%dT%H%M%S"
+                ).strftime("%Y%m%d")
+                time_ind = alldates.index(date)
 
             c_satellite, c_GC, lon0, lat0 = obsGC[iNN, :4]
             ii = nearest_loc(lon0, LON, tolerance=5)
@@ -268,35 +266,21 @@ def write_bias_corrected_files(bias, species, satellite_product):
         bias_for_this_boundary_condition_file = bias_mol_mol[index, :, :]
 
         with xr.open_dataset(filename) as ds:
-            original_data = ds[f"SpeciesBC_{species}"].values.copy()
-            for t in range(original_data.shape[0]):
-                for lev in range(original_data.shape[1]):
-                    original_data[t, lev, :, :] -= bias_for_this_boundary_condition_file
-            ds[f"SpeciesBC_{species}"].values = original_data
-            if satellite_product == "BlendedTROPOMI":
-                print(
-                     f"Writing to {os.path.join(config['workDir'], 'blended-boundary-conditions', os.path.basename(filename))}"
-                )
-                ds.to_netcdf(
-                     os.path.join(
-                        config["workDir"], 
-                        "blended-boundary-conditions", 
-                        os.path.basename(filename),
-                    )
-                )
-            elif satellite_product == "TROPOMI":
-                print(
-                    f"Writing to {os.path.join(config['workDir'], 'tropomi-boundary-conditions', os.path.basename(filename))}"
-                )
-                ds.to_netcdf(
-                    os.path.join(
-                        config["workDir"], 
-                        "tropomi-boundary-conditions", 
-                        os.path.basename(filename)
-                    )
-                )
-            else:
-                print("Other data sources for boundary conditions are not currently supported --HON")
+            mixing_ratio = ds[f"SpeciesBC_{species}"].values.copy()  # [mol/mol]
+            dry_air = ds["Met_AD"] / 28.9644e-3  # [mol]
+            original_xspecies = (mixing_ratio * dry_air).sum(dim="lev") / dry_air.sum(dim="lev")
+            new_xspecies = original_xspecies - bias_for_this_boundary_condition_file
+            ratio = new_xspecies / original_xspecies
+
+            for lev in range(mixing_ratio.shape[1]):
+                mixing_ratio[:, lev, :, :] *= ratio
+
+            ds[f"SpeciesBC_{species}"].values = mixing_ratio
+
+            subdir = "blended-boundary-conditions" if blendedTROPOMI else "tropomi-boundary-conditions"
+            output_path = os.path.join(config["workDir"], subdir, os.path.basename(filename))
+            print(f"Writing to {output_path}")
+            ds.to_netcdf(output_path)
 
 if __name__ == "__main__":
 
@@ -305,16 +289,14 @@ if __name__ == "__main__":
     satelliteDir = sys.argv[2] # where is the satellite data?
     species = sys.argv[3]
     # Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
-    start_time_of_interest = np.datetime64(
-        datetime.datetime.strptime(sys.argv[4], "%Y%m%d")
-    )
-    if start_time_of_interest != np.datetime64("2018-04-01T00:00:00"):
-        start_time_of_interest += np.timedelta64(1, "D")
+
+    start_time = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
+    if start_time != np.datetime64("2018-04-01T00:00:00"):
+        start_time += np.timedelta64(1, "D")
     # End of GC output
-    end_time_of_interest = np.datetime64(
-        datetime.datetime.strptime(sys.argv[5], "%Y%m%d")
-    )
-    print(f"\nwrite_boundary_conditions.py output for {satellite_product}")
+    end_time = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
+    print(f"\nwrite_boundary_conditions.py output for satellite_product={satellite_product}")
+
     print(f"Using files at {satelliteDir}")
 
     """
@@ -334,8 +316,7 @@ if __name__ == "__main__":
     """
 
     daily_means = create_daily_means(
-        satelliteDir, satellite_product, species, 
-        start_time_of_interest, end_time_of_interest
+        satelliteDir, satellite_product, species, start_time, end_time
     )
     bias = calculate_bias(daily_means)
     write_bias_corrected_files(bias, species, satellite_product)

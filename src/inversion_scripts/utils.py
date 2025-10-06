@@ -151,6 +151,114 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         )
     )
 
+def plot_hyperparameter_analysis(axs, ens_totals_posterior, params_dict):
+    """
+    Function to plot the sensitivity of the inversion to the hyperparameters
+    """
+    ens_totals_std = ens_totals_posterior.std()
+    ens_mean_emis = ens_totals_posterior.mean()
+
+    num_axes = len(params_dict.keys())
+
+    # Only proceed if there are axes to plot
+    if num_axes > 0:
+        # Flatten axs in case of multiple subplots
+        axs = axs.flatten()
+
+        for i, key in enumerate(params_dict.keys()):
+            ax = axs[i]
+            ax.plot(
+                params_dict[key],
+                ens_totals_posterior,
+                marker="o",
+                linestyle="",
+                label="Ensemble Member"
+            )
+            ax.axhline(y=ens_mean_emis, linestyle="-", label="Ensemble Mean")
+            ax.axhline(y=ens_mean_emis - ens_totals_std, linestyle="--", label="Ensemble Standard Deviation")
+            ax.axhline(y=ens_mean_emis + ens_totals_std, linestyle="--")
+            ax.set_title(f"Inversion sensitivity to {key}")
+            ax.set_ylabel("Total emissions (Tg/yr)")
+            ax.set_xlabel(key)
+            if i == 0:
+                ax.legend()
+
+        plt.tight_layout()
+    else:
+        print("Not enough ensemble members to plot")
+
+def plot_ensemble(
+    ax,
+    ens_posterior_totals,
+    total_prior_emissions,
+    default_emission_totals=None,
+    plot_save_path=None,
+):
+    """
+    Function to plot the total emissions from the ensemble members and the prior
+    emissions. Optionally, the default emission totals can be plotted as well.
+
+    Arguments
+        ax                      : matplotlib axis object
+        ens_posterior_totals    : list of total emissions from the ensemble members
+        total_prior_emissions   : total emissions from the prior
+        default_emission_totals : total emissions from the default member (optional)
+        plot_save_path          : path to save the plot (optional)
+    """
+    # calculate the mean and standard deviation of the ensemble posterior totals
+    ens_mean_emis = np.mean(ens_posterior_totals)
+    ens_totals_min = np.min(ens_posterior_totals)
+    ens_totals_max = np.max(ens_posterior_totals)
+
+    # Plot the prior emissions
+    ax.bar(
+        0, total_prior_emissions, width=0.5, color="goldenrod", label="Prior", zorder=1
+    )
+    # Plot the ensemble mean and min/max error bars
+    ax.bar(
+        1, ens_mean_emis, width=0.5, color="steelblue", label="Ensemble mean", zorder=2
+    )
+    # plot the min/max error bars
+    ax.errorbar(
+        1,
+        ens_mean_emis,
+        yerr=[[ens_mean_emis - ens_totals_min], [ens_totals_max - ens_mean_emis]],
+        fmt="none",
+        color="k",
+        capsize=4,
+        zorder=5,
+    )
+    # Plot the ensemble members
+    ax.plot(
+        np.ones(len(ens_posterior_totals)),
+        ens_posterior_totals,
+        marker="o",
+        linestyle="",
+        alpha=0.5,
+        color="darkblue",
+        label="Ensemble member",
+        zorder=3,
+    )
+    if default_emission_totals:
+        ax.plot(
+            1,
+            default_emission_totals,
+            marker="o",
+            linestyle="",
+            color="c",
+            label="Default member (Ja/n closest to 1)",
+            zorder=4,
+        )
+
+    # Labeling
+    ax.set_xticks([1, 0])
+    ax.set_xticklabels(["Posterior", "Prior"])
+    ax.set_ylabel("Emissions ($Tg\ a^{-1}$)")
+    ax.set_title("Total Emissions")
+    ax.legend()
+    if plot_save_path:
+        plt.savefig(os.path.join(plot_save_path, "total_emis_ensemble.png"))
+
 
 def plot_field(
     ax,
@@ -279,12 +387,12 @@ def plot_field(
             sanitized_title = clean_title.replace(" ", "_") + ".png"
         else:
             sanitized_title = title.replace(" ", "_") + ".png"
-    
+
         # Construct the full file path
         full_save_path = os.path.join(save_path, sanitized_title.lower())
-        
+
         # Save the plot
-        plt.savefig(full_save_path, format="png", bbox_inches='tight')
+        plt.savefig(full_save_path, format="png", bbox_inches="tight")
         print(f"Plot saved to {full_save_path}")
 
 
@@ -377,6 +485,7 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
         & (tropomi_data["time"] <= enddate)
         & (tropomi_data["qa_value"] >= 0.5)
         & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
+        & ~(tropomi_data["surface_classification_0xF9"] == 184) # exclude land_snow_or_ice
         & (tropomi_data["latitude"] > -60)
     )
 
@@ -414,6 +523,7 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
                 & (blended_data["chi_square_SWIR"][:] > 20000)
             )
         )
+        & ~(blended_data["surface_classification_0xF9"] == 184) # exclude land_snow_or_ice
         & (blended_data["latitude"] > -60)
     )
 
@@ -619,13 +729,12 @@ def read_and_filter_satellite(
 ):
 
     # Read TROPOMI data
-    assert satellite_str in ["BlendedTROPOMI", "TROPOMI", "Other"], "satellite_str  is not one of BlendedTROPOMI, TROPOMI, or Other"
     if satellite_str  == "BlendedTROPOMI":
         satellite = read_blended(filename)
     elif satellite_str  == "TROPOMI":
         satellite = read_tropomi(filename)
     else:
-        print("Other data source is not currently supported --HON")
+        print("Other data source is not currently supported")
         sys.exit(1)
 
     # If empty, skip this file
@@ -657,13 +766,26 @@ def get_posterior_emissions(prior, scale, species):
     Args:
         prior  : xarray dataset
             prior emissions
-        scales : xarray dataset scale factors
+        scales : xarray dataset or datarray of scale factors
     Returns:
         posterior : xarray dataset
             posterior emissions
     """
+    # Make copies to avoid modifying the original data
+    prior = prior.copy()
+    scale = scale.copy()
+
     # keep attributes of data even when arithmetic operations applied
     xr.set_options(keep_attrs=True)
+
+    # if xarray datarray
+    if isinstance(scale, xr.DataArray):
+        scale_factors = scale
+    # if xarray dataset
+    elif isinstance(scale, xr.Dataset):
+        scale_factors = scale["ScaleFactor"]
+    else:
+        raise ValueError("Scale factors must be an xarray DataArray or Dataset")
 
     # we do not optimize soil absorbtion in the inversion. This
     # means that we need to keep the soil sink constant and properly
@@ -680,7 +802,7 @@ def get_posterior_emissions(prior, scale, species):
     posterior = prior.copy()
     for ds_var in list(prior.keys()):
         if "EmisCH4" in ds_var:
-            posterior[ds_var] = prior[ds_var] * scale["ScaleFactor"]
+            posterior[ds_var] = prior[ds_var] * scale_factors
 
     # But reset the soil sink to the original value
     posterior[f"Emis{species}_SoilAbsorb"] = prior_soil_sink
@@ -750,3 +872,205 @@ def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):
     start_date = str(period_df.loc[0, "Starts"])
     end_date = str(period_df.loc[0, "Ends"])
     return get_mean_emissions(start_date, end_date, prior_cache_path)
+
+
+def ensure_float_list(variable):
+    """Make sure the variable is a list of floats."""
+    if isinstance(variable, list):
+        # Convert each item in the list to a float
+        return [float(item) for item in variable]
+    elif isinstance(variable, (str, float, int)):
+        # Wrap the variable in a list and convert it to float
+        return [float(variable)]
+    else:
+        raise TypeError("Variable must be a string, float, int, or list.")
+
+def compute_min_max_ensemble_sectors(
+    prior_ds: xr.Dataset,
+    ens_posterior_ds: xr.Dataset,
+    ens_scale_ds: xr.Dataset,
+    areas: xr.DataArray,
+    mask: xr.DataArray,
+    num_ensemble_members: int,
+) -> tuple[dict[str, float], dict[str, float]]:
+    """
+    Compute the minimum and maximum posterior emissions for each sector across the ensemble.
+
+    Returns
+    -------
+    sector_mins : dict
+        Minimum posterior emissions for each sector.
+    sector_maxes : dict
+        Maximum posterior emissions for each sector.
+    """
+    # Identify sectors (EmisCH4 variables, excluding totals/exclusions)
+    sectors = [
+        var
+        for var in list(ens_posterior_ds.keys())
+        if "EmisCH4" in var and not ("Total" in var or "Excl" in var)
+    ]
+
+    sector_mins = {sector: float("inf") for sector in sectors}
+    sector_maxes = {sector: float("-inf") for sector in sectors}
+
+    for member in range(num_ensemble_members):
+        active_ds = get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=member))
+
+        for sector in sectors:
+            post_val = sum_total_emissions(active_ds[sector], areas, mask)
+            # Update sector min and max values
+            if np.isfinite(post_val):
+                sector_mins[sector] = min(sector_mins[sector], post_val)
+                sector_maxes[sector] = max(sector_maxes[sector], post_val)
+
+    # Remove sectors with inf or -inf values from the results
+    sector_mins = {f"{k.replace('EmisCH4_', '')}_ensMin": v for k, v in sector_mins.items() if np.isfinite(v)}
+    sector_maxes = {f"{k.replace('EmisCH4_', '')}_ensMax": v for k, v in sector_maxes.items() if np.isfinite(v)}
+
+    return sector_mins, sector_maxes
+
+
+def export_visualization_outputs(
+    *,
+    plot_save_path: str,
+    start_date,
+    end_date,
+    total_prior_emissions: float,
+    total_posterior_emissions: float,
+    DOFS: float,
+    prior_bias: float,
+    posterior_bias: float,
+    prior_std: float,
+    posterior_std: float,
+    prior_RMSE: float,
+    posterior_RMSE: float,
+    df_for_count: pd.DataFrame,
+    mask: xr.DataArray,
+    combined_sorted: list,
+    prior_ds: xr.Dataset,
+    posterior_ds: xr.Dataset,
+    areas: xr.DataArray,
+    # Ensemble (optional)
+    num_ensemble_members: int = 0,
+    ens_totals_posterior: np.ndarray | None = None,
+    ens_inv_result: xr.Dataset | None = None,
+    ens_scale_ds: xr.Dataset | None = None,
+    # Artifacts to save (optional)
+    state_vector_labels: xr.DataArray | None = None,
+    scale: xr.DataArray | None = None,
+    avkern_ROI: xr.DataArray | None = None,
+    ds_obs: xr.Dataset | None = None,
+    ds_obs_regridded: xr.Dataset | None = None,
+) -> pd.DataFrame:
+    """
+    Export statistics CSVs and NetCDF artifacts for the visualization notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The single-row statistics DataFrame written to `viz_notebook_statistics.csv`.
+    """
+    # Create output dirs
+    os.makedirs(plot_save_path, exist_ok=True)
+
+    # 1) Build the statistics dictionary (mirrors the notebook)
+    statistics: dict[str, object] = {
+        "StartDate": start_date,
+        "EndDate": end_date,
+        "PriorEmissions": float(total_prior_emissions),
+        "PosteriorEmissions": float(total_posterior_emissions),
+        "DOFS": float(DOFS),
+        "BiasPrior": float(prior_bias),
+        "BiasPosterior": float(posterior_bias),
+        "BiasPrior_std": float(prior_std),
+        "BiasPosterior_std": float(posterior_std),
+        "RMSEPrior": float(prior_RMSE),
+        "RMSEPosterior": float(posterior_RMSE),
+        "NumSuperObservations": int(count_obs_in_mask(mask, df_for_count)),
+    }
+
+    # 2) Sector totals (use provided combined_sorted and append domain totals like the notebook)
+    sector_totals: dict[str, float] = {}
+    combined_plus = list(combined_sorted)
+
+    if "EmisCH4_Total" in prior_ds and "EmisCH4_Total" in posterior_ds:
+        combined_plus.append((
+            "Total",
+            float(sum_total_emissions(prior_ds["EmisCH4_Total"], areas, mask)),
+            float(sum_total_emissions(posterior_ds["EmisCH4_Total"], areas, mask)),
+        ))
+
+    if ("EmisCH4_Total_ExclSoilAbs" in prior_ds and
+        "EmisCH4_Total_ExclSoilAbs" in posterior_ds):
+        combined_plus.append((
+            "TotalExclSoilAbs",
+            float(sum_total_emissions(prior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask)),
+            float(sum_total_emissions(posterior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask)),
+        ))
+
+    for name, prior_val, post_val in combined_plus:
+        sector_totals[f"{name}Prior"] = float(prior_val)
+        sector_totals[f"{name}Posterior"] = float(post_val)
+
+    statistics.update(sector_totals)
+
+    # 3) Ensemble stats (optional) + CSV
+    if (num_ensemble_members and num_ensemble_members > 1 and
+        ens_totals_posterior is not None and ens_inv_result is not None):
+
+        statistics["EnsemblePosterior_Mean"] = float(np.mean(ens_totals_posterior))
+        statistics["EnsemblePosterior_Std"] = float(np.std(ens_totals_posterior))
+        statistics["EnsemblePosterior_Max"] = float(np.max(ens_totals_posterior))
+        statistics["EnsemblePosterior_Min"] = float(np.min(ens_totals_posterior))
+        statistics["EnsemblePosteriorsArray"] = ",".join([str(x) for x in ens_totals_posterior])
+
+        rows = []
+        value_names = ["Ja_normalized", "prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh"]
+        for member in ens_inv_result.ensemble.values:
+            row = {"EnsembleMember": int(member)}
+            # Mirror notebook's indexing assumption (member integer indexes into ens_totals_posterior)
+            try:
+                row["posterior"] = float(ens_totals_posterior[int(member)])
+            except Exception:
+                # Fallback to last element if out-of-range / non-contiguous IDs
+                row["posterior"] = float(ens_totals_posterior[-1])
+            for vn in value_names:
+                if vn in ens_inv_result:
+                    row[vn] = np.asarray(ens_inv_result.sel(ensemble=member)[vn]).item()
+            rows.append(row)
+
+        pd.DataFrame(rows).to_csv(
+            os.path.join(plot_save_path, "ensemble_statistics.csv"), index=False
+        )
+
+        sector_mins, sector_maxes = compute_min_max_ensemble_sectors(
+            prior_ds, get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0)), ens_scale_ds, areas, mask, num_ensemble_members
+        )
+
+        statistics.update(sector_mins)
+        statistics.update(sector_maxes)
+
+    # 4) Write the main statistics CSV
+    stats_pd = pd.DataFrame(statistics, index=[0])
+    stats_pd.to_csv(os.path.join(plot_save_path, "viz_notebook_statistics.csv"), index=False)
+
+    # 5) NetCDF artifacts (optional)
+    netcdf_path = os.path.join(plot_save_path, "netCDF")
+    os.makedirs(netcdf_path, exist_ok=True)
+
+    if state_vector_labels is not None:
+        state_vector_labels.to_netcdf(os.path.join(netcdf_path, "state_vector.nc"))
+    if prior_ds is not None:
+        prior_ds.to_netcdf(os.path.join(netcdf_path, "prior.nc"))
+    if posterior_ds is not None:
+        posterior_ds.to_netcdf(os.path.join(netcdf_path, "posterior.nc"))
+    if scale is not None:
+        scale.to_netcdf(os.path.join(netcdf_path, "scale.nc"))
+    if avkern_ROI is not None:
+        avkern_ROI.to_netcdf(os.path.join(netcdf_path, "avkern.nc"))
+    if ds_obs is not None:
+        ds_obs.to_netcdf(os.path.join(netcdf_path, "obs_ds.nc"))
+    if ds_obs_regridded is not None:
+        ds_obs_regridded.to_netcdf(os.path.join(netcdf_path, "obs_ds_regridded.nc"))
+
+    return stats_pd

@@ -13,7 +13,7 @@
 # Description: 
 #   Submit a job with default ICI settings using either SBATCH or PBS
 # Usage:
-#   submit_job $SchedulerType $SaveOutput $JobArguments
+#   submit_job <SchedulerType> <output_bool> <Memory> <CPUs> <Time> <Partition> <Script> <AdditionalArguments>
 submit_job() {
     if [[ $1 = "slurm" || $1 = "tmux" ]]; then
         submit_slurm_job "${@:2}"
@@ -37,19 +37,19 @@ submit_job() {
 submit_slurm_job() {
     if [[ $1 = "true" ]]; then
         sbatch -N 1 \
-            --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
+            --mem $2 \
+            -c $3 \
+            -t $4 \
+            -p $5 \
             -o imi_output.tmp \
-            -W ${@:5}; wait;
+            -W ${@:6}; wait;
     else
         sbatch -N 1 \
-            --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -W ${@:5}; wait;
+            --mem $2 \
+            -c $3 \
+            -t $4 \
+            -p $5 \
+            -W ${@:6}; wait;
     fi
 }
 
@@ -60,13 +60,13 @@ submit_slurm_job() {
 submit_pbs_job() {
     # If save output
     if [[ $1 = "true" ]]; then
-        qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
-            -l walltime=$RequestedTime -q devel -o imi_output.tmp \
-            -Wblock=true -- ${@:5}; wait;
+        qsub -lselect=1:ncpus=$3:mem=$2:model=ivy \
+            -l walltime=$4 -q devel -o imi_output.tmp \
+            -Wblock=true -- ${@:6}; wait;
     else
-        qsub -lselect=1:ncpus=$RequestedCPUs:mem=$RequestedMemory:model=ivy \
-            -l walltime=$RequestedTime -q devel \
-            -Wblock=true -- ${@:5}; wait;
+        qsub -lselect=1:ncpus=$3:mem=$2:model=ivy \
+            -l walltime=$4 -q devel \
+            -Wblock=true -- ${@:6}; wait;
     fi
 }
 
