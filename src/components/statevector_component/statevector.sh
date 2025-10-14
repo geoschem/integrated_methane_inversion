@@ -1,23 +1,14 @@
 #!/bin/bash
 
 # Functions available in this file include:
+#   - prepare_statevector_inputs (helper function)
 #   - create_statevector
 #   - reduce_dimension
+#   - regrid_statevector
 
-# Description: Create a native resolution state vector
-# Usage:
-#   create_statevector
-create_statevector() {
-    if "$UseGCHP"; then
-        if "$STRETCH_GRID"; then
-            printf "\n=== CREATING Cubed-Sphere C${CS_RES}.s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E STATE VECTOR FILE ===\n"
-        else
-            printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
-        fi
-    else
-        printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
-    fi
-
+# Description: get the input for creating or regridding state vector 
+# Usage: read LandCoverFile HemcoDiagFile < <(prepare_statevector_inputs)
+prepare_statevector_inputs() {
     # Use GEOS-FP or MERRA-2 CN file to determine ocean/land grid boxes
     if "$isRegional"; then
         if [ "$Res" = "0.125x0.15625" ]; then
@@ -35,19 +26,38 @@ create_statevector() {
     LandCoverFile="${DataPath}/${LandCoverSuffix}"
 
     # Use archived HEMCO standalone emissions output
-    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-    
-    # Download land cover and HEMCO diagnostics files
-    # if the files do not exist
+    HemcoDiagFile="${DataPath}/HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+
+    # Ensure files exist or download them
     if [ ! -f "$LandCoverFile" ]; then
         s3_lc_path="s3://gcgrid/${LandCoverSuffix}"
-        python ${InversionPath}/src/utilities/download_aws_file.py ${s3_lc_path} ${LandCoverFile}
+        python "${InversionPath}/src/utilities/download_aws_file.py" "$s3_lc_path" "$LandCoverFile"
     fi
     if [ ! -f "$HemcoDiagFile" ]; then
-        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2024-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
-        python ${InversionPath}/src/utilities/download_aws_file.py ${s3_hd_path} ${HemcoDiagFile}
+        s3_hd_path="s3://gcgrid/HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.${gridFile}.2023.nc"
+        python "${InversionPath}/src/utilities/download_aws_file.py" "$s3_hd_path" "$HemcoDiagFile"
     fi
 
+    # for downstream use
+    echo "$LandCoverFile $HemcoDiagFile"
+}
+
+# Description: Create a native resolution state vector
+# Usage:
+#   create_statevector
+create_statevector() {
+    if "$UseGCHP"; then
+        if "$STRETCH_GRID"; then
+            printf "\n=== CREATING Cubed-Sphere C${CS_RES}.s${STRETCH_FACTOR}_${TARGET_LAT}N_${TARGET_LON}E STATE VECTOR FILE ===\n"
+        else
+            printf "\n=== CREATING Cubed-Sphere C${CS_RES} STATE VECTOR FILE ===\n"
+        fi
+    else
+        printf "\n=== CREATING RECTANGULAR STATE VECTOR FILE ===\n"
+    fi
+
+    # get the input path for state vector
+    read LandCoverFile HemcoDiagFile < <(prepare_statevector_inputs)
     # Output path and filename for state vector file
     StateVectorFName="StateVector.nc"
 
@@ -142,4 +152,24 @@ reduce_dimension() {
     fi
     printf "\nNumber of state vector elements in this inversion = ${nElements}\n\n"
     printf "\n=== DONE REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
+}
+
+regrid_statevector(){
+    printf "\n=== REGRID STATE VECTOR at ${StateVectorFile} to CURRENT GRID ===\n"
+    
+    # get the input path for state vector
+    read LandCoverFile HemcoDiagFile < <(prepare_statevector_inputs)
+    # Output path and filename for state vector file
+    StateVectorFName="StateVector.nc"
+
+    # Create state vector file
+    cd ${RunDirs}
+
+    # Copy state vector regriddiing script to working directory
+    cp ${InversionPath}/src/utilities/regrid_state_vector_file.py .
+    
+    printf "\nCalling regrid_state_vector_file.py\n"
+    python regrid_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
+
+    printf "\n=== DONE REGRID STATE VECTOR at ${StateVectorFile} to CURRENT GRID ===\n"
 }

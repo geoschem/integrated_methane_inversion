@@ -104,7 +104,6 @@ def make_state_vector_file(
     config_path,
     land_cover_pth,
     hemco_diag_pth,
-    save_pth,
 ):
     """
     Generates the state vector file for an analytical inversion.
@@ -113,7 +112,6 @@ def make_state_vector_file(
         config_path    [str]   : Path to configuration file
         land_cover_pth [str]   : Path to land cover file
         hemco_diag_pth [str]   : Path to initial HEMCO diagnostics file
-        save_pth       [str]   : Where to save the state vector file
 
     Returns
         ds_statevector []     : xarray dataset containing state vector field formatted for HEMCO
@@ -325,17 +323,6 @@ def make_state_vector_file(
         ds_statevector.StateVector.attrs["units"] = "none"
         ds_statevector.StateVector.attrs["missing_value"] = -9999
         ds_statevector.StateVector.attrs["_FillValue"] = -9999
-    # Save
-    if save_pth is not None:
-        if os.path.exists(save_pth):
-            os.remove(save_pth)
-        print("Saving file {}".format(save_pth))
-        ds_statevector.to_netcdf(
-            save_pth,
-            encoding={
-                v: {"zlib": True, "complevel": 1} for v in ds_statevector.data_vars
-            },
-        )
 
     return ds_statevector
 
@@ -348,9 +335,19 @@ if __name__ == "__main__":
     hemco_diag_pth = sys.argv[3]
     save_pth = sys.argv[4]
 
-    make_state_vector_file(
+    ds_statevector = make_state_vector_file(
         config_path,
         land_cover_pth,
         hemco_diag_pth,
-        save_pth,
     )
+    
+    if save_pth is not None:
+        if os.path.exists(save_pth):
+            os.remove(save_pth)
+        print("Saving file {}".format(save_pth))
+        ds_statevector.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 1} for v in ds_statevector.data_vars
+            },
+        )

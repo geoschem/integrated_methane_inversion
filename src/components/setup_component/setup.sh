@@ -155,6 +155,18 @@ setup_imi() {
     ##=======================================================================
     ## Create regridding weights to CS grid
     ##=======================================================================
+    if "$RegridStateVector"; then
+        CSgridDir="${RunDirs}/CS_grids"
+        if [ ! -d "$CSgridDir" ]; then
+            mkdir -p -v "$CSgridDir"
+        fi
+        
+        if [ ! -d "$ReferenceSVTileGridDir" ]; then
+            echo "Reference directory containing gridspec tile files is not found $ReferenceSVTileGridDir"
+        else
+            rsync -a --quiet "$ReferenceSVTileGridDir"/ "$CSgridDir"/
+        fi
+    fi
     if "$UseGCHP"; then
         CSgridDir="${RunDirs}/CS_grids"
         if [ ! -d "$CSgridDir" ]; then
@@ -165,7 +177,7 @@ setup_imi() {
         prefix=$(get_GridSpec_prefix "$CS_RES" "$STRETCH_GRID" "$STRETCH_FACTOR" "$TARGET_LAT" "$TARGET_LON")
         gridspec_fname="${CSgridDir}/${prefix}_gridspec.nc"
         if [ -f "$gridspec_fname" ]; then
-            echo "GridSpec file of already exists: $gridspec_fname"
+            echo "GridSpec file already exists: $gridspec_fname"
         else
             echo "Generating grid spec: $gridspec_fname"
             if "$STRETCH_GRID"; then
@@ -221,6 +233,8 @@ setup_imi() {
 
     if "$CreateAutomaticRectilinearStateVectorFile"; then
         create_statevector
+    elif "$RegridStateVector"; then
+        regrid_statevector $StateVectorFile
     else
         # Copy custom state vector to $RunDirs directory for later use
         printf "\nCopying state vector file\n"

@@ -34,6 +34,7 @@ config_required = [
     "EmisThreshold",
     "ReducedDimensionStateVector",
     "StateVectorFile",
+    "RegridStateVector",
     "ShapeFile",
     "PriorError",
     "ObsError",
@@ -101,7 +102,11 @@ conditional_dict["ReducedDimensionStateVector"] = [
     "PlumeCountFilter",
     "GroupByCountry",
 ]
-conditional_dict["PrecomputedJacobian"] = ["ReferenceRunDir"]
+conditional_dict["PrecomputedJacobian"] = [
+    "ReferenceRunDir",
+    "MultiPrecomputedJacobian",
+    "RegridPrecomputedK",
+]
 conditional_dict["S3Upload"] = [
     "S3UploadPath",
     "S3UploadFiles",
@@ -120,6 +125,7 @@ conditional_dict["STRETCH_GRID"] = [
     "TARGET_LAT",
     "TARGET_LON"
 ]
+conditional_dict["RegridStateVector"] = ["ReferenceSVTileGridDir"]
 
 def raise_error_message(var):
     """
