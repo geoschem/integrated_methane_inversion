@@ -161,10 +161,29 @@ setup_imi() {
             mkdir -p -v "$CSgridDir"
         fi
         
-        if [ ! -d "$ReferenceSVTileGridDir" ]; then
-            echo "Reference directory containing gridspec tile files is not found $ReferenceSVTileGridDir"
-        else
+        if [ -d "$ReferenceSVTileGridDir" ]; then
             rsync -a --quiet "$ReferenceSVTileGridDir"/ "$CSgridDir"/
+        else
+            echo "Reference directory not found: ${ReferenceSVTileGridDir:-<unset>}"
+            echo "Fetching sup_data from GitHub (only that folder)."
+            # Make a temp working dir
+            tmpdir="$(mktemp -d)"
+            trap 'rm -rf "$tmpdir"' EXIT
+            # Use sparse clone first
+            if git clone --depth 1 --filter=blob:none --sparse \
+                https://github.com/1Dandan/2025FL-IMI-stretched-GCHP.git \
+                "$tmpdir/repo" >/dev/null 2>&1; then
+
+                (
+                  cd "$tmpdir/repo"
+                  git sparse-checkout set sup_data >/dev/null
+                )
+                # Sync into CSgridDir/sup_data
+                rsync -a --quiet "$tmpdir/repo/sup_data/" "${CSgridDir%/}/"
+            else
+                git clone --depth 1 https://github.com/1Dandan/2025FL-IMI-stretched-GCHP.git "$tmpdir/repo"
+                rsync -a --quiet "$tmpdir/repo/sup_data/" "${CSgridDir%/}/"
+            fi
         fi
     fi
     if "$UseGCHP"; then
