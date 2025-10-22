@@ -36,7 +36,7 @@ run_preview() {
     # Run preview script
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
-    printf "\nCreating preview plots and statistics... "
+    printf "\nCreating preview plots and statistics...\n\n"
     if "$UseSlurm"; then
         rm -f .preview_error_status.txt
         chmod +x $preview_file
@@ -50,14 +50,14 @@ run_preview() {
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         # check for any errors
-        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
+        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO preview.sh
     else
         python $preview_file $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 
     # check if sbatch commands exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO preview.sh
 
     # Navigate back to top-level directory
     cd ..

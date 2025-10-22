@@ -180,7 +180,7 @@ run_posterior() {
     wait
 
     # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO posterior.sh
 
     printf "\n=== DONE POSTERIOR SIMULATION ===\n"
     if "$KalmanMode"; then

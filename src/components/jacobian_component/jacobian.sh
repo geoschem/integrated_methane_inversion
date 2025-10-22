@@ -451,7 +451,7 @@ run_jacobian() {
         fi
 
         # check if any jacobians exited with non-zero exit code
-        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO jacobian.sh
 
         printf "\n=== DONE JACOBIAN SIMULATIONS ===\n"
         jacobian_end=$(date +%s)
@@ -486,7 +486,7 @@ run_jacobian() {
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         # check if prior simulation exited with non-zero exit code
-        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+        [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO jacobian.sh
 
         printf "=== DONE PRIOR SIMULATION ===\n"
 
@@ -500,7 +500,7 @@ run_jacobian() {
                 -W run_bkgd_simulation.sh
             wait
             # check if background simulation exited with non-zero exit code
-            [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+            [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO jacobian.sh
             printf "=== DONE BACKGROUND SIMULATION ===\n"
         fi
 

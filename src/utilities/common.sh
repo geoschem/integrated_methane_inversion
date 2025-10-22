@@ -25,8 +25,7 @@ print_stats() {
 # Usage:
 #   imi_failed
 imi_failed() {
-    file=$(basename "$0")
-    printf "\nFATAL ERROR on line number ${1} of ${file}: IMI exiting."
+    printf "\nFATAL ERROR on line number ${1} of ${2}: IMI exiting."
     if [ -d "${OutputPath}/${RunName}" ]; then
         cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
     fi

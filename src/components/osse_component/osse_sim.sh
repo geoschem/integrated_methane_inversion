@@ -128,7 +128,7 @@ run_osse() {
     wait
 
     # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO osse_sim.sh
 
     printf "\n=== DONE OSSE SIMULATION ===\n"
     osse_end=$(date +%s)

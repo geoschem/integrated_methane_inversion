@@ -166,7 +166,7 @@ run_hemco_sa() {
     wait
 
     # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO hemco_prior_emis.sh
 
     # Remove soil absorption uptake from total emissions
     pushd OutputDir

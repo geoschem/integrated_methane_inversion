@@ -89,7 +89,7 @@ run_spinup() {
     wait
 
     # check if exited with non-zero exit code
-    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO
+    [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO spinup.sh
 
     printf "\n=== DONE SPINUP SIMULATION ===\n"
     spinup_end=$(date +%s)

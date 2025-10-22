@@ -107,7 +107,7 @@ reduce_dimension() {
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         # check for any errors
-        [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
+        [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO statevector.sh
     else
         python "${python_args[@]}"
     fi
