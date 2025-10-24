@@ -58,6 +58,9 @@ setup_jacobian() {
     # Create directory that will contain all Jacobian run directories
     mkdir -p -v jacobian_runs
 
+    nEmisElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    numStandaloneRuns=$(( nElements - nEmisElements ))
+
     if ! "$PrecomputedJacobian"; then
         if [ $NumJacobianTracers -gt 1 ]; then
             nRuns=$(calculate_num_jacobian_runs $NumJacobianTracers $nElements $OptimizeBCs $OptimizeOH $isRegional)
@@ -67,10 +70,35 @@ setup_jacobian() {
         else
             nRuns=$nElements
         fi
-    else 
+    elif "$OnlyEmisPrecomputedK"; then
+        # need to set up prior, and optionally (optimizeBCs, and optimizeOH) run directories
+        nRuns=$numStandaloneRuns
+        if "$OptimizeBCs"; then
+            nRuns=$(($numStandaloneRuns + 1)) # add one more run for the bc_base from RunName_0001 with SpeciesConcVV_CH4
+        fi
+    else
         # only need to set up the prior run directory
         nRuns=0
     fi
+    
+    # Always create the base run: x=0
+    x=0
+    xstr="0000"
+    create_simulation_dir
+
+    # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
+    x=1
+
+    # Create jacobian run directories
+    while [ $x -le $nRuns ]; do
+
+        # Add zeros to string name
+        printf -v xstr "%04d" "$x"
+        create_simulation_dir
+
+        # Increment
+        x=$(($x + 1))
+    done
 
     # Copy run scripts
     if "$UseGCHP"; then
@@ -103,31 +131,6 @@ setup_jacobian() {
     printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
     python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
     printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
-
-    # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
-    x=0
-
-    # Create jacobian run directories
-    while [ $x -le $nRuns ]; do
-
-        # Current state vector element
-        xUSE=$x
-
-        # Add zeros to string name
-        if [ $x -lt 10 ]; then
-            xstr="000${x}"
-        elif [ $x -lt 100 ]; then
-            xstr="00${x}"
-        elif [ $x -lt 1000 ]; then
-            xstr="0${x}"
-        else
-            xstr="${x}"
-        fi
-        create_simulation_dir
-
-        # Increment
-        x=$(($x + 1))
-    done
 
     if "$LognormalErrors"; then
         x="background"
@@ -212,31 +215,51 @@ create_simulation_dir() {
             HEMCO_Config.rc
         if "$UseGCHP"; then
             sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
+        fi
     fi
-    fi
+
     # Determine which elements are BC perturbations
     BC_elem=false
-    bcThreshold=$nElements
-    if "$OptimizeBCs"; then
-        if "$OptimizeOH"; then
-            if "$isRegional"; then
-                bcThreshold=$(($nElements - 5))
+    if [[ "$PrecomputedJacobian" == "true" ]] && \
+       [[ "$OnlyEmisPrecomputedK" == "true" ]] && \
+       [[ "$OptimizeBCs" == "true" ]]; then 
+        bcThreshold=1
+    else
+        bcThreshold=$nElements
+        if "$OptimizeBCs"; then
+            if "$OptimizeOH"; then
+                if "$isRegional"; then
+                    bcThreshold=$(($nElements - 5))
+                else
+                    bcThreshold=$(($nElements - 6))
+                fi
             else
-                bcThreshold=$(($nElements - 6))
+                bcThreshold=$(($nElements - 4))
             fi
-        else
-            bcThreshold=$(($nElements - 4))
         fi
     fi
 
     # Determine which element (if any) is an OH perturbation
     OH_elem=false
-    ohThreshold=$nElements
-    if "$OptimizeOH"; then
-        if "$isRegional"; then
-            ohThreshold=$(($nElements - 1))
-        else
-            ohThreshold=$(($nElements - 2))
+    if [[ "$PrecomputedJacobian" == "true" ]] && \
+       [[ "$OnlyEmisPrecomputedK" == "true" ]] && \
+       [[ "$OptimizeBCs" == "true" ]]; then 
+        ohThreshold=$nRuns
+        if "$OptimizeOH"; then
+            if "$isRegional"; then
+                ohThreshold=$(($nRuns - 1))
+            else
+                ohThreshold=$(($nRuns - 2))
+            fi
+        fi
+    else
+        ohThreshold=$nElements
+        if "$OptimizeOH"; then
+            if "$isRegional"; then
+                ohThreshold=$(($nElements - 1))
+            else
+                ohThreshold=$(($nElements - 2))
+            fi
         fi
     fi
 
@@ -307,11 +330,19 @@ create_simulation_dir() {
             start_element=$x
             end_element=$x
         else
-            start_element=$((end_element + 1))
-            # calculate tracer end based on the number of tracers and bc/oh thresholds
-            # Note: the prior simulation, BC simulations, and OH simulation get their
-            # own dedicated simulation, so end_element is the same as start_element
-            end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
+            if [[ $x -eq 1 && \
+                "$PrecomputedJacobian" == "true" && \
+                "$OnlyEmisPrecomputedK" == "true" && \
+                "$OptimizeBCs" == "true" ]]; then
+                start_element=$x
+                end_element=$x
+            else
+                start_element=$((end_element + 1))
+                # calculate tracer end based on the number of tracers and bc/oh thresholds
+                # Note: the prior simulation, BC simulations, and OH simulation get their
+                # own dedicated simulation, so end_element is the same as start_element
+                end_element=$(calculate_tracer_end $start_element $nElements $NumJacobianTracers $bcThreshold $ohThreshold)
+            fi
         fi
 
         # Perturb OH if this is an OH state vector element
@@ -419,9 +450,17 @@ create_simulation_dir() {
     # as a CH4 tracer in the configuraton files
     if is_number "$x"; then
         if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
-            for i in $(seq $start_element $end_element); do
-                add_new_tracer
-            done
+            # special case for adding one more bc_base run
+            if ! [[ $x -eq 1 && \
+                "$PrecomputedJacobian" == "true" && \
+                "$OnlyEmisPrecomputedK" == "true" && \
+                "$OptimizeBCs" == "true" ]]; then
+
+                for i in $(seq $start_element $end_element); do
+                    add_new_tracer
+                done
+            fi
+
             # remove redundant SpeciesConcVV_CH4 when $x > 1
             if "$UseGCHP"; then
                 if [ $x -gt 1 ]; then
@@ -524,7 +563,7 @@ run_jacobian() {
         jacobian_period=1
     fi
 
-    if ! "$PrecomputedJacobian"; then
+    if [[ "$PrecomputedJacobian" != "true" ]] || [[ "$OnlyEmisPrecomputedK" == "true" ]]; then
 
         cd ${RunDirs}/jacobian_runs
         jacobian_start=$(date +%s)
@@ -668,13 +707,15 @@ run_jacobian() {
 # Usage:
 #   generate_BC_perturb_values <bcThreshold> <element-number> <pert-value>
 generate_BC_perturb_values() {
-    python -c "import sys;\
-    bc_perturb = [0.0, 0.0, 0.0, 0.0];\
-    bcThreshold = int(sys.argv[1]) + 1;\
-    element = int(sys.argv[2]);\
-    pert_index = element % bcThreshold;\
-    bc_perturb[pert_index] = float(sys.argv[3]);\
-    print(bc_perturb)" $1 $2 $3
+    python -c "
+import sys
+bc_perturb = [0.0, 0.0, 0.0, 0.0]
+bcThreshold = int(sys.argv[1])
+element = int(sys.argv[2])
+pert_index = (element - (bcThreshold + 1)) % len(bc_perturb)
+bc_perturb[pert_index] = float(sys.argv[3])
+print(bc_perturb)
+" $1 $2 $3
 }
 
 # Description: Print end element for multitracer perturbation runs

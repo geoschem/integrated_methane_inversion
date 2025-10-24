@@ -79,6 +79,8 @@ setup_spinup() {
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             setCommonRunSettings.sh
         echo "$SpinupStart 000000" > cap_restart
+        sed -i -e "s|${StartDate}|${SpinupStart}|g" \
+            -e "s|${EndDate}|${SpinupEnd}|g" CAP.rc
     else
         sed -i -e "s|${StartDate}|${SpinupStart}|g" \
             -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml

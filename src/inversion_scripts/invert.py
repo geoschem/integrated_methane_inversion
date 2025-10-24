@@ -7,7 +7,7 @@ import datetime
 import numpy as np
 import xarray as xr
 from itertools import product
-from netCDF4 import Dataset
+from scipy.sparse import hstack
 from src.inversion_scripts.utils import (
     load_obj,
     calculate_superobservation_error,
@@ -15,9 +15,14 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
 )
-
+from src.inversion_scripts.regrid_precomputed_jacobian import(
+    get_regrid_weights_jacobian_row,
+    get_regrid_weights_jacobian_col,
+    regrid_jacobian_row_col,
+)
 
 def do_inversion(
+    config,
     n_elements,
     jacobian_files,
     lon_min,
@@ -35,6 +40,7 @@ def do_inversion(
     OptimizeSoil=False,
     prior_ds=None,
     StateVectorFile=None,
+    period_number=1,
     verbose=False,
 ):
     """
@@ -163,6 +169,9 @@ def do_inversion(
         # TROPOMI and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
+        GC_index = dat['GC_index']
+        GC_index = GC_index[ind]
+        
         # weight obs_err based on the observation count to prevent overfitting
         # Note: weighting function defined by Zichong Chen for his
         # middle east inversions. May need to be tuned based on region.
@@ -187,34 +196,111 @@ def do_inversion(
         obs_error = [obs if obs > 0 else 1 for obs in obs_error]
 
         # Jacobian entries for observations within bounds [ppb]
-        if jacobian_sf is None:
-            K = 1e9 * dat["K"][ind, :]
+        if config['PrecomputedJacobian']:
+            if (config['MultiPrecomputedJacobian']) and (config['OnlyEmisPrecomputedK']):
+                RunDirs=f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}"
+                CSgridDir=f"{RunDirs}/CS_grids"
+    
+                ref_directory_path_all = config['ReferenceRunDir']
+                with open(ref_directory_path_all, "r") as f:
+                    ref_directory_path_list_all = f.read()
+
+                ref_directory_path_list = ref_directory_path_list_all.splitlines()
+                ref_parent_dir = os.path.dirname(ref_directory_path_list[0])
+                ref_dir_basename = os.path.basename(ref_directory_path_list[0])
+                ref_dir_prename = re.sub(r'\d+$', '', ref_dir_basename)
+                
+                ref_sv_fpath = config['StateVectorFile']
+                if config['isRegional']:
+                    ref_sv_fname = os.path.basename(ref_sv_fpath).replace('combined', 'subset')
+                    ref_sv_fpath = f"{CSgridDir}/{ref_sv_fname}"
+                    ref_sv_ds = xr.open_dataset(ref_sv_fpath).squeeze()
+                else:
+                    ref_sv_ds = xr.open_dataset(ref_sv_fpath, mask_and_scale=False)
+                target_face = ref_sv_ds['target_face'].values
+                num_ref_dir = len(target_face)
+                
+                # regrid Jacobian row (super observations) first, 
+                # and then regrid Jacobian column (state vector)
+                
+                # regrid jacobian row
+                jacobian_RegridRow = []
+                overlap_area_jacobian_ratio = []
+                overlap_area_sv = []
+                for ti in range(num_ref_dir):
+                    # Sanity check:
+                    # reference directory naming is 1-based
+                    ref_RunName = f"{ref_dir_prename}{target_face[ti]+1:03d}"
+                    ref_dir = os.path.join(ref_parent_dir, ref_RunName)
+                    ref_config_path = os.path.join(ref_dir, f"config_{ref_RunName}.yml")
+                    ref_config = yaml.load(open(ref_config_path), Loader=yaml.FullLoader)
+                    assert (ref_sv_ds['TARGET_LAT'].values[ti]==ref_config['TARGET_LAT']) \
+                        and (ref_sv_ds['TARGET_LON'].values[ti]==ref_config['TARGET_LON']), \
+                        f"The TARGET_LAT/LON in the reference directory is not consistent with the reference config \
+                        for {ref_RunName} with target_face id of {target_face[ti]+1} \
+                        (TARGET_LAT: {ref_sv_ds['TARGET_LAT'].values[ti]:.2f} vs. {ref_config['TARGET_LAT']:.2f}, \
+                        TARGET_LON: {ref_sv_ds['TARGET_LON'].values[ti]:.2f} vs. {ref_config['TARGET_LON']:.2f})"
+                        
+                    jacobian_ref_path = os.path.join(ref_dir, "inversion", "data_converted", os.path.basename(fi))
+                    jacobian_ref_dat = load_obj(jacobian_ref_path)
+                    
+                    # regrid jacobian row
+                    if (ref_config['OptimizeOH']) and (not ref_config['isRegional']): # assume the source is global
+                        jacobian_ref = jacobian_ref_dat["K"][:,:-1]
+                    else:
+                        jacobian_ref = jacobian_ref_dat["K"]
+                    ref_GC_index = jacobian_ref_dat["GC_index"]
+                    jacobian_regridding_weights_row = get_regrid_weights_jacobian_row(config, RunDirs, GC_index, ref_config, ref_GC_index)
+                    
+                    jacobian_RegridRow.append(jacobian_regridding_weights_row.dot(jacobian_ref).astype('float32'))
+                    
+                    # get inputs needed for regridding jacobian col
+                    overlap_area_jacobian_ratio_temp, overlap_area_sv_temp = get_regrid_weights_jacobian_col(period_number, config, RunDirs, ref_config, ref_dir)
+                    overlap_area_sv.append(overlap_area_sv_temp)
+                    overlap_area_jacobian_ratio.append(overlap_area_jacobian_ratio_temp)
+                
+                # dense matrix in shape of (n_dst_valid_superobs, n_ref_sv_total)
+                jacobian_RegridRow = np.concatenate(jacobian_RegridRow, axis=1)
+                # sparse matrix in shape of (n_dst_sv, n_ref_sv_total)
+                overlap_area_jacobian_ratio = hstack(overlap_area_jacobian_ratio, format="csr")
+                # sparse matrix in shape of (n_dst_sv, n_ref_sv_total)
+                overlap_area_sv = hstack(overlap_area_sv, format="csr")
+                
+                # regrid jacobian column
+                # the jacoban is reconciled by the jacobian ratio and then 
+                # get the area-weighted mean over reference state vector elements that overlap with the destination state vector
+                # regrid_jacobian_row_col = sum ( jacobian_RegridRow * overlap_area_jacobian_ratio ) / sum(overlap_area_sv)
+                K_emis = 1e9 * regrid_jacobian_row_col(jacobian_RegridRow, overlap_area_jacobian_ratio, overlap_area_sv)[ind, :]
+
+                K_noemis = 1e9 * dat["K_noEmis"][ind, :]
+                K = np.concatenate((K_emis, K_noemis), axis=1)
+            else:
+                # Get Jacobian from reference inversion
+                fi_ref = fi.replace("data_converted", "data_converted_reference")
+                dat_ref = load_obj(fi_ref)
+                K = 1e9 * dat_ref["K"][ind, :]
+                
+                # Apply scaling matrix if using precomputed Jacobian
+                scale_factors = np.load(jacobian_sf)
+                if optimize_bc:
+                    # add (unit) scale factors for BCs
+                    # as the last 4 elements of the scaling matrix
+                    scale_factors = np.append(scale_factors, np.ones(4))
+                reps = K.shape[0]
+                scaling_matrix = np.tile(scale_factors, (reps, 1))
+                if optimize_oh:
+                    if is_Regional:
+                        K[:, :-1] *= scaling_matrix
+                    else:
+                        K[:, :-2] *= scaling_matrix
+                else:
+                    K *= scaling_matrix
         else:
-            # Get Jacobian from reference inversion
-            fi_ref = fi.replace("data_converted", "data_converted_reference")
-            dat_ref = load_obj(fi_ref)
-            K = 1e9 * dat_ref["K"][ind, :]
+            K = 1e9 * dat["K"][ind, :]
 
         # Number of observations
         if verbose:
             print("Sum of Jacobian entries:", np.sum(K))
-
-        # Apply scaling matrix if using precomputed Jacobian
-        if jacobian_sf is not None:
-            scale_factors = np.load(jacobian_sf)
-            if optimize_bc:
-                # add (unit) scale factors for BCs
-                # as the last 4 elements of the scaling matrix
-                scale_factors = np.append(scale_factors, np.ones(4))
-            reps = K.shape[0]
-            scaling_matrix = np.tile(scale_factors, (reps, 1))
-            if optimize_oh:
-                if is_Regional:
-                    K[:, :-1] *= scaling_matrix
-                else:
-                    K[:, :-2] *= scaling_matrix
-            else:
-                K *= scaling_matrix
 
         # Measurement-model mismatch: TROPOMI columns minus GEOS-Chem virtual TROPOMI columns
         # This is (y - F(xA)), i.e., (y - (K*xA + c)) or (y - K*xA) in shorthand
@@ -343,6 +429,7 @@ def do_inversion(
 
 
 def do_inversion_ensemble(
+    config,
     n_elements,
     jacobian_files,
     lon_min,
@@ -360,6 +447,7 @@ def do_inversion_ensemble(
     OptimizeSoil=False,
     prior_ds=None,
     StateVectorFile=None,
+    period_number=1,
 ):
     """
     Run series of inversions with hyperparameter vectors and save out the results.
@@ -393,6 +481,7 @@ def do_inversion_ensemble(
         }
         xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, Ja_normalized = (
             do_inversion(
+                config,
                 n_elements,
                 jacobian_files,
                 lon_min,
@@ -410,6 +499,7 @@ def do_inversion_ensemble(
                 OptimizeSoil,
                 prior_ds,
                 StateVectorFile,
+                period_number,
                 verbose=False,
             )
         )
@@ -464,6 +554,7 @@ if __name__ == "__main__":
     res = sys.argv[9]
     jacobian_sf = sys.argv[10]
     StateVectorFile = sys.argv[11]
+    period_number = sys.argv[12]
 
     # read in config file
     with open(config_path, "r") as f:
@@ -513,6 +604,7 @@ if __name__ == "__main__":
     
     # Run the inversion code
     out_ds, out_ds_default = do_inversion_ensemble(
+        config,
         n_elements,
         jacobian_files,
         lon_min,
@@ -530,6 +622,7 @@ if __name__ == "__main__":
         OptimizeSoil,
         prior_ds,
         StateVectorFile,
+        period_number,
     )
 
     # add atributes for stretching GCHP simulation

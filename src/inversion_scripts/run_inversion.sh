@@ -109,6 +109,19 @@ if ! "$PrecomputedJacobian"; then
     buildJacobian="True"
     jacobian_sf="None"
 
+elif "$OnlyEmisPrecomputedK"; then
+    if [[ "$OptimizeOH" == "true" || "$OptimizeBCs" == "true" ]]; then
+        buildJacobian="True"
+    else
+        buildJacobian="False"
+    fi
+    jacobian_sf="None"
+
+elif "$MultiPrecomputedJacobian"; then
+
+    buildJacobian="False"
+    jacobian_sf="None"
+
 else
 
     buildJacobian="False"
@@ -137,7 +150,7 @@ if "$LognormalErrors"; then
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
-    python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile)
+    python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile $period_i)
     
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
