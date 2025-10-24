@@ -245,6 +245,8 @@ def make_state_vector_file(
     ds_statevector.StateVector.attrs["units"] = "none"
     ds_statevector.StateVector.attrs["missing_value"] = -9999
     ds_statevector.StateVector.attrs["_FillValue"] = -9999
+    ds_statevector.StateVector.attrs["long_name"] = "State Vector"
+
     # Save
     if save_pth is not None:
         print("Saving file {}".format(save_pth))

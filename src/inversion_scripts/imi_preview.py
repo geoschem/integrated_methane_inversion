@@ -472,8 +472,8 @@ def estimate_averaging_kernel(
     # Setup
     # ----------------------------------
 
-    # Open the state vector file
-    state_vector = xr.load_dataset(state_vector_path)
+    # Open the state vector file and squeeze time dimension
+    state_vector = xr.load_dataset(state_vector_path).squeeze()
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
