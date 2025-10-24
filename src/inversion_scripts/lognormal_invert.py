@@ -151,7 +151,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # the lognormal part of K gets scaled by prior_scale to convert to median
         K_ROI = K_temp[:, :-num_normal_elems]
         K_normal = K_temp[:, -num_normal_elems:]
-        K_ROI = prior_scale * K_ROI
+        K_ROI = K_ROI / prior_scale
         K_full = np.concatenate((K_ROI, K_normal), axis=1)
 
         m, n = np.shape(K_ROI)
@@ -159,7 +159,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # Create base xa and lnxa matrices
         # Note: the resulting xa vector has lognormal elements until the
         # final Buffer, BCs, and OH elements
-        xa = np.ones((n, 1)) * 1.0
+        # Convert to median before calculating lnxa
+        xa = np.ones((n, 1)) * prior_scale
         lnxa = np.log(xa)
 
         # Create normal elements for buffer, BCs, and OH
@@ -295,7 +296,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
         xnmean = np.concatenate(
             (
-                xn[:-num_normal_elems]
+                ( xn[:-num_normal_elems] / xa[:-num_normal_elems] )
                 * np.expand_dims(np.exp(dlns * (0.5)) * prior_scale, axis=1),
                 xn[-num_normal_elems:],
             )
