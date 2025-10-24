@@ -82,6 +82,7 @@ config_required = [
     "MakePeriodsCSV",
     "UseWaterObs",
     "EnableOSSE",
+    "OptimizeSoil"
 ]
 
 # dict of variables that are required if another variable is set to true
