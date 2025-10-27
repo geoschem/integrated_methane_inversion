@@ -342,6 +342,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     if filter_ens_members and len(include_ens_members) > 0:
         for k in results_dict.keys():
             results_dict[k] = [results_dict[k][i] for i in include_ens_members]
+        # map idx_default_Ja to new filtered index
+        idx_default_Ja = include_ens_members.index(idx_default_Ja)
     elif len(include_ens_members) == 0:
         print(
             "Warning: No ensemble members with 0.5 <= J_A/n <= 2.0, "
