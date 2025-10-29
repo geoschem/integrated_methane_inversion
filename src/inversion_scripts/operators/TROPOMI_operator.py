@@ -129,9 +129,6 @@ def apply_average_tropomi_operator(
     n_gridcells = len(obs_mapped_to_gc)
 
     if build_jacobian:
-        # Initialize Jacobian K
-        jacobian_K = np.empty([n_gridcells, n_elements], dtype=np.float32)
-        jacobian_K.fill(np.nan)
         pertf = os.path.expandvars(
             f'{config["OutputPath"]}/{config["RunName"]}/'
             f"archive_perturbation_sfs/pert_sf_{period_i}.npz"
@@ -170,7 +167,19 @@ def apply_average_tropomi_operator(
                 bc_indices.append(e)
             else:
                 emis_indices.append(e)
-    
+
+        # Initialize Jacobian K
+        if (config['PrecomputedJacobian']) and (config['OnlyEmisPrecomputedK']):
+            nEmisElements = np.asarray(emis_indices).size
+            nBCsElements = np.asarray(bc_indices).size
+            n_BCsOH = n_elements - nEmisElements
+            jacobian_K = np.empty([n_gridcells, n_BCsOH], dtype=np.float32)
+            oh_indices = [i-nEmisElements-nBCsElements for i in oh_indices]
+            bc_indices = [i-nEmisElements for i in bc_indices]
+        else:
+            jacobian_K = np.empty([n_gridcells, n_elements], dtype=np.float32)
+        jacobian_K.fill(np.nan)
+        
     # Initialize array with n_gridcells rows and 5 columns. Columns are
     # TROPOMI CH4, GEOSChem CH4, longitude, latitude, observation counts
     obs_GC = np.empty([n_gridcells, 5], dtype=np.float32)
@@ -209,25 +218,29 @@ def apply_average_tropomi_operator(
         obs_GC[sel_idx, 4] = gridcell_dict["observation_count"]  # observation counts
         
         if build_jacobian:
-            pert_jacobian_xch4 = virtual_tropomi_pert # (n_superobs, n_element)
-            emis_base_xch4 = virtual_tropomi_base # emis_base and BC_base is "RunName_0001" and "SpeciesConcVV_CH4"
             oh_base_xch4 = virtual_tropomi # OH base is "RunName_0000"
+            emis_base_xch4 = virtual_tropomi_base # emis_base and BC_base is "RunName_0001" and "SpeciesConcVV_CH4"
+            pert_jacobian_xch4 = virtual_tropomi_pert # (n_superobs, n_element)
             
-            # get perturbations and calculate sensitivities
-            perturbations = np.ones((len(gridcell_dict), n_elements), dtype=np.float32)
+            if not config['PrecomputedJacobian']:
+                # get perturbations and calculate sensitivities
+                perturbations = np.ones((len(gridcell_dict), n_elements), dtype=np.float32)
 
-            # fill pert base array with values
-            # array contains 1 entry for each state vector element
-            # fill array with nans
-            base_xch4 = np.full((len(gridcell_dict), n_elements), np.nan, dtype=np.float32)
-            # fill emission elements with the base value
-            base_xch4[:,emis_indices] = np.repeat(emis_base_xch4, 
-                                                  np.asarray(emis_indices).size, axis=1)
+                # fill pert base array with values
+                # array contains 1 entry for each state vector element
+                # fill array with nans
+                base_xch4 = np.full((len(gridcell_dict), n_elements), np.nan, dtype=np.float32)
+                # fill emission elements with the base value
+                base_xch4[:,emis_indices] = np.repeat(emis_base_xch4, 
+                                                    np.asarray(emis_indices).size, axis=1)
 
-            # emissions perturbations
-            perturbations[:,emis_indices] = np.repeat(emis_perturbations[None,:],
-                                                      len(gridcell_dict), axis=0)
-
+                # emissions perturbations
+                perturbations[:,emis_indices] = np.repeat(emis_perturbations[None,:],
+                                                        len(gridcell_dict), axis=0)
+            else:
+                perturbations = np.ones((len(gridcell_dict), n_BCsOH), dtype=np.float32)
+                base_xch4 = np.full((len(gridcell_dict), n_BCsOH), np.nan, dtype=np.float32)
+            
             # OH perturbations
             if config["OptimizeOH"]:
                 # fill OH elements with the OH base value
@@ -244,7 +257,7 @@ def apply_average_tropomi_operator(
 
                 # compute BC perturbation for jacobian construction
                 perturbations[:,bc_indices] = config["PerturbValueBCs"]
-
+                
             # calculate sensitivities
             jacobian_K[sel_idx,:] = ((pert_jacobian_xch4 - base_xch4) / perturbations).astype(np.float32)
             
@@ -257,7 +270,10 @@ def apply_average_tropomi_operator(
 
     # Optionally return the Jacobian
     if build_jacobian:
-        output["K"] = jacobian_K
+        if config['PrecomputedJacobian']:
+            output["K_noEmis"] = jacobian_K
+        else:
+            output["K"] = jacobian_K
 
     return output
 
@@ -1274,74 +1290,106 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
     
     # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
     if build_jacobian:
-        emis_elements = n_elements
-        if config['OptimizeOH']:
-            emis_elements -= 2 if config['isRegional'] else 1
-        if config['OptimizeBCs']:
-            emis_elements -= 4
-        ntracers = config["NumJacobianTracers"]
-        opt_OH = config["OptimizeOH"]
-        opt_BC = config["OptimizeBCs"]
-        is_Regional = config["isRegional"]
+        gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
+        if config['PrecomputedJacobian']:
+            if config['OnlyEmisPrecomputedK']:
+                run_num = []
 
-        num_BC = 4
-        if is_Regional:
-            num_OH = 1
-        else:
-            num_OH = 2
-
-        n_base_runs = (
-            n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
-        ) / ntracers
-
-        nruns = (
-            np.ceil(n_base_runs).astype(int)
-            + (int(opt_OH) * num_OH)
-            + (int(opt_BC) * num_BC)
-        )
-
-        # Dictionary that stores mapping of state vector elements to
-        # perturbation simulation numbers
-        pert_simulations_dict = {}
-        for e in range(n_elements):
-            # State vector elements are numbered 1..nelements
-            sv_elem = e + 1
-
-            is_OH_element = check_is_OH_element(
-                sv_elem, n_elements, opt_OH, is_Regional
-            )
-            is_BC_element = check_is_BC_element(
-                sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
-            )
-            # Determine which run directory to look in
-            if is_OH_element:
-                if is_Regional:
-                    run_number = nruns
+                if config['OptimizeBCs']:
+                    run_num += [2, 3, 4, 5]
+                    if config['OptimizeOH']:
+                        if config['isRegional']:
+                            run_num += [6]
+                        else:
+                            run_num += [6, 7]
                 else:
+                    if config['OptimizeOH']:
+                        if config['isRegional']:
+                            run_num += [1]
+                        else:
+                            run_num += [1, 2]
+
+                if len(run_num) == 0:
+                    raise ValueError(
+                        "build_jacobian is True while OnlyEmisPrecomputedK is True and neither "
+                        "OptimizeBCs nor OptimizeOH is True — no Jacobian calculation is needed."
+                    )
+                
+                virtual_tropomi_pert = [
+                    get_virtual_tropomi_pert(gc_date, f"{k:04d}", gridcell_dict, config, [0], n_elements, vertical_weights)
+                    for k in run_num
+                ]
+
+        else:
+            emis_elements = n_elements
+            if config['OptimizeOH']:
+                emis_elements -= 2 if config['isRegional'] else 1
+            if config['OptimizeBCs']:
+                emis_elements -= 4
+            ntracers = config["NumJacobianTracers"]
+            opt_OH = config["OptimizeOH"]
+            opt_BC = config["OptimizeBCs"]
+            is_Regional = config["isRegional"]
+
+            num_BC = 4
+            if is_Regional:
+                num_OH = 1
+            else:
+                num_OH = 2
+
+            n_base_runs = (
+                n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
+            ) / ntracers
+
+            nruns = (
+                np.ceil(n_base_runs).astype(int)
+                + (int(opt_OH) * num_OH)
+                + (int(opt_BC) * num_BC)
+            )
+
+            # Dictionary that stores mapping of state vector elements to
+            # perturbation simulation numbers
+            pert_simulations_dict = {}
+            for e in range(n_elements):
+                # State vector elements are numbered 1..nelements
+                sv_elem = e + 1
+
+                is_OH_element = check_is_OH_element(
+                    sv_elem, n_elements, opt_OH, is_Regional
+                )
+                is_BC_element = check_is_BC_element(
+                    sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
+                )
+                # Determine which run directory to look in
+                if is_OH_element:
+                    if is_Regional:
+                        run_number = nruns
+                    else:
+                        num_back = n_elements % sv_elem
+                        run_number = nruns - num_back
+                elif is_BC_element:
                     num_back = n_elements % sv_elem
                     run_number = nruns - num_back
-            elif is_BC_element:
-                num_back = n_elements % sv_elem
-                run_number = nruns - num_back
-            else:
-                run_number = np.ceil(sv_elem / ntracers).astype(int)
+                else:
+                    run_number = np.ceil(sv_elem / ntracers).astype(int)
 
-            run_num = str(run_number).zfill(4)
+                run_num = str(run_number).zfill(4)
 
-            # add the element to the dictionary for the relevant simulation number
-            if run_num not in pert_simulations_dict:
-                pert_simulations_dict[run_num] = [sv_elem]
-            else:
-                pert_simulations_dict[run_num].append(sv_elem)
-    
-        gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
-        virtual_tropomi_pert = [
-            get_virtual_tropomi_pert(gc_date, k, gridcell_dict, config, v, n_elements, vertical_weights)
-            for k, v in pert_simulations_dict.items()
-        ]
-
-        virtual_tropomi_pert = np.concatenate(virtual_tropomi_pert, axis=1)
+                # add the element to the dictionary for the relevant simulation number
+                if run_num not in pert_simulations_dict:
+                    pert_simulations_dict[run_num] = [sv_elem]
+                else:
+                    pert_simulations_dict[run_num].append(sv_elem)
         
+            
+            virtual_tropomi_pert = [
+                get_virtual_tropomi_pert(gc_date, k, gridcell_dict, config, v, n_elements, vertical_weights)
+                for k, v in pert_simulations_dict.items()
+            ]
+
+        if len(virtual_tropomi_pert) > 1:
+            virtual_tropomi_pert = np.concatenate(virtual_tropomi_pert, axis=1)
+    
         virtual_tropomi_base = get_virtual_tropomi_pert(
             gc_date, "0001", gridcell_dict, config, [0], n_elements, vertical_weights, baserun=True
         )
@@ -1391,23 +1439,26 @@ def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n
     file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
     filepath = os.path.join(j_dir, file_stub)
     
-    # Construct the list of CH4 vars to request
-    keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
-    if len(keepvars) == 1:
-        is_Regional = config["isRegional"]
-        is_OH_element = check_is_OH_element(
-            sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
-        )
-        is_BC_element = check_is_BC_element(
-            sv_elems[0],
-            n_elements,
-            config["OptimizeOH"],
-            config["OptimizeBCs"],
-            is_OH_element,
-            is_Regional,
-        )
-        if is_OH_element or is_BC_element:
-            keepvars = ["SpeciesConcVV_CH4"]
+    if sv_elems == [0]:
+        keepvars = ['SpeciesConcVV_CH4']
+    else:
+        # Construct the list of CH4 vars to request
+        keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
+        if len(keepvars) == 1:
+            is_Regional = config["isRegional"]
+            is_OH_element = check_is_OH_element(
+                sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
+            )
+            is_BC_element = check_is_BC_element(
+                sv_elems[0],
+                n_elements,
+                config["OptimizeOH"],
+                config["OptimizeBCs"],
+                is_OH_element,
+                is_Regional,
+            )
+            if is_OH_element or is_BC_element:
+                keepvars = ["SpeciesConcVV_CH4"]
 
     if baserun:
         keepvars = ["SpeciesConcVV_CH4"]

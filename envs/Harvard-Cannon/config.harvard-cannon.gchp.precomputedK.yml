@@ -123,7 +123,16 @@ PriorErrorBufferElements: [0.5]
 PriorErrorOH: [0.1]
 ObsError: [15]
 Gamma: [1.0]
-PrecomputedJacobian: false
+PrecomputedJacobian: true
+MultiPrecomputedJacobian: true
+## A file containing multiple lines of the path of multiple reference run directories 
+## when there are multiple precomputed Jacobian, or
+## single line of the path of the run directory when MultiPrecomputedJacobian is false
+ReferenceRunDir: "/n/holylfs06/LABS/jacob_lab2/Lab/dzhang8/imi-gchp-test/imi-gchp-precomputedK/reference_rundir_path.txt"
+## When the grids do not match, regridding precomputed K; otherwise set it to false
+RegridPrecomputedK: true
+## Use only Jacobian columns for emission state vectors only (excluding the column for optimizing OH)?
+OnlyEmisPrecomputedK: true
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0

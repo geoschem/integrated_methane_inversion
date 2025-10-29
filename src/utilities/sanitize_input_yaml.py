@@ -106,6 +106,7 @@ conditional_dict["PrecomputedJacobian"] = [
     "ReferenceRunDir",
     "MultiPrecomputedJacobian",
     "RegridPrecomputedK",
+    "OnlyEmisPrecomputedK",
 ]
 conditional_dict["S3Upload"] = [
     "S3UploadPath",
