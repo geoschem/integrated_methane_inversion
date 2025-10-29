@@ -244,21 +244,28 @@ def do_inversion(
                     jacobian_ref_path = os.path.join(ref_dir, "inversion", "data_converted", os.path.basename(fi))
                     jacobian_ref_dat = load_obj(jacobian_ref_path)
                     
+                    # assume the reference Jacobian is global
+                    assert not (ref_config['OptimizeBCs'] or ref_config['isRegional']), \
+                        "The reference precomputed Jacobian (stretched GCHP with ensemble target faces) \
+                            must be global (not BC-optimized or regional)"
                     # regrid jacobian row
-                    if (ref_config['OptimizeOH']) and (not ref_config['isRegional']): # assume the source is global
-                        jacobian_ref = jacobian_ref_dat["K"][:,:-1]
+                    if (ref_config['OptimizeOH']):
+                        # discard Jacobian column(s) for optimizing OH
+                        jacobian_ref = jacobian_ref_dat["K"][:,:-2]
                     else:
                         jacobian_ref = jacobian_ref_dat["K"]
                     ref_GC_index = jacobian_ref_dat["GC_index"]
+                    # GC_index is already subsetted to the region and 
+                    # thus later for K_emis, we do not need to use [ind,:] to subset anymore
                     jacobian_regridding_weights_row = get_regrid_weights_jacobian_row(config, RunDirs, GC_index, ref_config, ref_GC_index)
-                    
-                    jacobian_RegridRow.append(jacobian_regridding_weights_row.dot(jacobian_ref).astype('float32'))
+                    jacobian_RegridRow_temp = jacobian_regridding_weights_row.dot(jacobian_ref).astype('float32')
+                    jacobian_RegridRow.append(jacobian_RegridRow_temp)
                     
                     # get inputs needed for regridding jacobian col
                     overlap_area_jacobian_ratio_temp, overlap_area_sv_temp = get_regrid_weights_jacobian_col(period_number, config, RunDirs, ref_config, ref_dir)
                     overlap_area_sv.append(overlap_area_sv_temp)
                     overlap_area_jacobian_ratio.append(overlap_area_jacobian_ratio_temp)
-                
+                    
                 # dense matrix in shape of (n_dst_valid_superobs, n_ref_sv_total)
                 jacobian_RegridRow = np.concatenate(jacobian_RegridRow, axis=1)
                 # sparse matrix in shape of (n_dst_sv, n_ref_sv_total)
@@ -270,7 +277,7 @@ def do_inversion(
                 # the jacoban is reconciled by the jacobian ratio and then 
                 # get the area-weighted mean over reference state vector elements that overlap with the destination state vector
                 # regrid_jacobian_row_col = sum ( jacobian_RegridRow * overlap_area_jacobian_ratio ) / sum(overlap_area_sv)
-                K_emis = 1e9 * regrid_jacobian_row_col(jacobian_RegridRow, overlap_area_jacobian_ratio, overlap_area_sv)[ind, :]
+                K_emis = 1e9 * regrid_jacobian_row_col(jacobian_RegridRow, overlap_area_jacobian_ratio, overlap_area_sv)
 
                 K_noemis = 1e9 * dat["K_noEmis"][ind, :]
                 K = np.concatenate((K_emis, K_noemis), axis=1)

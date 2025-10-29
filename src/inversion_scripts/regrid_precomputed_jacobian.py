@@ -37,7 +37,7 @@ def get_regrid_weights_ESMF(config, inv_directory, ref_config):
 def get_superobs_index_GCC(config, inv_directory, GC_index):
     RunName = config['RunName']
     gc_fpath = os.path.join(os.path.expandvars(inv_directory), 
-        f"/jacobian_runs/{RunName}_0000/OutputDir/GEOSChem.SpeciesConc.{config['StartDate']}_0000z.nc4")
+        f"jacobian_runs/{RunName}_0000/OutputDir/GEOSChem.SpeciesConc.{config['StartDate']}_0000z.nc4")
     with xr.open_dataset(gc_fpath).squeeze() as gc_ds:
         gc_lat = gc_ds['lat'].values
         gc_lon = gc_ds['lon'].values
