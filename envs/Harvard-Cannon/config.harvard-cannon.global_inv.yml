@@ -3,7 +3,7 @@
 
 ## General
 RunName: "Test_Global_1day"
-UseSlurm: true
+Scheduler: "slurm"
 SafeMode: true
 S3Upload: false
 

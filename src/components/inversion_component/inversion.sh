@@ -85,12 +85,18 @@ run_inversion() {
     InvTime="${InversionTime:-$RequestedTime}"
     InvPartition="${InvSchedulerPartition:-$SchedulerPartition}"
     # Execute inversion driver script
-    sbatch --mem $InvMem \
-        -c $InvCPU \
-        -t $InvTime \
-        -p $InvPartition \
-        -W run_inversion.sh $FirstSimSwitch
-    wait
+    if [ "$Scheduler" == "slurm" ]; then
+        sbatch --mem $InvMem \
+            -c $InvCPU \
+            -t $InvTime \
+            -p $InvPartition \
+            -W run_inversion.sh $FirstSimSwitch
+        wait
+    else
+        set -e
+        ./run_inversion.sh $FirstSimSwitch
+        set +e
+    fi
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO inversion.sh

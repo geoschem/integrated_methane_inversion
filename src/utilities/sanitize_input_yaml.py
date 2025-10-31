@@ -12,7 +12,7 @@ Arguments
 # variables required on all systems
 config_required = [
     "RunName",
-    "UseSlurm",
+    "Scheduler",
     "SafeMode",
     "S3Upload",
     "StartDate",

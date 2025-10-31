@@ -37,7 +37,7 @@ run_preview() {
     # If running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics...\n\n"
-    if "$UseSlurm"; then
+    if [ "$Scheduler" == "slurm" ]; then
         rm -f .preview_error_status.txt
         chmod +x $preview_file
         sbatch --mem $RequestedMemory \

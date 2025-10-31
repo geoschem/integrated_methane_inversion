@@ -119,13 +119,17 @@ run_osse() {
 
     cd ${RunDirs}/osse_observations_run
 
-    # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${OSSEName}.run
-    wait
+    if [ "$Scheduler" == "slurm" ]; then
+        # Submit job to job scheduler
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${OSSEName}.run
+        wait
+    else
+        source ${OSSEName}.run
+    fi
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO osse_sim.sh

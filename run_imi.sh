@@ -168,15 +168,19 @@ if [[ -z "$DataPathTROPOMI" ]]; then
     else
         downloadScript=src/utilities/download_TROPOMI.py
     fi
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -o imi_output.tmp \
-        -W $downloadScript $StartDate $EndDate $tropomiCache
-    wait
-    cat imi_output.tmp >>${InversionPath}/imi_output.log
-    rm imi_output.tmp
+    if [ "$Scheduler" == "slurm" ]; then
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W $downloadScript $StartDate $EndDate $tropomiCache
+        wait
+        cat imi_output.tmp >>${InversionPath}/imi_output.log
+        rm imi_output.tmp
+    else
+        python $downloadScript $StartDate $EndDate $tropomiCache
+    fi
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $tropomiCache ]]; then

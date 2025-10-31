@@ -80,14 +80,18 @@ run_spinup() {
 
     cd ${RunDirs}/spinup_run
 
-    # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Spinup.run
-    wait
-
+    if [ "$Scheduler" == "slurm" ]; then
+        # Submit job to job scheduler
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -W ${RunName}_Spinup.run
+        wait
+    else
+        source ${RunName}_Spinup.run
+    fi
+    
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO spinup.sh
 

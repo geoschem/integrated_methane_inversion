@@ -3,7 +3,7 @@
 
 ## General
 RunName: "Test_IMI_Global"
-UseSlurm: true
+Scheduler: "slurm"
 SafeMode: false
 S3Upload: false
 

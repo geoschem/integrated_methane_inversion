@@ -10,10 +10,9 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``UseSlurm``
-     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
-       Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
-       Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
+   * - ``Scheduler``
+     - Scheduler to use for running the IMI. Options are ``"slurm"``, ``"pbs"``, or ``"none"``.
+       If ``none``, the IMI will run interactively. See (:doc:`via tmux <../advanced/running-with-tmux>`).
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
    * - ``S3Upload``

@@ -157,13 +157,17 @@ run_hemco_sa() {
 
     rm -f .error_status_file.txt
     # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -o ${RunName}_HEMCO_Prior_Emis.log \
-        -p $SchedulerPartition \
-        -W ${RunName}_HEMCO_Prior_Emis.run
-    wait
+    if [ "$Scheduler" == "slurm" ]; then
+        sbatch --mem $RequestedMemory \
+            -c $RequestedCPUs \
+            -t $RequestedTime \
+            -o ${RunName}_HEMCO_Prior_Emis.log \
+            -p $SchedulerPartition \
+            -W ${RunName}_HEMCO_Prior_Emis.run
+        wait
+    else
+        ./${RunName}_HEMCO_Prior_Emis.run &> ${RunName}_HEMCO_Prior_Emis.log
+    fi
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO hemco_prior_emis.sh

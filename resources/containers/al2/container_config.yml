@@ -3,7 +3,7 @@
 
 ## General
 RunName: "Test_Permian_1week"
-UseSlurm: true
+Scheduler: "slurm"
 SafeMode: true
 S3Upload: false
 
