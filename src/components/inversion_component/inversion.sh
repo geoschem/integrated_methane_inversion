@@ -85,7 +85,7 @@ run_inversion() {
     InvTime="${InversionTime:-$RequestedTime}"
     InvPartition="${InvSchedulerPartition:-$SchedulerPartition}"
     # Execute inversion driver script
-    if [ "$Scheduler" == "slurm" ]; then
+    if [ "$SchedulerType" == "slurm" ]; then
         sbatch --mem $InvMem \
             -c $InvCPU \
             -t $InvTime \

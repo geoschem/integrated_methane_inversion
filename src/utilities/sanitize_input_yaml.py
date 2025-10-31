@@ -12,7 +12,7 @@ Arguments
 # variables required on all systems
 config_required = [
     "RunName",
-    "Scheduler",
+    "SchedulerType",
     "SafeMode",
     "S3Upload",
     "StartDate",

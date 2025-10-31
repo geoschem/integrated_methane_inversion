@@ -168,7 +168,7 @@ if [[ -z "$DataPathTROPOMI" ]]; then
     else
         downloadScript=src/utilities/download_TROPOMI.py
     fi
-    if [ "$Scheduler" == "slurm" ]; then
+    if [ "$SchedulerType" == "slurm" ]; then
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \
             -t $RequestedTime \

@@ -94,7 +94,7 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
-    if [ "$Scheduler" == "slurm" ]; then
+    if [ "$SchedulerType" == "slurm" ]; then
         rm -f .aggregation_error.txt
         chmod +x $aggregation_file
         sbatch --mem $RequestedMemory \

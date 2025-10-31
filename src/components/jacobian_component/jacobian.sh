@@ -445,7 +445,7 @@ run_jacobian() {
         # Submit job to job scheduler
         source submit_jacobian_simulations_array.sh
         if "$LognormalErrors"; then
-            if [ "$Scheduler" == "slurm" ]; then
+            if [ "$SchedulerType" == "slurm" ]; then
                 sbatch --mem $RequestedMemory \
                     -c $RequestedCPUs \
                     -t $RequestedTime \
@@ -483,7 +483,7 @@ run_jacobian() {
 
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
-        if [ "$Scheduler" == "slurm" ]; then
+        if [ "$SchedulerType" == "slurm" ]; then
             sbatch --mem $RequestedMemory \
                 -c $RequestedCPUs \
                 -t $RequestedTime \
@@ -504,7 +504,7 @@ run_jacobian() {
         # Run the background simulation if lognormal errors enabled
         if "$LognormalErrors"; then
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
-            if [ "$Scheduler" == "slurm" ]; then
+            if [ "$SchedulerType" == "slurm" ]; then
                 sbatch --mem $RequestedMemory \
                     -c $RequestedCPUs \
                     -t $RequestedTime \

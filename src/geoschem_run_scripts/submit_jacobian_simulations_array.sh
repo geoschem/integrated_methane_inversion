@@ -4,7 +4,7 @@ echo "running {END} jacobian simulations" >> {InversionPath}/imi_output.log
 # remove error status file if present
 rm -f .error_status_file.txt
 
-if [ "$Scheduler" == "slurm" ]; then
+if [ "$SchedulerType" == "slurm" ]; then
     sbatch --array={START}-{END}{JOBS} --mem $RequestedMemory \
     -c $RequestedCPUs \
     -t $RequestedTime \

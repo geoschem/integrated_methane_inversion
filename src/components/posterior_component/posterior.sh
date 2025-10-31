@@ -174,7 +174,7 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    if [ "$Scheduler" == "slurm" ]; then
+    if [ "$SchedulerType" == "slurm" ]; then
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \
             -t $RequestedTime \

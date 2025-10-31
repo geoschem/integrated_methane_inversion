@@ -119,7 +119,7 @@ run_osse() {
 
     cd ${RunDirs}/osse_observations_run
 
-    if [ "$Scheduler" == "slurm" ]; then
+    if [ "$SchedulerType" == "slurm" ]; then
         # Submit job to job scheduler
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \

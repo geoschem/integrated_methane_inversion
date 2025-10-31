@@ -10,7 +10,7 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``Scheduler``
+   * - ``SchedulerType``
      - Scheduler to use for running the IMI. Options are ``"slurm"``, ``"pbs"``, or ``"none"``.
        If ``none``, the IMI will run interactively. See (:doc:`via tmux <../advanced/running-with-tmux>`).
    * - ``SafeMode``

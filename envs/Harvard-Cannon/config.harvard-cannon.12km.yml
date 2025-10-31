@@ -3,7 +3,7 @@
 
 ## General
 RunName: "Test_IMI_Philadelphia"
-Scheduler: "slurm"
+SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
 

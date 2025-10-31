@@ -157,7 +157,7 @@ run_hemco_sa() {
 
     rm -f .error_status_file.txt
     # Submit job to job scheduler
-    if [ "$Scheduler" == "slurm" ]; then
+    if [ "$SchedulerType" == "slurm" ]; then
         sbatch --mem $RequestedMemory \
             -c $RequestedCPUs \
             -t $RequestedTime \
