@@ -228,6 +228,12 @@ def make_state_vector_file(
         statevector = cluster_buffer_elements(
             statevector, k_buffer_clust, statevector.max().item()
         )
+        # set final 3 pixels on any side to -9999 to prevent non advected cells 
+        # from being included in the state vector
+        statevector[:, statevector.lon < (lon_min + deg_lon * 3)] = -9999
+        statevector[:, statevector.lon > (lon_max - deg_lon * 3)] = -9999
+        statevector[statevector.lat < (lat_min + deg_lat * 3), :] = -9999
+        statevector[statevector.lat > (lat_max - deg_lat * 3), :] = -9999
 
     refyear = 2000
     # Make dataset
