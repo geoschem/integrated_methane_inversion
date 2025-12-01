@@ -67,7 +67,7 @@ def apply_average_tropomi_operator(
                                         - TROPOMI lat, lon
                                         - TROPOMI lat index, lon index
                                           If build_jacobian=True, also include:
-                                            - K      : Jacobian matrix, in ppbv per scaling factor
+                                            - K      : Jacobian matrix, in unitless per scaling factor
     """
 
     # Read TROPOMI data

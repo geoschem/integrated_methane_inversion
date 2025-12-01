@@ -63,8 +63,8 @@ def subset_ensemble_sv(grid_sv_ds, all_ref_sv_ds, save_subset_sv_path):
             deg_lat, deg_lon = 0.25, 0.3125
         elif config["Res"] == "0.125x0.15625":
             deg_lat, deg_lon = 0.125, 0.15625
-        buffer_deg_lat = deg_lat * 3
-        buffer_deg_lon = deg_lon * 3
+        buffer_deg_lat = deg_lat * 4
+        buffer_deg_lon = deg_lon * 4
 
     extents = [region_lon.min() - buffer_deg_lon, region_lon.max() + buffer_deg_lon,
                region_lat.min() - buffer_deg_lat, region_lat.max() + buffer_deg_lat]

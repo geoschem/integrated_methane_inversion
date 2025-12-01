@@ -13,8 +13,6 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from src.inversion_scripts.utils import get_mean_emissions, get_period_mean_emissions
-from src.inversion_scripts.regrid_precomputed_jacobian import median_and_sort_along_statevector
-
 
 def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_sf):
     """

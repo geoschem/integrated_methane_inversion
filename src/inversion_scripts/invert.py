@@ -460,47 +460,6 @@ def do_inversion(
         else:
             Sa_diag[-4:] = prior_err_bc**2
             Sa_diag_constraint[-4:] = prior_err_bc**2
-
-    # # Identify parameters with zero prior variance and treat them as fixed
-    # constrained_mask = (Sa_diag == 0.)
-    # free_mask = ~constrained_mask
-    # n_free = int(np.count_nonzero(free_mask))
-    # free_idx = np.flatnonzero(free_mask)
-    
-    # # Inverses using safe divide to avoid inf/NaN for constrained entries
-    # inv_Sa_constraint_diag = np.zeros(n_elements, dtype=np.float32)
-    # inv_Sa_constraint_diag = np.divide(1.0, Sa_diag_constraint, out=inv_Sa_constraint_diag, where=(Sa_diag_constraint > 0.))
-    # inv_Sa_diag = np.zeros(n_elements, dtype=np.float32)
-    # inv_Sa_diag = np.divide(1.0, Sa_diag, out=inv_Sa_diag, where=(Sa_diag > 0.))
-    
-    # # Solve for delta_optimized based on method
-    # rhs = gamma * KTinvSoyKxA
-
-    # # Solve for posterior scale factors xhat using the weighted constraint matrix and 
-    # # posterior variance using unweighted matrix
-    # if n_free == 0:
-    #     # All constrained: trivial solution and zero posterior variance
-    #     delta_optimized = np.zeros(n_elements, dtype=np.float32)
-    #     S_post_diag = np.zeros(n_elements, dtype=np.float32)
-    # else:
-    #     # Solve reduced system over free indices
-    #     H = (gamma * KTinvSoK).astype(np.float32, copy=False)
-    #     H_FF = H[np.ix_(free_idx, free_idx)]
-    #     # Add weighted prior inverse on diagonal for solver only
-    #     H_FF.flat[::n_free + 1] += inv_Sa_constraint_diag[free_idx]
-    #     rhs_F = rhs[free_idx].astype(np.float32, copy=False)
-    #     delta_F = np.linalg.solve(H_FF, rhs_F).astype(np.float32)
-    #     delta_optimized = np.zeros(n_elements, dtype=np.float32)
-    #     delta_optimized[free_idx] = delta_F
-
-    #     # Posterior diagonal over free indices using unweighted prior
-    #     H_post_FF = (gamma * KTinvSoK)[np.ix_(free_idx, free_idx)].astype(np.float32, copy=False)
-    #     H_post_FF.flat[::n_free + 1] += inv_Sa_diag[free_idx]
-    #     S_post_FF = np.linalg.inv(H_post_FF)
-    #     S_post_diag = np.zeros(n_elements, dtype=np.float32)
-    #     S_post_diag[free_idx] = np.diag(S_post_FF).astype(np.float32, copy=False)
-    
-    
     
     inv_Sa_constraint = np.diag(
         1 / Sa_diag_constraint
@@ -529,20 +488,6 @@ def do_inversion(
         else:
             xhat[-2:] += 1
             print(f"xhat[OH] = {xhat[-2:]}")
-
-    # # ---- Averaging-kernel diagonal (use unweighted Sa): for constrained entries set 0 ----
-    # A_diag = np.zeros(n_elements, dtype=np.float32)
-    # if n_free > 0:
-    #     A_diag[free_mask] = np.float32(1.0) - (S_post_diag[free_mask] * inv_Sa_diag[free_mask])
-
-    # # Calculate J_A, where delta_optimized = xhat - xA
-    # # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
-    # #     = sum_i inv_Sa_diag[i] * delta_optimized[i]^2
-    # if n_free > 0:
-    #     J_A = float(np.dot(delta_optimized[free_mask], (inv_Sa_diag[free_mask] * delta_optimized[free_mask])))
-    # else:
-    #     J_A = 0.0
-    # Ja_normalized = J_A / n_elements # scalar
 
     # Averaging kernel matrix (use unweighted Sa)
     A = np.identity(n_elements) - S_post @ inv_Sa
