@@ -10,15 +10,18 @@ from itertools import product
 from scipy.sparse import hstack
 from src.inversion_scripts.utils import (
     load_obj,
+    save_obj,
     calculate_superobservation_error,
     ensure_float_list,
     get_mean_emissions,
+    get_period_mean_emissions,
     update_prior_error_for_OptimizeSoil,
 )
 from src.inversion_scripts.regrid_precomputed_jacobian import(
     get_regrid_weights_jacobian_row,
     get_regrid_weights_jacobian_col,
     regrid_jacobian_row_col,
+    median_and_sort_along_statevector,
 )
 
 def do_inversion(
@@ -82,7 +85,10 @@ def do_inversion(
     # Shave off one or two degrees of latitude/longitude from each side of the domain
     # ~1 degree if 0.25x0.3125 resolution, ~2 degrees if 0.5x0.6125 resolution
     # This assumes 0.25x0.3125 and 0.5x0.625 simulations are always regional
-    if not config['UseGCHP']:
+    # initialize shaved off degrees
+    degx = 0
+    degy = 0
+    if config['isRegional']:
         if "0.125x0.15625" in res:
             degx = 4 * 0.15625
             degy = 4 * 0.125
@@ -92,15 +98,82 @@ def do_inversion(
         elif "0.5x0.625" in res:
             degx = 4 * 0.625
             degy = 4 * 0.5
-        else:
-            degx = 0
-            degy = 0
-    else:
-        degx = 0
-        degy = 0
     xlim = [lon_min + degx, lon_max - degx]
     ylim = [lat_min + degy, lat_max - degy]
 
+    # get prior emissions, destination area in square radians and all reference directories if using precomputed Jacobian
+    if config['PrecomputedJacobian']:
+        if (config['MultiPrecomputedJacobian']) and (config['OnlyEmisPrecomputedK']):
+            # prior_ds of the destination grid
+            RunDirs=f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}"
+            
+            # get start and end dates
+            start_date = str(config["StartDate"])
+            end_date = str(config["EndDate"])
+            
+            OptimizeSoil = config['OptimizeSoil']
+            prior_cache = os.path.join(RunDirs, "hemco_prior_emis/OutputDir")
+            if config["KalmanMode"]:
+                prior_ds = get_period_mean_emissions(
+                    prior_cache, period_number, os.path.join(RunDirs, "periods.csv")
+                )
+            else:
+                prior_ds = get_mean_emissions(start_date, end_date, prior_cache)
+            if not OptimizeSoil:
+                prior_emis = prior_ds["EmisCH4_Total_ExclSoilAbs"].values
+            else:
+                prior_emis = prior_ds["EmisCH4_Total"].values
+        
+            ref_prior_emis_sv = []
+            
+            CSgridDir=f"{RunDirs}/CS_grids"
+            ref_directory_path_all = config['ReferenceRunDir']
+            with open(ref_directory_path_all, "r") as f:
+                ref_directory_path_list_all = f.read()
+
+            ref_directory_path_list = ref_directory_path_list_all.splitlines()
+            ref_parent_dir = os.path.dirname(ref_directory_path_list[0])
+            ref_dir_basename = os.path.basename(ref_directory_path_list[0])
+            ref_dir_prename = re.sub(r'\d+$', '', ref_dir_basename)
+            
+            ref_sv_fpath = config['StateVectorFile']
+            if config['isRegional']:
+                ref_sv_fname = os.path.basename(ref_sv_fpath).replace('combined', 'subset')
+                ref_sv_fpath = f"{CSgridDir}/{ref_sv_fname}"
+            # squeeze out time dimension
+            ref_sv_ds = xr.open_dataset(ref_sv_fpath).squeeze("time")
+            
+            # # only use specific target face(s) for the inversion
+            # # Find the index where target_face == 74
+            # idx = np.where(ref_sv_ds['target_face'].values == 74)[0]
+            # ref_sv_ds = ref_sv_ds.isel(target_face=idx)
+            
+            target_face = ref_sv_ds['target_face'].values
+            num_ref_dir = len(target_face)
+
+            # get all reference prior emissions sorted by reference state vector
+            for i in range(num_ref_dir):
+                # reference directory naming is 1-based
+                ref_RunName = f"{ref_dir_prename}{target_face[i]+1:03d}"
+                ref_dir = os.path.join(ref_parent_dir, ref_RunName)
+                ref_config_path = os.path.join(ref_dir, f"config_{ref_RunName}.yml")
+                ref_config = yaml.load(open(ref_config_path), Loader=yaml.FullLoader)
+                
+                ref_OptimizeSoil = ref_config['OptimizeSoil']
+                ref_prior_cache = os.path.join(ref_dir, "hemco_prior_emis/OutputDir")
+                if ref_config["KalmanMode"]:
+                    ref_prior_ds = get_period_mean_emissions(
+                        ref_prior_cache, period_number, os.path.join(ref_dir, "periods.csv")
+                    )
+                else:
+                    ref_prior_ds = get_mean_emissions(start_date, end_date, ref_prior_cache)
+                if not ref_OptimizeSoil:
+                    ref_prior_emis = ref_prior_ds["EmisCH4_Total_ExclSoilAbs"].values
+                else:
+                    ref_prior_emis = ref_prior_ds["EmisCH4_Total"].values
+                ref_prior_emis = median_and_sort_along_statevector(ref_prior_emis, ref_sv_ds['StateVector'].values[i,...])
+                ref_prior_emis_sv.append(ref_prior_emis)
+            
     # Read output data from jacobian.py (virtual & true TROPOMI columns, Jacobian matrix)
     
     files = jacobian_files
@@ -137,7 +210,7 @@ def do_inversion(
     KTinvSoyKxA = np.zeros(
         [n_elements], dtype=float
     )  # expression 2: K^T * inv(S_o) * (y-K*xA)
-
+    
     # Initialize
     # For each .pkl file generated by jacobian.py:
     for fi in files:
@@ -154,6 +227,8 @@ def do_inversion(
         # Otherwise, grab the TROPOMI/GEOS-Chem data
         obs_GC = dat["obs_GC"]
 
+        GC_index = dat['GC_index']
+                        
         # Only consider data within the new latitude and longitude bounds
         ind = np.where(
             (obs_GC[:, 2] >= xlim[0])
@@ -169,9 +244,8 @@ def do_inversion(
         # TROPOMI and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
-        GC_index = dat['GC_index']
         GC_index = GC_index[ind]
-        
+
         # weight obs_err based on the observation count to prevent overfitting
         # Note: weighting function defined by Zichong Chen for his
         # middle east inversions. May need to be tuned based on region.
@@ -198,35 +272,13 @@ def do_inversion(
         # Jacobian entries for observations within bounds [ppb]
         if config['PrecomputedJacobian']:
             if (config['MultiPrecomputedJacobian']) and (config['OnlyEmisPrecomputedK']):
-                RunDirs=f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}"
-                CSgridDir=f"{RunDirs}/CS_grids"
-    
-                ref_directory_path_all = config['ReferenceRunDir']
-                with open(ref_directory_path_all, "r") as f:
-                    ref_directory_path_list_all = f.read()
-
-                ref_directory_path_list = ref_directory_path_list_all.splitlines()
-                ref_parent_dir = os.path.dirname(ref_directory_path_list[0])
-                ref_dir_basename = os.path.basename(ref_directory_path_list[0])
-                ref_dir_prename = re.sub(r'\d+$', '', ref_dir_basename)
-                
-                ref_sv_fpath = config['StateVectorFile']
-                if config['isRegional']:
-                    ref_sv_fname = os.path.basename(ref_sv_fpath).replace('combined', 'subset')
-                    ref_sv_fpath = f"{CSgridDir}/{ref_sv_fname}"
-                    ref_sv_ds = xr.open_dataset(ref_sv_fpath).squeeze()
-                else:
-                    ref_sv_ds = xr.open_dataset(ref_sv_fpath, mask_and_scale=False)
-                target_face = ref_sv_ds['target_face'].values
-                num_ref_dir = len(target_face)
-                
                 # regrid Jacobian row (super observations) first, 
                 # and then regrid Jacobian column (state vector)
                 
                 # regrid jacobian row
                 jacobian_RegridRow = []
-                overlap_area_jacobian_ratio = []
-                overlap_area_sv = []
+                overlap_area_jacobian_ratio_src = []
+                overlap_area_src = []
                 for ti in range(num_ref_dir):
                     # Sanity check:
                     # reference directory naming is 1-based
@@ -240,7 +292,7 @@ def do_inversion(
                         for {ref_RunName} with target_face id of {target_face[ti]+1} \
                         (TARGET_LAT: {ref_sv_ds['TARGET_LAT'].values[ti]:.2f} vs. {ref_config['TARGET_LAT']:.2f}, \
                         TARGET_LON: {ref_sv_ds['TARGET_LON'].values[ti]:.2f} vs. {ref_config['TARGET_LON']:.2f})"
-                        
+                    
                     jacobian_ref_path = os.path.join(ref_dir, "inversion", "data_converted", os.path.basename(fi))
                     jacobian_ref_dat = load_obj(jacobian_ref_path)
                     
@@ -262,25 +314,50 @@ def do_inversion(
                     jacobian_RegridRow.append(jacobian_RegridRow_temp)
                     
                     # get inputs needed for regridding jacobian col
-                    overlap_area_jacobian_ratio_temp, overlap_area_sv_temp = get_regrid_weights_jacobian_col(period_number, config, RunDirs, ref_config, ref_dir)
-                    overlap_area_sv.append(overlap_area_sv_temp)
-                    overlap_area_jacobian_ratio.append(overlap_area_jacobian_ratio_temp)
-                    
+                    overlap_area_jacobian_ratio_src_temp, overlap_area_src_temp = get_regrid_weights_jacobian_col(config, RunDirs, ref_config, ref_dir, ref_prior_emis_sv[ti])
+                    overlap_area_src.append(overlap_area_src_temp)
+                    overlap_area_jacobian_ratio_src.append(overlap_area_jacobian_ratio_src_temp)
+
                 # dense matrix in shape of (n_dst_valid_superobs, n_ref_sv_total)
                 jacobian_RegridRow = np.concatenate(jacobian_RegridRow, axis=1)
                 # sparse matrix in shape of (n_dst_sv, n_ref_sv_total)
-                overlap_area_jacobian_ratio = hstack(overlap_area_jacobian_ratio, format="csr")
+                overlap_area_jacobian_ratio_src = hstack(overlap_area_jacobian_ratio_src, format="csr")
                 # sparse matrix in shape of (n_dst_sv, n_ref_sv_total)
-                overlap_area_sv = hstack(overlap_area_sv, format="csr")
-                
+                overlap_area_src = hstack(overlap_area_src, format="csr")
+
                 # regrid jacobian column
                 # the jacoban is reconciled by the jacobian ratio and then 
                 # get the area-weighted mean over reference state vector elements that overlap with the destination state vector
-                # regrid_jacobian_row_col = sum ( jacobian_RegridRow * overlap_area_jacobian_ratio ) / sum(overlap_area_sv)
-                K_emis = 1e9 * regrid_jacobian_row_col(jacobian_RegridRow, overlap_area_jacobian_ratio, overlap_area_sv)
+                # regrid_jacobian_row_col = sum ( jacobian_RegridRow * overlap_area_jacobian_ratio_src ) / sum(overlap_area_src)
+                K_emis = 1e9 * regrid_jacobian_row_col(
+                    jacobian_RegridRow, overlap_area_jacobian_ratio_src, overlap_area_src, RunDirs, config, prior_emis
+                )
 
                 K_noemis = 1e9 * dat["K_noEmis"][ind, :]
                 K = np.concatenate((K_emis, K_noemis), axis=1)
+                
+                if config.get('SaveRegriddedK', False):
+                    regridded_K_path = fi.replace('data_converted', 'data_converted_regridded')
+                    os.makedirs(os.path.dirname(regridded_K_path), exist_ok=True)
+                    if not os.path.exists(regridded_K_path):
+                        output = {}
+                        output['GC_index'] = GC_index
+                        output['K'] = K/1e9 # convert back to unitless mixing ratio
+                        output['obs_GC'] = obs_GC
+                        print(f"Saved regridded K_emis to {regridded_K_path}")
+                        save_obj(output, regridded_K_path)
+                        del output
+                if config.get('SaveRegriddedRowK', False):
+                    regridded_K_path = fi.replace('data_converted', 'data_converted_regriddedRow')
+                    os.makedirs(os.path.dirname(regridded_K_path), exist_ok=True)
+                    if not os.path.exists(regridded_K_path):
+                        output = {}
+                        output['GC_index'] = GC_index
+                        output['K'] = jacobian_RegridRow # convert back to unitless mixing ratio
+                        output['obs_GC'] = obs_GC
+                        print(f"Saved regridded K_emis to {regridded_K_path}")
+                        save_obj(output, regridded_K_path)
+                        del output
             else:
                 # Get Jacobian from reference inversion
                 fi_ref = fi.replace("data_converted", "data_converted_reference")
@@ -358,7 +435,8 @@ def do_inversion(
         # use this weighted constraint matrix to calculate the solution only
         if is_Regional:
             OH_weight = 1 / (n_elements - 1)
-            Sa_diag[-1:] = OH_weight * prior_err_oh**2
+            Sa_diag_constraint[-1:] = OH_weight * prior_err_oh**2
+            Sa_diag[-1:] = prior_err_oh**2
             scale_factor_idx -= 1
         else:
             OH_weight = 2 / (n_elements - 2)
@@ -383,12 +461,59 @@ def do_inversion(
             Sa_diag[-4:] = prior_err_bc**2
             Sa_diag_constraint[-4:] = prior_err_bc**2
 
-    inv_Sa_constraint = np.diag(1 / Sa_diag_constraint)  # Inverse of weighted constraint matrix
+    # # Identify parameters with zero prior variance and treat them as fixed
+    # constrained_mask = (Sa_diag == 0.)
+    # free_mask = ~constrained_mask
+    # n_free = int(np.count_nonzero(free_mask))
+    # free_idx = np.flatnonzero(free_mask)
+    
+    # # Inverses using safe divide to avoid inf/NaN for constrained entries
+    # inv_Sa_constraint_diag = np.zeros(n_elements, dtype=np.float32)
+    # inv_Sa_constraint_diag = np.divide(1.0, Sa_diag_constraint, out=inv_Sa_constraint_diag, where=(Sa_diag_constraint > 0.))
+    # inv_Sa_diag = np.zeros(n_elements, dtype=np.float32)
+    # inv_Sa_diag = np.divide(1.0, Sa_diag, out=inv_Sa_diag, where=(Sa_diag > 0.))
+    
+    # # Solve for delta_optimized based on method
+    # rhs = gamma * KTinvSoyKxA
+
+    # # Solve for posterior scale factors xhat using the weighted constraint matrix and 
+    # # posterior variance using unweighted matrix
+    # if n_free == 0:
+    #     # All constrained: trivial solution and zero posterior variance
+    #     delta_optimized = np.zeros(n_elements, dtype=np.float32)
+    #     S_post_diag = np.zeros(n_elements, dtype=np.float32)
+    # else:
+    #     # Solve reduced system over free indices
+    #     H = (gamma * KTinvSoK).astype(np.float32, copy=False)
+    #     H_FF = H[np.ix_(free_idx, free_idx)]
+    #     # Add weighted prior inverse on diagonal for solver only
+    #     H_FF.flat[::n_free + 1] += inv_Sa_constraint_diag[free_idx]
+    #     rhs_F = rhs[free_idx].astype(np.float32, copy=False)
+    #     delta_F = np.linalg.solve(H_FF, rhs_F).astype(np.float32)
+    #     delta_optimized = np.zeros(n_elements, dtype=np.float32)
+    #     delta_optimized[free_idx] = delta_F
+
+    #     # Posterior diagonal over free indices using unweighted prior
+    #     H_post_FF = (gamma * KTinvSoK)[np.ix_(free_idx, free_idx)].astype(np.float32, copy=False)
+    #     H_post_FF.flat[::n_free + 1] += inv_Sa_diag[free_idx]
+    #     S_post_FF = np.linalg.inv(H_post_FF)
+    #     S_post_diag = np.zeros(n_elements, dtype=np.float32)
+    #     S_post_diag[free_idx] = np.diag(S_post_FF).astype(np.float32, copy=False)
+    
+    
+    
+    inv_Sa_constraint = np.diag(
+        1 / Sa_diag_constraint
+    )  # Inverse of weighted constraint matrix
     inv_Sa = np.diag(1 / Sa_diag)  # Inverse of unweighted prior error covariance matrix
 
     # Solve for posterior scale factors xhat using the weighted constraint matrix
-    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (gamma * KTinvSoyKxA)
-
+    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (
+        gamma * KTinvSoyKxA
+    )
+    # Posterior error covariance matrix (use unweighted Sa)
+    S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
+    
     # Update scale factors by 1 to match what GEOS-Chem expects
     # xhat = 1 + delta_optimized
     # Notes:
@@ -405,8 +530,19 @@ def do_inversion(
             xhat[-2:] += 1
             print(f"xhat[OH] = {xhat[-2:]}")
 
-    # Posterior error covariance matrix (use unweighted Sa)
-    S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
+    # # ---- Averaging-kernel diagonal (use unweighted Sa): for constrained entries set 0 ----
+    # A_diag = np.zeros(n_elements, dtype=np.float32)
+    # if n_free > 0:
+    #     A_diag[free_mask] = np.float32(1.0) - (S_post_diag[free_mask] * inv_Sa_diag[free_mask])
+
+    # # Calculate J_A, where delta_optimized = xhat - xA
+    # # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
+    # #     = sum_i inv_Sa_diag[i] * delta_optimized[i]^2
+    # if n_free > 0:
+    #     J_A = float(np.dot(delta_optimized[free_mask], (inv_Sa_diag[free_mask] * delta_optimized[free_mask])))
+    # else:
+    #     J_A = 0.0
+    # Ja_normalized = J_A / n_elements # scalar
 
     # Averaging kernel matrix (use unweighted Sa)
     A = np.identity(n_elements) - S_post @ inv_Sa
@@ -416,7 +552,7 @@ def do_inversion(
     delta_optimizedT = delta_optimized.transpose()
     J_A = delta_optimizedT @ inv_Sa @ delta_optimized
     Ja_normalized = J_A / n_elements
-
+    
     # Print some statistics
     print(
         f"hyperparameters: (prior_err: {prior_err}, obs_err: {obs_err}, gamma: {gamma}, "

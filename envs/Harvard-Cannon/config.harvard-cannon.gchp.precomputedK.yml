@@ -133,6 +133,7 @@ ReferenceRunDir: "/n/holylfs06/LABS/jacob_lab2/Lab/dzhang8/imi-gchp-test/imi-gch
 RegridPrecomputedK: true
 ## Use only Jacobian columns for emission state vectors only (excluding the column for optimizing OH)?
 OnlyEmisPrecomputedK: true
+SaveRegriddedK: true
 
 ## Grid
 ##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0

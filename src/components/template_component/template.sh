@@ -133,9 +133,11 @@ setup_template() {
     # Update time cycling flags to use most recent year
     sed -i "s/RF xy/C xy/g" HEMCO_Config.rc
 
+    # Too long file name could be problematic
+    ln -nsf ${RunDirs} RunDirs
     # Modify path to state vector file in HEMCO_Config.rc
     OLD=" ./StateVector.nc"
-    NEW=" ${RunDirs}/StateVector.nc"
+    NEW=" ./RunDirs/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
     if "$KalmanMode"; then
@@ -143,14 +145,13 @@ setup_template() {
     else
         jacobian_period=1
     fi
+
     scale_OLD=" ./gridded_pert_scale_1.nc"
-    scale_NEW=" ${RunDirs}/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
+    scale_NEW=" ./RunDirs/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
     sed -i -e "s@$scale_OLD@$scale_NEW@g" HEMCO_Config.rc
 
     if [ "$UseGCHP" = true ]; then
         sed -i -e "s@^#SCALE_PERT@SCALE_PERT@g" ExtData.rc
-        # Too long file name could be problematic in GCHP
-        ln -nsf "${RunDirs}" RunDirs
         NEW_Ext=" ./RunDirs/StateVector.nc"
         sed -i -e "s@$OLD@$NEW_Ext@g" ExtData.rc
         scale_NEW_Ext=" ./RunDirs/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
@@ -159,9 +160,9 @@ setup_template() {
 
     # Modify HEMCO_Config.rc if running Kalman filter
     if "$KalmanMode"; then
-        sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+        sed -i -e "s|gridded_posterior.nc|./RunDirs/ScaleFactors.nc|g" HEMCO_Config.rc
         if "$UseGCHP"; then
-            sed -i -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" ExtData.rc
+            sed -i -e "s|gridded_posterior.nc|./RunDirs/ScaleFactors.nc|g" ExtData.rc
         fi
     fi
 

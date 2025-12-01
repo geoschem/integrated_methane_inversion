@@ -51,7 +51,24 @@ def get_gridspec_prefix(
 def subset_ensemble_sv(grid_sv_ds, all_ref_sv_ds, save_subset_sv_path):
     region_lat = grid_sv_ds['lat'].values
     region_lon = grid_sv_ds['lon'].values
-    extents = [region_lon.min(), region_lon.max(), region_lat.min(), region_lat.max()]
+    
+    if config["isRegional"]:
+        if config["Res"] == "4.0x5.0":
+            deg_lat, deg_lon = 4.0, 5.0
+        elif config["Res"] == "2.0x2.5":
+            deg_lat, deg_lon = 2.0, 2.5
+        elif config["Res"] == "0.5x0.625":
+            deg_lat, deg_lon = 0.5, 0.625
+        elif config["Res"] == "0.25x0.3125":
+            deg_lat, deg_lon = 0.25, 0.3125
+        elif config["Res"] == "0.125x0.15625":
+            deg_lat, deg_lon = 0.125, 0.15625
+        buffer_deg_lat = deg_lat * 3
+        buffer_deg_lon = deg_lon * 3
+
+    extents = [region_lon.min() - buffer_deg_lon, region_lon.max() + buffer_deg_lon,
+               region_lat.min() - buffer_deg_lat, region_lat.max() + buffer_deg_lat]
+    
     # get target face indices with stretched face (index 5) within the extents
     ref_lats = all_ref_sv_ds['lats'].values[:,5,...]
     ref_lons = np.array(all_ref_sv_ds['lons'][:,5,...])
@@ -196,7 +213,7 @@ def regrid_state_vector_file(config, grid_sv_ds):
     # Find destination indices with any non-zero total weight and 
     # valid state vector IDs when creating normal state vector at the destination grid
     grid_sv = grid_sv_ds['StateVector'].values
-    regrid_sv_mask = ((regrid_weights_row_sum > 0).reshape(dst_shape)) & (grid_sv > 0)
+    regrid_sv_mask = ((regrid_weights_row_sum > 0).reshape(dst_shape)) & (grid_sv > 0) & (~np.isnan(grid_sv))
 
     if config['isRegional']:
         if config['UseGCHP']:
@@ -206,24 +223,42 @@ def regrid_state_vector_file(config, grid_sv_ds):
         lon_min = config["LonMin"]
         lon_max = config["LonMax"]
         lonm, latm = np.meshgrid(dst_lon, dst_lat)
-        indomain = (lonm>=lon_min) & (lonm<=lon_max) & (latm>=lat_min) & (latm<=lat_max)
         valid_mask_indomain = (regrid_sv_mask) & (lonm>=lon_min) & (lonm<=lon_max) & (latm>=lat_min) & (latm<=lat_max)
-        valid_mask_buffer = (regrid_sv_mask) & ((lonm<lon_min) | (lonm>lon_max) | (latm<lat_min) | (latm>lat_max))
-        # Map them to continuous labels 1..N
-        relabel_indomain = np.arange(1, np.sum(valid_mask_indomain) + 1)
-        # Put back into grid_sv
-        grid_sv_new = np.full(dst_shape, np.nan)
-        grid_sv_new[valid_mask_indomain] = relabel_indomain
-        diff_offset = np.nanmax(grid_sv[indomain]) - np.sum(valid_mask_indomain)
-        grid_sv_new[valid_mask_buffer] = grid_sv[valid_mask_buffer] - diff_offset
+        valid_mask_buffer = regrid_sv_mask & ~valid_mask_indomain
+        
+        grid_sv_new = np.empty(dst_shape)
+        grid_sv_new[:] = np.nan
+
+        if valid_mask_indomain.any():
+            uniq, inv = np.unique(grid_sv[valid_mask_indomain], return_inverse=True)  # uniq is sorted ascending
+            N = uniq.size
+            grid_sv_new[valid_mask_indomain] = inv + 1                           # 1..N in same order as uniq
+        else:
+            N = 0
+
+        # Shift buffer labels so they come right after in-domain, preserving their order
+        # (uses the max original in-domain label to compute a constant offset)
+        if valid_mask_buffer.any():
+            if N > 0:
+                max_in_domain_orig = grid_sv[valid_mask_indomain].max()
+                offset = max_in_domain_orig - N
+            else:
+                # No in-domain cells: keep buffer labels as-is
+                offset = 0
+            grid_sv_new[valid_mask_buffer] = grid_sv[valid_mask_buffer] - offset
+        
     else:
         valid_mask = regrid_sv_mask
-        # Map them to continuous labels 1..N
-        relabel = np.arange(1, np.sum(valid_mask) + 1)
 
-        # Put back into grid_sv
-        grid_sv_new = np.full(dst_shape, np.nan)
-        grid_sv_new[valid_mask] = relabel
+        # zeros as sentinel
+        grid_sv_new = np.empty(dst_shape)
+        grid_sv_new[:] = np.nan
+
+        if valid_mask.any():
+            # uniq sorted ascending; inverse gives compact IDs in that order
+            _, inv = np.unique(grid_sv[valid_mask], return_inverse=True)
+            grid_sv_new[valid_mask] = inv + 1  # 1..N
+
     
     refyear = 2000
     fillvalue = -9999

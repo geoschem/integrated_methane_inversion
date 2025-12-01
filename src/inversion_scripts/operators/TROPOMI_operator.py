@@ -61,13 +61,13 @@ def apply_average_tropomi_operator(
 
     Returns
         output         [dict]       : Dictionary with:
-                                        - obs_GC : GEOS-Chem and TROPOMI methane data
+                                        - obs_GC : GEOS-Chem and TROPOMI methane data in ppbv
                                         - TROPOMI methane
                                         - GEOS-Chem methane
                                         - TROPOMI lat, lon
                                         - TROPOMI lat index, lon index
                                           If build_jacobian=True, also include:
-                                            - K      : Jacobian matrix
+                                            - K      : Jacobian matrix, in ppbv per scaling factor
     """
 
     # Read TROPOMI data
@@ -212,7 +212,7 @@ def apply_average_tropomi_operator(
         obs_GC[sel_idx, 0] = gridcell_dict[
             "methane"
         ]  # Actual TROPOMI methane column observation
-        obs_GC[sel_idx, 1] = virtual_tropomi * 1e9  # Virtual TROPOMI methane column observation and convert to ppb
+        obs_GC[sel_idx, 1] = virtual_tropomi * 1e9 # Virtual TROPOMI methane column observation and convert to ppb
         obs_GC[sel_idx, 2] = gridcell_dict["lon_sat"]  # TROPOMI longitude
         obs_GC[sel_idx, 3] = gridcell_dict["lat_sat"]  # TROPOMI latitude
         obs_GC[sel_idx, 4] = gridcell_dict["observation_count"]  # observation counts
@@ -222,7 +222,10 @@ def apply_average_tropomi_operator(
             emis_base_xch4 = virtual_tropomi_base # emis_base and BC_base is "RunName_0001" and "SpeciesConcVV_CH4"
             pert_jacobian_xch4 = virtual_tropomi_pert # (n_superobs, n_element)
             
-            if not config['PrecomputedJacobian']:
+            if (config['PrecomputedJacobian']) and (config['OnlyEmisPrecomputedK']):
+                perturbations = np.ones((len(gridcell_dict), n_BCsOH), dtype=np.float32)
+                base_xch4 = np.full((len(gridcell_dict), n_BCsOH), np.nan, dtype=np.float32)
+            else:
                 # get perturbations and calculate sensitivities
                 perturbations = np.ones((len(gridcell_dict), n_elements), dtype=np.float32)
 
@@ -237,9 +240,6 @@ def apply_average_tropomi_operator(
                 # emissions perturbations
                 perturbations[:,emis_indices] = np.repeat(emis_perturbations[None,:],
                                                         len(gridcell_dict), axis=0)
-            else:
-                perturbations = np.ones((len(gridcell_dict), n_BCsOH), dtype=np.float32)
-                base_xch4 = np.full((len(gridcell_dict), n_BCsOH), np.nan, dtype=np.float32)
             
             # OH perturbations
             if config["OptimizeOH"]:
@@ -270,13 +270,12 @@ def apply_average_tropomi_operator(
 
     # Optionally return the Jacobian
     if build_jacobian:
-        if config['PrecomputedJacobian']:
+        if (config['PrecomputedJacobian']) and (config['OnlyEmisPrecomputedK']):
             output["K_noEmis"] = jacobian_K
         else:
             output["K"] = jacobian_K
 
     return output
-
 
 def apply_tropomi_operator(
     filename,
@@ -1295,6 +1294,8 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
             if config['OnlyEmisPrecomputedK']:
                 run_num = []
 
+                # "0000" is the base run, "0001" is the pertubation run for "CH4" only with zero emissions
+                # BCs and OH perturbation runs start from "0002"
                 if config['OptimizeBCs']:
                     run_num += [2, 3, 4, 5]
                     if config['OptimizeOH']:
@@ -1305,9 +1306,9 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
                 else:
                     if config['OptimizeOH']:
                         if config['isRegional']:
-                            run_num += [1]
+                            run_num += [2]
                         else:
-                            run_num += [1, 2]
+                            run_num += [2, 3]
 
                 if len(run_num) == 0:
                     raise ValueError(
@@ -1389,7 +1390,8 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
 
         if len(virtual_tropomi_pert) > 1:
             virtual_tropomi_pert = np.concatenate(virtual_tropomi_pert, axis=1)
-    
+
+        
         virtual_tropomi_base = get_virtual_tropomi_pert(
             gc_date, "0001", gridcell_dict, config, [0], n_elements, vertical_weights, baserun=True
         )

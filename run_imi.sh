@@ -3,7 +3,7 @@
 #SBATCH -N 1
 #SBATCH -c 1
 #SBATCH --mem=2000
-#SBATCH -o "imi_output.log"
+#SBATCH -o "imi_output_Permian.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -229,6 +229,7 @@ fi
 ##=======================================================================
 if ("$DoPosterior" && ! "$KalmanMode"); then
     run_posterior
+    #run_notebooks
 fi
 
 printf "\n=== DONE RUNNING THE IMI ===\n"

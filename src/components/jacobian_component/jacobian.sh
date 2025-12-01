@@ -73,9 +73,8 @@ setup_jacobian() {
     elif "$OnlyEmisPrecomputedK"; then
         # need to set up prior, and optionally (optimizeBCs, and optimizeOH) run directories
         nRuns=$numStandaloneRuns
-        if "$OptimizeBCs"; then
-            nRuns=$(($numStandaloneRuns + 1)) # add one more run for the bc_base from RunName_0001 with SpeciesConcVV_CH4
-        fi
+        # add one more run for RunName_0001 with SpeciesConcVV_CH4
+        nRuns=$(($numStandaloneRuns + 1))
     else
         # only need to set up the prior run directory
         nRuns=0
@@ -330,10 +329,11 @@ create_simulation_dir() {
             start_element=$x
             end_element=$x
         else
+            # always preserve the special case for x=1 with CH4 tracer with zero emissions
+            # when using precomputed K only for emissions
             if [[ $x -eq 1 && \
                 "$PrecomputedJacobian" == "true" && \
-                "$OnlyEmisPrecomputedK" == "true" && \
-                "$OptimizeBCs" == "true" ]]; then
+                "$OnlyEmisPrecomputedK" == "true" ]]; then
                 start_element=$x
                 end_element=$x
             else
@@ -403,7 +403,7 @@ create_simulation_dir() {
             # Use nudged scale factors for the prior simulation and OH simulation for kalman mode
             sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
                 -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
-                -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+                -e "s|gridded_posterior.nc|./RunDirs/ScaleFactors.nc|g" HEMCO_Config.rc
             if "$UseGCHP"; then
                 sed -i -e "s|gridded_posterior.nc|./RunDirs/ScaleFactors.nc|g" ExtData.rc
             fi
@@ -413,7 +413,7 @@ create_simulation_dir() {
         # set 1ppb CH4 boundary conditions and restarts for all other perturbation simulations
         # Note that we use the timecycle flag C to avoid having to make additional files
         if "$isRegional"; then
-            BCFile1ppb=${RunDirs}/jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4
+            BCFile1ppb="../../jacobian_1ppb_ics_bcs/BCs/GEOSChem.BoundaryConditions.1ppb.${StartDate}_0000z.nc4"
             BCSettings1ppb="SpeciesBC_CH4  1980-2021/1-12/1-31/* C xyz 1 CH4 - 1 1"
             sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFile1ppb} ${BCSettings1ppb}|g" HEMCO_Config.rc
         fi
@@ -442,7 +442,7 @@ create_simulation_dir() {
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
     HcoPrevLine2='1 500'
-    HcoPrevLine3="#300N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
+    HcoPrevLine3="#300N SCALE_ELEM_000N ./RunDirs/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
     ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
     HisPrevLine1="'SpeciesConcVV_CH4    ', 'GCHPchem',"
@@ -509,7 +509,7 @@ add_new_tracer() {
     sed -i -e "\|$HcoPrevLine2|a $HcoNewLine2" HEMCO_Config.rc
     HcoPrevLine2=$HcoNewLine2
 
-    HcoNewLine3="$SFnum SCALE_ELEM_$istr ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 $i"
+    HcoNewLine3="$SFnum SCALE_ELEM_$istr ./RunDirs/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 $i"
     sed -i -e "\|$HcoPrevLine3|a $HcoNewLine3" HEMCO_Config.rc
     HcoPrevLine3=$HcoNewLine3
 

@@ -3,6 +3,24 @@
 #SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
 
+# --- BLAS / OpenMP threading: pick a single thread count and stick to it
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export NUMEXPR_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export BLIS_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+
+# Avoid dynamic thread changes (can hurt perf / reproducibility)
+export MKL_DYNAMIC=FALSE
+export OPENBLAS_DYNAMIC=0
+
+# Optional: tame extra OpenMP affinity chatter
+export KMP_AFFINITY=granularity=fine,compact,1,0
+
+# --- NUMA tip on multi-socket nodes (helps for huge dense arrays)
+# Interleave memory across sockets to avoid one-socket hotspots
+NUMACTL="numactl --interleave=all"
+
 ##=======================================================================
 ## Parse config.yml file
 ##=======================================================================
@@ -153,7 +171,7 @@ else
     python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile $period_i)
     
     printf "Calling invert.py\n"
-    python "${python_args[@]}"; wait
+    srun --cpu-bind=cores $NUMACTL python "${python_args[@]}"
     printf "DONE -- invert.py\n\n"
     #=======================================================================
     # Create gridded posterior scaling factor netcdf file

@@ -57,11 +57,21 @@ ncmin() {
 #   uses the grid cell edges, not centers, for the lat/lon bounds
 # Usage:
 #   calculate_geoschem_domain <variable> <netCDF file path> <min> <max>
+# The range of domain will be round to 4 digits upon reading by GCC and
+# thus to avoid truncating spatial domain, we floor/ceil to 4 decimal places.
 calculate_geoschem_domain() {
-    python -c "import sys; import xarray; import numpy as np; \
-    sv = xarray.open_dataset(sys.argv[2])[sys.argv[1]]; \
-    diff = np.unique(sv.diff(sys.argv[1])).item()/2; \
-    print('%f, %f' % (float(sys.argv[3]) - diff, float(sys.argv[4]) + diff))" $1 $2 $3 $4
+    python -c "import sys, xarray as xr, numpy as np, math
+sv = xr.open_dataset(sys.argv[2])[sys.argv[1]]
+diff = np.unique(sv.diff(sys.argv[1])).item() / 2
+
+low  = float(sys.argv[3]) - diff
+high = float(sys.argv[4]) + diff
+
+# 4 decimal floor/ceil
+low4  = math.floor(low * 1e4) / 1e4
+high4 = math.ceil(high * 1e4) / 1e4
+
+print(f'{low4:.4f}, {high4:.4f}')" "$1" "$2" "$3" "$4"
 }
 
 # Description: Generate grid prefix for CS or SGCS grid files

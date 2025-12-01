@@ -64,7 +64,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     statevector = xr.load_dataset(state_vector_path)
     inv_results = xr.load_dataset(posterior_SF_path)
 
-    target_data_prefixes = ["xhat", "S_post", "A"]
+    target_data_prefixes = ["xhat", "S_post", "A", "KTinvSoK", "KTinvSoyKxA"]
     data_vars = list(inv_results.data_vars)
 
     # get all vars that match prefixes
@@ -79,7 +79,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     for var in target_data_vars:
         attrs = inv_results[var].attrs
         attrs["units"] = "1"
-        if var.startswith("A") or var.startswith("S_post"):
+        if var.startswith("A") or var.startswith("S_post") or var.startswith("KTinvSoK"):
             # get the diagonals of the S_post and A matrices
             gridded_data = do_gridding(np.diagonal(inv_results[var].values).transpose(), statevector)
             if statevector.StateVector.dims == ('time', 'lat', 'lon'):
@@ -96,6 +96,13 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
                 data_dict[new_SF_key] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
             elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
                 data_dict[new_SF_key] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
+        elif var.startswith("KTinvSoyKxA"):
+            # get the KTinvSoyKxA
+            gridded_data = do_gridding(inv_results[var].values, statevector)
+            if statevector.StateVector.dims == ('time', 'lat', 'lon'):
+                data_dict[var] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
+            elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
+                data_dict[var] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
 
     # Create dataset
     if statevector.StateVector.dims == ('time', 'lat', 'lon'):

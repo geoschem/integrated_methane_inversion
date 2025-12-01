@@ -152,11 +152,12 @@ def make_state_vector_file(
             deg_lat, deg_lon = 0.5, 0.625
         elif config["Res"] == "0.25x0.3125":
             deg_lat, deg_lon = 0.25, 0.3125
-        buffer_min_lat = deg_lat * 3
-        buffer_min_lon = deg_lon * 3
+        buffer_min_lat = deg_lat * 4
+        buffer_min_lon = deg_lon * 4
 
     # set the buffer degrees to the maximum to ensure
-    # that the buffer is at least the minimum (3 extra grid cells on each side)
+    # that the buffer is at least the minimum 
+    # (3 extra grid cells plus one extra directly contacting the 3 non-advected cells on each side)
     buffer_deg_lat = max(buffer_deg, buffer_min_lat)
     buffer_deg_lon = max(buffer_deg, buffer_min_lon)
 
@@ -243,6 +244,7 @@ def make_state_vector_file(
         lc = lc.isel(lon=lc.lon <= lon_max_inv_domain, lat=lc.lat <= lat_max_inv_domain)
         hd = hd.isel(lon=hd.lon >= lon_min_inv_domain, lat=hd.lat >= lat_min_inv_domain)
         hd = hd.isel(lon=hd.lon <= lon_max_inv_domain, lat=hd.lat <= lat_max_inv_domain)
+        extents_domain = [lon_min_inv_domain, lon_max_inv_domain, lat_min_inv_domain, lat_max_inv_domain]
     else:
         indomain_mask = (
             (lons >= lon_min) & (lons <= lon_max) &
@@ -258,10 +260,18 @@ def make_state_vector_file(
 
     if UseGCHP:
         statevector.values[~indomain_mask] = -9999
-    # Set pixels in buffer areas to 0
+    # Set pixels in buffer areas to 0 except for 3 non-advected grid cells 
+    # plus one grid cell right adjacent along each side
     if is_regional:
         statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
         statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
+        
+        # set 4 pixels on any side to -9999 to prevent non advected cells 
+        # from being included in the state vector
+        statevector[:, statevector.lon < (lon_min_inv_domain + buffer_min_lon)] = -9999
+        statevector[:, statevector.lon > (lon_max_inv_domain - buffer_min_lon)] = -9999
+        statevector[statevector.lat < (lat_min_inv_domain + buffer_min_lat), :] = -9999
+        statevector[statevector.lat > (lat_max_inv_domain - buffer_min_lat), :] = -9999
 
     # Also set pixels with low emissions (< emis_threshold) to -9999
     statevector.values[hd.values < emis_threshold] = -9999
@@ -323,6 +333,7 @@ def make_state_vector_file(
         ds_statevector.StateVector.attrs["units"] = "none"
         ds_statevector.StateVector.attrs["missing_value"] = -9999
         ds_statevector.StateVector.attrs["_FillValue"] = -9999
+        ds_statevector.attrs['extents'] = extents_domain
 
     return ds_statevector
 
