@@ -36,9 +36,9 @@ setup_spinup() {
             -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             setCommonRunSettings.sh
-        ln -nsf ../GEOSChem_build/gchp .
+        ln -nsf ${GCHPPath}/build/bin/gchp.default gchp
     else
-        ln -nsf ../GEOSChem_build/gcclassic .
+        ln -nsf ${GCClassicPath}/build/bin/gcclassic.default gcclassic
     fi
 
     # Link to restart file

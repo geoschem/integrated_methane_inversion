@@ -22,7 +22,7 @@ run_hemco_prior_emis() {
     if "$HemcoPriorEmisDryRun"; then
         pushd ${RunDirs}/template_run
         printf "\nExecuting dry-run for HEMCO prior emissions run...\n"
-        ../GEOSChem_build/gcclassic --dryrun &> log.dryrun
+        ${GCClassicPath}/build/bin/gcclassic.default --dryrun &> log.dryrun
         # prevent restart file from getting downloaded
         sed -i '/GEOSChem.Restart/d' log.dryrun
         # prevent download of GEOS met fields
@@ -243,7 +243,7 @@ setup_prior_gchp() {
     cd $runDir
 
     # Link to GEOS-Chem executable
-    ln -nsf ../GEOSChem_build/gchp .
+    ln -nsf ${GCHPPath}/build/bin/gchp.default gchp
     sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
         -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
         -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \

@@ -1445,7 +1445,9 @@ def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n
         keepvars = ['SpeciesConcVV_CH4']
     else:
         # Construct the list of CH4 vars to request
-        keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
+        # Local tracer indices are 1..len(sv_elems) within this run
+        local_indices = range(1, len(sv_elems) + 1)
+        keepvars = [f"SpeciesConcVV_CH4_jac{idx:04d}" for idx in local_indices]
         if len(keepvars) == 1:
             is_Regional = config["isRegional"]
             is_OH_element = check_is_OH_element(

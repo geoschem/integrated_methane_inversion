@@ -11,13 +11,27 @@
 #   Print runtime stats based on existing variables
 # Usage:
 #   print_stats
+# to avoid errors, if start or end time is missing, print appropriate message
+time_diff() {
+    local start=$1
+    local end=$2
+
+    if [[ -z $start ]]; then
+        echo "Not run"
+    elif [[ -n $start && -z $end ]]; then
+        echo "Incomplete"
+    else
+        echo "$((end - start))"
+    fi
+}
+
 print_stats() {
     printf "\nRuntime statistics (s):"
-    printf "\n Setup     : $([[ ! -z $setup_end ]] && echo $(($setup_end - $setup_start)) || echo 0)"
-    printf "\n Spinup     : $([[ ! -z $spinup_end ]] && echo $(($spinup_end - $spinup_start)) || echo 0)"
-    printf "\n Jacobian     : $([[ ! -z $jacobian_end ]] && echo $(($jacobian_end - $jacobian_start)) || echo 0)"
-    printf "\n Inversion     : $([[ ! -z $inversion_end ]] && echo $(($inversion_end - $inversion_start)) || echo 0)"
-    printf "\n Posterior     : $([[ ! -z $posterior_end ]] && echo $(($posterior_end - $posterior_start)) || echo 0)\n\n"
+    printf "\n Setup      : %s" "$(time_diff "$setup_start" "$setup_end")"
+    printf "\n Spinup     : %s" "$(time_diff "$spinup_start" "$spinup_end")"
+    printf "\n Jacobian   : %s" "$(time_diff "$jacobian_start" "$jacobian_end")"
+    printf "\n Inversion  : %s" "$(time_diff "$inversion_start" "$inversion_end")"
+    printf "\n Posterior  : %s\n\n" "$(time_diff "$posterior_start" "$posterior_end")"
 }
 
 # Description: Print error message for if the IMI fails

@@ -234,48 +234,84 @@ setup_template() {
         cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
     fi
 
-    # Compile GEOS-Chem and store executable in GEOSChem_build directory
-    if [[ -f "../GEOSChem_build/gchp" || -f "../GEOSChem_build/gcclassic" ]]; then
-        printf "\nGEOS-Chem executable is already built and stored in GEOSChem_build\n"
-        rm -rf build
+    # Compile GEOS-Chem/GCHP and store in <src>/build/bin directory
+    if "$UseGCHP"; then
+        printf "\nCompiling GCHP...\n"
+        execname="gchp"
+        build_dir=${GCHPPath}/build
+        KPP_dir=${GCHPPath}/src/GCHP_GridComp/GEOSChem_GridComp/geos-chem/KPP
     else
-        cd build
-        if "$UseGCHP"; then
-            printf "\nCompiling GCHP...\n"
-            cmake ${InversionPath}/GCHP >>build_geoschem.log 2>&1
-        else
-            printf "\nCompiling GEOS-Chem...\n"
-            cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
-        fi
-        cmake . -DRUNDIR=.. -DMECH=carbon >>build_geoschem.log 2>&1
-        make -j install >>build_geoschem.log 2>&1
-        cd ..
-        if "$UseGCHP"; then
-            if [[ -f gchp ]]; then
-                mkdir ../GEOSChem_build
-                mv -v gchp ../GEOSChem_build/
-                mv build/CMakeCache.txt ../GEOSChem_build
-                mv build/build_geoschem.log ../GEOSChem_build
-                rm -rf build
-            else
-                printf "\nGCHP build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
-                exit 999
-            fi
-        else
-            if [[ -f gcclassic ]]; then
-                mv build_info ../GEOSChem_build
-                mv -v gcclassic ../GEOSChem_build/
-                mv build/build_geoschem.log ../GEOSChem_build
-                rm -rf build
-            else
-                printf "\nGEOS-Chem build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
-                exit 999
-            fi
-        fi
-        printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build for details\n\n"
+        printf "\nCompiling GEOS-Chem...\n"
+        execname="gcclassic"
+        build_dir=${GCClassicPath}/build
+        KPP_dir=${GCClassicPath}/src/GEOS-Chem/KPP
     fi
-    # Navigate back to top-level directory
-    cd ..
+
+    mkdir -p ${build_dir}
+    cd ${build_dir}
+    # first build a default exexutable without Jacobian tracers
+    if [ -f "bin/${execname}.default" ]; then
+        echo "Executable bin/${execname}.default already exists — skipping rebuild."
+    else
+        echo "Building ${execname}.default ..."
+
+        # remove CMakeCache.txt once to initialize JACOBIAN cmake option
+        rm -f CMakeCache.txt
+        cd "${KPP_dir}/carbon"
+        if [ ! -f carbon.eqn.default ]; then
+            mv carbon.eqn carbon.eqn.default
+        fi
+        ln -nsf carbon.eqn.default carbon.eqn
+        # initialize KPP mechanism to be the default carbon equations
+        cd ${KPP_dir}
+        ./build_mechanism.sh carbon >> "${build_dir}/build_geoschem.log" 2>&1 \
+            || { echo "ERROR: build_mechanism.sh carbon failed." >&2; exit 1; }
+
+        cd "${build_dir}"
+        cmake .. >> build_geoschem.log 2>&1
+        cmake . -DMECH=carbon -DJACOBIAN=n >> build_geoschem.log 2>&1
+        make -j >> build_geoschem.log 2>&1
+
+        mv "bin/${execname}" "bin/${execname}.default"
+    fi
+
+    # then expand a series of carbon equations for Jacobian tracers
+    # sanity check on NumJacobianTracers
+    if ! [[ "$NumJacobianTracers" =~ ^[0-9]+$ ]] || [ "$NumJacobianTracers" -eq 0 ]; then
+        echo "ERROR: NumJacobianTracers must be a positive integer > 0." >&2
+        exit 1
+    fi
+    # determine number of executables to be built based on NumJacobianTracers
+    # get the ceiling number rounded to 10s
+    upper=$(( (NumJacobianTracers + 9) / 10 * 10 ))
+
+    cd "${build_dir}"
+    cmake . -DMECH=carbon -DJACOBIAN=y >> build_geoschem.log 2>&1
+    for n in $(seq 10 10 $upper); do
+        if [ -f "bin/${execname}.${n}" ]; then
+            echo "Executable bin/${execname}.${n} already exists — skipping rebuild."
+        else
+            echo "Building ${execname}.${n} ..."
+
+            cd ${KPP_dir}/carbon
+            ${InversionPath}/src/utilities/expand_carbon_eqn.py \
+                carbon.eqn.default ${n} > carbon.eqn.${n}
+            ln -nsf carbon.eqn.${n} carbon.eqn
+            # generate KPP carbon mechanism
+            cd ${KPP_dir}
+            ./build_mechanism.sh carbon >> "${build_dir}/build_geoschem.log" 2>&1 \
+                || { echo "ERROR: build_mechanism.sh carbon failed." >&2; exit 1; }
+            # build GCC/GCHP with expanded carbon mechanism for Jacobian tracers
+            cd ${build_dir}
+            make -j >>build_geoschem.log 2>&1
+            mv bin/${execname} bin/${execname}.${n}
+        fi
+    done
+
+    printf "\nDone compiling GEOS-Chem \n\nSee ${build_dir}/build_geoschem.log for details\n\n"
+
+    # Navigate back to working directory
+    cd ${RunDirs}
 
     printf "\n=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
 }

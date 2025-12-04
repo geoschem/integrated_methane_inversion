@@ -147,23 +147,24 @@ create_simulation_dir() {
     name="${RunName}_${xstr}"
 
     # Make the directory
-    runDir="./jacobian_runs/${name}"
+    runDir="${RunDirs}/jacobian_runs/${name}"
     mkdir -p -v ${runDir}
 
     # Copy run directory files
     cp -r ${RunTemplate}/* ${runDir}
     cd $runDir
 
-    # Link to GEOS-Chem executable instead of having a copy in each rundir
+    # Link to default GEOS-Chem executable first and 
+    # later would be modified to link to executable with capped 10s number of Jacobian tracers
     if "$UseGCHP"; then
         sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
             -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
             -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             setCommonRunSettings.sh
-        ln -nsf ../../GEOSChem_build/gchp .
+        ln -nsf ${GCHPPath}/build/bin/gchp.default gchp
     else
-        ln -nsf ../../GEOSChem_build/gcclassic .
+        ln -nsf ${GCClassicPath}/build/bin/gcclassic.default gcclassic
     fi
 
     # link to restart file
@@ -187,7 +188,7 @@ create_simulation_dir() {
                 python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
                 regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
                 RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
-                cd "${RunDirs}/jacobian_runs/${name}"
+                cd $runDir
             else
                 RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
                 sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
@@ -441,13 +442,14 @@ create_simulation_dir() {
     # Initialize previous lines to search
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
-    HcoPrevLine2='1 500'
+    HcoPrevLine2='CH4 5 1 500'
     HcoPrevLine3="#300N SCALE_ELEM_000N ./RunDirs/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
     ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
     HisPrevLine1="'SpeciesConcVV_CH4    ', 'GCHPchem',"
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
+    
     if is_number "$x"; then
         if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
             # special case for adding one more bc_base run
@@ -456,16 +458,29 @@ create_simulation_dir() {
                 "$OnlyEmisPrecomputedK" == "true" && \
                 "$OptimizeBCs" == "true" ]]; then
 
+                # modify the link to executable to the one with capped number of Jacobian tracers
+                num_tracer=$(( end_element - start_element + 1 ))
+                # get the capped 10s number
+                capped_num_tracer=$(( (num_tracer + 9) / 10 * 10 ))
+                # link to the executable with capped number of Jacobian tracers
+                if "$UseGCHP"; then
+                    ln -nsf ${GCHPPath}/build/bin/gchp.${capped_num_tracer} gchp
+                else
+                    ln -nsf ${GCClassicPath}/build/bin/gcclassic.${capped_num_tracer} gcclassic
+                fi
+
+                k=1
                 for i in $(seq $start_element $end_element); do
                     add_new_tracer
+                    k=$((k + 1))
                 done
-            fi
 
-            # remove redundant SpeciesConcVV_CH4 when $x > 1
-            if "$UseGCHP"; then
-                if [ $x -gt 1 ]; then
-                    perl -0777 -pe "s/'SpeciesConcVV_CH4\s*',\s*'GCHPchem',\s*\n\s*('SpeciesConcVV_CH4_\d{4}',\s*'GCHPchem',)/\1/" \
-                    -i HISTORY.rc
+                # remove redundant SpeciesConcVV_CH4 when $x > 1
+                if "$UseGCHP"; then
+                    if [ $x -gt 1 ]; then
+                        perl -0777 -pe "s/'SpeciesConcVV_CH4\s*',\s*'GCHPchem',\s*\n\s*('SpeciesConcVV_CH4_\d{4}',\s*'GCHPchem',)/\1/" \
+                        -i HISTORY.rc
+                    fi
                 fi
             fi
         fi
@@ -478,15 +493,8 @@ create_simulation_dir() {
 # Description: Add new tracers to a simulation
 # Usage: add_new_tracer
 add_new_tracer() {
-    if [ $i -lt 10 ]; then
-        istr="000${i}"
-    elif [ $i -lt 100 ]; then
-        istr="00${i}"
-    elif [ $i -lt 1000 ]; then
-        istr="0${i}"
-    else
-        istr="${i}"
-    fi
+    istr=$(printf "%04d" "$i")
+    kstr=$(printf "%04d" "$k")
 
     # Start HEMCO scale factor ID at 3000 to avoid conflicts with
     # preexisting scale factors/masks
@@ -495,17 +503,12 @@ add_new_tracer() {
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
     GcNewLine='\
-      - CH4_'$istr
+      - CH4_jac'$kstr
     sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
-    GcPrevLine='- CH4_'$istr
-
-    # Add lines to species_database.yml
-    SpcNextLine='CHBr3:'
-    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane\n  Is_JacobianTracer: true'
-    sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
+    GcPrevLine='- CH4_jac'$kstr
 
     # Add lines for new tracers to HEMCO_Config.rc
-    HcoNewLine2='0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '4/$SFnum' 1 500'
+    HcoNewLine2='0 CH4_Emis_Prior_'$istr' - - - - - - CH4_jac'$kstr' '4/$SFnum' 1 500'
     sed -i -e "\|$HcoPrevLine2|a $HcoNewLine2" HEMCO_Config.rc
     HcoPrevLine2=$HcoNewLine2
 
@@ -515,13 +518,13 @@ add_new_tracer() {
 
     if ! "$UseGCHP"; then
         # Add lines for restarts of new tracers to HEMCO_Config.rc
-        HcoNewLine1='* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+        HcoNewLine1='* SPC_CH4_jac'$kstr' - - - - - - CH4_jac'$kstr' - 1 1'
         sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-        HcoPrevLine1='SPC_CH4_'$istr
+        HcoPrevLine1='SPC_CH4_jac'$kstr
         if "$isRegional"; then
-            HcoNewLine4='* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+            HcoNewLine4='* BC_CH4_jac'$kstr' - - - - - - CH4_jac'$kstr' - 1 1'
             sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-            HcoPrevLine4='BC_CH4_'$istr
+            HcoPrevLine4='BC_CH4_jac'$kstr
         fi
     else
         # Add lines for new tracers to ExtData.rc
@@ -529,7 +532,7 @@ add_new_tracer() {
         sed -i -e "\|$ExtPrevLine1|a $ExtNewLine1" ExtData.rc
         ExtPrevLine1=$ExtNewLine1
 
-        HisNewLine1="                              'SpeciesConcVV_CH4_$istr', 'GCHPchem',"
+        HisNewLine1="                              'SpeciesConcVV_CH4_jac$kstr', 'GCHPchem',"
         sed -i -e "/${HisPrevLine1}/a\\"$'\n'"${HisNewLine1}" HISTORY.rc
         HisPrevLine1=$HisNewLine1
     fi
