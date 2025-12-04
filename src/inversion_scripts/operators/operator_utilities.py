@@ -5,15 +5,14 @@ import pandas as pd
 from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
 
 # common utilities for using different operators
-def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
+def read_all_geoschem(all_strdate, gc_cache):
     """
     Call readgeoschem() for multiple dates in a loop.
 
     Arguments
         all_strdate    [list, str] : Multiple date strings
         gc_cache       [str]       : Path to GEOS-Chem output data
-        build_jacobian [log]       : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-
+        
     Returns
         dat            [dict]      : Dictionary of dictionaries. Each sub-dictionary is returned by read_geoschem()
     """
@@ -21,21 +20,20 @@ def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=
     dat = {}
     for strdate in all_strdate:
         dat[strdate] = read_geoschem(
-            strdate, gc_cache, n_elements, config, build_jacobian
+            strdate, gc_cache
         )
 
     return dat
 
 
-def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
+def read_geoschem(date, gc_cache):
     """
     Read GEOS-Chem data and save important variables to dictionary.
 
     Arguments
         date           [str]   : Date of interest, format "YYYYMMDD_HH"
         gc_cache       [str]   : Path to GEOS-Chem output data
-        build_jacobian [log]   : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-
+        
     Returns
         dat            [dict]  : Dictionary of important variables from GEOS-Chem:
                                     - CH4
@@ -72,168 +70,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     dat["PEDGE"] = PEDGE
     dat["CH4"] = CH4
 
-    # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
-    if build_jacobian:
-
-        elements = range(n_elements)
-        ntracers = config["NumJacobianTracers"]
-        opt_OH = config["OptimizeOH"]
-        opt_BC = config["OptimizeBCs"]
-        is_Regional = config["isRegional"]
-
-        num_BC = 4
-        if is_Regional:
-            num_OH = 1
-        else:
-            num_OH = 2
-
-        n_base_runs = (
-            n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
-        ) / ntracers
-
-        nruns = (
-            np.ceil(n_base_runs).astype(int)
-            + (int(opt_OH) * num_OH)
-            + (int(opt_BC) * num_BC)
-        )
-
-        # Dictionary that stores mapping of state vector elements to
-        # perturbation simulation numbers
-        pert_simulations_dict = {}
-        for e in elements:
-            # State vector elements are numbered 1..nelements
-            sv_elem = e + 1
-
-            is_OH_element = check_is_OH_element(
-                sv_elem, n_elements, opt_OH, is_Regional
-            )
-            is_BC_element = check_is_BC_element(
-                sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
-            )
-            # Determine which run directory to look in
-            if is_OH_element:
-                if is_Regional:
-                    run_number = nruns
-                else:
-                    num_back = n_elements % sv_elem
-                    run_number = nruns - num_back
-            elif is_BC_element:
-                num_back = n_elements % sv_elem
-                run_number = nruns - num_back
-            else:
-                run_number = np.ceil(sv_elem / ntracers).astype(int)
-
-            run_num = str(run_number).zfill(4)
-
-            # add the element to the dictionary for the relevant simulation number
-            if run_num not in pert_simulations_dict:
-                pert_simulations_dict[run_num] = [sv_elem]
-            else:
-                pert_simulations_dict[run_num].append(sv_elem)
-
-        gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
-        ds_all = [
-            concat_tracers(k, gc_date, config, v, n_elements)
-            for k, v in pert_simulations_dict.items()
-        ]
-
-        ds_all = [ds.load() for ds in ds_all]
-
-        ds_sensi = xr.concat(ds_all, "element")
-
-        sensitivities = ds_sensi["ch4"].values
-        # Reshape so the data have dimensions (lon, lat, lev, grid_element)
-        sensitivities = np.einsum("klji->ijlk", sensitivities)
-        dat["jacobian_ch4"] = sensitivities
-
-        # get emis base, which is also BC base
-        ds_emis_base = concat_tracers(
-            "0001", gc_date, config, [0], n_elements, baserun=True
-        )
-
-        dat["emis_base_ch4"] = np.einsum("klji->ijlk", ds_emis_base["ch4"].values)
-
-        # get OH base, run RunName_0000
-        # it's always here whether OptimizeOH is true or not
-        # so we can keep it here for convenience
-        ds_oh_base = concat_tracers(
-            "0000", gc_date, config, [0], n_elements, baserun=True
-        )
-
-        dat["oh_base_ch4"] = np.einsum("klji->ijlk", ds_oh_base["ch4"].values)
-
     return dat
-
-
-def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False):
-    """
-    Concatenate CH4 tracers from all jacobian GEOS-Chem simulations.
-    Tracers are assigned a new dimension: "element"
-
-    Arguments
-        run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
-        gc_date    [pd.Datetime] : date object, specifies Ymd_h
-        config     [dict]        : dictionary of IMI config file
-        sv_elems   [list]        : list of state vector element tracers in this simulation
-        n_elements [int]         : number of state vector elements in this inversion
-        baserun    [bool]        : If True, only the base variable in the simulation will
-                                 be opened, and the function will just return this one
-                                 variable instead of concatenating all elements. Used to
-                                 get the base for calculating the sensitivities.
-
-    Returns
-        ds_concat [xarray.Dataset] : dataset of all Jacobian CH4 at this timestep for
-                                     all tracer runs. Has dimensions
-                                        - lat
-                                        - lon
-                                        - lev
-                                        - element
-
-
-    """
-    prefix = os.path.expandvars(
-        config["OutputPath"] + "/" + config["RunName"] + "/jacobian_runs"
-    )
-    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
-    file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-
-    with xr.open_dataset("/".join([j_dir, file_stub]), chunks="auto") as dsmf:
-        try:
-            dsmf = dsmf.isel(time=gc_date.hour, drop=True)  # subset hour of interest
-        except Exception as e:
-            print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
-            raise e
-
-        keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
-        is_Regional = config["isRegional"]
-
-        if len(keepvars) == 1:
-
-            is_OH_element = check_is_OH_element(
-                sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
-            )
-            is_BC_element = check_is_BC_element(
-                sv_elems[0],
-                n_elements,
-                config["OptimizeOH"],
-                config["OptimizeBCs"],
-                is_OH_element,
-                is_Regional,
-            )
-
-            # for BC and OH elems, no number in var name
-            if is_OH_element or is_BC_element:
-                keepvars = ["SpeciesConcVV_CH4"]
-
-        if baserun:
-            keepvars = ["SpeciesConcVV_CH4"]
-
-        ds_concat = xr.concat([dsmf[v] for v in keepvars], "element").rename("ch4")
-        ds_concat = ds_concat.to_dataset().assign_attrs(dsmf.attrs)
-        
-    if not baserun:
-        ds_concat = ds_concat.assign_coords({"element": sv_elems})
-    return ds_concat
 
 def get_gridcell_list(lons, lats):
     """
