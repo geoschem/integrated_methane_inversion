@@ -31,7 +31,7 @@ setup_osse() {
     cd $runDir
 
     # Link to GEOS-Chem executable
-    ln -sfn ../GEOSChem_build/gcclassic .
+    ln -nsf ${GCClassicPath}/build/bin/gcclassic.default gcclassic
 
     # Update settings in geoschem_config.yml
     # sed -i -e "s|${StartDate}|${SpinupStart}|g" \
