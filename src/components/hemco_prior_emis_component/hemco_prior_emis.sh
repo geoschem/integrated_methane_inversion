@@ -21,7 +21,7 @@ run_hemco_prior_emis() {
     if "$HemcoPriorEmisDryRun"; then
         pushd ${RunDirs}/template_run
         printf "\nExecuting dry-run for HEMCO prior emissions run...\n"
-        ../GEOSChem_build/gcclassic --dryrun &> log.dryrun
+        ${GCClassicPath}/build/bin/gcclassic.default --dryrun &> log.dryrun
         # prevent restart file from getting downloaded
         sed -i '/GEOSChem.Restart/d' log.dryrun
         # prevent download of GEOS met fields

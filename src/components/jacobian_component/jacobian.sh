@@ -114,7 +114,7 @@ create_simulation_dir() {
     cd $runDir
 
     # Link to GEOS-Chem executable instead of having a copy in each rundir
-    ln -s ../../GEOSChem_build/gcclassic .
+    ln -nsf ${GCClassicPath}/build/bin/gcclassic.default gcclassic
 
     # link to restart file
     RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
@@ -307,7 +307,7 @@ create_simulation_dir() {
     # Initialize previous lines to search
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
-    HcoPrevLine2='1 500'
+    HcoPrevLine2='CH4 5 1 500'
     HcoPrevLine3='Perturbations.txt - - - xy count 1'
     HcoPrevLine4='\* BC_CH4'
     PertPrevLine='DEFAULT    0     0.0'
@@ -316,8 +316,17 @@ create_simulation_dir() {
     # as a CH4 tracer in the configuraton files
     if is_number "$x"; then
         if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+            # modify the link to executable to the one with capped number of Jacobian tracers
+            num_tracer=$(( end_element - start_element + 1 ))
+            # get the capped 10s number
+            capped_num_tracer=$(( (num_tracer + 9) / 10 * 10 ))
+            # link to the executable with capped number of Jacobian tracers
+            ln -nsf ${GCClassicPath}/build/bin/gcclassic.${capped_num_tracer} gcclassic
+
+            k=1
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
+                k=$((k + 1))
             done
         fi
     fi
@@ -329,15 +338,8 @@ create_simulation_dir() {
 # Description: Add new tracers to a simulation
 # Usage: add_new_tracer
 add_new_tracer() {
-    if [ $i -lt 10 ]; then
-        istr="000${i}"
-    elif [ $i -lt 100 ]; then
-        istr="00${i}"
-    elif [ $i -lt 1000 ]; then
-        istr="0${i}"
-    else
-        istr="${i}"
-    fi
+    istr=$(printf "%04d" "$i")
+    kstr=$(printf "%04d" "$k")
 
     # by default remove all emissions except for in the prior simulation
     # and the OH perturbation simulation
@@ -352,23 +354,16 @@ add_new_tracer() {
     # Add lines to geoschem_config.yml
     # Spacing in GcNewLine is intentional
     GcNewLine='\
-      - CH4_'$istr
+      - CH4_jac'$kstr
     sed -i -e "/$GcPrevLine/a $GcNewLine" geoschem_config.yml
     GcPrevLine='- CH4_'$istr
 
-    # Add lines to species_database.yml
-    SpcNextLine='CHBr3:'
-    SpcNewLines='CH4_'$istr':\n  << : *CH4properties\n  Background_VV: 1.8e-6\n  FullName: Methane'
-    sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
-
-    # Add lines to HEMCO_Config.yml
-    HcoNewLine1='\
-* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+    # Add lines to HEMCO_Config.rc
+    HcoNewLine1='* SPC_CH4_jac'$kstr' - - - - - - CH4_jac'$kstr' - 1 1'
     sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_CH4_'$istr
+    HcoPrevLine1='SPC_CH4_jac'$kstr
 
-    HcoNewLine2='\
-0 CH4_Emis_Prior_'$istr' - - - - - - CH4_'$istr' '$SFnum' 1 500'
+    HcoNewLine2='0 CH4_Emis_Prior_'$istr' - - - - - - CH4_jac'$kstr' '$SFnum' 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
     HcoPrevLine2='CH4_'$istr' '$SFnum' 1 500'
 
@@ -378,9 +373,9 @@ add_new_tracer() {
     HcoPrevLine3='SCALE_ELEM_'$istr' Perturbations_'$istr'.txt - - - xy count 1'
 
     HcoNewLine4='\
-* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+* BC_CH4_jac'$kstr' - - - - - - CH4_jac'$kstr' - 1 1'
     sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-    HcoPrevLine4='BC_CH4_'$istr
+    HcoPrevLine4='BC_CH4_jac'$kstr
 
     # Add new Perturbations.txt and update for non prior runs
     cp Perturbations.txt Perturbations_${istr}.txt

@@ -30,7 +30,7 @@ setup_spinup() {
     cd $runDir
 
     # Link to GEOS-Chem executable
-    ln -s ../GEOSChem_build/gcclassic .
+    ln -nsf ${GCClassicPath}/build/bin/gcclassic.default gcclassic
 
     # Link to restart file
     RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
