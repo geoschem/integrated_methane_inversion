@@ -293,12 +293,20 @@ def remap_sensitivities(sensi_lonlat, data_type, p_merge, edge_index, first_gc_e
 
     return sat_deltaCH4
 
-def _ensure_descending_pedges(edges):
-    # edges: (N, K+1). Flip to descending (surface -> TOA) if needed.
-    need_flip = edges[:, 0] < edges[:, 1]
-    if np.any(need_flip):
-        edges = edges.copy()
-        edges[need_flip] = edges[need_flip, ::-1]
+def _assert_descending_pedges(edges, name="edges"):
+    """
+    Require edges to be strictly descending along axis 1.
+    Raises ValueError if any row is ascending or non-descending.
+    """
+    edges = np.asarray(edges)
+    # Check where an element is NOT greater than the next one
+    bad = np.any(edges[:, :-1] <= edges[:, 1:], axis=1)
+
+    if np.any(bad):
+        raise ValueError(
+            f"{name} must be strictly descending (surface→TOA). "
+            f"Found non-descending rows at indices: {np.where(bad)[0].tolist()}"
+        )
     return edges
 
 def remapping_weights(p_sat_edges, p_gc_edges):
@@ -307,8 +315,8 @@ def remapping_weights(p_sat_edges, p_gc_edges):
     p_gc_edges  : (N, G+1)  GEOS-Chem pressure edges
     Returns     : (N, S, G) weights; for each n,s, sum_g W[n,s,g] == 1 (or 0 if no overlap)
     """
-    p_sat_edges = _ensure_descending_pedges(np.asarray(p_sat_edges))
-    p_gc_edges  = _ensure_descending_pedges(np.asarray(p_gc_edges))
+    p_sat_edges = _assert_descending_pedges(p_sat_edges, name="p_sat_edges")
+    p_gc_edges  = _assert_descending_pedges(p_gc_edges,  name="p_gc_edges")
 
     sat_bot = p_sat_edges[:, :-1]    # (N, S)
     sat_top = p_sat_edges[:,  1:]    # (N, S)
