@@ -123,7 +123,8 @@ create_simulation_dir() {
     else
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+                   -e "s|EFYO|CYS|g" HEMCO_Config.rc
         fi
     fi
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
