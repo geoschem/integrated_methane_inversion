@@ -286,7 +286,6 @@ def apply_tropomi_operator(
     xlim,
     ylim,
     gc_cache,
-    build_jacobian,
     period_i,
     config,
     use_water_obs=False,
@@ -303,7 +302,6 @@ def apply_tropomi_operator(
         xlim           [float]      : Longitude bounds for simulation domain
         ylim           [float]      : Latitude bounds for simulation domain
         gc_cache       [str]        : Path to GEOS-Chem output data
-        build_jacobian [log]        : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
         period_i       [int]        : kalman filter period
         config         [dict]       : dict of the config file
         use_water_obs  [bool]       : if True, use observations over water
@@ -346,12 +344,6 @@ def apply_tropomi_operator(
         return None
     # print("Found", n_obs, "TROPOMI observations.")
 
-    # If need to build Jacobian from GEOS-Chem perturbation simulation sensitivity data:
-    if build_jacobian:
-        # Initialize Jacobian K
-        jacobian_K = np.zeros([n_obs, n_elements], dtype=np.float32)
-        jacobian_K.fill(np.nan)
-
     # Initialize a list to store the dates we want to look at
     all_strdate = []
     
@@ -373,7 +365,7 @@ def apply_tropomi_operator(
 
     # Read GEOS_Chem data for the dates of interest
     all_date_gc = read_all_geoschem(
-        all_strdate, gc_cache, n_elements, config, build_jacobian
+        all_strdate, gc_cache, config
     )
     
     # Initialize array with n_obs rows and 6 columns. Columns are TROPOMI CH4, GEOSChem CH4, longitude, latitude, II, JJ
@@ -482,9 +474,7 @@ def apply_tropomi_operator(
 
         # Otherwise, initialize tropomi virtual xch4 and virtual sensitivity as zero
         area_weighted_virtual_tropomi = 0  # virtual tropomi xch4
-        area_weighted_virtual_tropomi_sensitivity = \
-            np.zeros(n_elements, dtype=np.float32) if build_jacobian else None  # virtual tropomi sensitivity
-
+        
         # For each GEOS-Chem grid cell that touches the TROPOMI pixel:
         for gridcellIndex in range(len(gc_coords)):
             if overlap_area[gridcellIndex] == 0:
@@ -536,34 +526,6 @@ def apply_tropomi_operator(
                 overlap_area[gridcellIndex] * virtual_tropomi_gridcellIndex
             )  # ppb m2
 
-            # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
-            if build_jacobian:
-                
-                if config['UseGCHP']:
-                    sensi_lonlat = GEOSCHEM["jacobian_ch4"][f,j,x, :, :]
-                else:
-                    # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-                    sensi_lonlat = GEOSCHEM["jacobian_ch4"][iGC, jGC, :, :]
-
-                # Map the sensitivities to TROPOMI pressure levels
-                sat_deltaCH4 = remap_sensitivities(
-                    sensi_lonlat,
-                    merged["data_type"],
-                    merged["p_merge"],
-                    merged["edge_index"],
-                    merged["first_gc_edge"],
-                )  # mixing ratio, unitless
-
-                # Derive the change in column-averaged XCH4 that TROPOMI would see over this ground cell
-                # in shape of (n_elements,)
-                tropomi_sensitivity_gridcellIndex = np.sum(avkern[:, None] * sat_deltaCH4 * \
-                    dry_air_subcolumns[:, None], axis=0) / np.sum(dry_air_subcolumns)  # mixing ratio, unitless
-
-                # Weight by overlapping area (to be divided out later) and add to sum
-                area_weighted_virtual_tropomi_sensitivity += (
-                    overlap_area[gridcellIndex] * tropomi_sensitivity_gridcellIndex
-                )  # m2
-
         # Compute virtual TROPOMI observation as weighted mean by overlapping area
         # i.e., need to divide out area [m2] from the previous step
         virtual_tropomi = area_weighted_virtual_tropomi / sum(overlap_area)
@@ -578,22 +540,11 @@ def apply_tropomi_operator(
         obs_GC[k, 4] = iSat  # TROPOMI index of longitude
         obs_GC[k, 5] = jSat  # TROPOMI index of latitude
 
-        if build_jacobian:
-            # Compute TROPOMI sensitivity as weighted mean by overlapping area
-            # i.e., need to divide out area [m2] from the previous step
-            jacobian_K[k, :] = area_weighted_virtual_tropomi_sensitivity / sum(
-                overlap_area
-            )
-
     # Output
     output = {}
 
     # Always return the coincident TROPOMI and GEOS-Chem data
     output["obs_GC"] = obs_GC
-
-    # Optionally return the Jacobian
-    if build_jacobian:
-        output["K"] = jacobian_K
 
     return output
 

@@ -11,15 +11,14 @@ from src.inversion_scripts.utils import check_is_OH_element, check_is_BC_element
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
 # common utilities for using different operators
-def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=False):
+def read_all_geoschem(all_strdate, gc_cache, config):
     """
     Call readgeoschem() for multiple dates in a loop.
 
     Arguments
         all_strdate    [list, str] : Multiple date strings
         gc_cache       [str]       : Path to GEOS-Chem output data
-        build_jacobian [log]       : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-
+        
     Returns
         dat            [dict]      : Dictionary of dictionaries. Each sub-dictionary is returned by read_geoschem()
     """
@@ -27,21 +26,20 @@ def read_all_geoschem(all_strdate, gc_cache, n_elements, config, build_jacobian=
     dat = {}
     for strdate in all_strdate:
         dat[strdate] = read_geoschem(
-            strdate, gc_cache, n_elements, config, build_jacobian
+            strdate, gc_cache, config
         )
 
     return dat
 
 
-def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
+def read_geoschem(date, gc_cache, config):
     """
     Read GEOS-Chem data and save important variables to dictionary.
 
     Arguments
         date           [str]   : Date of interest, format "YYYYMMDD_HH"
         gc_cache       [str]   : Path to GEOS-Chem output data
-        build_jacobian [log]   : Are we trying to map GEOS-Chem sensitivities to TROPOMI observation space?
-
+        
     Returns
         dat            [dict]  : Dictionary of important variables from GEOS-Chem:
                                     - CH4
@@ -100,189 +98,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     dat["PEDGE"] = PEDGE
     dat["CH4"] = CH4
 
-    # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
-    if build_jacobian:
-
-        elements = range(n_elements)
-        ntracers = config["NumJacobianTracers"]
-        opt_OH = config["OptimizeOH"]
-        opt_BC = config["OptimizeBCs"]
-        is_Regional = config["isRegional"]
-
-        num_BC = 4
-        if is_Regional:
-            num_OH = 1
-        else:
-            num_OH = 2
-
-        n_base_runs = (
-            n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
-        ) / ntracers
-
-        nruns = (
-            np.ceil(n_base_runs).astype(int)
-            + (int(opt_OH) * num_OH)
-            + (int(opt_BC) * num_BC)
-        )
-
-        # Dictionary that stores mapping of state vector elements to
-        # perturbation simulation numbers
-        pert_simulations_dict = {}
-        for e in elements:
-            # State vector elements are numbered 1..nelements
-            sv_elem = e + 1
-
-            is_OH_element = check_is_OH_element(
-                sv_elem, n_elements, opt_OH, is_Regional
-            )
-            is_BC_element = check_is_BC_element(
-                sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
-            )
-            # Determine which run directory to look in
-            if is_OH_element:
-                if is_Regional:
-                    run_number = nruns
-                else:
-                    num_back = n_elements % sv_elem
-                    run_number = nruns - num_back
-            elif is_BC_element:
-                num_back = n_elements % sv_elem
-                run_number = nruns - num_back
-            else:
-                run_number = np.ceil(sv_elem / ntracers).astype(int)
-
-            run_num = str(run_number).zfill(4)
-
-            # add the element to the dictionary for the relevant simulation number
-            if run_num not in pert_simulations_dict:
-                pert_simulations_dict[run_num] = [sv_elem]
-            else:
-                pert_simulations_dict[run_num].append(sv_elem)
-
-        gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
-        ds_all = [
-            concat_tracers(k, gc_date, config, v, n_elements)
-            for k, v in pert_simulations_dict.items()
-        ]
-
-        ds_all = [ds.load() for ds in ds_all]
-
-        ds_sensi = xr.concat(ds_all, "element")
-
-        sensitivities = ds_sensi["ch4"].values
-        if UseGCHP:
-            # Reshape so the data have dimensions (nf, Ydim, Xdim, lev, grid_element)
-            sensitivities = np.einsum("klfyx->fyxlk", sensitivities)
-        else:
-            # Reshape so the data have dimensions (lon, lat, lev, grid_element)
-            sensitivities = np.einsum("klji->ijlk", sensitivities)
-        dat["jacobian_ch4"] = sensitivities
-
-        # get emis base, which is also BC base
-        ds_emis_base = concat_tracers(
-            "0001", gc_date, config, [0], n_elements, baserun=True
-        )
-
-        if UseGCHP:
-            dat["emis_base_ch4"] = np.einsum("klfyx->fyxlk", ds_emis_base["ch4"].values)
-        else:
-            dat["emis_base_ch4"] = np.einsum("klji->ijlk", ds_emis_base["ch4"].values)
-
-        # get OH base, run RunName_0000
-        # it's always here whether OptimizeOH is true or not
-        # so we can keep it here for convenience
-        ds_oh_base = concat_tracers(
-            "0000", gc_date, config, [0], n_elements, baserun=True
-        )
-
-        if UseGCHP:
-            dat["oh_base_ch4"] = np.einsum("klfyx->fyxlk", ds_oh_base["ch4"].values)
-        else:
-            dat["oh_base_ch4"] = np.einsum("klji->ijlk", ds_oh_base["ch4"].values)
-
     return dat
-
-
-def concat_tracers(run_id, gc_date, config, sv_elems, n_elements, baserun=False):
-    """
-    Concatenate CH4 tracers from all jacobian GEOS-Chem simulations.
-    Tracers are assigned a new dimension: "element"
-
-    Arguments
-        run_id     [str]         : ID for Jacobian GEOS-Chem run, e.g. "0001"
-        gc_date    [pd.Datetime] : date object, specifies Ymd_h
-        config     [dict]        : dictionary of IMI config file
-        sv_elems   [list]        : list of state vector element tracers in this simulations
-        n_elements [int]         : number of state vector elements in this inversion
-        baserun    [bool]        : If True, only the base variable in the simulation will
-                                 be opened, and the function will just return this one
-                                 variable instead of concatenating all elements. Used to
-                                 get the base for calculating the sensitivities.
-
-    Returns
-        ds_concat [xarray.Dataset] : dataset of all Jacobian CH4 at this timestep for
-                                     all tracer runs. Has dimensions
-                                        - lat
-                                        - lon
-                                        - lev
-                                        - element
-
-
-    """
-    prefix = os.path.expandvars(
-        config["OutputPath"] + "/" + config["RunName"] + "/jacobian_runs"
-    )
-    j_dir = f"{prefix}/{config['RunName']}_{run_id}/OutputDir"
-    file_stub = gc_date.strftime("GEOSChem.SpeciesConc.%Y%m%d_0000z.nc4")
-    filepath = os.path.join(j_dir, file_stub)
-    
-    # Construct the list of CH4 vars to request
-    keepvars = [f"SpeciesConcVV_CH4_{i:04}" for i in sv_elems]
-    if len(keepvars) == 1:
-        is_Regional = config["isRegional"]
-        is_OH_element = check_is_OH_element(
-            sv_elems[0], n_elements, config["OptimizeOH"], is_Regional
-        )
-        is_BC_element = check_is_BC_element(
-            sv_elems[0],
-            n_elements,
-            config["OptimizeOH"],
-            config["OptimizeBCs"],
-            is_OH_element,
-            is_Regional,
-        )
-        if is_OH_element or is_BC_element:
-            keepvars = ["SpeciesConcVV_CH4"]
-
-    if baserun:
-        keepvars = ["SpeciesConcVV_CH4"]
-
-    # It would fail if open all variables with chunks with GCHP,
-    # as ncontact is duplicate for GCHP output dimensions
-    with xr.open_dataset(filepath, decode_cf=False) as tmp:
-        other_vars = [v for v in tmp.variables if "SpeciesConcVV_CH4" not in v]
-    
-    # Open only these variables
-    with xr.open_dataset(
-        filepath,
-        chunks="auto",
-        drop_variables=other_vars,
-    ) as dsmf:
-        try:
-            dsmf = dsmf.isel(time=gc_date.hour, drop=True)
-        except Exception as e:
-            print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
-            raise
-
-        ds_concat = xr.concat((dsmf[v] for v in keepvars), dim="element").rename("ch4")
-        ds_concat = ds_concat.to_dataset(name="ch4").assign_attrs(dsmf.attrs)
-
-    if not baserun:
-        ds_concat = ds_concat.assign_coords({"element": sv_elems})
-    else:
-        ds_concat = ds_concat.assign_coords({"element": [0]})
-
-    return ds_concat
 
 def get_gridcell_list(lons, lats):
     """
@@ -505,12 +321,20 @@ def remap_sensitivities(sensi_lonlat, data_type, p_merge, edge_index, first_gc_e
 
     return sat_deltaCH4
 
-def _ensure_descending_pedges(edges):
-    # edges: (N, K+1). Flip to descending (surface -> TOA) if needed.
-    need_flip = edges[:, 0] < edges[:, 1]
-    if np.any(need_flip):
-        edges = edges.copy()
-        edges[need_flip] = edges[need_flip, ::-1]
+def _assert_descending_pedges(edges, name="edges"):
+    """
+    Require edges to be strictly descending along axis 1.
+    Raises ValueError if any row is ascending or non-descending.
+    """
+    edges = np.asarray(edges)
+    # Check where an element is NOT greater than the next one
+    bad = np.any(edges[:, :-1] <= edges[:, 1:], axis=1)
+
+    if np.any(bad):
+        raise ValueError(
+            f"{name} must be strictly descending (surface→TOA). "
+            f"Found non-descending rows at indices: {np.where(bad)[0].tolist()}"
+        )
     return edges
 
 def remapping_weights(p_sat_edges, p_gc_edges):
@@ -519,8 +343,8 @@ def remapping_weights(p_sat_edges, p_gc_edges):
     p_gc_edges  : (N, G+1)  GEOS-Chem pressure edges
     Returns     : (N, S, G) weights; for each n,s, sum_g W[n,s,g] == 1 (or 0 if no overlap)
     """
-    p_sat_edges = _ensure_descending_pedges(np.asarray(p_sat_edges))
-    p_gc_edges  = _ensure_descending_pedges(np.asarray(p_gc_edges))
+    p_sat_edges = _assert_descending_pedges(p_sat_edges, name="p_sat_edges")
+    p_gc_edges  = _assert_descending_pedges(p_gc_edges,  name="p_gc_edges")
 
     sat_bot = p_sat_edges[:, :-1]    # (N, S)
     sat_top = p_sat_edges[:,  1:]    # (N, S)
