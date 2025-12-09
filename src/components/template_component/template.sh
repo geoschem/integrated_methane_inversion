@@ -193,7 +193,7 @@ setup_template() {
     printf "\nCompiling GEOS-Chem...\n"
     cd build
     cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
-    cmake . -DRUNDIR=.. >>build_geoschem.log 2>&1
+    cmake . -DRUNDIR=.. -DMECH=carbon >>build_geoschem.log 2>&1
     make -j install >>build_geoschem.log 2>&1
     cd ..
     if [[ -f gcclassic ]]; then
