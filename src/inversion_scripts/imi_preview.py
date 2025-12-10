@@ -457,7 +457,7 @@ def imi_preview(
     )
 
     # plot estimated averaging kernel sensitivities
-    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+    sensitivities = map_sensitivities_to_sv(a, state_vector_labels, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     if config['UseGCHP']:
@@ -465,10 +465,10 @@ def imi_preview(
             ax,
             corner_lons,
             corner_lats,
-            sensitivities_da["Sensitivities"],
+            sensitivities,
             cmap=cc.cm.CET_L19,
             vmin=0,
-            vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
+            vmax=np.nanpercentile(sensitivities.values, 95),
             lon_bounds=lon_bounds,
             lat_bounds=lat_bounds,
             title="Estimated Averaging kernel sensitivities",
@@ -480,10 +480,10 @@ def imi_preview(
     else:
         plot_field(
             ax,
-            sensitivities_da["Sensitivities"],
+            sensitivities,
             cmap=cc.cm.CET_L19,
             vmin=0,
-            vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
+            vmax=np.nanpercentile(sensitivities.values, 95),
             lon_bounds=lon_bounds,
             lat_bounds=lat_bounds,
             title="Estimated Averaging kernel sensitivities",
@@ -516,32 +516,45 @@ def imi_preview(
         sys.exit(1)
 
 
-def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+def map_sensitivities_to_sv(sensitivities, state_vector_lables, last_ROI_element):
     """
-    Map sensitivities (1D) onto a 2D xarray DataArray for visualization.
+    Map 1D sensitivities onto a label grid.
 
-    Parameters:
-        sensitivities (array-like): 1D array of sensitivity values, indexed by ROI element (0-based).
-        sv (xarray.Dataset): Dataset containing a 2D variable "StateVector".
-        last_ROI_element (int): Highest ROI index to include in mapping (1-based indexing assumed).
+    Parameters
+    ----------
+    sensitivities : array-like, shape (last_ROI_element,)
+        Sensitivity value corresponding to ROI label 1..last_ROI_element.
+    state_vector_lables : xr.DataArray
+        The StateVector array containing integer labels and NaNs.
+        Can have shape (lat, lon), (nf, Ydim, Xdim), (time, nf, Ydim, Xdim), etc.
+    last_ROI_element : int
 
-    Returns:
-        xarray.Dataset: 2D DataArray with one DataArray 'Sensitivities'.
+    Returns
+    -------
+    xr.DataArray with the same dims/coords as labels_da
     """
-    # Extract 2D index array (e.g., shape (lat, lon))
-    sv_index = sv["StateVector"].astype(int)
+    labels = state_vector_lables.values
+    sens = np.asarray(sensitivities)
 
-    # Mask invalid state vector elements
-    valid_mask = sv_index <= last_ROI_element
+    # Valid ROI labels: 1..last_ROI_element
+    valid = np.isfinite(labels) & (labels <= last_ROI_element)
 
-    # Create an output array filled with NaN
-    mapped = xr.full_like(sv_index, fill_value=np.nan, dtype=float)
+    # Output array
+    out = np.full(labels.shape, np.nan, dtype=sens.dtype)
 
-    # Fill valid state vector elements with sensitivities
-    for i in range(1, last_ROI_element + 1):
-        mapped = mapped.where(~(sv_index == i), sensitivities[i - 1])
+    # Convert labels → 0-based indices
+    idx = labels[valid].astype(int) - 1
 
-    return mapped.to_dataset(name='Sensitivities')
+    # Fill output
+    out[valid] = sens[idx]
+
+    # Wrap back into a DataArray
+    return xr.DataArray(
+        out,
+        coords=state_vector_lables.coords,
+        dims=state_vector_lables.dims,
+        name="Sensitivities"
+    )
 
 def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     """
