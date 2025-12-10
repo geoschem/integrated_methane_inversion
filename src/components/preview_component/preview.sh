@@ -38,10 +38,13 @@ run_preview() {
     # sbatch to take advantage of multiple cores
     printf "\nCreating preview plots and statistics... "
     if "$UseSlurm"; then
+        # to use one node only for submitting preview job
+        prevCPUs="${InversionCPUs:-$RequestedCPUs}"
+        
         rm -f .preview_error_status.txt
         chmod +x $preview_file
         sbatch --mem $RequestedMemory \
-            -c $RequestedCPUs \
+            -c $prevCPUs \
             -t $RequestedTime \
             -p $SchedulerPartition \
             -o imi_output.tmp \

@@ -18,6 +18,18 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
     build_kdtree,
 )
 
+def sum_and_sort_along_statevector(val, sv, fill_value=np.nan):
+    # This is useful for getting state vector area
+    if np.isnan(fill_value):
+        mask = ~np.isnan(sv)
+    else:
+        mask = sv != fill_value
+    sv_valid = sv[mask]
+    val_valid = val[mask]
+    _, inv = np.unique(sv_valid, return_inverse=True)
+    sv_val = np.bincount(inv, weights=val_valid)
+    return sv_val
+
 def save_obj(obj, name):
     """Save something with Pickle."""
 

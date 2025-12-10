@@ -30,6 +30,7 @@ from src.inversion_scripts.utils import (
     calculate_superobservation_error,
     get_mean_emissions,
     get_posterior_emissions,
+    sum_and_sort_along_statevector,
 )
 from src.inversion_scripts.operators.TROPOMI_operator import (
     read_tropomi,
@@ -442,7 +443,7 @@ def imi_preview(
     )
 
     # plot estimated averaging kernel sensitivities
-    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+    sensitivities = map_sensitivities_to_sv(a, state_vector_labels, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     if config['UseGCHP']:
@@ -450,10 +451,10 @@ def imi_preview(
             ax,
             corner_lons,
             corner_lats,
-            sensitivities_da["Sensitivities"],
+            sensitivities,
             cmap=cc.cm.CET_L19,
             vmin=0,
-            vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
+            vmax=np.nanpercentile(sensitivities.values, 95),
             lon_bounds=lon_bounds,
             lat_bounds=lat_bounds,
             title="Estimated Averaging kernel sensitivities",
@@ -465,10 +466,10 @@ def imi_preview(
     else:
         plot_field(
             ax,
-            sensitivities_da["Sensitivities"],
+            sensitivities,
             cmap=cc.cm.CET_L19,
             vmin=0,
-            vmax=np.nanpercentile(sensitivities_da["Sensitivities"].values, 95),
+            vmax=np.nanpercentile(sensitivities.values, 95),
             lon_bounds=lon_bounds,
             lat_bounds=lat_bounds,
             title="Estimated Averaging kernel sensitivities",
@@ -501,19 +502,45 @@ def imi_preview(
         sys.exit(1)
 
 
-def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+def map_sensitivities_to_sv(sensitivities, state_vector_lables, last_ROI_element):
     """
-    maps sensitivities onto 2D xarray Datarray for visualization
-    """
-    s = sv.copy().rename({"StateVector": "Sensitivities"})
-    mask = s["Sensitivities"] <= last_ROI_element
-    s["Sensitivities"] = s["Sensitivities"].where(mask)
-    # map sensitivities onto corresponding xarray DataArray
-    for i in range(1, last_ROI_element + 1):
-        mask = sv["StateVector"] == i
-        s = xr.where(mask, sensitivities[i - 1], s)
+    Map 1D sensitivities onto a label grid.
 
-    return s
+    Parameters
+    ----------
+    sensitivities : array-like, shape (last_ROI_element,)
+        Sensitivity value corresponding to ROI label 1..last_ROI_element.
+    state_vector_lables : xr.DataArray
+        The StateVector array containing integer labels and NaNs.
+        Can have shape (lat, lon), (nf, Ydim, Xdim), (time, nf, Ydim, Xdim), etc.
+    last_ROI_element : int
+
+    Returns
+    -------
+    xr.DataArray with the same dims/coords as labels_da
+    """
+    labels = state_vector_lables.values
+    sens = np.asarray(sensitivities)
+
+    # Valid ROI labels: 1..last_ROI_element
+    valid = np.isfinite(labels) & (labels <= last_ROI_element)
+
+    # Output array
+    out = np.full(labels.shape, np.nan, dtype=sens.dtype)
+
+    # Convert labels → 0-based indices
+    idx = labels[valid].astype(int) - 1
+
+    # Fill output
+    out[valid] = sens[idx]
+
+    # Wrap back into a DataArray
+    return xr.DataArray(
+        out,
+        coords=state_vector_lables.coords,
+        dims=state_vector_lables.dims,
+        name="Sensitivities"
+    )
 
 def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     """
@@ -781,72 +808,16 @@ def estimate_averaging_kernel(
     )
     daily_observation_counts["obs_count"] = daily_observation_counts["obs_count"].fillna(0)
 
-    int_sv_labels = state_vector_labels.fillna(-9999).astype(int)
-    structure = np.ones((5, 5))
-    if config["UseGCHP"]:
-        n_neighbors = structure.size
-        CSlons = gridds['lons']
-        CSlats = gridds['lats']
-        kdtree, shape = build_kdtree(CSlats.values, CSlons.values)
-
-    # parallel processing function
-    def process(i):
-        maski = int_sv_labels == i
-        # Following eqn. 11 of Nesser et al., 2021 we increase the mask
-        # size by adding concentric rings to mimic transport/diffusion
-        # when counting observations. We use 2 concentric rings based on
-        # empirical evidence -- Nesser et al used 3.
-
-        if config["UseGCHP"]:
-            lati = CSlats.values[np.where(maski.values)]
-            loni = CSlons.values[np.where(maski.values)]
-            query_cart = latlon_to_cartesian(lati, loni)
-            _, neighbor_idxs = kdtree.query(query_cart, k=n_neighbors)
-
-            neighbor_idxs = neighbor_idxs.flatten()
-            f_idx, j_idx, x_idx = np.unravel_index(neighbor_idxs, shape)
-
-            obs_count_values = daily_observation_counts["obs_count"].values[:, f_idx, j_idx, x_idx]
-            superobs_count_values = daily_observation_counts["superobs_count"].values[:, f_idx, j_idx, x_idx]
-            num_obs_temp = np.nansum(obs_count_values).item()
-            n_success_obs_days = np.nansum(superobs_count_values).item()
-
-        else:
-            buffered_mask = binary_dilation(maski, structure=structure)
-            buffered_mask = xr.DataArray(
-                buffered_mask,
-                dims=state_vector_labels.dims,
-                coords=state_vector_labels.coords,
-            )
-            # append the number of obs in each element
-            num_obs_temp = np.nansum(
-                daily_observation_counts["obs_count"].where(buffered_mask).values
-            ).item()
-            # append the number of successful obs days
-            n_success_obs_days = np.nansum(
-                daily_observation_counts["superobs_count"].where(buffered_mask).values
-            ).item()
-
-        # prior emissions for each element (in Tg/y)
-        emissions_temp = sum_total_emissions(prior, areas, maski)
-        # number of native state vector elements in each element
-        size_temp = state_vector_labels.where(maski).count().item()
-        L_native = np.sqrt(np.nanmean(areas.where(maski).values)).item()
-
-        del maski
-        gc.collect()
-        return emissions_temp, L_native, size_temp, num_obs_temp, n_success_obs_days
-
-    # in parallel, create lists of emissions, number of observations,
-    # and rough length scale for each cluster element in ROI
-    result = Parallel(n_jobs=-1)(
-        delayed(process)(i) for i in range(1, last_ROI_element + 1)
+    flux_per_sv, L, num_obs, m_superi = compute_sv_element_stats(
+        state_vector_labels=state_vector_labels.values,
+        areas=areas.values,
+        prior=prior.values,
+        daily_observation_counts=daily_observation_counts,
+        config=config,
+        mask=mask.values,
+        last_ROI_element=last_ROI_element,
+        sum_and_sort_along_statevector=sum_and_sort_along_statevector,
     )
-
-    # unpack list of tuples into individual lists
-    emissions, L, num_native_elements, num_obs, m_superi = [
-        list(item) for item in zip(*result)
-    ]
 
     if np.sum(num_obs) < 1:
         sys.exit("Error: No observations found in region of interest")
@@ -859,13 +830,6 @@ def estimate_averaging_kernel(
 
     time_delta = enddate_np64 - startdate_np64
     num_days = np.round((time_delta) / np.timedelta64(1, "D"))
-
-    # State vector, observations
-    emissions = np.array(emissions)
-    L = np.array(L) 
-    num_native_elements = np.array(num_native_elements)
-    num_obs = np.array(num_obs)
-    m_superi = np.array(m_superi)  # Number of successful observation days
 
     # If Kalman filter mode, count observations per inversion period
     if config["KalmanMode"]:
@@ -883,8 +847,7 @@ def estimate_averaging_kernel(
         m_superi = m_superi / n_periods
         n_obs_per_period = np.round(num_obs / n_periods)
         outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-
-    print("\n" + outstring2)
+        print("\n" + outstring2)
 
     # Other parameters
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
@@ -894,14 +857,10 @@ def estimate_averaging_kernel(
     Mch4 = 0.01604  # Molar mass of methane [kg/mol]
     alpha = 0.4  # Simple parameterization of turbulence
 
-    # Change units of total prior emissions
-    emissions_kgs = emissions * 1e9 / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * L ** 2)  # kg/m2/s from kg/s, per element
-
     # Use the first element of the error list if multiple values are provided
     sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]
     # Error standard deviations with updated units
-    sA = sigmaA * emissions_kgs_per_m2
+    sA = sigmaA * flux_per_sv
     sO = config["ObsError"][0] if isinstance(config["ObsError"], list) else config["ObsError"]
 
     # Calculate superobservation error to use in averaging kernel sensitivity equation
@@ -956,6 +915,236 @@ def estimate_averaging_kernel(
     else:
         return a
 
+def compute_sv_element_stats(
+    state_vector_labels,
+    areas,
+    prior,
+    daily_observation_counts,
+    config,
+    mask,
+    last_ROI_element,
+    sum_and_sort_along_statevector,
+):
+    """
+    Compute per–state-vector-element quantities:
+      - emissions (sum(prior * area), kg/s)
+      - L_native (sqrt(mean cell area), in same units as sqrt(areas))
+      - num_native_elements (cell counts)
+      - num_obs (sum of obs_count over dilated masks)
+      - n_success_days (sum of superobs_count over dilated masks)
+
+    Parameters
+    ----------
+    state_vector_labels : xarray.DataArray or ndarray
+        State vector label grid, with NaN for background, integers for elements.
+        Shape must match `areas` and the spatial dims of `daily_observation_counts`.
+    areas : xarray.DataArray or ndarray
+        Grid-cell areas (same shape as state_vector_labels), in m2 or whatever unit.
+    prior : xarray.DataArray or ndarray
+        Prior flux field in same grid and units so prior*areas is kg/s (or equivalent).
+    daily_observation_counts : xarray.Dataset
+        Must contain:
+          - "obs_count" and "superobs_count"
+          - For GCHP: dims (date, nf, Y, X) and vars "lats", "lons"
+          - For non-GCHP: dims (lat, lon, date) and coords "lat", "lon"
+    config : dict
+        Must contain key "UseGCHP" (bool).
+    mask : ndarray or xarray.DataArray (bool)
+        ROI mask: True where state_vector_labels <= last_ROI_element.
+    last_ROI_element : int
+        Largest label index in ROI (no buffers).
+    sum_and_sort_along_statevector : callable
+        Function (val, sv, fill_value=np.nan) -> per-label sums, in ascending label order.
+
+    Returns
+    -------
+    emissions : np.ndarray, shape (last_ROI_element,)
+    L_native : np.ndarray, shape (last_ROI_element,)
+    num_native_elements : np.ndarray, shape (last_ROI_element,), int
+    num_obs : np.ndarray, shape (last_ROI_element,)
+    n_success_days : np.ndarray, shape (last_ROI_element,)
+    """
+
+    # ------------------------------------------------------------------
+    # 0. Flatten state-vector labels (background = NaN)
+    # ------------------------------------------------------------------
+    sv = np.asarray(state_vector_labels)
+    sv_labels_flat = sv.ravel()
+    Ncells = sv_labels_flat.size
+
+    # Sanity check: ROI labels must be exactly 1..last_ROI_element
+    unique_labels = np.unique(sv[mask])
+    unique_labels = unique_labels[~np.isnan(unique_labels)]
+    unique_labels = unique_labels.astype(int)
+    assert unique_labels[0] == 1
+    assert unique_labels[-1] == last_ROI_element
+    assert unique_labels.size == last_ROI_element
+
+    # ------------------------------------------------------------------
+    # 1. Per–state-vector-element static quantities
+    # ------------------------------------------------------------------
+    areas_arr = np.asarray(areas)
+    prior_arr = np.asarray(prior)
+
+    # (a) total area per SV element (ROI + buffers, then slice ROI)
+    area_per_sv_all = sum_and_sort_along_statevector(
+        val=areas_arr,
+        sv=sv,
+    )
+    area_per_sv = area_per_sv_all[:last_ROI_element]
+
+    # (b) number of native grid cells per SV element
+    ones_arr = np.ones_like(areas_arr, dtype=float)
+    cell_count_per_sv_all = sum_and_sort_along_statevector(
+        val=ones_arr,
+        sv=sv,
+    )
+    cell_count_per_sv = cell_count_per_sv_all[:last_ROI_element]
+
+    # (c) native length scale L_native = sqrt(mean cell area)
+    mean_area_per_sv = area_per_sv / np.maximum(cell_count_per_sv, 1.0)
+    L_native_per_sv = np.sqrt(mean_area_per_sv)
+
+    # (d) emission flux per SV element (kg/s)
+    flux_per_sv_all = sum_and_sort_along_statevector(
+        val=prior_arr,
+        sv=sv,
+    )
+    flux_per_sv = flux_per_sv_all[:last_ROI_element]
+
+    # ------------------------------------------------------------------
+    # 2. Collapse obs + superobs over time for each grid cell
+    # ------------------------------------------------------------------
+    use_gchp = config['UseGCHP']
+    obs_da = daily_observation_counts["obs_count"]
+    superobs_da = daily_observation_counts["superobs_count"]
+
+    if use_gchp:
+        # obs dims: (date, nf, Y, X)
+        obs = obs_da.values
+        superobs = superobs_da.values
+        T, nf, Ny, Nx = obs.shape
+        assert Ncells == nf * Ny * Nx
+
+        obs_flat = obs.reshape(T, Ncells)
+        superobs_flat = superobs.reshape(T, Ncells)
+
+        obs_per_cell = np.nansum(obs_flat, axis=0)
+        super_per_cell = np.nansum(superobs_flat, axis=0)
+
+        # KDTree coordinates must match flatten order
+        CSlats = daily_observation_counts["lats"].values  # (nf, Y, X)
+        CSlons = daily_observation_counts["lons"].values
+        kdtree, grid_shape = build_kdtree(CSlats, CSlons)
+        assert grid_shape == sv.shape
+
+        lat_flat = CSlats.ravel()
+        lon_flat = CSlons.ravel()
+
+    else:
+        # obs dims: (lat, lon, date)  -> reorder to (T, Ny, Nx)
+        obs_raw = obs_da.values
+        superobs_raw = superobs_da.values
+
+        obs = np.moveaxis(obs_raw, -1, 0)
+        superobs = np.moveaxis(superobs_raw, -1, 0)
+        T, Ny, Nx = obs.shape
+        assert Ncells == Ny * Nx
+
+        obs_flat = obs.reshape(T, Ncells)
+        superobs_flat = superobs.reshape(T, Ncells)
+
+        obs_per_cell = np.nansum(obs_flat, axis=0)
+        super_per_cell = np.nansum(superobs_flat, axis=0)
+
+        lats_1d = daily_observation_counts["lat"].values
+        lons_1d = daily_observation_counts["lon"].values
+        kdtree, grid_shape = build_kdtree(lats_1d, lons_1d)
+        assert grid_shape == sv.shape
+
+        lat_grid, lon_grid = np.meshgrid(lats_1d, lons_1d, indexing="ij")
+        lat_flat = lat_grid.ravel()
+        lon_flat = lon_grid.ravel()
+
+    assert sv_labels_flat.shape[0] == Ncells
+    assert obs_per_cell.shape[0] == Ncells
+
+    # ------------------------------------------------------------------
+    # 3. KDTree query for ROI-labeled cells only
+    # ------------------------------------------------------------------
+    # mask: state_vector_labels <= last_ROI_element
+    sv_mask_flat = np.asarray(mask).ravel()
+    sv_indices_flat = np.where(sv_mask_flat)[0]     # (M,) indices of ROI cells
+    sv_labels_nonsorted = sv_labels_flat[sv_indices_flat].astype(int)  # (M,)
+
+    # Safety: ensure only ROI labels appear
+    assert sv_labels_nonsorted.min() >= 1
+    assert sv_labels_nonsorted.max() <= last_ROI_element
+
+    # Coordinates for ROI cells
+    query_cart = latlon_to_cartesian(
+        lat_flat[sv_indices_flat],
+        lon_flat[sv_indices_flat],
+    )
+
+    # KDTree neighbor search
+    n_neighbors = 25
+    _, neighbor_idxs = kdtree.query(query_cart, k=n_neighbors)
+    M, K = neighbor_idxs.shape  # M = #ROI cells, K = n_neighbors
+
+    # ------------------------------------------------------------------
+    # 4. UNION semantics: deduplicate (label, neighbor_cell) pairs
+    # ------------------------------------------------------------------
+    # For each ROI cell, repeat its label K times to align with neighbors
+    labels_rep = np.repeat(sv_labels_nonsorted, K)    # (M*K,)
+    cells_neighbors = neighbor_idxs.ravel()           # (M*K,)
+
+    # Encode (label, cell) uniquely as: code = label * Ncells + cell
+    labels_64 = labels_rep.astype(np.int64, copy=False)
+    cells_64 = cells_neighbors.astype(np.int64, copy=False)
+    pair_codes = labels_64 * np.int64(Ncells) + cells_64
+
+    # Optimization: if each label appears only once among ROI cells,
+    # duplicates are mathematically impossible, so skip np.unique.
+    label_counts = np.bincount(
+        sv_labels_nonsorted.astype(int),
+        minlength=last_ROI_element + 1,
+    )
+    if label_counts[1:].max() == 1:
+        pair_codes_unique = pair_codes
+    else:
+        pair_codes_unique = np.unique(pair_codes)
+
+    # Decode back into (label, cell)
+    labels_unique = (pair_codes_unique // Ncells).astype(int)
+    cells_unique = (pair_codes_unique % Ncells).astype(int)
+
+    # Convert 1-based labels to 0-based SV indices
+    sv_indices = labels_unique - 1
+
+    # ------------------------------------------------------------------
+    # 5. Aggregate obs & superobs per SV element
+    # ------------------------------------------------------------------
+    num_obs_per_sv = np.bincount(
+        sv_indices,
+        weights=obs_per_cell[cells_unique],
+        minlength=last_ROI_element,
+    )
+    n_success_days_per_sv = np.bincount(
+        sv_indices,
+        weights=super_per_cell[cells_unique],
+        minlength=last_ROI_element,
+    )
+
+    # ------------------------------------------------------------------
+    # 6. Return NumPy arrays aligned by SV index (0→label1, ..., N-1→labelN)
+    # ------------------------------------------------------------------
+    emissions = flux_per_sv                     # (Nsv,)
+    L_native = L_native_per_sv                  # (Nsv,)
+    num_obs = num_obs_per_sv                    # (Nsv,)
+    n_success_days = n_success_days_per_sv      # (Nsv,)
+
+    return emissions, L_native, num_obs, n_success_days
 
 if __name__ == "__main__":
     try:
