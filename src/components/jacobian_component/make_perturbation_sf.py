@@ -199,8 +199,8 @@ def make_perturbation_sf(config, period_number, perturb_value=1e-8):
         hemco_emis = get_mean_emissions(start_date, end_date, prior_cache)
         prior_sf = None
 
-    # load the state vector dataset
-    state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc"))
+    # load the state vector dataset and squeeze time dimension
+    state_vector = xr.load_dataset(os.path.join(base_directory, "StateVector.nc")).squeeze()
 
     # calculate the perturbation scale factors we perturb each state vector element by
     perturbation_dict = calculate_perturbation_sfs(
