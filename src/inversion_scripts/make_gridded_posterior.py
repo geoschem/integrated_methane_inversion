@@ -44,7 +44,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     """
 
     # Load state vector and inversion results data
-    statevector = xr.load_dataset(state_vector_path)
+    statevector = xr.load_dataset(state_vector_path).squeeze()
     inv_results = xr.load_dataset(posterior_SF_path)
 
     target_data_prefixes = ["xhat", "S_post", "A"]
