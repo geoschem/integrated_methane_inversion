@@ -170,9 +170,9 @@ create_simulation_dir() {
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
         if "$HourlyCH4"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' \
-                -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+                -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+                -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
+                -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
                 HISTORY.rc
         fi
     # For all other runs, just disable Restarts

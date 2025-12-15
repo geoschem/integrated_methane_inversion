@@ -66,12 +66,12 @@ setup_posterior() {
             -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" \
             HEMCO_Config.rc
     fi
-    # Turn on LevelEdgeDiags output
+    # Turn on StateMetLevEdge output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
-        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+        sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+            -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
+            -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
             -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
             -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
     fi

@@ -47,7 +47,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
 
     # Assemble file paths to GEOS-Chem output collections for input data
     file_species = f"GEOSChem.SpeciesConc.{date}00z.nc4"
-    file_pedge = f"GEOSChem.LevelEdgeDiags.{date}00z.nc4"
+    file_pedge = f"GEOSChem.StateMetLevEdge.{date}00z.nc4"
 
     # Read lat, lon, CH4 from the SpeciecConc collection
     filename = f"{gc_cache}/{file_species}"
@@ -59,7 +59,7 @@ def read_geoschem(date, gc_cache, n_elements, config, build_jacobian=False):
     CH4 = np.einsum("lij->jil", CH4)
     gc_data.close()
 
-    # Read PEDGE from the LevelEdgeDiags collection
+    # Read PEDGE from the StateMetLevEdge collection
     filename = f"{gc_cache}/{file_pedge}"
     gc_data = xr.open_dataset(filename)
     PEDGE = gc_data["Met_PEDGE"].values[0, :, :, :]
