@@ -9,6 +9,10 @@ sudo apt update
 sudo apt install -y emacs
 sudo apt install -y unzip
 sudo apt install -y bzip2
+sudo apt install -y gcc-10
+sudo apt install -y gfortran-10
+sudo apt install -y flex
+sudo apt install -y bison
 
 #yum install -y emacs wget time jq less glibc which
 #
