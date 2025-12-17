@@ -37,7 +37,7 @@ SPACK_ROOT=/home/ubuntu/spack
 
 # Add spack setup to bashrc
 echo "export SPACK_ROOT=/home/ubuntu/spack" >> ~/.bashrc
-echo . /home/ubuntu/spack/setup-env.sh >> ~/.bashrc
+echo . /home/ubuntu/spack/share/spack/setup-env.sh >> ~/.bashrc
 
 
 #---------------------------
