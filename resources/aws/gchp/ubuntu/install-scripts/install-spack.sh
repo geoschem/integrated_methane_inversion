@@ -35,15 +35,18 @@ cd /home/ubuntu/spack
 SPACK_ROOT=/home/ubuntu/spack
 . /home/ubuntu/spack/share/spack/setup-env.sh
 
+# Add spack setup to bashrc
+echo "export SPACK_ROOT=/home/ubuntu/spack" >> ~/.bashrc
+echo . /home/ubuntu/spack/setup-env.sh >> ~/.bashrc
+
+
+#---------------------------
 #spack compiler find --scope system
 #spack external find --scope system
 #spack install -j32 --fail-fast $SpackCompiler --show-log-on-error target=x86_64 platform=linux os=amzn2
 #spack load $SpackCompiler
 #spack compiler find --scope system
 #
-## Add spack setup to bashrc
-#echo "export SPACK_ROOT=/opt/spack" >> ~/.bashrc
-#echo . /home/ubuntu/share/spack/setup-env.sh >> ~/.bashrc
 
 # From imi:
 ##git clone --depth=100 --branch=v0.22.1 https://github.com/spack/spack.git ~/spack
