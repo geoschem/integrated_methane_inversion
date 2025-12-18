@@ -22,5 +22,5 @@ echo $'conda() {\n    micromamba "$@"\n}' >> ~/.bashrc
 sed -i '/# If not running interactively, don.t do anything/,/esac/d' ~/.bashrc
 
 # install python dependencies for imi into conda environment
-bin/micromamba env create -f /home/ubuntu/install-scripts/imi_env.yml
+bin/micromamba env create -f /home/ubuntu/integrated_methane_inversion/resources/aws/gchp/ubuntu/install-scripts/imi_env.yml
 bin/micromamba clean -ya
