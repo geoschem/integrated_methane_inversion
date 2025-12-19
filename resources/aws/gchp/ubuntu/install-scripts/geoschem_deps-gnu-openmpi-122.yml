@@ -6,25 +6,14 @@ spack:
   packages:
     all:
       target: ["x86_64"]
-    lustre:
-      buildable: False
-      externals:
-      - spec: lustre@2.12
-        prefix: /usr
-  #
-  # List all of the specs for the packages that will go into the spack
-  # environment.  For safety's sake, we explicitly force target,
-  # platform, and os in each spec so that each package will build
-  # with the desired architecture (linux-amzn2-x86_64).
-  #
   specs:
-    - cmake@3.30.5%gcc@12.2.0 target=x86_64 platform=linux os=amzn2
-    - udunits%gcc@12.2.0 target=x86_64 platform=linux os=amzn2
-    - libfabric@1.14.0%gcc@12.2.0 fabrics=sockets,tcp,udp,efa,mlx,shm target=x86_64 platform=linux os=amzn2
-    - openmpi@4.1.4%gcc@12.2.0 +lustre fabrics=auto target=x86_64 platform=linux os=amzn2
-    - hdf5@1.14.0%gcc@12.2.0 -mpi -tools target=x86_64 platform=linux os=amzn2
-    - netcdf-c@4.9.2%gcc@12.2.0 target=x86_64 platform=linux os=amzn2
-    - netcdf-fortran@4.6.1%gcc@12.2.0 target=x86_64 platform=linux os=amzn2
-    - esmf@8.6.1%gcc@12.2.0 target=x86_64 platform=linux os=amzn2 +mpi esmf_comm=openmpi esmf_pio=OFF ^openmpi@4.1.4%gcc@12.2.0
+    - cmake@3.30.5%gcc@12.2.0
+    - udunits%gcc@12.2.0
+    - libfabric@1.14.0%gcc@12.2.0 fabrics=sockets,tcp,udp,efa,mlx,shm
+    - openmpi@4.1.4%gcc@12.2.0 fabrics=auto
+    - hdf5@1.14.0%gcc@12.2.0 -mpi -tools
+    - netcdf-c@4.9.2%gcc@12.2.0
+    - netcdf-fortran@4.6.1%gcc@12.2.0
+    - esmf@8.6.1%gcc@12.2.0 +mpi esmf_comm=openmpi esmf_pio=OFF ^openmpi@4.1.4%gcc@12.2.0
   concretizer:
     unify: true
