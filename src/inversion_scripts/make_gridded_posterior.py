@@ -96,8 +96,9 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )
 
-    # Create netcdf for default results
-    ds.isel(ensemble = ds.attrs['default_member_index']).to_netcdf(
+    # Calculate the mean of the ensemble as the main result
+    ds_mean = ds.mean(dim="ensemble")
+    ds_mean.to_netcdf(
         save_path,
         encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )

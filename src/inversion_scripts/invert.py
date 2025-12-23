@@ -467,10 +467,38 @@ def do_inversion_ensemble(
     # closest to 1 as the default member
     dataset.attrs = {"default_member_index": idx_default_Ja}
 
+    # Specify attributes
+    dataset.xhat.attrs["long_name"] = "Posterior scaling factors"
+    dataset.xhat.attrs["units"] = "1"
+    dataset.S_post.attrs["long_name"] = "Posterior error covariance matrix"
+    dataset.S_post.attrs["units"] = "1"  
+    dataset.A.attrs["long_name"] = "Averaging kernel matrix"
+    dataset.A.attrs["units"] = "1"
+    dataset.DOFS.attrs["long_name"] = "Degrees of freedom for signal"
+    dataset.DOFS.attrs["units"] = "1"
+    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset.Ja_normalized.attrs["units"] = "1"
+    dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
+    dataset.prior_err.attrs["units"] = "1"
+    dataset.obs_err.attrs["long_name"] = "Observation error (So)"
+    dataset.obs_err.attrs["units"] = "ppb"
+    dataset.gamma.attrs["long_name"] = "Regularization parameter"
+    dataset.gamma.attrs["units"] = "1"
+    dataset.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
+    dataset.prior_err_bc.attrs["units"] = "ppb"
+    dataset.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
+    dataset.prior_err_oh.attrs["units"] = "1"
+    dataset.KTinvSoK.attrs["long_name"] = "K^T * inv(So) * K expression from inversion equation"
+    dataset.KTinvSoK.attrs["units"] = "1"
+    dataset.KTinvSoyKxA.attrs["long_name"] = "K^T * inv(So) * (y-K*xA) expression from inversion equation"
+    dataset.KTinvSoyKxA.attrs["units"] = "1"
+    dataset.ratio.attrs["long_name"] = "Change from prior (xhat - xA)"
+    dataset.ratio.attrs["units"] = "1"
+
     # ensemble dimension to end
     dataset = dataset.transpose(..., "ensemble")
 
-    # also calculate the mean of the ensemble as the main result
+    # Calculate the mean of the ensemble as the main result
     dataset_mean = dataset.mean(dim="ensemble")
 
     return dataset, dataset_mean

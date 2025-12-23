@@ -332,6 +332,10 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # Define the default data variables as those with normalized Ja closest to 1
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
+    print(
+        f"J_A/n closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]} with"
+        + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_default_Ja]}"
+    )
 
     # Filter ensemble members to only members with Ja between 0.5 and 2
     filter_ens_members = True  # set to False to turn off filtering
@@ -371,7 +375,33 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # ensemble dimension to end
     dataset = dataset.transpose(..., "ensemble")
 
-    # also calculate the mean of the ensemble as the main result
+    # Specify attributes
+    dataset.xhat.attrs["long_name"] = "Posterior scaling factors"
+    dataset.xhat.attrs["units"] = "1"
+    dataset.lnxn.attrs["long_name"] = "Posterior log scaling factors"
+    dataset.lnxn.attrs["units"] = "1"
+    dataset.S_post.attrs["long_name"] = "Posterior error covariance matrix"
+    dataset.S_post.attrs["units"] = "1"  
+    dataset.A.attrs["long_name"] = "Averaging kernel matrix"
+    dataset.A.attrs["units"] = "1"
+    dataset.DOFS.attrs["long_name"] = "Degrees of freedom for signal"
+    dataset.DOFS.attrs["units"] = "1"
+    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset.Ja_normalized.attrs["units"] = "1"
+    dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
+    dataset.prior_err.attrs["units"] = "1"
+    dataset.obs_err.attrs["long_name"] = "Observation error (So)"
+    dataset.obs_err.attrs["units"] = "ppb"
+    dataset.gamma.attrs["long_name"] = "Regularization parameter"
+    dataset.gamma.attrs["units"] = "1"
+    dataset.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
+    dataset.prior_err_bc.attrs["units"] = "ppb"
+    dataset.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
+    dataset.prior_err_oh.attrs["units"] = "1"
+    dataset.prior_err_buffer.attrs["long_name"] = "Prior error for buffer elements"
+    dataset.prior_err_buffer.attrs["units"] = "1"
+
+    # Calculate the mean of the ensemble as the main result
     dataset_mean = dataset.mean(dim="ensemble")
 
     dataset.to_netcdf(
