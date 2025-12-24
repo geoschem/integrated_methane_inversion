@@ -101,6 +101,7 @@ conditional_dict["ReducedDimensionStateVector"] = [
     "EmissionRateFilter",
     "PlumeCountFilter",
     "GroupByCountry",
+    "CountryMaskPath"
 ]
 conditional_dict["PrecomputedJacobian"] = [
     "ReferenceRunDir",

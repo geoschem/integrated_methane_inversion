@@ -852,28 +852,42 @@ def get_mean_emissions(start_date, end_date, prior_cache_path):
     """
     Calculate the mean emissions for the specified date range.
     """
-    # find all prior files in the specified date range
-    prior_files = [
-        f for f in os.listdir(prior_cache_path)
-        if "HEMCO_sa_diagnostics" in f or "GEOSChem.Emissions" in f
-    ]
-    prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
+    save_pth = os.path.join(prior_cache_path, f"PriorEmissions.{start_date}-{end_date}.mean.nc4")
+    if os.path.exists(save_path):
+        prior_ds = xr.open_dataset(save_pth)
+    else:
+        # find all prior files in the specified date range
+        prior_files = [
+            f for f in os.listdir(prior_cache_path)
+            if "HEMCO_sa_diagnostics" in f or "GEOSChem.Emissions" in f
+        ]
+        prior_files = filter_prior_files(prior_files, str(start_date), str(end_date))
 
-    # drop anchor with duplicate dimensions of ncontact from GCHP outputs
-    hemco_diags = []
-    for f in prior_files:
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
-            ds = xr.load_dataset(os.path.join(prior_cache_path, f))
+        # drop anchor with duplicate dimensions of ncontact from GCHP outputs
+        hemco_diags = []
+        for f in prior_files:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+                ds = xr.load_dataset(os.path.join(prior_cache_path, f))
 
-        if 'anchor' in ds.data_vars:
-            ds = ds.drop_vars('anchor')
-        hemco_diags.append(ds)
+            if 'anchor' in ds.data_vars:
+                ds = ds.drop_vars('anchor')
+            hemco_diags.append(ds)
 
-    # concatenate all datasets and aggregate into the mean prior
-    # emissions for the specified date range
-    prior_ds = xr.concat(hemco_diags, dim="time")
-    return prior_ds.mean(dim=["time"])
+        # concatenate all datasets and aggregate into the mean prior
+        # emissions for the specified date range
+        prior_ds = xr.concat(hemco_diags, dim="time").mean(dim=["time"])
+        
+        # save to netCDF file
+        
+        print("Saving file {}".format(save_pth))
+        prior_ds.to_netcdf(
+            save_pth,
+            encoding={
+                v: {"zlib": True, "complevel": 1} for v in prior_ds.data_vars
+            },
+        )
+    return prior_ds
 
 
 def get_period_mean_emissions(prior_cache_path, period, periods_csv_path):

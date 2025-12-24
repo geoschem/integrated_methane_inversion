@@ -105,7 +105,7 @@ reduce_dimension() {
     fi
 
     # conditionally add period_i to python args
-    python_args=($aggregation_file $ConfigPath $state_vector_path $preview_dir $tropomi_cache)
+    python_args=($aggregation_file $ConfigPath $native_state_vector_path $state_vector_path $preview_dir $tropomi_cache)
     archive_sv=false
     if ("$KalmanMode" && "$DynamicKFClustering"); then
         if [ -n "$period_i" ]; then
@@ -116,23 +116,7 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
-    if "$UseSlurm"; then
-        rm -f .aggregation_error.txt
-        chmod +x $aggregation_file
-        sbatch --mem $RequestedMemory \
-            -c $RequestedCPUs \
-            -t $RequestedTime \
-            -p $SchedulerPartition \
-            -o imi_output.tmp \
-            -W "${python_args[@]}"
-        wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
-        rm imi_output.tmp
-        # check for any errors
-        [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
-    else
-        python "${python_args[@]}"
-    fi
+    python "${python_args[@]}"
 
     # archive state vector file if using Kalman filter
     if "$archive_sv"; then

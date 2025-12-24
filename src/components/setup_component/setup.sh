@@ -320,7 +320,7 @@ setup_imi() {
     ## Reduce state vector dimension
     ##=======================================================================
     if "$ReducedDimensionStateVector"; then
-        reduce_dimension # to do: adapt to GCHP
+        reduce_dimension
     fi
 
     ##=======================================================================
