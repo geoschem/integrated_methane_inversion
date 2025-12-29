@@ -124,19 +124,16 @@ def get_regrid_weights_jacobian_row(config, inv_directory, GC_index, ref_config,
 
     return W_ordered
 
-def sum_and_sort_along_statevector(val, sv, fill_value=np.nan):
+def sum_and_sort_along_statevector(val, sv, fill_value=-9999):
     # This is useful for getting state vector area
-    if np.isnan(fill_value):
-        mask = ~np.isnan(sv)
-    else:
-        mask = sv != fill_value
+    mask = np.isfinite(sv) & (sv != fill_value)
     sv_valid = sv[mask]
     val_valid = val[mask]
     _, inv = np.unique(sv_valid, return_inverse=True)
     sv_val = np.bincount(inv, weights=val_valid)
     return sv_val
 
-def median_and_sort_along_statevector(val, sv, fill_value=np.nan):
+def median_and_sort_along_statevector(val, sv, fill_value=-9999):
     """
     Compute the median of values grouped by state vector ID.
 
@@ -163,11 +160,7 @@ def median_and_sort_along_statevector(val, sv, fill_value=np.nan):
     sv = np.asarray(sv)
 
     # --- Mask invalid entries ---
-    if np.isnan(fill_value):
-        mask = ~np.isnan(sv)
-    else:
-        mask = sv != fill_value
-
+    mask = np.isfinite(sv) & (sv != fill_value)
     sv_valid = sv[mask].astype(np.int64, copy=False)
     val_valid = val[mask]
 
@@ -370,7 +363,7 @@ def get_jacobian_scale(config, inv_directory, prior, sort_by_sv=False):
         area = grid_ds['area'].values.copy() # m2
         if sort_by_sv:
             # sum and sort area over state vector IDs
-            area = sum_and_sort_along_statevector(area, sv, np.nan)
+            area = sum_and_sort_along_statevector(area, sv)
     
     # --- avoid division by zero ---
     # Identify where prior == 0
@@ -381,7 +374,18 @@ def get_jacobian_scale(config, inv_directory, prior, sort_by_sv=False):
 
     # Compute only for valid (nonzero) entries
     valid_mask = ~zero_mask
-    sf_K[valid_mask] = 1.0 / prior[valid_mask] / area[valid_mask]
+    try:
+        sf_K[valid_mask] = 1.0 / prior[valid_mask] / area[valid_mask]
+    except Exception as e:
+        print(f"\n=== ERROR in get_jacobian_scale for {inv_directory} ===", flush=True)
+        print("Inventory / Jacobian scale diagnostics:", flush=True)
+        print(f"  prior.shape       = {np.shape(prior)}", flush=True)
+        print(f"  area.shape        = {np.shape(area)}", flush=True)
+        print(f"  sv.shape          = {np.shape(sv)}", flush=True)
+        print(f"  valid_mask.shape  = {np.shape(valid_mask)}", flush=True)
+
+        if prior.size != area.size:
+            print(f"Shape mismatch between prior and area", flush=True)
 
     sf_K = np.nan_to_num(sf_K, nan=1.0)
     
@@ -506,11 +510,8 @@ def regrid_jacobian_row_col(
     # scale each row by 1/dst_scale,
     # sort and sum value over state vector elements
     sv_fpath = os.path.join(os.path.expandvars(inv_directory), 'StateVector.nc')
-    with xr.open_dataset(sv_fpath).squeeze() as sv_ds:
-        sv = sv_ds['StateVector'].values
-        sv_lat = sv_ds['lat'].values
-        sv_lon = sv_ds['lon'].values
-        sv_lon[sv_lon>180] -= 360
+    sv_ds = xr.open_dataset(sv_fpath).squeeze("time")
+    sv = sv_ds['StateVector'].values
 
     flat_sv = sv.ravel(order="C")
     dst_mask = flat_sv > 0
@@ -562,32 +563,36 @@ def regrid_jacobian_row_col(
     # Note: dst IDs may have duplicates (clusters)
     dst_ids_raw = flat_sv[dst_mask].astype(np.int64, copy=False) # (n_dst_sv, )
     
-    # remove the one more grid cell along each domain edge
-    res = config['Res']
-    sv_lonm, sv_latm = np.meshgrid(sv_lon, sv_lat)
-    sv_lonm = sv_lonm.ravel(order="C")[dst_mask]
-    sv_latm = sv_latm.ravel(order="C")[dst_mask]
-    # initialize shaved off degrees
-    degx = 0
-    degy = 0
-    if config['isRegional']:
-        if "0.125x0.15625" in res:
-            degx = 4 * 0.15625
-            degy = 4 * 0.125
-        elif "0.25x0.3125" in res:
-            degx = 4 * 0.3125
-            degy = 4 * 0.25
-        elif "0.5x0.625" in res:
-            degx = 4 * 0.625
-            degy = 4 * 0.5
-    xlim = [sv_lon.min() + degx, sv_lon.max() - degx]
-    ylim = [sv_lat.min() + degy, sv_lat.max() - degy]
-    # set to nan for grid cells within the [4 4 4 4] grid cells along each regional domain edge
-    indices = np.where(
-        (sv_lonm < xlim[0]) | (sv_lonm > xlim[1]) |
-        (sv_latm < ylim[0]) | (sv_latm > ylim[1])
-    )[0]
-    jacobian_row_col[:, indices] = np.nan
+    if not config['UseGCHP']:
+        res = config['Res']
+        sv_lat = sv_ds['lat'].values
+        sv_lon = sv_ds['lon'].values
+        sv_lon[sv_lon>180] -= 360
+        sv_lonm, sv_latm = np.meshgrid(sv_lon, sv_lat)
+        sv_lonm = sv_lonm.ravel(order="C")[dst_mask]
+        sv_latm = sv_latm.ravel(order="C")[dst_mask]
+        # initialize shaved off degrees
+        degx = 0
+        degy = 0
+        # remove one more grid cell along each domain edge for regional case
+        if config['isRegional']:
+            if "0.125x0.15625" in res:
+                degx = 4 * 0.15625
+                degy = 4 * 0.125
+            elif "0.25x0.3125" in res:
+                degx = 4 * 0.3125
+                degy = 4 * 0.25
+            elif "0.5x0.625" in res:
+                degx = 4 * 0.625
+                degy = 4 * 0.5
+        xlim = [sv_lon.min() + degx, sv_lon.max() - degx]
+        ylim = [sv_lat.min() + degy, sv_lat.max() - degy]
+        # set to nan for grid cells within the [4 4 4 4] grid cells along each regional domain edge
+        indices = np.where(
+            (sv_lonm < xlim[0]) | (sv_lonm > xlim[1]) |
+            (sv_latm < ylim[0]) | (sv_latm > ylim[1])
+        )[0]
+        jacobian_row_col[:, indices] = np.nan
     jacobian_row_col_sv, _ = aggregate_jacobian_along_dst_sv(jacobian_row_col, dst_ids_raw)
     
     return jacobian_row_col_sv # (n_dst_obs, n_dst_sv_u)

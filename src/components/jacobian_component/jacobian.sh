@@ -72,7 +72,6 @@ setup_jacobian() {
         fi
     elif "$OnlyEmisPrecomputedK"; then
         # need to set up prior, and optionally (optimizeBCs, and optimizeOH) run directories
-        nRuns=$numStandaloneRuns
         # add one more run for RunName_0001 with SpeciesConcVV_CH4
         nRuns=$(($numStandaloneRuns + 1))
     else

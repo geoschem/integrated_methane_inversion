@@ -100,4 +100,4 @@ def get_point_source_coordinates(config):
     # append point sources
     coords = coords + plumes
 
-    return coords
+    return coords # [lat, lon]

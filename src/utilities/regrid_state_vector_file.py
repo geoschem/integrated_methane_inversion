@@ -94,7 +94,7 @@ def regrid_state_vector_file(config, grid_sv_ds):
     RunDirs=f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}"
     CSgridDir=f"{RunDirs}/CS_grids"
     
-    ref_sv_fpath = config['StateVectorFile']
+    ref_sv_fpath = config['ReferenceStateVectorFile']
     # do not interpret fillvalue as nan, so that regridded state vector 
     # would have value when it contains nan values but not all as nan
     with xr.open_dataset(ref_sv_fpath, mask_and_scale=False) as tmp:

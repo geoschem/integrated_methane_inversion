@@ -848,12 +848,12 @@ def filter_prior_files(filenames, start_date, end_date):
     return filtered_files
 
 
-def get_mean_emissions(start_date, end_date, prior_cache_path):
+def get_mean_emissions(start_date, end_date, prior_cache_path, save_mean_prior=False):
     """
     Calculate the mean emissions for the specified date range.
     """
     save_pth = os.path.join(prior_cache_path, f"PriorEmissions.{start_date}-{end_date}.mean.nc4")
-    if os.path.exists(save_path):
+    if os.path.exists(save_pth):
         prior_ds = xr.open_dataset(save_pth)
     else:
         # find all prior files in the specified date range
@@ -879,14 +879,14 @@ def get_mean_emissions(start_date, end_date, prior_cache_path):
         prior_ds = xr.concat(hemco_diags, dim="time").mean(dim=["time"])
         
         # save to netCDF file
-        
-        print("Saving file {}".format(save_pth))
-        prior_ds.to_netcdf(
-            save_pth,
-            encoding={
-                v: {"zlib": True, "complevel": 1} for v in prior_ds.data_vars
-            },
-        )
+        if save_mean_prior:
+            print("Saving file {}".format(save_pth))
+            prior_ds.to_netcdf(
+                save_pth,
+                encoding={
+                    v: {"zlib": True, "complevel": 1} for v in prior_ds.data_vars
+                },
+            )
     return prior_ds
 
 

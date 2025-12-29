@@ -90,17 +90,28 @@ PointSourceDatasets: ["SRON"]
 ## Clustering Options
 ReducedDimensionStateVector: false
 DynamicKFClustering: false
-ClusteringMethod: "kmeans"
-NumberOfElements: 1000
-ForcedNativeResolutionElements:
-  - [31.5, -104]
+ClusteringMethod: "mini-batch-kmeans"
+NumberOfElements: 10000
+# emission rate threshold in unit of kg/hr
 EmissionRateFilter: 2500
-PlumeCountFilter: 50
-GroupByCountry: false
+PlumeCountFilter: 0
+GroupByCountry: true
+CountryMaskPath: "/n/holylfs06/LABS/jacob_lab2/Lab/dzhang8/supportData/mask/country_id_mask_01x01.nc4"
+ClusteringThreshold: 0.7
+MaxClusterSize: 64
 
 ## Custom state vector
 StateVectorFile: "/path/to/StateVector.nc"
 ShapeFile: "None"
+# Option to be used when the reference state vector file is defined on different grid(s).
+# When they are on different grids, we still enable CreateAutomaticRectilinearStateVectorFile to 
+# fascilitate the regridding process.
+RegridStateVector: false
+# Reference state vector file (e.g., state vector file for ensemble stretched GCHP)
+ReferenceStateVectorFile: "/n/holylfs06/LABS/jacob_lab2/Lab/dzhang8/imi-gchp-test/imi-gchp-precomputedK/StateVector_c36_s10.0_combined.nc"
+# The directory containing the grid spec files for the state vector grids, 
+# which are needed for regridding
+ReferenceSVTileGridDir: "/n/holylfs06/LABS/jacob_lab2/Lab/dzhang8/imi-gchp-test/git-code-supData/sup_data"
 
 ## Inversion
 ## Notes:

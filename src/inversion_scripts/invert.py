@@ -136,7 +136,7 @@ def do_inversion(
             ref_dir_basename = os.path.basename(ref_directory_path_list[0])
             ref_dir_prename = re.sub(r'\d+$', '', ref_dir_basename)
             
-            ref_sv_fpath = config['StateVectorFile']
+            ref_sv_fpath = config['ReferenceStateVectorFile']
             if config['isRegional']:
                 ref_sv_fname = os.path.basename(ref_sv_fpath).replace('combined', 'subset')
                 ref_sv_fpath = f"{CSgridDir}/{ref_sv_fname}"
@@ -286,8 +286,10 @@ def do_inversion(
                     ref_dir = os.path.join(ref_parent_dir, ref_RunName)
                     ref_config_path = os.path.join(ref_dir, f"config_{ref_RunName}.yml")
                     ref_config = yaml.load(open(ref_config_path), Loader=yaml.FullLoader)
-                    assert (ref_sv_ds['TARGET_LAT'].values[ti]==ref_config['TARGET_LAT']) \
-                        and (ref_sv_ds['TARGET_LON'].values[ti]==ref_config['TARGET_LON']), \
+                    assert (
+                        np.isclose(ref_sv_ds['TARGET_LAT'].values[ti], ref_config['TARGET_LAT']) and
+                        np.isclose(ref_sv_ds['TARGET_LON'].values[ti], ref_config['TARGET_LON'])
+                    ), \
                         f"The TARGET_LAT/LON in the reference directory is not consistent with the reference config \
                         for {ref_RunName} with target_face id of {target_face[ti]+1} \
                         (TARGET_LAT: {ref_sv_ds['TARGET_LAT'].values[ti]:.2f} vs. {ref_config['TARGET_LAT']:.2f}, \

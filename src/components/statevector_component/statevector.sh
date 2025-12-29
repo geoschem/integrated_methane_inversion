@@ -86,6 +86,8 @@ create_statevector() {
 # Usage:
 #   reduce_dimension
 reduce_dimension() {
+    set -euo pipefail
+
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
     # set input variables
@@ -116,7 +118,27 @@ reduce_dimension() {
 
     # if running end to end script with sbatch then use
     # sbatch to take advantage of multiple cores
-    python "${python_args[@]}"
+    if "$UseSlurm"; then
+        rm -f .aggregation_error.txt
+        chmod +x $aggregation_file
+        AggCPUs="${InversionCPUs:-$RequestedCPUs}"
+        sbatch --mem $RequestedMemory \
+            -c $AggCPUs \
+            -t $RequestedTime \
+            -p $SchedulerPartition \
+            -o imi_output.tmp \
+            -W "${python_args[@]}"
+        wait
+        cat imi_output.tmp >>${InversionPath}/imi_output.log
+        rm imi_output.tmp
+        # check for any errors
+        [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO
+    else
+        python "${python_args[@]}" || {
+            echo "ERROR: aggregation.py failed"
+            return 1
+        }
+    fi
 
     # archive state vector file if using Kalman filter
     if "$archive_sv"; then
@@ -139,7 +161,7 @@ reduce_dimension() {
 }
 
 regrid_statevector(){
-    printf "\n=== REGRID STATE VECTOR at ${StateVectorFile} to CURRENT GRID ===\n"
+    printf "\n=== REGRID STATE VECTOR at ${ReferenceStateVectorFile} to CURRENT GRID ===\n"
     
     # get the input path for state vector
     read LandCoverFile HemcoDiagFile < <(prepare_statevector_inputs)
@@ -155,5 +177,5 @@ regrid_statevector(){
     printf "\nCalling regrid_state_vector_file.py\n"
     python regrid_state_vector_file.py $ConfigPath $LandCoverFile $HemcoDiagFile $StateVectorFName
 
-    printf "\n=== DONE REGRID STATE VECTOR at ${StateVectorFile} to CURRENT GRID ===\n"
+    printf "\n=== DONE REGRID STATE VECTOR at ${ReferenceStateVectorFile} to CURRENT GRID ===\n"
 }

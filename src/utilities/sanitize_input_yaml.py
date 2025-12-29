@@ -127,7 +127,7 @@ conditional_dict["STRETCH_GRID"] = [
     "TARGET_LAT",
     "TARGET_LON"
 ]
-conditional_dict["RegridStateVector"] = ["ReferenceSVTileGridDir"]
+conditional_dict["RegridStateVector"] = ["ReferenceSVTileGridDir", "ReferenceStateVectorFile"]
 
 def raise_error_message(var):
     """

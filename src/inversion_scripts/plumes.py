@@ -219,7 +219,7 @@ class PointSources:
         Get y,x (lat,lon) coordinates for point sources
         from all datasets. Non-nan points only.
 
-        Returns: list of [y,x] coordinates in [lon,lat]
+        Returns: list of [y,x] coordinates in [lat,lon]
         """
         if self.points is None:
             return []
@@ -246,7 +246,7 @@ class PointSources:
 
         Returns
         -------
-        list of [y,x] coordinates in [lon,lat]
+        list of [y,x] coordinates in [lat,lon]
 
         """
         if self.grid_ds is None:
@@ -278,8 +278,8 @@ class PointSources:
             latvals = ds_mean["lat"].values[valid]
             lonvals = ds_mean["lon"].values[valid]
 
-            # stack as [lon,lat] list
-            coords = np.stack([lonvals, latvals], axis=1).tolist()
+            # stack as [lat,lon] list
+            coords = np.stack([latvals, lonvals], axis=1).tolist()
             return coords
 
 
