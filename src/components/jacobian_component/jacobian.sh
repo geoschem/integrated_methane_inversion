@@ -73,7 +73,7 @@ setup_jacobian() {
     elif "$OnlyEmisPrecomputedK"; then
         # need to set up prior, and optionally (optimizeBCs, and optimizeOH) run directories
         # add one more run for RunName_0001 with SpeciesConcVV_CH4
-        nRuns=$(($numStandaloneRuns + 1))
+        nRuns=$((numStandaloneRuns + 1))
     else
         # only need to set up the prior run directory
         nRuns=0
@@ -220,9 +220,11 @@ create_simulation_dir() {
     # Determine which elements are BC perturbations
     BC_elem=false
     if [[ "$PrecomputedJacobian" == "true" ]] && \
-       [[ "$OnlyEmisPrecomputedK" == "true" ]] && \
-       [[ "$OptimizeBCs" == "true" ]]; then 
-        bcThreshold=1
+       [[ "$OnlyEmisPrecomputedK" == "true" ]]; then 
+        bcThreshold=$nRuns
+        if "$OptimizeBCs"; then
+            bcThreshold=1
+        fi
     else
         bcThreshold=$nElements
         if "$OptimizeBCs"; then
@@ -241,8 +243,7 @@ create_simulation_dir() {
     # Determine which element (if any) is an OH perturbation
     OH_elem=false
     if [[ "$PrecomputedJacobian" == "true" ]] && \
-       [[ "$OnlyEmisPrecomputedK" == "true" ]] && \
-       [[ "$OptimizeBCs" == "true" ]]; then 
+       [[ "$OnlyEmisPrecomputedK" == "true" ]]; then 
         ohThreshold=$nRuns
         if "$OptimizeOH"; then
             if "$isRegional"; then
@@ -454,8 +455,7 @@ create_simulation_dir() {
             # special case for adding one more bc_base run
             if ! [[ $x -eq 1 && \
                 "$PrecomputedJacobian" == "true" && \
-                "$OnlyEmisPrecomputedK" == "true" && \
-                "$OptimizeBCs" == "true" ]]; then
+                "$OnlyEmisPrecomputedK" == "true" ]]; then
 
                 # modify the link to executable to the one with capped number of Jacobian tracers
                 num_tracer=$(( end_element - start_element + 1 ))
