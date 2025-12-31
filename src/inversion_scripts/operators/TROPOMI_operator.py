@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import xarray as xr
+import dask
 import pandas as pd
 import datetime
 import gc
@@ -1166,56 +1167,58 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
-        with xr.open_dataset(filename, chunks='auto') as gc_data_all:
-            if gc_data_all.sizes.get("time", 0) == 0:
-                print(f"ERROR: {filename}: empty time dimension", flush=True)
-            if UseGCHP:
-                nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
-                Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
-                Xdimi = xr.DataArray(gridcell_dict["Xdimi"], dims="obs")
-    
-                gc_data = gc_data_all.isel(
-                    time=0).squeeze().isel(
-                    nf=nfi,
-                    Ydim=Ydimi,
-                    Xdim=Xdimi,
-                    drop=True
-                )
-            else:
-                jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
-                iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
-                gc_data = gc_data_all.isel(
-                    time=0).squeeze().isel(
-                    lat=jGC,
-                    lon=iGC,
-                    drop=True
-                )
-            CH4 = gc_data["SpeciesConcVV_CH4"].transpose("obs","lev").values
+        with dask.config.set({"array.slicing.split_large_chunks": False}):
+            with xr.open_dataset(filename, chunks='auto') as gc_data_all:
+                if gc_data_all.sizes.get("time", 0) == 0:
+                    print(f"ERROR: {filename}: empty time dimension", flush=True)
+                if UseGCHP:
+                    nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
+                    Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
+                    Xdimi = xr.DataArray(gridcell_dict["Xdimi"], dims="obs")
+        
+                    gc_data = gc_data_all.isel(
+                        time=0).squeeze().isel(
+                        nf=nfi,
+                        Ydim=Ydimi,
+                        Xdim=Xdimi,
+                        drop=True
+                    )
+                else:
+                    jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
+                    iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
+                    gc_data = gc_data_all.isel(
+                        time=0).squeeze().isel(
+                        lat=jGC,
+                        lon=iGC,
+                        drop=True
+                    )
+                CH4 = gc_data["SpeciesConcVV_CH4"].transpose("obs","lev").values
 
     # Read PEDGE from the LevelEdgeDiags collection
     filename = f"{gc_cache}/{file_pedge}"
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
-        with xr.open_dataset(filename, chunks='auto') as gc_data_all:
-            if gc_data_all.sizes.get("time", 0) == 0:
-                print(f"ERROR: {filename}: empty time dimension", flush=True)
-            if UseGCHP:
-                gc_data = gc_data_all.isel(
-                    time=0).squeeze().isel(
-                    nf=nfi,
-                    Ydim=Ydimi,
-                    Xdim=Xdimi,
-                    drop=True
-                )
-            else:
-                gc_data = gc_data_all.isel(
-                    time=0).squeeze().isel(
-                    lat=jGC,
-                    lon=iGC,
-                    drop=True
-                )
-            lev_dim = "lev" if "lev" in gc_data["Met_PEDGE"].dims else "ilev"
-            PEDGE = gc_data["Met_PEDGE"].transpose("obs", lev_dim).values
+        with dask.config.set({"array.slicing.split_large_chunks": False}):
+            with xr.open_dataset(filename, chunks='auto') as gc_data_all:
+                if gc_data_all.sizes.get("time", 0) == 0:
+                    print(f"ERROR: {filename}: empty time dimension", flush=True)
+                if UseGCHP:
+                    gc_data = gc_data_all.isel(
+                        time=0).squeeze().isel(
+                        nf=nfi,
+                        Ydim=Ydimi,
+                        Xdim=Xdimi,
+                        drop=True
+                    )
+                else:
+                    gc_data = gc_data_all.isel(
+                        time=0).squeeze().isel(
+                        lat=jGC,
+                        lon=iGC,
+                        drop=True
+                    )
+                lev_dim = "lev" if "lev" in gc_data["Met_PEDGE"].dims else "ilev"
+                PEDGE = gc_data["Met_PEDGE"].transpose("obs", lev_dim).values
 
     n_superobs = len(gridcell_dict)
     virtual_tropomi = np.empty([n_superobs, ], dtype=np.float32)
@@ -1428,63 +1431,64 @@ def get_virtual_tropomi_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n
     # Open only these variables
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
-        with xr.open_dataset(
-            filepath,
-            drop_variables=other_vars,
-            chunks="auto"
-        ) as dsmf_all:
-            try:
-                if dsmf_all.sizes.get("time", 0) == 0:
-                    print(f"ERROR: {filepath}: empty time dimension", flush=True)
-                if config['UseGCHP']:
-                    nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
-                    Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
-                    Xdimi = xr.DataArray(gridcell_dict["Xdimi"], dims="obs")
-                    dsmf = dsmf_all.isel(
-                        time=gc_date.hour).squeeze().isel( 
-                        nf=nfi,
-                        Ydim=Ydimi,
-                        Xdim=Xdimi,
-                        drop=True
-                    )
-                else:
-                    jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
-                    iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
-                    dsmf = dsmf_all.isel(
-                        time=gc_date.hour).squeeze().isel( 
-                        lat=jGC,
-                        lon=iGC,
-                        drop=True
-                    )
-            except Exception as e:
-                print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
-                raise
-            
-            # ---- Batch read all CH4 tracers and standardize to (elem, obs, lev)
-            da_list = []
-            for v in keepvars:
-                da = dsmf[v]
-                # Ensure shape is (obs, lev)
-                arr = da.transpose("obs","lev").values
-                da_list.append(arr)
-            CH4_all = np.stack(da_list, axis=0)   # (elem, obs, lev)
+        with dask.config.set({"array.slicing.split_large_chunks": False}):
+            with xr.open_dataset(
+                filepath,
+                drop_variables=other_vars,
+                chunks="auto"
+            ) as dsmf_all:
+                try:
+                    if dsmf_all.sizes.get("time", 0) == 0:
+                        print(f"ERROR: {filepath}: empty time dimension", flush=True)
+                    if config['UseGCHP']:
+                        nfi   = xr.DataArray(gridcell_dict["nfi"],   dims="obs")
+                        Ydimi = xr.DataArray(gridcell_dict["Ydimi"], dims="obs")
+                        Xdimi = xr.DataArray(gridcell_dict["Xdimi"], dims="obs")
+                        dsmf = dsmf_all.isel(
+                            time=gc_date.hour).squeeze().isel( 
+                            nf=nfi,
+                            Ydim=Ydimi,
+                            Xdim=Xdimi,
+                            drop=True
+                        )
+                    else:
+                        jGC   = xr.DataArray(gridcell_dict["jGC"],   dims="obs")
+                        iGC   = xr.DataArray(gridcell_dict["iGC"],   dims="obs")
+                        dsmf = dsmf_all.isel(
+                            time=gc_date.hour).squeeze().isel( 
+                            lat=jGC,
+                            lon=iGC,
+                            drop=True
+                        )
+                except Exception as e:
+                    print(f"Run id {run_id}. Failed at {gc_date} with error: {e}", flush=True)
+                    raise
+                
+                # ---- Batch read all CH4 tracers and standardize to (elem, obs, lev)
+                da_list = []
+                for v in keepvars:
+                    da = dsmf[v]
+                    # Ensure shape is (obs, lev)
+                    arr = da.transpose("obs","lev").values
+                    da_list.append(arr)
+                CH4_all = np.stack(da_list, axis=0)   # (elem, obs, lev)
 
-            dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # (N, S)
-            apriori = gridcell_dict["apriori"]                        # (N, S)
-            avkern = gridcell_dict["avkern"]                          # (N, S)
-            denom = np.sum(dry_air_subcolumns, axis=1)                # (N,)
+                dry_air_subcolumns = gridcell_dict["dry_air_subcolumns"]  # (N, S)
+                apriori = gridcell_dict["apriori"]                        # (N, S)
+                avkern = gridcell_dict["avkern"]                          # (N, S)
+                denom = np.sum(dry_air_subcolumns, axis=1)                # (N,)
 
-            # ---- Remap levels to TROPOMI layers in batch:
-            # vertical_weights: (N, S, G)
-            # CH4_all:          (E, N, G)
-            # -> sat_CH4_all:   (E, N, S)
-            sat_CH4_all = np.einsum("nsg,eng->ens", vertical_weights, CH4_all)
+                # ---- Remap levels to TROPOMI layers in batch:
+                # vertical_weights: (N, S, G)
+                # CH4_all:          (E, N, G)
+                # -> sat_CH4_all:   (E, N, S)
+                sat_CH4_all = np.einsum("nsg,eng->ens", vertical_weights, CH4_all)
 
-            # Convert to column units and apply AKs, batched over E
-            sat_CH4_molm2_all = sat_CH4_all * dry_air_subcolumns[None, :, :]  # (E, N, S)
-            numer_all = np.sum(apriori[None, :, :] +
-                            avkern[None, :, :] * (sat_CH4_molm2_all - apriori[None, :, :]),
-                            axis=2)  # (E, N)
-            virtual_tropomi_all = (numer_all / denom[None, :]).T.astype(np.float32)  # (N, E)
+                # Convert to column units and apply AKs, batched over E
+                sat_CH4_molm2_all = sat_CH4_all * dry_air_subcolumns[None, :, :]  # (E, N, S)
+                numer_all = np.sum(apriori[None, :, :] +
+                                avkern[None, :, :] * (sat_CH4_molm2_all - apriori[None, :, :]),
+                                axis=2)  # (E, N)
+                virtual_tropomi_all = (numer_all / denom[None, :]).T.astype(np.float32)  # (N, E)
 
     return virtual_tropomi_all # unitless mixing ratio
