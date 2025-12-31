@@ -311,10 +311,15 @@ def aggregate_jacobian_along_dst_sv(jacobian_row_col, dst_ids_raw):
     counts  = np.add.reduceat(mask.view(np.int8), idx_start, axis=1)
 
     # If a whole group was all-NaN, keep it NaN instead of 0
-    J_sum[counts == 0] = np.nan
-    J_agg = J_sum
+    if np.any(counts == 0):
+        bad_rows, bad_cols = np.where(counts == 0)
+        raise RuntimeError(
+            "Jacobian aggregation error: found destination SV groups with no "
+            "finite Jacobian contributions.\n"
+            f"First occurrence: row={bad_rows[0]}, dst_sv_id={dst_ids_unique[bad_cols[0]]}"
+        )
 
-    return J_agg, dst_ids_unique
+    return J_sum, dst_ids_unique
 
 def get_jacobian_scale(config, inv_directory, prior, sort_by_sv=False):
     # If there is state vector clustering:
@@ -563,36 +568,8 @@ def regrid_jacobian_row_col(
     # Note: dst IDs may have duplicates (clusters)
     dst_ids_raw = flat_sv[dst_mask].astype(np.int64, copy=False) # (n_dst_sv, )
     
-    if not config['UseGCHP']:
-        res = config['Res']
-        sv_lat = sv_ds['lat'].values
-        sv_lon = sv_ds['lon'].values
-        sv_lon[sv_lon>180] -= 360
-        sv_lonm, sv_latm = np.meshgrid(sv_lon, sv_lat)
-        sv_lonm = sv_lonm.ravel(order="C")[dst_mask]
-        sv_latm = sv_latm.ravel(order="C")[dst_mask]
-        # initialize shaved off degrees
-        degx = 0
-        degy = 0
-        # remove one more grid cell along each domain edge for regional case
-        if config['isRegional']:
-            if "0.125x0.15625" in res:
-                degx = 4 * 0.15625
-                degy = 4 * 0.125
-            elif "0.25x0.3125" in res:
-                degx = 4 * 0.3125
-                degy = 4 * 0.25
-            elif "0.5x0.625" in res:
-                degx = 4 * 0.625
-                degy = 4 * 0.5
-        xlim = [sv_lon.min() + degx, sv_lon.max() - degx]
-        ylim = [sv_lat.min() + degy, sv_lat.max() - degy]
-        # set to nan for grid cells within the [4 4 4 4] grid cells along each regional domain edge
-        indices = np.where(
-            (sv_lonm < xlim[0]) | (sv_lonm > xlim[1]) |
-            (sv_latm < ylim[0]) | (sv_latm > ylim[1])
-        )[0]
-        jacobian_row_col[:, indices] = np.nan
     jacobian_row_col_sv, _ = aggregate_jacobian_along_dst_sv(jacobian_row_col, dst_ids_raw)
     
+    assert not np.isnan(jacobian_row_col_sv).any(), \
+        "NaNs found in jacobian_row_col_sv"
     return jacobian_row_col_sv # (n_dst_obs, n_dst_sv_u)

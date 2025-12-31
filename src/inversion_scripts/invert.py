@@ -78,8 +78,8 @@ def do_inversion(
 
     """
     # boolean for whether we are optimizing boundary conditions
-    optimize_bc = prior_err_bc > 0.0
-    optimize_oh = prior_err_oh > 0.0
+    optimize_bc = config["OptimizeBCs"]
+    optimize_oh = config["OptimizeOH"]
 
     # Need to ignore data in the GEOS-Chem 3 3 3 3 buffer zone
     # Shave off one or two degrees of latitude/longitude from each side of the domain
@@ -150,7 +150,7 @@ def do_inversion(
             
             target_face = ref_sv_ds['target_face'].values
             num_ref_dir = len(target_face)
-
+            print(f"Number for reference directories containing precomputed Jacobian: {num_ref_dir}")
             # get all reference prior emissions sorted by reference state vector
             for i in range(num_ref_dir):
                 # reference directory naming is 1-based
@@ -314,7 +314,6 @@ def do_inversion(
                     jacobian_regridding_weights_row = get_regrid_weights_jacobian_row(config, RunDirs, GC_index, ref_config, ref_GC_index)
                     jacobian_RegridRow_temp = jacobian_regridding_weights_row.dot(jacobian_ref).astype('float32')
                     jacobian_RegridRow.append(jacobian_RegridRow_temp)
-                    
                     # get inputs needed for regridding jacobian col
                     overlap_area_jacobian_ratio_src_temp, overlap_area_src_temp = get_regrid_weights_jacobian_col(config, RunDirs, ref_config, ref_dir, ref_prior_emis_sv[ti])
                     overlap_area_src.append(overlap_area_src_temp)
@@ -335,8 +334,11 @@ def do_inversion(
                     jacobian_RegridRow, overlap_area_jacobian_ratio_src, overlap_area_src, RunDirs, config, prior_emis
                 )
 
-                K_noemis = 1e9 * dat["K_noEmis"][ind, :]
-                K = np.concatenate((K_emis, K_noemis), axis=1)
+                if config["OptimizeBCs"] or config["OptimizeOH"]:
+                    K_noemis = 1e9 * dat["K_noEmis"][ind, :]
+                    K = np.concatenate((K_emis, K_noemis), axis=1)
+                else:
+                    K = K_emis
                 
                 if config.get('SaveRegriddedK', False):
                     regridded_K_path = fi.replace('data_converted', 'data_converted_regridded')

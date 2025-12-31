@@ -695,7 +695,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv_ds):
         cluster_by_country = False
 
     # ROI/buffer masks based on original labels
-    finite = np.isfinite(orig_sv_np)
+    finite = np.isfinite(orig_sv_np) & (orig_sv_np>0)
     buffer_threshold = int(np.nanmax(orig_sv_np)) - int(config["nBufferClusters"])
 
     is_buffer = finite & (orig_sv_np > buffer_threshold)
@@ -851,7 +851,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv_ds):
     # Compress buffer labels to follow reduced ROI range
     cluster_number_diff = int(last_ROI_element - current_max_label)
     buf = buffer_labels_np.copy()
-    buf_mask = np.isfinite(buf) & (buf > 0)
+    buf_mask = (buf > 0)
     buf[buf_mask] = buf[buf_mask] - cluster_number_diff
 
     # Merge: buffer where present, otherwise ROI labels
@@ -860,10 +860,10 @@ def update_sv_clusters(config, flat_sensi, orig_sv_ds):
     # Write output dataset
     refyear = 2000
     fillvalue = -9999
-
+    statevector_np = np.nan_to_num(statevector_np, nan=fillvalue)
     if config["UseGCHP"]:
         da_statevector = xr.DataArray(
-            np.where(np.isfinite(statevector_np), statevector_np, fillvalue)[None, ...],
+            statevector_np[None, ...],
             dims=["time", "nf", "Ydim", "Xdim"],
             coords=dict(
                 time=(["time"], [0.0]),
@@ -899,7 +899,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv_ds):
 
     else:
         da_statevector = xr.DataArray(
-            np.where(np.isfinite(statevector_np), statevector_np, fillvalue),
+            statevector_np,
             dims=orig_sv.dims,
             coords=orig_sv.coords,
             attrs=dict(units="1", missing_value=fillvalue, _FillValue=fillvalue),

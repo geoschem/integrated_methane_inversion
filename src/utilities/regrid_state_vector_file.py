@@ -203,7 +203,7 @@ def regrid_state_vector_file(config, grid_sv_ds):
         ref_sv_face = ref_sv_ds_face['StateVector'].values
         flat_ref_sv_face = ref_sv_face.ravel(order="C")
         
-        src_mask = flat_ref_sv_face > 0
+        src_mask = flat_ref_sv_face > 0 
         # sum over each target face where state vector ID > 0
         W = np.asarray(regrid_weights_csc[:, src_mask].sum(axis=1)).squeeze().astype('float32') # (n_dst, ) dense matrix
         # Sum regrid_weights along the target face
@@ -213,7 +213,7 @@ def regrid_state_vector_file(config, grid_sv_ds):
     # Find destination indices with any non-zero total weight and 
     # valid state vector IDs when creating normal state vector at the destination grid
     grid_sv = grid_sv_ds['StateVector'].values
-    regrid_sv_mask = ((regrid_weights_row_sum > 0).reshape(dst_shape)) & (grid_sv > 0) & (~np.isnan(grid_sv))
+    regrid_sv_mask = ((regrid_weights_row_sum > 0).reshape(dst_shape)) & (grid_sv > 0)
 
     if config['isRegional']:
         if config['UseGCHP']:
@@ -262,6 +262,7 @@ def regrid_state_vector_file(config, grid_sv_ds):
     
     refyear = 2000
     fillvalue = -9999
+    grid_sv_new = np.nan_to_num(grid_sv_new, nan=fillvalue)
     # Make dataset
     if config['UseGCHP']:
         gridfpath=f"{CSgridDir}/grids.c{config['CS_RES']}.nc"
