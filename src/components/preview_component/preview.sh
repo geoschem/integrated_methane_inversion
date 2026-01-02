@@ -41,7 +41,7 @@ run_preview() {
         # to use one node only for submitting preview job
         prevCPUs="${InversionCPUs:-$RequestedCPUs}"
         
-        rm -f .preview_error_status.txt
+        rm -f ${preview_dir}/.preview_error_status.txt
         chmod +x $preview_file
         sbatch --mem $RequestedMemory \
             -c $prevCPUs \
@@ -53,7 +53,7 @@ run_preview() {
         cat imi_output.tmp >>${InversionPath}/imi_output.log
         rm imi_output.tmp
         # check for any errors
-        [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO
+        [ ! -f "${preview_dir}/.preview_error_status.txt" ] || imi_failed $LINENO
     else
         python $preview_file $ConfigPath $state_vector_path $preview_dir $tropomi_cache
     fi

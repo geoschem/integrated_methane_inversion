@@ -30,7 +30,6 @@ from src.inversion_scripts.utils import (
     calculate_superobservation_error,
     get_mean_emissions,
     get_posterior_emissions,
-    sum_and_sort_along_statevector,
 )
 from src.inversion_scripts.operators.TROPOMI_operator import (
     read_tropomi,
@@ -41,6 +40,10 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
     build_kdtree,
     classify_obs_to_cs_grid,
     map_obs_to_CSgrid,
+)
+
+from src.inversion_scripts.regrid_precomputed_jacobian import(
+    sum_and_sort_along_statevector,
 )
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -299,6 +302,7 @@ def imi_preview(
             point_sources=get_point_source_coordinates(config),
             cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
             only_ROI=False,
+            is_regional=config["isRegional"],
         )
     else:
         plot_field(
@@ -316,6 +320,7 @@ def imi_preview(
             cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
             mask=mask if config["isRegional"] else None,
             only_ROI=False,
+            is_regional=config["isRegional"],
         )
     plt.savefig(
         os.path.join(preview_dir, "preview_prior_emissions.png"),
@@ -345,6 +350,7 @@ def imi_preview(
         cbar_label="Column mixing ratio (ppb)",
         mask=mask if config["isRegional"] else None,
         only_ROI=False,
+        is_regional=config["isRegional"],
     )
 
     plt.savefig(
@@ -371,6 +377,7 @@ def imi_preview(
         cbar_label="Albedo",
         mask=mask if config["isRegional"] else None,
         only_ROI=False,
+        is_regional=config["isRegional"],
     )
     plt.savefig(
         os.path.join(preview_dir, "preview_albedo.png"), bbox_inches="tight", dpi=150
@@ -392,6 +399,7 @@ def imi_preview(
         cbar_label="Number of observations",
         mask=mask if config["isRegional"] else None,
         only_ROI=False,
+        is_regional=config["isRegional"],
     )
     plt.savefig(
         os.path.join(preview_dir, "preview_observation_density.png"),
@@ -420,6 +428,7 @@ def imi_preview(
             only_ROI=True,
             state_vector_labels=state_vector_labels,
             last_ROI_element=last_ROI_element,
+            is_regional=config["isRegional"],
         )
     else:
         plot_field(
@@ -435,6 +444,7 @@ def imi_preview(
             only_ROI=True,
             state_vector_labels=state_vector_labels,
             last_ROI_element=last_ROI_element,
+            is_regional=config["isRegional"],
         )
     plt.savefig(
         os.path.join(preview_dir, "preview_state_vector.png"),
@@ -462,6 +472,7 @@ def imi_preview(
             only_ROI=True,
             state_vector_labels=state_vector_labels,
             last_ROI_element=last_ROI_element,
+            is_regional=config["isRegional"],
         )
     else:
         plot_field(
@@ -477,6 +488,7 @@ def imi_preview(
             only_ROI=True,
             state_vector_labels=state_vector_labels,
             last_ROI_element=last_ROI_element,
+            is_regional=config["isRegional"],
         )
     plt.savefig(
         os.path.join(preview_dir, "preview_estimated_sensitivities.png"),
@@ -798,6 +810,10 @@ def estimate_averaging_kernel(
 
         # convert the grouped DataFrame to an xarray Dataset
         daily_observation_counts = grouped.set_index(["lat", "lon", "date"]).to_xarray()
+        daily_observation_counts = daily_observation_counts.reindex(
+            lat=state_vector["lat"],
+            lon=state_vector["lon"],
+        ).transpose("date", "lat", "lon")
 
     # create a daily superobservation count as well
     daily_observation_counts["superobs_count"] = daily_observation_counts["obs_count"]
@@ -808,7 +824,7 @@ def estimate_averaging_kernel(
     )
     daily_observation_counts["obs_count"] = daily_observation_counts["obs_count"].fillna(0)
 
-    flux_per_sv, L, num_obs, m_superi = compute_sv_element_stats(
+    flux_per_sv, L, num_sv_elements, num_obs, m_superi = compute_sv_element_stats(
         state_vector_labels=state_vector_labels.values,
         areas=areas.values,
         prior=prior.values,
@@ -819,9 +835,12 @@ def estimate_averaging_kernel(
         sum_and_sort_along_statevector=sum_and_sort_along_statevector,
     )
 
-    if np.sum(num_obs) < 1:
+    tot_num_obs = np.sum(daily_observation_counts["obs_count"].values)
+    tot_num_superobs = np.sum(daily_observation_counts["superobs_count"].values)
+    if tot_num_obs < 1:
         sys.exit("Error: No observations found in region of interest")
-    outstring2 = f"Found {np.sum(num_obs)} observations in the region of interest"
+    outstring2 = f"Found {tot_num_obs} observations ({tot_num_superobs} super observations) \
+in the region of interest"
     print("\n" + outstring2)
 
     # ----------------------------------
@@ -846,7 +865,9 @@ def estimate_averaging_kernel(
         # average number of successful observation days in each inversion period
         m_superi = m_superi / n_periods
         n_obs_per_period = np.round(num_obs / n_periods)
-        outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
+        outstring2 = f"Found {int(np.round(tot_num_obs / n_periods))} observations \
+({int(np.round(tot_num_superobs / n_periods))} super observations) \
+in the region of interest per inversion period, for {int(n_periods)} period(s)"
         print("\n" + outstring2)
 
     # Other parameters
@@ -877,7 +898,7 @@ def estimate_averaging_kernel(
         calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1
         for element in P
     ]
-    s_superO = np.array(s_superO_p) * 1e-9  # convert to ppb
+    s_superO = np.array(s_superO_p) * 1e-9  # convert to mol/mol
 
     # TODO: add eqn number from Estrada et al. 2024 once published
     # Averaging kernel sensitivity for each grid element
@@ -885,10 +906,9 @@ def estimate_averaging_kernel(
     # defined as sum of days in each grid cell with >0 successful obs
     # in the state vector element
     # a is set to 0 where m_superi is 0
-    m_superi = np.array(m_superi)
     k = alpha * (Mair * L * g / (Mch4 * U * p))
     a = sA**2 / (sA**2 + (s_superO / k) ** 2 / (m_superi))
-
+    
     # Places with 0 superobs should be 0
     a = np.where(np.equal(m_superi, 0), float(0), a)
 
@@ -955,7 +975,6 @@ def compute_sv_element_stats(
         Largest label index in ROI (no buffers).
     sum_and_sort_along_statevector : callable
         Function (val, sv, fill_value=np.nan) -> per-label sums, in ascending label order.
-
     Returns
     -------
     emissions : np.ndarray, shape (last_ROI_element,)
@@ -1000,17 +1019,19 @@ def compute_sv_element_stats(
         sv=sv,
     )
     cell_count_per_sv = cell_count_per_sv_all[:last_ROI_element]
+    num_native_elements = cell_count_per_sv
 
     # (c) native length scale L_native = sqrt(mean cell area)
     mean_area_per_sv = area_per_sv / np.maximum(cell_count_per_sv, 1.0)
     L_native_per_sv = np.sqrt(mean_area_per_sv)
+    L_per_sv = np.sqrt(area_per_sv)
 
     # (d) emission flux per SV element (kg/s)
-    flux_per_sv_all = sum_and_sort_along_statevector(
-        val=prior_arr,
+    emissions_per_sv_all = sum_and_sort_along_statevector(
+        val=prior_arr * areas_arr,
         sv=sv,
     )
-    flux_per_sv = flux_per_sv_all[:last_ROI_element]
+    flux_per_sv = (emissions_per_sv_all / area_per_sv_all)[:last_ROI_element]
 
     # ------------------------------------------------------------------
     # 2. Collapse obs + superobs over time for each grid cell
@@ -1042,12 +1063,10 @@ def compute_sv_element_stats(
         lon_flat = CSlons.ravel()
 
     else:
-        # obs dims: (lat, lon, date)  -> reorder to (T, Ny, Nx)
-        obs_raw = obs_da.values
-        superobs_raw = superobs_da.values
+        # obs dims: (date, lat, lon)
+        obs = obs_da.values
+        superobs = superobs_da.values
 
-        obs = np.moveaxis(obs_raw, -1, 0)
-        superobs = np.moveaxis(superobs_raw, -1, 0)
         T, Ny, Nx = obs.shape
         assert Ncells == Ny * Nx
 
@@ -1088,9 +1107,18 @@ def compute_sv_element_stats(
     )
 
     # KDTree neighbor search
-    n_neighbors = 25
+    # Following eqn. 11 of Nesser et al., 2021 we increase the mask
+    # size by adding concentric rings to mimic transport/diffusion
+    # when counting observations. We use 2 concentric rings based on
+    # empirical evidence -- Nesser et al used 3.
+    n_neighbors = 49
     _, neighbor_idxs = kdtree.query(query_cart, k=n_neighbors)
-    M, K = neighbor_idxs.shape  # M = #ROI cells, K = n_neighbors
+    
+    neighbor_idxs = np.atleast_2d(neighbor_idxs)
+    if neighbor_idxs.shape[0] == 1 and query_cart.shape[0] > 1:
+        neighbor_idxs = neighbor_idxs.T
+
+    M, K = neighbor_idxs.shape # M = #ROI cells, K = n_neighbors
 
     # ------------------------------------------------------------------
     # 4. UNION semantics: deduplicate (label, neighbor_cell) pairs
@@ -1125,26 +1153,49 @@ def compute_sv_element_stats(
     # ------------------------------------------------------------------
     # 5. Aggregate obs & superobs per SV element
     # ------------------------------------------------------------------
-    num_obs_per_sv = np.bincount(
+    num_obs_buffer = np.bincount(
         sv_indices,
         weights=obs_per_cell[cells_unique],
         minlength=last_ROI_element,
     )
-    n_success_days_per_sv = np.bincount(
+    n_success_days_buffer = np.bincount(
         sv_indices,
         weights=super_per_cell[cells_unique],
         minlength=last_ROI_element,
     )
 
+    # --------------------------------------------------------------------
+    # 5b. Count neighbor-state-vectors in buffer zone that are in ROI mask
+    # --------------------------------------------------------------------
+    # For each (label, neighbor_cell) pair in the union set, 
+    # # count 1 if that neighbor_cell is inside ROI state vector mask 
+    num_native_elements_buffer = np.bincount( 
+        sv_indices, 
+        weights=sv_mask_flat[cells_unique].astype(np.int64), 
+        minlength=last_ROI_element, 
+    ).astype(np.int64)
+    
+    num_unique_labels = np.zeros(last_ROI_element, dtype=int)
+
+    for sv_label in range(1, last_ROI_element + 1):
+        # cells in the union buffer for this SV
+        buf_cells = cells_unique[labels_unique == sv_label]
+
+        neighbor_labels = sv_labels_flat[buf_cells]
+        neighbor_labels = neighbor_labels[~np.isnan(neighbor_labels)]
+
+        num_unique_labels[sv_label - 1] = np.unique(neighbor_labels).size
+
     # ------------------------------------------------------------------
     # 6. Return NumPy arrays aligned by SV index (0→label1, ..., N-1→labelN)
     # ------------------------------------------------------------------
-    emissions = flux_per_sv                     # (Nsv,)
-    L_native = L_native_per_sv                  # (Nsv,)
-    num_obs = num_obs_per_sv                    # (Nsv,)
-    n_success_days = n_success_days_per_sv      # (Nsv,)
+    emissions = flux_per_sv                                    # (Nsv,)
+    L = L_per_sv                                               # (Nsv,)
+    num_sv_elements = num_unique_labels                        # (Nsv,)
+    num_obs = num_obs_buffer / num_sv_elements                 # (Nsv,)
+    n_success_days = n_success_days_buffer / num_sv_elements   # (Nsv,)
 
-    return emissions, L_native, num_obs, n_success_days
+    return emissions, L, num_sv_elements, num_obs, n_success_days
 
 if __name__ == "__main__":
     try:
@@ -1157,7 +1208,7 @@ if __name__ == "__main__":
             config_path, state_vector_path, preview_dir, tropomi_cache
         )
     except Exception as err:
-        with open(".preview_error_status.txt", "w") as file1:
+        with open(os.path.join(preview_dir, ".preview_error_status.txt"), "w") as file1:
             # Writing data to a file
             file1.write(
                 "This file is used to tell the controlling script that the imi_preview failed"

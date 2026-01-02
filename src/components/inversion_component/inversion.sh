@@ -103,6 +103,7 @@ run_inversion() {
 # Usage:
 #   run_notebooks
 run_notebooks() {
+    set -euo pipefail
     printf "\n=== RUNNING VISUALIZATION NOTEBOOKS ===\n"
     if "$KalmanMode"; then
         cd ${RunDirs}/kf_inversions/period${period_i}

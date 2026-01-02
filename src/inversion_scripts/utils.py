@@ -18,18 +18,6 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
     build_kdtree,
 )
 
-def sum_and_sort_along_statevector(val, sv, fill_value=np.nan):
-    # This is useful for getting state vector area
-    if np.isnan(fill_value):
-        mask = ~np.isnan(sv)
-    else:
-        mask = sv != fill_value
-    sv_valid = sv[mask]
-    val_valid = val[mask]
-    _, inv = np.unique(sv_valid, return_inverse=True)
-    sv_val = np.bincount(inv, weights=val_valid)
-    return sv_val
-
 def save_obj(obj, name):
     """Save something with Pickle."""
 
@@ -86,45 +74,28 @@ def filter_obs_with_mask(mask, df, UseGCHP=False):
     mask is boolean xarray data array
     df is pandas dataframe with lat, lon, etc.
     """
-
+    mask_flat = np.asarray(mask.values, dtype=bool, order="C").reshape(-1)
     # Query lats/lons
     query_lats = df["lat"].values
     query_lons = df["lon"].values
-
+    query_cart = latlon_to_cartesian(query_lats, query_lons)  # (nobs, 3)
+    
     if UseGCHP:
         lats = mask["lats"].values
         lons = mask["lons"].values
-        
-        # Loop
-        bad_ind = []
-        for k in range(len(df)):
-            # Find closest reference coordinates to selected lat/lon bounds
-            # Build KDTree and polygons
-            kdtree, shape = build_kdtree(lats, lons)
-            query_cart = latlon_to_cartesian(query_lats[k], query_lons[k])
-            _, neighbor_idx = kdtree.query(query_cart, k=1)
-            neighbor_idx = neighbor_idx.flatten()
-            f, j, i = np.unravel_index(neighbor_idx, shape)
-            # If not in mask, save as bad index
-            if mask[f,j,i] == 0:
-                bad_ind.append(k)
-
     else:
-        reference_lat_grid = mask["lat"].values
-        reference_lon_grid = mask["lon"].values
-        # Loop
-        bad_ind = []
-        for k in range(len(df)):
-            # Find closest reference coordinates to selected lat/lon bounds
-            ref_lat_ind = np.abs(reference_lat_grid - query_lats[k]).argmin()
-            ref_lon_ind = np.abs(reference_lon_grid - query_lons[k]).argmin()
-            # If not in mask, save as bad index
-            if mask[ref_lat_ind, ref_lon_ind] == 0:
-                bad_ind.append(k)
+        lat = mask["lat"].values
+        lon = mask["lon"].values
+        lons, lats = np.meshgrid(lon, lat, indexing="xy")
+    
+    kdtree, shape = build_kdtree(lats, lons)
+    _, neighbor_idx = kdtree.query(query_cart, k=1)              # (nobs,) for cKDTree
+    neighbor_idx = np.asarray(neighbor_idx).reshape(-1)
+    inside = mask_flat[neighbor_idx]
+    bad_ind = ~inside
 
     # Drop bad indexes and count remaining entries
-    df_filtered = df.copy()
-    df_filtered = df_filtered.drop(df_filtered.index[bad_ind])
+    df_filtered = df.loc[~bad_ind].copy()
 
     return df_filtered
 
@@ -653,10 +624,10 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
         numpy array with satellite indices for filtered tropomi data.
     """
     valid_idx = (
-        (tropomi_data["longitude"] > xlim[0])
-        & (tropomi_data["longitude"] < xlim[1])
-        & (tropomi_data["latitude"] > ylim[0])
-        & (tropomi_data["latitude"] < ylim[1])
+        (tropomi_data["longitude"] >= xlim[0])
+        & (tropomi_data["longitude"] <= xlim[1])
+        & (tropomi_data["latitude"] >= ylim[0])
+        & (tropomi_data["latitude"] <= ylim[1])
         & (tropomi_data["time"] >= startdate)
         & (tropomi_data["time"] <= enddate)
         & (tropomi_data["qa_value"] >= 0.5)
@@ -686,10 +657,10 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
     """
 
     valid_idx = (
-        (blended_data["longitude"] > xlim[0])
-        & (blended_data["longitude"] < xlim[1])
-        & (blended_data["latitude"] > ylim[0])
-        & (blended_data["latitude"] < ylim[1])
+        (blended_data["longitude"] >= xlim[0])
+        & (blended_data["longitude"] <= xlim[1])
+        & (blended_data["latitude"] >= ylim[0])
+        & (blended_data["latitude"] <= ylim[1])
         & (blended_data["time"] >= startdate)
         & (blended_data["time"] <= enddate)
         & (blended_data["longitude_bounds"].ptp(axis=2) < 100)
@@ -878,6 +849,13 @@ def get_mean_emissions(start_date, end_date, prior_cache_path, save_mean_prior=F
         # emissions for the specified date range
         prior_ds = xr.concat(hemco_diags, dim="time").mean(dim=["time"])
         
+        # check if EmisCH4_Total_ExclSoilAbs exists or not
+        varname = "EmisCH4_Total_ExclSoilAbs"
+        totvarlist = list(prior_ds.data_vars)
+        if varname not in totvarlist:
+            prior_ds["EmisCH4_Total_ExclSoilAbs"] = prior_ds["EmisCH4_Total"] - prior_ds["EmisCH4_SoilAbsorb"]
+            prior_ds["EmisCH4_Total_ExclSoilAbs"].attrs = prior_ds["EmisCH4_Total"].attrs.copy()
+            prior_ds["EmisCH4_Total_ExclSoilAbs"].encoding = prior_ds["EmisCH4_Total"].encoding.copy()
         # save to netCDF file
         if save_mean_prior:
             print("Saving file {}".format(save_pth))
@@ -930,7 +908,7 @@ def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error, StateVectorFi
     prior_flux = prior_ds['EmisCH4_Total'].values
     prior_emis = prior_flux - prior_soil
     
-    state_vector = xr.open_dataset(StateVectorFile).squeeze()
+    state_vector = xr.open_dataset(StateVectorFile).squeeze("time")
     state_vector_labels = state_vector['StateVector'].fillna(-9999).values.astype(int)
     last_ROI_element = np.nanmax(state_vector_labels)
     

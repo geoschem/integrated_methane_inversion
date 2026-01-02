@@ -111,14 +111,6 @@ def do_inversion(
             start_date = str(config["StartDate"])
             end_date = str(config["EndDate"])
             
-            OptimizeSoil = config['OptimizeSoil']
-            prior_cache = os.path.join(RunDirs, "hemco_prior_emis/OutputDir")
-            if config["KalmanMode"]:
-                prior_ds = get_period_mean_emissions(
-                    prior_cache, period_number, os.path.join(RunDirs, "periods.csv")
-                )
-            else:
-                prior_ds = get_mean_emissions(start_date, end_date, prior_cache)
             if not OptimizeSoil:
                 prior_emis = prior_ds["EmisCH4_Total_ExclSoilAbs"].values
             else:
@@ -439,8 +431,8 @@ def do_inversion(
         # use this weighted constraint matrix to calculate the solution only
         if is_Regional:
             OH_weight = 1 / (n_elements - 1)
-            Sa_diag_constraint[-1:] = OH_weight * prior_err_oh**2
-            Sa_diag[-1:] = prior_err_oh**2
+            Sa_diag_constraint[-1] = OH_weight * prior_err_oh**2
+            Sa_diag[-1] = prior_err_oh**2
             scale_factor_idx -= 1
         else:
             OH_weight = 2 / (n_elements - 2)
@@ -665,15 +657,17 @@ if __name__ == "__main__":
     prior_err_OH = ensure_float_list(prior_err_OH)
     
     OptimizeSoil = config["OptimizeSoil"]
-    if OptimizeSoil:
-        # prior emissions
-        prior_cache = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/hemco_prior_emis/OutputDir/"
-        start_date = config["StartDate"]
-        end_date = config["EndDate"]
-        prior_ds = get_mean_emissions(start_date, end_date, prior_cache)
+    # prior emissions
+    RunDirs = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/"
+    prior_cache = f"{RunDirs}/hemco_prior_emis/OutputDir/"
+    start_date = config["StartDate"]
+    end_date = config["EndDate"]
+    if config["KalmanMode"]:
+        prior_ds = get_period_mean_emissions(
+            prior_cache, period_number, os.path.join(RunDirs, "periods.csv")
+        )
     else:
-        prior_ds = None
-
+        prior_ds = get_mean_emissions(start_date, end_date, prior_cache)
     # Reformat Jacobian scale factor input
     if jacobian_sf == "None":
         jacobian_sf = None
