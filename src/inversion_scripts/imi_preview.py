@@ -1024,7 +1024,6 @@ def compute_sv_element_stats(
     # (c) native length scale L_native = sqrt(mean cell area)
     mean_area_per_sv = area_per_sv / np.maximum(cell_count_per_sv, 1.0)
     L_native_per_sv = np.sqrt(mean_area_per_sv)
-    L_per_sv = np.sqrt(area_per_sv)
 
     # (d) emission flux per SV element (kg/s)
     emissions_per_sv_all = sum_and_sort_along_statevector(
@@ -1190,12 +1189,12 @@ def compute_sv_element_stats(
     # 6. Return NumPy arrays aligned by SV index (0→label1, ..., N-1→labelN)
     # ------------------------------------------------------------------
     emissions = flux_per_sv                                    # (Nsv,)
-    L = L_per_sv                                               # (Nsv,)
+    L_native = L_native_per_sv                                 # (Nsv,)
     num_sv_elements = num_unique_labels                        # (Nsv,)
     num_obs = num_obs_buffer / num_sv_elements                 # (Nsv,)
     n_success_days = n_success_days_buffer / num_sv_elements   # (Nsv,)
 
-    return emissions, L, num_sv_elements, num_obs, n_success_days
+    return emissions, L_native, num_sv_elements, num_obs, n_success_days
 
 if __name__ == "__main__":
     try:
