@@ -187,7 +187,7 @@ def imi_preview(
     outstring6 = (
         f"approximate cost = ${np.round(expected_cost,2)} for on-demand instance"
     )
-    outstring7 = f"                 = ${np.round(expected_cost/3,2)} for spot instance"
+    outstring7 = f"                 = ${np.round(expected_cost/3,2)} for spot instance\n"
     print(outstring6)
     print(outstring7)
 
@@ -222,7 +222,9 @@ def imi_preview(
 
     plt.rcParams.update({"font.size": 18})
 
+    #---------------------------------
     # Plot prior emissions
+    #---------------------------------
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
@@ -246,13 +248,17 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    plt.close()
 
     # simple function to find the dynamic range for colorbar
     dynamic_range = lambda vals: (
         np.round(np.nanmedian(vals) / 25.0) * 25 - 25,
         np.round(np.nanmedian(vals) / 25.0) * 25 + 25,
     )
+ 
+    #---------------------------------
     # Plot observations
+    #---------------------------------
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     xch4_min, xch4_max = dynamic_range(ds["xch4"].values)
@@ -276,10 +282,11 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    plt.close()
 
-   
-
+    #---------------------------------
     # Plot albedo
+    #---------------------------------
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
@@ -299,8 +306,11 @@ def imi_preview(
     plt.savefig(
         os.path.join(preview_dir, "preview_albedo.png"), bbox_inches="tight", dpi=150
     )
+    plt.close()
 
+    #---------------------------------
     # Plot observation density
+    #---------------------------------
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
     plot_field(
@@ -322,8 +332,11 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    plt.close()
 
+    #---------------------------------
     # plot state vector
+    #---------------------------------
     num_colors = state_vector_labels.where(mask).max().item()
     sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors), 3))
     fig = plt.figure(figsize=(8, 8))
@@ -345,8 +358,11 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    plt.close()
 
+    #-----------------------------------------------
     # plot estimated averaging kernel sensitivities
+    #-----------------------------------------------
     sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
@@ -367,10 +383,11 @@ def imi_preview(
         bbox_inches="tight",
         dpi=150,
     )
+    plt.close()
 
-    
-
+    #---------------------------------
     # calculate expected DOFS
+    #---------------------------------
     expectedDOFS = np.round(sum(a), 5)
     if expectedDOFS < config["DOFSThreshold"]:
         print(
@@ -404,7 +421,7 @@ def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     """
     Get sectoral emissions from the prior dataset
     """
-    # Plot sectoral emissions
+    # Obtain sectoral emissions
     sectors = [
         var
         for var in list(prior_ds.keys())
@@ -425,7 +442,9 @@ def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     combined_sorted = sorted(combined, key=lambda x: x[1])
     positive_sectors, prior_sector_vals = zip(*combined_sorted)
 
-    # Plot bars for prior emissions
+    #---------------------------------
+    # Plot total prior emissions
+    #---------------------------------
     fig = plt.figure(figsize=(10, 5))
     ax = fig.subplots(1, 1)
     bar_height = 0.35
@@ -445,8 +464,11 @@ def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     ax.set_yticks(ind)
     ax.set_yticklabels(positive_sectors)
 
-    plt.savefig(f"{preview_dir}/prior_sectoral_emissions.png", bbox_inches="tight")
+    plt.savefig(f"{preview_dir}/preview_prior_sectoral_emissions.png", bbox_inches="tight")
 
+    #---------------------------------
+    # Compute sectoral totals
+    #---------------------------------
     sector_totals = {}
 
     for item in combined_sorted:
@@ -456,7 +478,38 @@ def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
 
     # Save the statistics to a file
     stats_pd = pd.DataFrame(sector_totals, index=[0])
-    stats_pd.to_csv(f"{preview_dir}/prior_sectoral_statistics.csv", index=False)
+    stats_pd.to_csv(f"{preview_dir}/preview_prior_sectoral_statistics.csv", index=False)
+
+    #---------------------------------
+    # Plot prior emissions by sector
+    #---------------------------------
+    for sector in sectors:
+
+        sector_str=sector.replace('EmisCH4_','')
+        print(f"Plotting prior emissions for {sector_str}")
+        sector_kgkm2h = prior_ds[sector] * (1000**2) * 60 * 60  # Units kg/km2/h
+
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
+        plot_field(
+            ax,
+            sector_kgkm2h,
+            cmap=cc.cm.linear_kryw_5_100_c67_r,
+            plot_type="pcolormesh",
+            lon_bounds=None,
+            lat_bounds=None,
+            levels=21,
+            title="Prior emissions for "+sector_str,
+            cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
+            only_ROI=False,
+        )
+        plt.savefig(
+            os.path.join(preview_dir, "preview_prior_emissions_{}.png".format(sector_str)),
+            bbox_inches="tight",
+            dpi=150,
+        )
+        plt.close()
+
 
     return
 
@@ -695,8 +748,8 @@ def estimate_averaging_kernel(
 
     if np.sum(num_obs) < 1:
         sys.exit("Error: No observations found in region of interest")
-    outstring2 = f"Found {np.sum(num_obs)} observations in the region of interest"
-    print("\n" + outstring2)
+    outstring2 = f"Found {np.sum(num_obs)} observations in the region of interest\n"
+    print(outstring2)
 
     # ----------------------------------
     # Estimate information content
@@ -726,9 +779,8 @@ def estimate_averaging_kernel(
         # average number of successful observation days in each inversion period
         m_superi = m_superi / n_periods
         n_obs_per_period = np.round(num_obs / n_periods)
-        outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)"
-
-    print("\n" + outstring2)
+        outstring2 = f"Found {int(np.sum(n_obs_per_period))} observations in the region of interest per inversion period, for {int(n_periods)} period(s)\n"
+        print(outstring2)
 
     # Other parameters
     U = 5 * (1000 / 3600)  # 5 km/h uniform wind speed in m/s
@@ -777,9 +829,9 @@ def estimate_averaging_kernel(
     # Places with 0 superobs should be 0
     a = np.where(np.equal(m_superi, 0), float(0), a)
 
-    outstring3 = f"k = {np.round(k,5)} kg-1 m2 s"
+    outstring3 = f"k = {np.round(k,5)} kg-1 m2 s\n"
     outstring4 = f"a = {np.round(a,5)} \n"
-    outstring5 = f"expectedDOFS: {np.round(sum(a),5)}"
+    outstring5 = f"expectedDOFS: {np.round(sum(a),5)}\n"
 
     if config["KalmanMode"]:
         outstring5 += " per inversion period"
