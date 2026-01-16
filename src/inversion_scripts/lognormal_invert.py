@@ -34,7 +34,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         "lnxn": [],
         "S_post": [],
         "A": [],
-        "DOFS": [],
         "Ja_normalized": [],
         "prior_err": [],
         "obs_err": [],
@@ -292,8 +291,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # Averaging kernel (uses unweighted Sa)
         G = lns @ K_primeT_so
         ak = G @ K_prime
-        dofs = np.trace(ak)
-        print(f"DOFS: {dofs}")
 
         # Calculate posterior mean xhat
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
@@ -325,7 +322,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         results_dict["lnxn"].append(lnxn.flatten()),
         results_dict["S_post"].append(lns),
         results_dict["A"].append(ak),
-        results_dict["DOFS"].append(dofs),
         results_dict["Ja_normalized"].append(Ja.item() / num_sv_elems),
         for k, v in params.items():
             results_dict[k].append(v)
@@ -384,8 +380,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     dataset.S_post.attrs["units"] = "1"
     dataset.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset.A.attrs["units"] = "1"
-    dataset.DOFS.attrs["long_name"] = "Degrees of freedom for signal"
-    dataset.DOFS.attrs["units"] = "1"
     dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
     dataset.Ja_normalized.attrs["units"] = "1"
     dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
@@ -413,8 +407,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     dataset_mean.S_post.attrs["units"] = "1"
     dataset_mean.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset_mean.A.attrs["units"] = "1"
-    dataset_mean.DOFS.attrs["long_name"] = "Degrees of freedom for signal"
-    dataset_mean.DOFS.attrs["units"] = "1"
     dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
     dataset_mean.Ja_normalized.attrs["units"] = "1"
     dataset_mean.prior_err.attrs["long_name"] = "Prior error (Sa)"
