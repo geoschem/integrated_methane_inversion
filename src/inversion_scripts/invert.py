@@ -474,8 +474,6 @@ def do_inversion_ensemble(
     dataset.S_post.attrs["units"] = "1"  
     dataset.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset.A.attrs["units"] = "1"
-    dataset.DOFS.attrs["long_name"] = "Degrees of freedom for signal"
-    dataset.DOFS.attrs["units"] = "1"
     dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
     dataset.Ja_normalized.attrs["units"] = "1"
     dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
