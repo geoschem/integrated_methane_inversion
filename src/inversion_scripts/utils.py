@@ -125,7 +125,7 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         not is_OH_element
         and opt_BC
         and (
-            (opt_OH and (sv_elem > (nelements - 6)))
+            (opt_OH and not(is_regional) and (sv_elem > (nelements - 6)))
             or (opt_OH and is_regional and (sv_elem > (nelements - 5)))
             or ((not opt_OH) and (sv_elem > (nelements - 4)))
         )
