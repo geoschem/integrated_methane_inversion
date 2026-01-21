@@ -147,11 +147,11 @@ def make_state_vector_file(
             deg_lat, deg_lon = 0.25, 0.3125
         elif config["Res"] == "0.125x0.15625":
             deg_lat, deg_lon = 0.125, 0.15625
-        buffer_min_lat = deg_lat * 3
-        buffer_min_lon = deg_lon * 3
+        buffer_min_lat = deg_lat * 4
+        buffer_min_lon = deg_lon * 4
 
     # set the buffer degrees to the maximum to ensure
-    # that the buffer is at least the minimum (3 extra grid cells on each side)
+    # that the buffer is at least the minimum (4 extra grid cells on each side)
     buffer_deg_lat = max(buffer_deg, buffer_min_lat)
     buffer_deg_lon = max(buffer_deg, buffer_min_lon)
 
@@ -213,12 +213,12 @@ def make_state_vector_file(
     if is_regional:
         statevector[:, (statevector.lon < lon_min) | (statevector.lon > lon_max)] = 0
         statevector[(statevector.lat < lat_min) | (statevector.lat > lat_max), :] = 0
-        # set final 3 pixels on any side to -9999 to prevent non advected cells 
+        # set 4 pixels on any side to -9999 to prevent non advected cells 
         # from being included in the state vector
-        statevector[:, statevector.lon < (lon_min_inv_domain + deg_lon * 3)] = -9999
-        statevector[:, statevector.lon > (lon_max_inv_domain - deg_lon * 3)] = -9999
-        statevector[statevector.lat < (lat_min_inv_domain + deg_lat * 3), :] = -9999
-        statevector[statevector.lat > (lat_max_inv_domain - deg_lat * 3), :] = -9999
+        statevector[:, statevector.lon < (lon_min_inv_domain + buffer_min_lon)] = -9999
+        statevector[:, statevector.lon > (lon_max_inv_domain - buffer_min_lon)] = -9999
+        statevector[statevector.lat < (lat_min_inv_domain + buffer_min_lat), :] = -9999
+        statevector[statevector.lat > (lat_max_inv_domain - buffer_min_lat), :] = -9999
 
     # Also set pixels with low emissions (< emis_threshold) to -9999
     statevector.values[hd.values < emis_threshold] = -9999
