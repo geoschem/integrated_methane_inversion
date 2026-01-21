@@ -13,7 +13,7 @@ EndDate: 20180508
 SpinupMonths: 1
 
 ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: false
+BlendedTROPOMI: true
 
 ## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
@@ -54,10 +54,14 @@ CustomPeriodsCSV: "/path/to/periods.csv"
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 8
 BufferDeg: 5
-LandThreshold: 0.25
-OffshoreEmisThreshold: 0
+EmisThreshold: 1.e-12
 OptimizeBCs: true
 OptimizeOH: false
+# optimize soil option when using normal errors, 
+# do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors, 
+# current version is not compatible with state vector clustering 
+# either through clustering algorithm or buffer cluster for regional case
+OptimizeSoil: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -95,7 +99,8 @@ Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
-##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
+##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
+##   0.5x0.625, 2.0x2.5, or 4.0x5.0
 Res: "0.25x0.3125"
 
 ## Meteorology
@@ -116,7 +121,7 @@ SetupPosteriorRun: false
 DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: true
+ReDoJacobian: false
 DoInversion: false
 DoPosterior: false
 
@@ -151,7 +156,25 @@ NumJacobianTracers: 5
 ## These settings are intended for advanced users who wish to:
 ##   a. modify additional GEOS-Chem options, or
 ##   b. run the IMI on a local cluster.
+##   c. do an Observing System Simulation Experiment (OSSE)
 ## They can be ignored for any standard cloud application of the IMI.
+
+
+##--------------------------------------------------------------------
+## Settings for Observing System Simulation Experiment (OSSE)
+##--------------------------------------------------------------------
+## If true, the IMI will run on synthetic observations
+EnableOSSE: false
+## Run the simulation with randomly perturbed emissions to generate synthetic observations
+DoOSSE: false
+## Perturbation to apply to the prior emissions 
+EmisPerturbationOSSE: 0.5
+## Noise added to the synthetic observations
+ObsErrorOSSE: 15
+## Use randomly perturbed scale factor as "true" emissions (true)
+CreateAutomaticScaleFactorFileOSSE: true
+## Path to a custom scale factor file if CreateAutomaticScaleFactorFileOSSE is false
+ScaleFactorFileOSSE: "/path/to/ScaleFactor.nc"
 
 ##--------------------------------------------------------------------
 ## Additional settings for GEOS-Chem simulations
@@ -170,9 +193,13 @@ PerturbValueBCs: 10.0
 ## inversions
 HourlyCH4: true
 
+## IMI validation
+## Turn on ObsPack diagnostic in GEOS-Chem?
+DoObsPack: false
+
 ## Turn on planeflight diagnostic in GEOS-Chem?
 ## For use in comparing GEOS-Chem against planeflight data. The path
-## to those data must be specified in input.geos.
+## to those data must be specified in geoschem_config.yml.
 PLANEFLIGHT: false
 
 ## Turn on old observation operators in GEOS-Chem?
@@ -202,12 +229,12 @@ RestartDownload: true
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/al2/ExtData/BoundaryConditions/v2025-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/al2/ExtData/BoundaryConditions/v2025-06-blended/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/home/al2/ExtData/BoundaryConditions"
-BCversion: "v2025-06"
+BCversion: "v2025-06-blended"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 HemcoPriorEmisDryRun: true
