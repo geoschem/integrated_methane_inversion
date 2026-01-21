@@ -14,6 +14,7 @@ from src.inversion_scripts.imi_preview import (
 )
 
 # clustering
+from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 # country centroids
@@ -25,6 +26,24 @@ import cartopy.crs as ccrs
 import functools
 
 print = functools.partial(print, flush=True)
+
+
+def latlon_to_cartesian(lon, lat):
+    """
+    Description:
+        Converts latitude and longitude coordinates to Cartesian coordinates
+    arguments:
+        lat  float : latitude in degrees
+        lon  float : longitude in degrees
+    Returns: (float, float, float) : x, y, z Cartesian coordinates
+    """
+    earth_radius = 6378137  # meters
+    lat_rad = np.deg2rad(lat)
+    lon_rad = np.deg2rad(lon)
+    x = earth_radius * np.cos(lat_rad) * np.cos(lon_rad)
+    y = earth_radius * np.cos(lat_rad) * np.sin(lon_rad)
+    z = earth_radius * np.sin(lat_rad)
+    return x, y, z
 
 
 def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country=False):
@@ -47,33 +66,43 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
     longitudes = data.coords["lon"].values
 
     # Get the sensitivity values as a 1D array
-    Z = data.values.flatten()
+    A = data.values.flatten()
     # labels shape for later
-    labels = np.zeros(Z.shape)
-    valid_indices = ~np.isnan(Z)
+    labels = np.zeros(A.shape)
+    valid_indices = ~np.isnan(A)
 
     # Flatten the latitude and longitude arrays into a 2D grid
-    # only keeping valid indices
+    # convert lat/lon to Cartesian coordinates
+    # and only keep valid indices
     X, Y = np.meshgrid(longitudes, latitudes)
+    X, Y, Z = latlon_to_cartesian(X, Y)
     X = X.flatten()[valid_indices]
     Y = Y.flatten()[valid_indices]
-    Z = Z[valid_indices]
+    Z = Z.flatten()[valid_indices]
+    A = A[valid_indices]
+
+    # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
+    features = np.column_stack((X, Y, Z, A))
+    weights = [10, 10, 10, 1]
 
     # include country information
     if cluster_by_country:
         centroids = get_country_centroids(data, valid_indices)
         if centroids is not None:
-            Cy = centroids[:, :, 0].flatten()[valid_indices]
-            Cx = centroids[:, :, 1].flatten()[valid_indices]
+            Cx, Cy, Cz = latlon_to_cartesian(centroids[:, :, 1], centroids[:, :, 0])
+            Cx = Cx.flatten()[valid_indices]
+            Cy = Cy.flatten()[valid_indices]
+            Cz = Cz.flatten()[valid_indices]
 
-            # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
-            features = np.column_stack((X, Y, Z, Cx, Cy))
-        else:
-            # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
-            features = np.column_stack((X, Y, Z))
-    else:
-        # Stack the X, Y, and Z arrays to create a (n_samples, n_features) array
-        features = np.column_stack((X, Y, Z))
+            # recreate features with country centroid coordinates
+            features = np.column_stack((X, Y, Z, A, Cx, Cy, Cz))
+            weights += [10, 10, 10]
+
+    # Normalize the features and apply weighting to give more weight
+    # to latitude and longitude and less to sensitivity. This makes
+    # the clustering more spatially coherent
+    features_scaled = StandardScaler().fit_transform(features)
+    features_weighted = features_scaled * np.array(weights)
 
     # Cluster the features using KMeans
     # Mini-Batch k-means is much faster, but with less accuracy
@@ -82,7 +111,7 @@ def cluster_data_kmeans(data, num_clusters, mini_batch=False, cluster_by_country
     else:
         kmeans = KMeans(n_clusters=num_clusters, random_state=0)
 
-    cluster_labels = kmeans.fit_predict(features)
+    cluster_labels = kmeans.fit_predict(features_weighted)
 
     # fill labels on corresponding valid indices of label array
     # add 1 to labels so they start with 1
@@ -555,11 +584,11 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         else:
             # generate clusters that are approximately agg_level in size
             n_clusters = int(np.round(elements_left / agg_level))
-            
+
             # if n_clusters is 0, skip to next agg_level
             if n_clusters == 0:
                 continue
-            
+
             # generate clusters that are approximately agg_level in size
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0),
