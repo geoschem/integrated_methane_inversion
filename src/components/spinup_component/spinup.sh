@@ -36,7 +36,8 @@ setup_spinup() {
     RestartFile=${RestartFilePrefix}${SpinupStart}_0000z.nc4
     ln -s $RestartFile Restarts/GEOSChem.Restart.${SpinupStart}_0000z.nc4
     if "$UseBCsForRestart"; then
-        sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+        sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+               -e "s|EFYO|CYS|g" HEMCO_Config.rc
         printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
     fi
 
