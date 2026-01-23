@@ -31,18 +31,17 @@ setup_template() {
     simNum=3  # Carbon simulation
 
     # Species
-    spcNum=2  # Hardcode for now; enable options below when CO2 is supported
-    #if [[ "$Species" == "CH4" ]]; then
-    #	spcNum=2
-    #elif [[ "$Species" == "CO2" ]]; then
-    #	spcNum=3
-    #elif [[ "$Species" == "CH4_CO2" ]]; then
-    #	spcNum=1
-    #else
-    #	printf "\nERROR: Species ${Species} is not supported by the IMI. "
-    #	printf "\n Options are CH4, CO2, or CH4_CO2"
-    #	exit 1
-    #fi
+    if [[ "$Species" == "CH4" ]]; then
+    	spcNum=2
+    elif [[ "$Species" == "CO2" ]]; then
+    	spcNum=3
+    elif [[ "$Species" == "CH4_CO2" ]]; then
+    	spcNum=1
+    else
+    	printf "\nERROR: Species ${Species} is not supported by the IMI. "
+    	printf "\n Options are CH4, CO2, or CH4_CO2"
+    	exit 1
+    fi
 
     # Meteorology field
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
@@ -172,7 +171,7 @@ setup_template() {
         -e "s:'Met_PFLLSAN:#'Met_PFLLSAN:g" HISTORY.rc
 
     # If turned on, save out hourly CH4 concentrations to daily files
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/SpeciesConc.frequency:      00000100 000000/SpeciesConc.frequency:      00000000 010000/g' \
             -e 's/SpeciesConc.duration:       00000100 000000/SpeciesConc.duration:       00000001 000000/g' \
             HISTORY.rc
@@ -182,7 +181,7 @@ setup_template() {
     rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
 
     # Copy template run script
-    cp ${InversionPath}/src/geoschem_run_scripts/ch4_run.template .
+    cp ${InversionPath}/src/geoschem_run_scripts/run.template .
 
     # Copy input file for applying emissions perturbations via HEMCO
     cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .

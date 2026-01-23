@@ -121,8 +121,7 @@ run_period() {
 
     # Prepare initial (prior) emission scale factors for the current period
     echo "python path = $PYTHONPATH"
-    python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor
-    wait
+    python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor $Species; wait
 
     # Dynamically generate state vector for each period
     if ("$ReducedDimensionStateVector" && "$DynamicKFClustering"); then
@@ -153,7 +152,7 @@ run_period() {
 
     # Make link to restart file from posterior run directory in prior, OH, and background simulation
     # and link to 1ppb restart file for perturbations
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i $Species
     rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
     for ((idx = 0; idx <= rundir_num; idx++)); do
         # Add zeros to string name

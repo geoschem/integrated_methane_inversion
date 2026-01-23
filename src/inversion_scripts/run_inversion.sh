@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#SBATCH -N 1
 #SBATCH -o run_inversion_%j.out
 
 ##=======================================================================
@@ -33,7 +32,13 @@ configFile={CONFIG_FILE}
 #   $ObsError, and $Gamma
 #  Make sure $PrecomputedJacobian is true, and then re-run this script
 #   (or run_imi.sh with only the $DoInversion module switched on in config.yml).
-
+PythonEnv=$(grep '^PythonEnv:' ${invPath}/${configFile} |
+    sed 's/PythonEnv://' |
+    sed 's/#.*//' |
+    sed 's/^[[:space:]]*//' |
+    tr -d '"')
+echo $PythonEnv
+source ${invPath}/${PythonEnv}
 eval $(python ${invPath}/src/utilities/parse_yaml.py ${invPath}/${configFile})
 
 #=======================================================================
@@ -52,16 +57,20 @@ PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
-GCDir="./data_geoschem"
-GCVizDir="./data_geoschem_prior"
-JacobianDir="./data_converted"
-sensiCache="./data_sensitivities"
-tropomiCache="${OutputPath}/${RunName}/satellite_data"
+GCDir="${OutputPath}/${RunName}/inversion/data_geoschem"
+GCVizDir="${OutputPath}/${RunName}/inversion/data_geoschem_prior"
+JacobianDir="${OutputPath}/${RunName}/inversion/data_converted"
+sensiCache="${OutputPath}/${RunName}/inversion/data_sensitivities"
+satelliteCache="${OutputPath}/${RunName}/satellite_data"
 period_i={PERIOD}
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
 # Switch is flipped to false automatically if (( period_i > 1 ))
 FirstSimSwitch=$1
+
+# Enter the correct directory
+cd ${OutputPath}
+pwd
 
 printf "\n=== EXECUTING RUN_INVERSION.SH ===\n"
     
@@ -89,13 +98,14 @@ if "$LognormalErrors"; then
     GCsourcepth="${BackgroundRunDir}/OutputDir"
     PriorOutputDir="${PriorRunDir}/OutputDir"
     # also need the prior cache so that we can visualize the prior simulation
-    python setup_gc_cache.py $StartDate $EndDate $PriorOutputDir $GCVizDir; wait
+    python ${OutputPath}/${RunName}/inversion/setup_gc_cache.py $StartDate $EndDate $PriorOutputDir $GCVizDir; wait
 else
     # for normal errors we use the prior run
     GCsourcepth="${PriorRunDir}/OutputDir"
 fi
 
-python setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+export PYTHONPATH=${PYTHONPATH}:${OutputPath}
+python ${OutputPath}/${RunName}/inversion/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
 
 #=======================================================================
@@ -117,22 +127,18 @@ fi
 printf "Calling jacobian.py\n"
 isPost="False"
 if ! "$PrecomputedJacobian"; then
-
     buildJacobian="True"
     jacobian_sf="None"
-
 else
-
     buildJacobian="False"
-    jacobian_sf=./jacobian_scale_factors.npy
-
+    jacobian_sf=${OutputPath}/${RunName}/inversion/jacobian_scale_factors.npy
 fi
 
-python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $UseWaterObs $isPost $period_i $buildJacobian False; wait
+python -u ${OutputPath}/${RunName}/inversion/jacobian.py ${OutputPath}/${RunName}/inversion ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i $buildJacobian False; wait
 if "$LognormalErrors"; then
     # for lognormal error visualization of the prior we sample the prior run
     # without constructing the jacobian matrix
-    python jacobian.py ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI  $UseWaterObs $isPost $period_i False True; wait
+    python ${OutputPath}/${RunName}/inversion/jacobian.py ${OutputPath}/${RunName}/inversion ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i False True; wait
 fi
 printf " DONE -- jacobian.py\n\n"
 
@@ -141,16 +147,16 @@ printf " DONE -- jacobian.py\n\n"
 #=======================================================================
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
-    python merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian
+    python ${OutputPath}/${RunName}/inversion/merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian
 
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
-    python lognormal_invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $StateVectorFile $jacobian_sf
+    python ${OutputPath}/${RunName}/inversion/lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
-    python_args=(invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile)
-    
+    python_args=(${OutputPath}/${RunName}/inversion/invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile)
+
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
     printf "DONE -- invert.py\n\n"
@@ -160,8 +166,10 @@ else
     GriddedPosterior="./gridded_posterior.nc"
 
     printf "Calling make_gridded_posterior.py\n"
-    python make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+    python ${OutputPath}/${RunName}/inversion/make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
     printf "DONE -- make_gridded_posterior.py\n\n"
 fi
+
+printf "Exiting run_inversion.sh"
 
 exit 0

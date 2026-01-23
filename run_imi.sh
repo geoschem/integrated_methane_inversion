@@ -1,10 +1,7 @@
 #!/bin/bash
 
-#SBATCH -N 1
-#SBATCH -c 1
-#SBATCH --mem=2000
-#SBATCH --mail-type=END
-#SBATCH -o "imi_output.log"
+#PBS -l nodes=1,ncpus=1
+#PBS -o "imi_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -49,23 +46,15 @@ fi
 # Get the conda environment name and source file
 # These variables are sourced manually because
 # we need the python environment to parse the yaml file
-CondaEnv=$(grep '^CondaEnv:' ${ConfigFile} |
-    sed 's/CondaEnv://' |
+PythonEnv=$(grep '^PythonEnv:' ${ConfigFile} |
+    sed 's/PythonEnv://' |
     sed 's/#.*//' |
     sed 's/^[[:space:]]*//' |
     tr -d '"')
-CondaFile=$(eval echo $(grep '^CondaFile:' ${ConfigFile} |
-    sed 's/CondaFile://' |
-    sed 's/#.*//' |
-    sed 's/^[[:space:]]*//' |
-    tr -d '"'))
 
-# Load conda/mamba/micromamba e.g. ~/.bashrc
-source $CondaFile
-
-# Activate Conda environment
-printf "\nActivating conda environment: ${CondaEnv}\n"
-conda activate ${CondaEnv}
+# Load conda/mamba/micromamba and append the current directory to PYTHONPATH
+source $PythonEnv
+export PYTHONPATH=${PYTHONPATH}:$(pwd -P)
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
@@ -81,7 +70,14 @@ else
         exit 1
     else
         printf "\nLoading GEOS-Chem environment: ${GEOSChemEnv}\n"
-        source ${GEOSChemEnv}
+            source ${GEOSChemEnv}
+    fi
+
+    # If scheduler is PBS, get the list of needed sites
+    if [[ "$SchedulerType" = "PBS" ]]; then
+        convert_sbatch_to_pbs
+        sed -i -e "s/SLURM_ARRAY_TASK_ID/PBS_ARRAY_INDEX/g" ${OutputPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh
+        sed -i '/^export OMP_NUM_THREADS=\$SLURM_CPUS_PER_TASK/s/^/# /' ${OutputPath}/src/geoschem_run_scripts/run.template
     fi
 fi
 
@@ -156,36 +152,28 @@ echo "# TROPOMI/blended processor version(s): ${TROPOMI_PROCESSOR_VERSION}" >>"$
 ##=======================================================================
 ##  Download the TROPOMI data
 ##=======================================================================
-
 # Download TROPOMI or blended dataset from AWS
-tropomiCache=${RunDirs}/satellite_data
+satelliteCache=${RunDirs}/satellite_data
 
-if [[ -z "$DataPathTROPOMI" ]]; then
-    mkdir -p -v $tropomiCache
+if [[ -z "$DataPathObs" ]]; then
+    mkdir -p -v $satelliteCache
 
-    if "$BlendedTROPOMI"; then
+    if [[ "$SatelliteProduct" == "BlendedTROPOMI" ]]; then
         downloadScript=src/utilities/download_blended_TROPOMI.py
-    else
+    elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
         downloadScript=src/utilities/download_TROPOMI.py
+    else
+        printf "$SatelliteProduct is not currently supported for download"
     fi
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -o imi_output.tmp \
-        -W $downloadScript $StartDate $EndDate $tropomiCache
-    wait
-    cat imi_output.tmp >>${InversionPath}/imi_output.log
-    rm imi_output.tmp
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $satelliteCache
 else
     # use existing tropomi data and create a symlink to it
-    if [[ ! -L $tropomiCache ]]; then
-        ln -s $DataPathTROPOMI $tropomiCache
-    fi
+    if [[ ! -L $satelliteCache ]]; then
+        ln -s $DataPathObs $satelliteCache
 fi
 
 # Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
-python src/utilities/test_TROPOMI_dir.py $tropomiCache
+python src/utilities/test_TROPOMI_dir.py $satelliteCache
 
 ##=======================================================================
 ##  Run the setup script

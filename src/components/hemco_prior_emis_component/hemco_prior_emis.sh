@@ -73,11 +73,14 @@ run_hemco_prior_emis() {
 
     # Create HEMCO standalone directory
     cmd="${metNum}\n${resnum}\n${HEMCOconfig}\n${RunDirs}\n${HEMCOdir}\nn\n"
-    printf ${cmd} | ./createRunDir.sh >>createHemcoDir.log 2>&1
+    printf ${cmd} | ./createRunDir.sh >> createHemcoDir.log 2>&1
     rm -f createHemcoDir.log
     printf "\nCreated ${RunDirs}/${HEMCOdir}\n"
 
     cd ${RunDirs}/${HEMCOdir}
+
+    # Convert residual SBATCH commands to PBS
+    convert_sbatch_to_pbs
 
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
@@ -88,6 +91,15 @@ run_hemco_prior_emis() {
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
     sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
     sed -i -e "/#SBATCH --mem=15000/d" runHEMCO.sh
+    # If PBS, we need to re-source the environment and cd into the directory
+    # (unlike the Harvard cluster, these variables are not remembered when a new
+    # job is submitted)
+    if [[ "$SchedulerType" == "PBS" ]]; then
+        sed -i "/#PBS -l site=needed=/a\\
+source ${InversionPath}/${GEOSChemEnv}\\
+cd ${RunDirs}/${HEMCOdir}
+" runHEMCO.sh
+    fi
     sed -i '/.*hemco_standalone.*/a\
 retVal=$?\
 if [ $retVal -ne 0 ]; then\
@@ -156,20 +168,15 @@ run_hemco_sa() {
         -e "s|END.*|END: ${hemco_end:0:4}-${hemco_end:4:2}-${hemco_end:6:2} 00:00:00|g" HEMCO_sa_Time.rc
 
     rm -f .error_status_file.txt
+    
     # Submit job to job scheduler
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -o ${RunName}_HEMCO_Prior_Emis.log \
-        -p $SchedulerPartition \
-        -W ${RunName}_HEMCO_Prior_Emis.run
-    wait
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition ${RunDirs}/${HEMCOdir}/${RunName}_HEMCO_Prior_Emis.run
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO hemco_prior_emis.sh
 
     # Remove soil absorption uptake from total emissions
-    pushd OutputDir
+    pushd $OutputDir
     for file in HEMCO_sa_diagnostics*.nc; do
         exclude_soil_sink $file $file
     done
