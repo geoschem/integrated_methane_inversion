@@ -40,7 +40,8 @@ setup_posterior() {
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
         ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+                   -e "s|EFYO|CYS|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
         fi
     fi
@@ -72,8 +73,8 @@ setup_posterior() {
         sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
             -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
             -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-            -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
-            -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
+            -e 's/Restart.frequency:    00000100 000000/Restart.frequency:    00000001 000000/g' \
+            -e 's/Restart.duration:     00000100 000000/Restart.duration:     00000001 000000/g' HISTORY.rc
     fi
 
     ### Turn on observation operators if requested, for posterior run

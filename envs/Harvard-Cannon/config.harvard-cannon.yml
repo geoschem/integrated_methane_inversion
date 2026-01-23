@@ -145,7 +145,7 @@ MaxSimultaneousRuns: -1
 ##   Specifying a value = 1 will submit a separate jacobian simulation for each
 ##   state vector element. Specifying a value > 1 will combine state vector
 ##   elements into a single jacobian simulation.
-NumJacobianTracers: 5
+NumJacobianTracers: 1
 
 ##====================================================================
 ##

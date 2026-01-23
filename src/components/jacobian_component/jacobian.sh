@@ -123,7 +123,8 @@ create_simulation_dir() {
     else
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+                   -e "s|EFYO|CYS|g" HEMCO_Config.rc
         fi
     fi
     ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
@@ -255,7 +256,14 @@ create_simulation_dir() {
                 HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
 '
                 sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
-            fi
+
+		# Add zero scale factor
+		HcoPrevLineSF='1 NEGATIVE -1.0 - - - xy 1 1'
+                HcoNextLineSF='5 ZERO      0.0 - - - xy 1 1
+'
+                sed -i "/${HcoPrevLineSF}/a ${HcoNextLineSF}" HEMCO_Config.rc
+
+	    fi
         fi
 
         # If the current state vector element is one of the BC state vector elements, then
