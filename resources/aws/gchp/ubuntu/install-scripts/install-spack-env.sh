@@ -14,7 +14,7 @@ source /home/ubuntu/.bashrc
 
 # Install spack environment
 umask 022
-spack env create $SpackEnvName $InstallScriptPath/$SpackEnvFile
+spack env create $SpackEnvironmentName $InstallScriptPath/$SpackEnvFile
 spack env activate $SpackEnvName
 spack install -j32 --fail-fast --show-log-on-error
 spack clean --all
