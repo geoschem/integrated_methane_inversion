@@ -232,7 +232,7 @@ create_simulation_dir() {
             OH_elem=true
             if "$isRegional"; then
                 # Perturb OH everywhere if this is a reginoal simulation
-                sed -i -e "s| OH_pert_factor 1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
+                sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
             else
                 # Perturb OH by hemisphere if this is a global simulation
                 # Add and edit perturbations txt file
