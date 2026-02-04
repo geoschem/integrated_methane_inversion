@@ -142,6 +142,14 @@ create_simulation_dir() {
         sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
             HEMCO_Config.rc
     fi
+
+    # Add zero scale factor to HEMCO_Config.rc
+    HcoPrevLineSF='1 NEGATIVE -1.0 - - - xy 1 1'
+    HcoNextLineSF='5 ZERO      0.0 - - - xy 1 1
+'
+    sed -i "/${HcoPrevLineSF}/a ${HcoNextLineSF}" HEMCO_Config.rc
+
+    
     # Determine which elements are BC perturbations
     BC_elem=false
     bcThreshold=$nElements
@@ -258,13 +266,6 @@ create_simulation_dir() {
                 HcoNextLineMask='* HEMIS_MASK $ROOT\/MASKS\/v2024-08\/hemisphere_mask.01x01.nc Hemisphere 2000\/1\/1\/0 C xy 1 * - 1 1 
 '
                 sed -i "/${HcoPrevLineMask}/a ${HcoNextLineMask}" HEMCO_Config.rc
-
-		# Add zero scale factor
-		HcoPrevLineSF='1 NEGATIVE -1.0 - - - xy 1 1'
-                HcoNextLineSF='5 ZERO      0.0 - - - xy 1 1
-'
-                sed -i "/${HcoPrevLineSF}/a ${HcoNextLineSF}" HEMCO_Config.rc
-
 	    fi
         fi
 

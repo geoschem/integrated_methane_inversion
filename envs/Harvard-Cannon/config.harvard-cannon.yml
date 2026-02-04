@@ -21,7 +21,7 @@ SpinupMonths: 1
 ## Currently, only "BlendedTROPOMI" and "TROPOMI" are supported on AWS. If 
 ## "Other" is selected, the user must specify the path where observations are
 ## located under "Advanced settings" in this file.
-SatelliteProduct: "Other"
+SatelliteProduct: "BlendedTROPOMI"
 
 ## Use observations over water? Set to false to filter out water observations
 UseWaterObs: false
@@ -140,9 +140,9 @@ DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 32
-RequestedMemory: "32gb"
+RequestedMemory: 32000
 InversionCPUs: 32
-InversionMemory: "64gb"
+InversionMemory: 64000
 RequestedTime: "24:00:00"
 SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 

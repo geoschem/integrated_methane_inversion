@@ -623,8 +623,20 @@ def read_tropomi(filename):
         with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
             dat["profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
             dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
-            dat["surface_classification"] = (tropomi_data["surface_classification"].values[0, :, :].astype("uint8") & 0x03).astype(int)
-
+            
+            # Surface classification values of NaN will be filtered out
+            # due to a low QA value. We can make sure by setting them to 5
+            # and making sure nothing outside of [0,1,2,3] makes it through.
+            sc = tropomi_data["surface_classification"].values[0, :, :]
+            nan_mask = np.isnan(sc)
+            sc_no_nans = np.nan_to_num(sc, nan=0)
+            sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
+            sc[nan_mask] = 5
+            dat["surface_classification"] = sc
+            sc_0xF9 = (sc_no_nans.astype("uint8") & 0xF9).astype(int)
+            sc_0xF9[nan_mask] = 5
+            dat["surface_classification_0xF9"] = sc_0xF9
+            
             # Also get pressure interval and surface pressure for use below
             pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
             surface_pressure = (tropomi_data["surface_pressure"].values[0, :, :] / 100)  # Pa -> hPa
@@ -690,8 +702,14 @@ def read_blended(filename):
             dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[:, ::-1]
             dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
             dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
-            dat["surface_classification"] = (blended_data["surface_classification"].values[:].astype("uint8") & 0x03).astype(int)
+            dat["surface_classification"] = (
+                blended_data["surface_classification"].values[:].astype("uint8") & 0x03
+            ).astype(int)
+            dat["surface_classification_0xF9"] = (
+                blended_data["surface_classification"].values[:].astype("uint8") & 0xF9
+                ).astype(int)
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
+
             # Remove "Z" from time so that numpy doesn't throw a warning
             utc_str = blended_data["time_utc"].values[:]
             dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")

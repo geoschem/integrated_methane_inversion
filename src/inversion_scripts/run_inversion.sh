@@ -68,10 +68,6 @@ period_i={PERIOD}
 # Switch is flipped to false automatically if (( period_i > 1 ))
 FirstSimSwitch=$1
 
-# Enter the correct directory
-cd ${OutputPath}
-pwd
-
 printf "\n=== EXECUTING RUN_INVERSION.SH ===\n"
     
 #=======================================================================

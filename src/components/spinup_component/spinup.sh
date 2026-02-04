@@ -53,6 +53,9 @@ setup_spinup() {
     # Create run script from template
     sed -e "s:namename:${SpinupName}:g" \
         -e "s:##:#:g" run.template > ${SpinupName}.run
+    chmod 755 ${SpinupName}.run
+    rm -f run.template
+    
     # If PBS, we need to re-source the environment and cd into the directory
     # (unlike the Harvard cluster, these variables are not remembered when a new
     # job is submitted)
@@ -61,13 +64,11 @@ setup_spinup() {
 source ${InversionPath}/${GEOSChemEnv}\\
 cd ${RunDirs}/${runDir}/
 " ${SpinupName}.run
+
+	# Convert residual SBATCH commands to PBS
+	convert_sbatch_to_pbs
     fi
-    chmod 755 ${SpinupName}.run
-    rm -f run.template
-
-    # Convert residual SBATCH commands to PBS
-    convert_sbatch_to_pbs
-
+    
     ### Perform dry run if requested
     if "$SpinupDryrun"; then
         printf "\nExecuting dry-run for spinup run...\n"

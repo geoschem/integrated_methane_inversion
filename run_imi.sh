@@ -1,7 +1,14 @@
 #!/bin/bash
 
-#PBS -l nodes=1,ncpus=1
-#PBS -o "imi_output.log"
+#SBATCH -N 1
+#SBATCH -c 1
+#SBATCH --mem=2000
+#SBATCH --mail-type=END
+#SBATCH -o "imi_output.log"
+
+## Uncomment to use PBS
+###PBS -l nodes=1,ncpus=1
+###PBS -o "imi_output.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -144,6 +151,7 @@ TROPOMI_PROCESSOR_VERSION=$(grep 'VALID_TROPOMI_PROCESSOR_VERSIONS =' src/utilit
 
 # copy config file to run directory and add some run information to it for reference
 cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
+echo ""
 echo "## ================== IMI run information ==================" >>"${RunDirs}/config_${RunName}.yml"
 echo "# Run with IMI version: ${IMI_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
 echo "# GEOS-Chem version: ${GEOSCHEM_VERSION}" >>"${RunDirs}/config_${RunName}.yml"
@@ -170,6 +178,7 @@ else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $satelliteCache ]]; then
         ln -s $DataPathObs $satelliteCache
+    fi
 fi
 
 # Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)

@@ -47,7 +47,7 @@ setup_inversion() {
         -e "s:{STATE_VECTOR_ELEMENTS}:${nElements}:g" \
         -e "s:{NUM_JACOBIAN_TRACERS}:${NumJacobianTracers}:g" \
         -e "s:{OUTPUT_PATH}:${OutputPath}:g" \
-        -e "s:{STATE_VECTOR_PATH}:${InversionPath}/${RunName}/StateVector.nc:g" \
+        -e "s:{STATE_VECTOR_PATH}:${OutputPath}/${RunName}/StateVector.nc:g" \
         -e "s:{LON_MIN}:${LonMinInvDomain}:g" \
         -e "s:{LON_MAX}:${LonMaxInvDomain}:g" \
         -e "s:{LAT_MIN}:${LatMinInvDomain}:g" \

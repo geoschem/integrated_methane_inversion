@@ -78,10 +78,7 @@ run_hemco_prior_emis() {
     printf "\nCreated ${RunDirs}/${HEMCOdir}\n"
 
     cd ${RunDirs}/${HEMCOdir}
-
-    # Convert residual SBATCH commands to PBS
-    convert_sbatch_to_pbs
-
+    
     # Modify HEMCO files based on settings in config.yml
     sed -i -e "/DiagnFreq:           00000100 000000/d" \
         -e "/Negative values:     0/d" HEMCO_sa_Config.rc
@@ -89,7 +86,7 @@ run_hemco_prior_emis() {
            -e "s|DiagnFreq:                   End|DiagnFreq:                   Daily|g" HEMCO_Config.rc
     sed -i -e "/#SBATCH -c 8/d" runHEMCO.sh
     sed -i -e "/#SBATCH -t 0-12:00/d" runHEMCO.sh
-    sed -i -e "/#SBATCH -p huce_intel/d" runHEMCO.sh
+    sed -i -e "/#SBATCH -p sapphire/d" runHEMCO.sh
     sed -i -e "/#SBATCH --mem=15000/d" runHEMCO.sh
     # If PBS, we need to re-source the environment and cd into the directory
     # (unlike the Harvard cluster, these variables are not remembered when a new
@@ -99,6 +96,9 @@ run_hemco_prior_emis() {
 source ${InversionPath}/${GEOSChemEnv}\\
 cd ${RunDirs}/${HEMCOdir}
 " runHEMCO.sh
+
+	# Convert residual SBATCH commands to PBS
+	convert_sbatch_to_pbs
     fi
     sed -i '/.*hemco_standalone.*/a\
 retVal=$?\
@@ -176,7 +176,7 @@ run_hemco_sa() {
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO hemco_prior_emis.sh
 
     # Remove soil absorption uptake from total emissions
-    pushd $OutputDir
+    pushd OutputDir
     for file in HEMCO_sa_diagnostics*.nc; do
         exclude_soil_sink $file $file
     done
