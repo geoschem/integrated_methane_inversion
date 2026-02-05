@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 from datetime import datetime, timedelta
 import numpy as np
@@ -41,6 +42,25 @@ def zero_pad_num_hour(n):
         nstr = "0" + nstr
     return nstr
 
+
+def mixing_ratio_conv_factor(species):
+    if species == "CH4":
+        return 1e9
+    elif species == "CO2":
+        return 1e6
+    else:
+        raise ValueError(f"{species} is not recognized. Please add a line to "
+                         "mixing_ratio_conv_factor in src/inversion_scripts/utils.py")
+
+
+def species_molar_mass(species):
+    if species == "CH4":
+        return 0.01604  # Molar mass of methane [kg/mol]
+    elif species == "CO2":
+        return 0.04401 # Molar mass of CO2 [kg/mol]
+    else:
+        raise ValueError(f"{species} is not recognized. Please add a line to "
+                         "species_molar_mass in src/inversion_scripts/utils.py")
 
 def sum_total_emissions(emissions, areas, mask):
     """
@@ -487,7 +507,6 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
     Returns:
         numpy array with satellite indices for filtered tropomi data.
     """
-
     valid_idx = (
         (blended_data["longitude"] > xlim[0])
         & (blended_data["longitude"] < xlim[1])
@@ -551,8 +570,212 @@ def calculate_superobservation_error(sO, p):
     s_super = np.sqrt(sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2)
     return s_super
 
+def read_tropomi(filename):
+    """
+    Read TROPOMI data and save important variables to dictionary.
 
-def get_posterior_emissions(prior, scale, OptimizeSoil=False):
+    Arguments
+        filename [str]  : TROPOMI netcdf data file to read
+
+    Returns
+        dat      [dict] : Dictionary of important variables from TROPOMI:
+                            - CH4
+                            - Latitude
+                            - Longitude
+                            - QA value
+                            - UTC time
+                            - Time (utc time reshaped for orbit)
+                            - Averaging kernel
+                            - SWIR albedo
+                            - NIR albedo
+                            - Blended albedo
+                            - CH4 prior profile
+                            - Dry air subcolumns
+                            - Latitude bounds
+                            - Longitude bounds
+                            - Vertical pressure profile
+    """
+
+    # Initialize dictionary for TROPOMI data
+    dat = {}
+
+    # Catch read errors in any of the variables
+    try:
+        # Store methane, QA, lat, lon, and time
+        with xr.open_dataset(filename, group="PRODUCT") as tropomi_data:
+            dat["CH4"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
+            dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
+            dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
+            dat["latitude"] = tropomi_data["latitude"].values[0, :, :]
+
+            utc_str = tropomi_data["time_utc"].values[0,:]
+            utc_str = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
+            dat["time"] = np.repeat(utc_str[:, np.newaxis], dat["CH4"].shape[1], axis=1)
+
+        # Store column averaging kernel, SWIR and NIR surface albedo
+        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS") as tropomi_data:
+            dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[0, :, :, ::-1]
+            dat["swir_albedo"] = tropomi_data["surface_albedo_SWIR"].values[0, :, :]
+            dat["nir_albedo"] = tropomi_data["surface_albedo_NIR"].values[0, :, :]
+            dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
+
+        # Store methane prior profile, dry air subcolumns
+        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
+            dat["profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
+            dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
+            
+            # Surface classification values of NaN will be filtered out
+            # due to a low QA value. We can make sure by setting them to 5
+            # and making sure nothing outside of [0,1,2,3] makes it through.
+            sc = tropomi_data["surface_classification"].values[0, :, :]
+            nan_mask = np.isnan(sc)
+            sc_no_nans = np.nan_to_num(sc, nan=0)
+            sc = (sc_no_nans.astype("uint8") & 0x03).astype(int)
+            sc[nan_mask] = 5
+            dat["surface_classification"] = sc
+            sc_0xF9 = (sc_no_nans.astype("uint8") & 0xF9).astype(int)
+            sc_0xF9[nan_mask] = 5
+            dat["surface_classification_0xF9"] = sc_0xF9
+            
+            # Also get pressure interval and surface pressure for use below
+            pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
+            surface_pressure = (tropomi_data["surface_pressure"].values[0, :, :] / 100)  # Pa -> hPa
+
+        # Store latitude and longitude bounds for pixels
+        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS") as tropomi_data:
+            dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[0, :, :, :]
+            dat["latitude_bounds"] = tropomi_data["latitude_bounds"].values[0, :, :, :]
+
+        # Store vertical pressure profile
+        n1 = dat["CH4"].shape[0]  # length of along-track dimension (scanline) of retrieval field
+        n2 = dat["CH4"].shape[1]  # length of across-track dimension (ground_pixel) of retrieval field
+        pressures = np.full([n1, n2, 12 + 1], np.nan, dtype=np.float32)
+        for i in range(12 + 1):
+            pressures[:, :, i] = surface_pressure - i * pressure_interval
+        dat["pressures"] = pressures
+
+    # Return an error if any of the variables were not read correctly
+    except Exception as e:
+        print(f"Error opening {filename}: {e}")
+        return None
+
+    return dat
+
+def read_blended(filename):
+    """
+    Read Blended TROPOMI+GOSAT data and save important variables to dictionary.
+    Arguments
+        filename [str]  : Blended TROPOMI+GOSAT netcdf data file to read
+    Returns
+        dat      [dict] : Dictionary of important variables from Blended TROPOMI+GOSAT:
+                            - CH4
+                            - Latitude
+                            - Longitude
+                            - Time (utc time reshaped for orbit)
+                            - Averaging kernel
+                            - SWIR albedo
+                            - NIR albedo
+                            - Blended albedo
+                            - CH4 prior profile
+                            - Dry air subcolumns
+                            - Latitude bounds
+                            - Longitude bounds
+                            - Surface classification
+                            - Chi-Square for SWIR
+                            - Vertical pressure profile
+    """
+    assert "BLND" in filename, f"BLND not in filename {filename}, but a blended function is being used"
+    try:
+        # Initialize dictionary for Blended TROPOMI+GOSAT data
+        dat = {}
+
+        # Extract data from netCDF file to our dictionary
+        with xr.open_dataset(filename) as blended_data:
+            dat["CH4"] = blended_data["methane_mixing_ratio_blended"].values[:]
+            dat["longitude"] = blended_data["longitude"].values[:]
+            dat["latitude"] = blended_data["latitude"].values[:]
+            dat["column_AK"] = blended_data["column_averaging_kernel"].values[:, ::-1]
+            dat["swir_albedo"] = blended_data["surface_albedo_SWIR"][:]
+            dat["nir_albedo"] = blended_data["surface_albedo_NIR"].values[:]
+            dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
+            dat["profile_apriori"] = blended_data["methane_profile_apriori"].values[:, ::-1]
+            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[:, ::-1]
+            dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
+            dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
+            dat["surface_classification"] = (
+                blended_data["surface_classification"].values[:].astype("uint8") & 0x03
+            ).astype(int)
+            dat["surface_classification_0xF9"] = (
+                blended_data["surface_classification"].values[:].astype("uint8") & 0xF9
+                ).astype(int)
+            dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
+
+            # Remove "Z" from time so that numpy doesn't throw a warning
+            utc_str = blended_data["time_utc"].values[:]
+            dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
+
+            # Need to calculate the pressure for the 13 TROPOMI levels (12 layer edges)
+            pressure_interval = (blended_data["pressure_interval"].values[:] / 100)  # Pa -> hPa
+            surface_pressure = (blended_data["surface_pressure"].values[:] / 100)    # Pa -> hPa
+            n = len(dat["CH4"])
+            pressures = np.full([n, 12 + 1], np.nan, dtype=np.float32)
+            for i in range(12 + 1):
+                pressures[:, i] = surface_pressure - i * pressure_interval
+            dat["pressures"] = pressures
+
+        # Add an axis here to mimic the (scanline, groundpixel) format of operational TROPOMI data
+        # This is so the blended data will be compatible with the TROPOMI operators
+        for key in dat.keys():
+            dat[key] = np.expand_dims(dat[key], axis=0)
+
+    except Exception as e:
+        print(f"Error opening {filename}: {e}")
+        return None
+
+    return dat
+
+
+def read_and_filter_satellite(
+    filename,
+    satellite_str,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    use_water_obs
+):
+
+    # Read TROPOMI data
+    if satellite_str  == "BlendedTROPOMI":
+        satellite = read_blended(filename)
+    elif satellite_str  == "TROPOMI":
+        satellite = read_tropomi(filename)
+    else:
+        print("Other data source is not currently supported")
+        sys.exit(1)
+
+    # If empty, skip this file
+    if satellite == None:
+        print(f"Skipping {filename} due to file processing issue.")
+        return satellite
+
+    # Filter the data
+    if satellite_str  == "BlendedTROPOMI":
+        # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
+        sat_ind = filter_blended(satellite, xlim, ylim, 
+                                 gc_startdate, gc_enddate, use_water_obs)
+    elif satellite_str  == "TROPOMI":
+        # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
+        sat_ind = filter_tropomi(satellite, xlim, ylim, 
+                                 gc_startdate, gc_enddate, use_water_obs)
+
+    else:
+        print("Other data source filtering is not currently supported --HON")
+        sys.exit(1)
+
+    return satellite, sat_ind
+
+def get_posterior_emissions(prior, scale, species, OptimizeSoil=False):
     """
     Function to calculate the posterior emissions from the prior
     and the scale factors. Properly accounting for no optimization
@@ -588,7 +811,7 @@ def get_posterior_emissions(prior, scale, OptimizeSoil=False):
         # account for it in the posterior emissions calculation.
         # To do this, we:
         # make a copy of the original soil sink
-        prior_soil_sink = prior["EmisCH4_SoilAbsorb"].copy()
+        prior_soil_sink = prior[f"Emis{species}_SoilAbsorb"].copy()
         
         filtered_keys = [
             key for key in prior.keys()
@@ -599,10 +822,10 @@ def get_posterior_emissions(prior, scale, OptimizeSoil=False):
             posterior[ds_var] = prior[ds_var] * scale_factors
 
         # But reset the soil sink to the original value
-        posterior["EmisCH4_SoilAbsorb"] = prior_soil_sink
+        posterior[f"Emis{species}_SoilAbsorb"] = prior_soil_sink
 
         # Add the original soil sink back to the total emissions
-        posterior["EmisCH4_Total"] = posterior["EmisCH4_Total_ExclSoilAbs"] + posterior["EmisCH4_SoilAbsorb"]
+        posterior[f"Emis{species}_Total"] = posterior[f"Emis{species}_Total_ExclSoilAbs"] + posterior[f"Emis{species}_SoilAbsorb"]
     else:
         filtered_keys = [
             key for key in prior.keys()

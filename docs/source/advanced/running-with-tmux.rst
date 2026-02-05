@@ -7,7 +7,7 @@ allows you to run a program on your EC2 instance, disconnect, and then reconnect
 Because of the way the IMI is parallelized, using tmux can grant a small to moderate speed-up.
 
 .. note::
-    Before running the IMI with tmux, make sure the ``UseSlurm`` option in the :doc:`configuration file <../getting-started/imi-config-file>` 
+    Before running the IMI with tmux, make sure the ``UseScheduler`` option in the :doc:`configuration file <../getting-started/imi-config-file>` 
     is set to ``false``.
 
 Using tmux

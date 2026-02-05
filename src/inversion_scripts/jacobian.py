@@ -10,9 +10,9 @@ import datetime
 import yaml
 import gc
 from src.inversion_scripts.utils import save_obj
-from src.inversion_scripts.operators.TROPOMI_operator import (
-    apply_average_tropomi_operator,
-    apply_tropomi_operator,
+from src.inversion_scripts.operators.satellite_operator import (
+    apply_average_satellite_operator,
+    apply_satellite_operator,
 )
 from joblib import Parallel, delayed
 
@@ -26,18 +26,19 @@ def apply_operator(operator, params, config):
         params   [dict]   : parameters to run the given operator
     Returns
         output   [dict]   : Dictionary with:
-                            - obs_GC : GEOS-Chem and TROPOMI methane data
-                            - TROPOMI methane
-                            - GEOS-Chem methane
-                            - TROPOMI lat, lon
-                            - TROPOMI lat index, lon index
+                            - obs_GC : GEOS-Chem and satellite column data
+                            - satellite columns
+                            - GEOS-Chem columns
+                            - satellite lat, lon
+                            - satellite lat index, lon index
                               If build_jacobian=True, also include:
                                 - K      : Jacobian matrix
     """
-    if operator == "TROPOMI_average":
-        return apply_average_tropomi_operator(
+    if operator == "satellite_average":
+        return apply_average_satellite_operator(
             params["filename"],
-            params["BlendedTROPOMI"],
+            params["species"],
+            params["satellite_product"],
             params["n_elements"],
             params["gc_startdate"],
             params["gc_enddate"],
@@ -49,10 +50,11 @@ def apply_operator(operator, params, config):
             config,
             params["use_water_obs"],
         )
-    elif operator == "TROPOMI":
-        return apply_tropomi_operator(
+    elif operator == "satellite":
+        return apply_satellite_operator(
             params["filename"],
-            params["BlendedTROPOMI"],
+            params["species"],
+            params["satellite_product"],
             params["n_elements"],
             params["gc_startdate"],
             params["gc_enddate"],
@@ -70,28 +72,29 @@ def apply_operator(operator, params, config):
 
 if __name__ == "__main__":
 
-    config = yaml.load(open(sys.argv[1]), Loader=yaml.FullLoader)
-    startday = sys.argv[2]
-    endday = sys.argv[3]
-    lonmin = float(sys.argv[4])
-    lonmax = float(sys.argv[5])
-    latmin = float(sys.argv[6])
-    latmax = float(sys.argv[7])
-    n_elements = int(sys.argv[8])
-    tropomi_cache = sys.argv[9]
-    BlendedTROPOMI = sys.argv[10].lower() == "true"
-    use_water_obs = sys.argv[11].lower() == "true"
-    isPost = sys.argv[12]
-    period_i = int(sys.argv[13])
-    build_jacobian = sys.argv[14]
-    viz_prior = sys.argv[15]
+    workdir = sys.argv[1]
+    config = yaml.load(open(sys.argv[2]), Loader=yaml.FullLoader)
+    startday = sys.argv[3]
+    endday = sys.argv[4]
+    lonmin = float(sys.argv[5])
+    lonmax = float(sys.argv[6])
+    latmin = float(sys.argv[7])
+    latmax = float(sys.argv[8])
+    n_elements = int(sys.argv[9])
+    species = sys.argv[10]
+    satellite_cache = sys.argv[11]
+    satellite_product = sys.argv[12]
+    use_water_obs = sys.argv[13]
+    isPost = sys.argv[14]
+    period_i = int(sys.argv[15])
+    build_jacobian = sys.argv[16]
+    viz_prior = sys.argv[17]
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
 
     # Configuration
-    workdir = "."
     if build_jacobian.lower() == "true":
         build_jacobian = True
     else:
@@ -112,6 +115,7 @@ if __name__ == "__main__":
         gc_cache = f"{workdir}/data_geoschem_posterior"
         outputdir = f"{workdir}/data_converted_posterior"
         vizdir = f"{workdir}/data_visualization_posterior"
+
     xlim = [lonmin, lonmax]
     ylim = [latmin, latmax]
     gc_startdate = np.datetime64(datetime.datetime.strptime(start, "%Y-%m-%d %H:%M:%S"))
@@ -122,8 +126,8 @@ if __name__ == "__main__":
     print("Start:", gc_startdate)
     print("End:", gc_enddate)
 
-    # Get TROPOMI data filenames for the desired date range
-    allfiles = glob.glob(f"{tropomi_cache}/*.nc")
+    # Get satellite data filenames for the desired date range
+    allfiles = glob.glob(f"{satellite_cache}/*.nc")
     sat_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
@@ -134,27 +138,28 @@ if __name__ == "__main__":
         if (strdate >= gc_startdate) and (strdate <= gc_enddate):
             sat_files.append(filename)
     sat_files.sort()
-    print("Found", len(sat_files), "TROPOMI data files.")
+    print("Found", len(sat_files), "satellite data files.")
 
-    # Map GEOS-Chem to TROPOMI observation space
+    # Map GEOS-Chem to satellite observation space
     # Also return Jacobian matrix if build_jacobian=True
     def process(filename):
 
-        # Check if TROPOMI file has already been processed
+        # Check if satellite file has already been processed
         print("========================")
         shortname = re.split(r"\/", filename)[-1]
         print(shortname)
         date = re.split(r"\.", shortname)[0]
 
-        # If not yet processed, run apply_average_tropomi_operator()
-        if not os.path.isfile(f"{outputdir}/{date}_GCtoTROPOMI.pkl"):
-            print("Applying TROPOMI operator...")
+        # If not yet processed, run apply_average_satellite_operator()
+        if not os.path.isfile(f"{outputdir}/{date}_GCtoSatellite.pkl"):
+            print("Applying satellite operator...")
 
             output = apply_operator(
-                "TROPOMI_average",
+                "satellite_average",
                 {
                     "filename": filename,
-                    "BlendedTROPOMI": BlendedTROPOMI,
+                    "species" : species,
+                    "satellite_product": satellite_product,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,
@@ -168,12 +173,13 @@ if __name__ == "__main__":
                 config,
             )
 
-            # we also save out the unaveraged tropomi operator for visualization purposes
+            # we also save out the unaveraged satellite operator for visualization purposes
             viz_output = apply_operator(
-                "TROPOMI",
+                "satellite",
                 {
                     "filename": filename,
-                    "BlendedTROPOMI": BlendedTROPOMI,
+                    "species" : species,
+                    "satellite_product": satellite_product,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,
@@ -194,9 +200,9 @@ if __name__ == "__main__":
 
         if output["obs_GC"].shape[0] > 0:
             print("Saving .pkl file")
-            save_obj(output, f"{outputdir}/{date}_GCtoTROPOMI.pkl")
-            save_obj(viz_output, f"{vizdir}/{date}_GCtoTROPOMI.pkl")
-        
+            save_obj(output, f"{outputdir}/{date}_GCtoSatellite.pkl")
+            save_obj(viz_output, f"{vizdir}/{date}_GCtoSatellite.pkl")
+
         #Clean up to reduce memory use
         del output, viz_output
         gc.collect()

@@ -11,3 +11,7 @@ slurm-*.out
 *~
 *.log
 .env
+# HON only
+config.yml
+config.aws.yml
+src/utilities/download_files.py
