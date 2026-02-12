@@ -72,7 +72,7 @@ CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 0
 BufferDeg: 0
 LandThreshold: 0.25
-OffshoreEmisThreshold: 0
+EmisThreshold: 0
 OptimizeBCs: false
 OptimizeOH: true
 # optimize soil option when using normal errors, 

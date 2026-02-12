@@ -33,7 +33,7 @@ setup_template() {
     if [[ "$Met" == "MERRA2" || "$Met" == "MERRA-2" || "$Met" == "merra2" ]]; then
         metNum="1"
     elif [[ "$Met" == "GEOSFP" || "$Met" == "GEOS-FP" || "$Met" == "geosfp" ]]; then
-	# Add y to metNum to skip prompt about GEOS-FP discontinuity
+	    # Add y to metNum to skip prompt about GEOS-FP discontinuity
         metNum="2\ny"
     else
         printf "\nERROR: Meteorology field ${Met} is not supported by the IMI. "
@@ -43,36 +43,36 @@ setup_template() {
 
     if "$UseGCHP"; then
         if [ "${metNum}" == "1" ]; then
-            cmd="5\n2\n${metNum}\n${RunDirs}\n${runDir}\nn\n"
+            cmd="3\n2\n${metNum}\n${RunDirs}\n${runDir}\nn\n"
         else
             # GEOSFP: Use daily files pre-processed for GEOS-Chem
-            cmd="5\n2\n${metNum}\ny\n1\n1\n${RunDirs}\n${runDir}\nn\n"
+            cmd="3\n2\n${metNum}\n1\n1\n${RunDirs}\n${runDir}\nn\n"
         fi
     else
         if [ "$Res" = "4.0x5.0" ]; then
-            cmd="9\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+            cmd="3\n2\n${metNum}\n1\n2\n${RunDirs}\n${runDir}\nn\n"
         elif [ "$Res" == "2.0x2.5" ]; then
-            cmd="9\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
+            cmd="3\n2\n${metNum}\n2\n2\n${RunDirs}\n${runDir}\nn\n"
         elif [ "$Res" == "0.5x0.625" ]; then
             if "$isRegional"; then
                 # Use NA domain by default and adjust lat/lon below
-                cmd="9\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+                cmd="3\n2\n${metNum}\n3\n4\n2\n${RunDirs}\n${runDir}\nn\n"
             else
-                cmd="9\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+                cmd="3\n2\n${metNum}\n3\n1\n2\n${RunDirs}\n${runDir}\nn\n"
             fi
         elif [ "$Res" == "0.25x0.3125" ]; then
             if "$isRegional"; then
                 # Use NA domain by default and adjust lat/lon below
-                cmd="9\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
+                cmd="3\n2\n${metNum}\n4\n4\n2\n${RunDirs}\n${runDir}\nn\n"
             else
-                cmd="9\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+                cmd="3\n2\n${metNum}\n4\n1\n2\n${RunDirs}\n${runDir}\nn\n"
             fi
         elif [ "$Res" == "0.125x0.15625" ]; then
             if "$isRegional"; then
                 # Use NA domain by default and adjust lat/lon below
-                cmd="9\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
+                cmd="3\n2\n${metNum}\n5\n4\n2\n${RunDirs}\n${runDir}\nn\n" #regional run
             else
-                cmd="9\n${metNum}\n5\n1\n2\n${RunDirs}\n${runDir}\nn\n"
+                cmd="3\n2\n${metNum}\n5\n1\n2\n${RunDirs}\n${runDir}\nn\n"
             fi
         else
             printf "\nERROR: Grid resolution ${Res} is not supported by the IMI. "
