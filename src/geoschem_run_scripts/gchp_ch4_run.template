@@ -117,7 +117,7 @@ else
     ./setCommonRunSettings.sh
     ln -nsf ${initial_restart} gchp_restart.nc4
 fi
-rm ./Restarts/gcchem_internal_checkpoint
+rm -f ./Restarts/gcchem_internal_checkpoint
 time srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> ${log}
 
 retVal=$?
