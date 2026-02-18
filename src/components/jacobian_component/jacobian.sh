@@ -34,7 +34,7 @@ setup_jacobian() {
         if [ ! -f "$OrigRestartFile" ]; then
             # regrid restart file to GCHP resolution
             TROPOMIBC=${RestartFilePrefix}${StartDate}_0000z.nc4
-            TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
+            TemplatePrefix="${RunDirs}/hemco_prior_emis/Restarts/GEOSChem.Restart.20190101_0000z"
             FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
             cd ${RunDirs}/CS_grids
             TROPOMIBC72="temp_tropomi-bc.nc4"
@@ -180,7 +180,7 @@ create_simulation_dir() {
             if "$UseGCHP"; then
                 # regrid restart file to GCHP resolution
                 TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
-                TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
+                TemplatePrefix="${RunDirs}/hemco_prior_emis/Restarts/GEOSChem.Restart.20190101_0000z"
                 FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
                 cd "${RunDirs}/CS_grids"
                 TROPOMIBC72="temp_tropomi-bc.nc4"
