@@ -118,13 +118,10 @@ else
     ln -nsf ${initial_restart} gchp_restart.nc4
 fi
 rm -f ./Restarts/gcchem_internal_checkpoint
-time srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> ${log}
 
-retVal=$?
-if [ $retVal -ne 0 ]; then
-    echo "Error Status: $retVal" > .error_status_file.txt
-    exit $retVal
-fi
+# Turn off exit if command fails to allow script to finish if GCHP exits early                                                                                   
+set +e
+time srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> ${log}
 
 echo '===> Run ended at' `date` >> $log
 
