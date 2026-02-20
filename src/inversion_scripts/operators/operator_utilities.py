@@ -563,20 +563,35 @@ def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridsp
             os.environ["ESMF_RUNTIME_PROFILE"] = "ON"
         ncores = int(os.environ.get("SLURM_NTASKS", "1"))
         print(f"Running ESMF_RegridWeightGen for {date}...")
+        
+        # Decide launcher
         if "SLURM_JOB_ID" in os.environ:
             LAUNCHER = "srun"
         else:
             LAUNCHER = "mpirun"
-        subprocess.run([
-            LAUNCHER, "-n", str(ncores),
+
+        # Build base command
+        cmd = [LAUNCHER]
+
+        if LAUNCHER == "srun":
+            cmd += ["--mpi=pmix", "-n", "1"]   # force 1 task for the step
+        else:
+            cmd += ["-n", "1"]
+
+        # Common options
+        cmd += [
             "ESMF_RegridWeightGen",
             "-s", SCRIP_grid_fpath,
             "-d", gridspec_path,
             "-m", "conserve",
             "--ignore_unmapped",
             "-w", regrid_weight_fpath
-            ], 
-            check=True, cwd=CSgridDir, 
+        ]
+
+        subprocess.run(
+            cmd,
+            check=True,
+            cwd=CSgridDir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL, 
         )
