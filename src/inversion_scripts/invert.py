@@ -13,6 +13,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
 )
+from src.utilities.config_utils import normalize_config
 
 
 def do_inversion(
@@ -541,7 +542,7 @@ if __name__ == "__main__":
 
     # read in config file
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config = normalize_config(yaml.safe_load(f))
 
     # set parameters based on config file
     is_Regional = config["isRegional"]

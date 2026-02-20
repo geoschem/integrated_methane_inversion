@@ -14,6 +14,7 @@ from netCDF4 import Dataset
 from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
+from src.utilities.config_utils import normalize_config
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -446,5 +447,5 @@ if __name__ == "__main__":
     jacobian_sf = None if sys.argv[3] == "None" else sys.argv[3]
 
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config = normalize_config(yaml.safe_load(f))
     lognormal_invert(config, state_vector_filepath, jacobian_sf)

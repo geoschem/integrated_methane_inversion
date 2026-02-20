@@ -3,6 +3,10 @@
 
 import yaml
 import sys
+try:
+    from src.utilities.config_utils import normalize_config, validate_hierarchical_config
+except ModuleNotFoundError:
+    from config_utils import normalize_config, validate_hierarchical_config
 
 # Description: Parse yaml file and convert to shell variables
 # Example Usage as a script:
@@ -20,6 +24,10 @@ def parse_yaml(file_path, prefix=""):
     """
     with open(file_path, "r") as stream:
         data = yaml.safe_load(stream)
+        errors = validate_hierarchical_config(data)
+        if errors:
+            raise ValueError("\n".join(errors))
+        data = normalize_config(data)
         return yaml_to_shell_variables(data, prefix)
 
 
@@ -63,7 +71,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     yaml_file = sys.argv[1]
-    shell_vars = parse_yaml(yaml_file)
+    try:
+        shell_vars = parse_yaml(yaml_file)
+    except Exception as exc:
+        print(f"Config parsing error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     for var in shell_vars:
         print(var)

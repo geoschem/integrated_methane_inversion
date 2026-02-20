@@ -3,6 +3,10 @@ import sys
 import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
+try:
+    from src.utilities.config_utils import normalize_config, validate_hierarchical_config
+except ModuleNotFoundError:
+    from config_utils import normalize_config, validate_hierarchical_config
 
 """
 Utility script that validates the passed in IMI config file.
@@ -329,6 +333,15 @@ def main() -> None:
     if not isinstance(cfg, dict):
         print("Top-level YAML must be a mapping (dict).", file=sys.stderr)
         sys.exit(2)
+
+    hierarchy_errors = validate_hierarchical_config(cfg)
+    if hierarchy_errors:
+        print("❌ Config is invalid.", file=sys.stderr)
+        for e in hierarchy_errors:
+            print(e, file=sys.stderr)
+        sys.exit(1)
+
+    cfg = normalize_config(cfg)
 
     valid, errs = validate_config(cfg)
 

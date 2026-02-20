@@ -10,6 +10,7 @@ import datetime
 import yaml
 import gc
 from src.inversion_scripts.utils import save_obj
+from src.utilities.config_utils import normalize_config
 from src.inversion_scripts.operators.satellite_operator import (
     apply_average_satellite_operator,
     apply_satellite_operator,
@@ -73,7 +74,7 @@ def apply_operator(operator, params, config):
 if __name__ == "__main__":
 
     workdir = sys.argv[1]
-    config = yaml.load(open(sys.argv[2]), Loader=yaml.FullLoader)
+    config = normalize_config(yaml.load(open(sys.argv[2]), Loader=yaml.FullLoader))
     startday = sys.argv[3]
     endday = sys.argv[4]
     lonmin = float(sys.argv[5])

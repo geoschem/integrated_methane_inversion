@@ -28,6 +28,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     get_posterior_emissions,
 )
+from src.utilities.config_utils import normalize_config
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -94,7 +95,7 @@ def imi_preview(
     # Setup
     # ----------------------------------
     # Read config file
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    config = normalize_config(yaml.load(open(config_path), Loader=yaml.FullLoader))
     for key in config.keys():
         if isinstance(config[key], str):
             config[key] = os.path.expandvars(config[key])

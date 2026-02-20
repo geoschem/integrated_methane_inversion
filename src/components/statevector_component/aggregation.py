@@ -6,6 +6,7 @@ import yaml
 import xarray as xr
 import numpy as np
 import warnings
+from src.utilities.config_utils import normalize_config
 
 from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.imi_preview import (
@@ -672,7 +673,7 @@ if __name__ == "__main__":
         preview_dir = sys.argv[4]
         satellite_cache = sys.argv[5]
         kf_index = int(sys.argv[6]) if len(sys.argv) > 6 else None
-        config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+        config = normalize_config(yaml.load(open(config_path), Loader=yaml.FullLoader))
 
         original_clusters = xr.open_dataset(state_vector_path)
         sensitivity_args = [
