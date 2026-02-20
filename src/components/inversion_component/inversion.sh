@@ -113,6 +113,16 @@ run_notebooks() {
     # replace config file path in viz notebook
     copied_config=${RunDirs}/config_${RunName}.yml
     sed -i 's|\/home\/ubuntu\/integrated_methane_inversion\/config.yml|'$copied_config'|g' visualization_notebook.ipynb
-    jupyter nbconvert --execute --to html visualization_notebook.ipynb
+    
+    # Run nbconvert in an isolated environment so we don't affect later steps
+    (
+        source $CondaFile
+        conda activate "${CondaEnv}"
+
+        export PATH="$CONDA_PREFIX/bin:$PATH"
+        export LD_LIBRARY_PATH="$CONDA_PREFIX/lib"
+
+        jupyter nbconvert --execute --to html visualization_notebook.ipynb
+    )
     printf "\n=== DONE RUNNING NOTEBOOKS ===\n"
 }

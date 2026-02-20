@@ -27,11 +27,11 @@ time_diff() {
 
 print_stats() {
     printf "\nRuntime statistics (s):"
-    printf "\n Setup      : %s" "$(time_diff "$setup_start" "$setup_end")"
-    printf "\n Spinup     : %s" "$(time_diff "$spinup_start" "$spinup_end")"
-    printf "\n Jacobian   : %s" "$(time_diff "$jacobian_start" "$jacobian_end")"
-    printf "\n Inversion  : %s" "$(time_diff "$inversion_start" "$inversion_end")"
-    printf "\n Posterior  : %s\n\n" "$(time_diff "$posterior_start" "$posterior_end")"
+    printf "\n Setup      : %s" "$(time_diff "${setup_start-}"     "${setup_end-}")"
+    printf "\n Spinup     : %s" "$(time_diff "${spinup_start-}"    "${spinup_end-}")"
+    printf "\n Jacobian   : %s" "$(time_diff "${jacobian_start-}"  "${jacobian_end-}")"
+    printf "\n Inversion  : %s" "$(time_diff "${inversion_start-}" "${inversion_end-}")"
+    printf "\n Posterior  : %s\n\n" "$(time_diff "${posterior_start-}" "${posterior_end-}")"
 }
 
 # Description: Print error message for if the IMI fails
