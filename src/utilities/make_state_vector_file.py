@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 from sklearn.cluster import KMeans
-import yaml
+from src.utilities.config_utils import load_config
 
 
 def get_grid_bounds(land_cover_pth):
@@ -123,7 +123,7 @@ def make_state_vector_file(
     """
 
     # Get config
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    config = load_config(config_path)
     lat_min = config["LatMin"]
     lat_max = config["LatMax"]
     lon_min = config["LonMin"]

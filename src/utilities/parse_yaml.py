@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import yaml
 import sys
 try:
-    from src.utilities.config_utils import normalize_config, validate_hierarchical_config
+    from src.utilities.config_utils import load_config
 except ModuleNotFoundError:
-    from config_utils import normalize_config, validate_hierarchical_config
+    from config_utils import load_config
 
 # Description: Parse yaml file and convert to shell variables
 # Example Usage as a script:
@@ -22,13 +21,8 @@ def parse_yaml(file_path, prefix=""):
         file_path [str] : path to yaml file
         prefix    [str] : prefix for shell variables
     """
-    with open(file_path, "r") as stream:
-        data = yaml.safe_load(stream)
-        errors = validate_hierarchical_config(data)
-        if errors:
-            raise ValueError("\n".join(errors))
-        data = normalize_config(data)
-        return yaml_to_shell_variables(data, prefix)
+    data = load_config(file_path)
+    return yaml_to_shell_variables(data, prefix)
 
 
 def yaml_to_shell_variables(data, prefix=""):

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import os
+import yaml
 from copy import deepcopy
 
 
@@ -94,3 +96,42 @@ def normalize_config(config):
             cfg[mapped] = True
 
     return cfg
+
+
+def _expand_env_vars(value):
+    if isinstance(value, dict):
+        return {k: _expand_env_vars(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env_vars(v) for v in value]
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    return value
+
+
+def load_config(config_path, validate_hierarchy=True, normalize=True, expand_env=True):
+    """
+    Canonical IMI config loader used by runtime scripts.
+
+    - Reads YAML from disk
+    - Optionally validates CH4/CO2 hierarchical policy
+    - Optionally normalizes species-scoped config to runtime flat keys
+    - Optionally expands environment variables in all string fields
+    """
+    with open(config_path, "r") as stream:
+        config = yaml.safe_load(stream)
+
+    if not isinstance(config, dict):
+        raise ValueError("Top-level YAML must be a mapping (dict).")
+
+    if validate_hierarchy:
+        errors = validate_hierarchical_config(config)
+        if errors:
+            raise ValueError("\n".join(errors))
+
+    if normalize:
+        config = normalize_config(config)
+
+    if expand_env:
+        config = _expand_env_vars(config)
+
+    return config
