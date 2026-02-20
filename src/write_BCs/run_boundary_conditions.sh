@@ -49,7 +49,7 @@ cd "${workDir}/${runDir}"
 # Modify HISTORY.rc (hourly instantaneous CH4/pressure/air and 3-hourly BCs)
 sed -i -e "s|'CH4',|#'CH4',|g" \
     -e "s|'Metrics',|#'Metrics',|g" \
-    -e "s|#'LevelEdgeDiags',|'LevelEdgeDiags',|g" \
+    -e "s|#'StateMetLevEdge',|'StateMetLevEdge',|g" \
     -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000001 000000',|g" \
     -e "s|Restart.duration:           'End',|Restart.duration:           '00000001 000000',|g" \
     -e "s|00000100 000000|00000000 010000|g" \

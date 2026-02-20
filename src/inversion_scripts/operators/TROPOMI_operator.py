@@ -1160,7 +1160,7 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
     UseGCHP = config['UseGCHP']
     # Assemble file paths to GEOS-Chem output collections for input data
     file_species = f"GEOSChem.SpeciesConc.{date}00z.nc4"
-    file_pedge = f"GEOSChem.LevelEdgeDiags.{date}00z.nc4"
+    file_pedge = f"GEOSChem.StateMetLevEdge.{date}00z.nc4"
 
     # Read lat, lon, CH4 from the SpeciecConc collection
     filename = f"{gc_cache}/{file_species}"
@@ -1194,7 +1194,7 @@ def get_virtual_tropomi(date, gc_cache, gridcell_dict, n_elements, config, build
                     )
                 CH4 = gc_data["SpeciesConcVV_CH4"].transpose("obs","lev").values
 
-    # Read PEDGE from the LevelEdgeDiags collection
+    # Read PEDGE from the StateMetLevEdge collection
     filename = f"{gc_cache}/{file_pedge}"
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")

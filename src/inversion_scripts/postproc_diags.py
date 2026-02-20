@@ -30,13 +30,13 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
     file of a previous simulation (e.g., the spinup simulation), which contains
     data for hour 0 of the last day, with the first output file of the more recent
     simulation (e.g., a sensitivity simulation). This needs to be done for both
-    SpeciesConc and LevelEdgeDiags, and it needs to be done for every run
+    SpeciesConc and StateMetLevEdge, and it needs to be done for every run
     directory: i.e., for every perturbed-state-vector-element simulation, and
     also for the reference simulation.
 
     Example:
     A GEOS-Chem perturbation simulation for one month, from 20180501 to 20180601.
-    The SpeciesConc and LevelEdgeDiags files (i.e., the output files) for the
+    The SpeciesConc and StateMetLevEdge files (i.e., the output files) for the
     first day, 20180501, are missing data for hour 0. We merge data from the
     final output files of the spinup simulation, which contain data for only hour
     0 of 20180501, into the latest output files for 20180501. Now the data for
@@ -83,7 +83,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
             f"{prev_run_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0000z.nc4"
         )
         prev_file_LE = (
-            f"{prev_run_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
+            f"{prev_run_pth}/OutputDir/GEOSChem.StateMetLevEdge.{start_day}_0000z.nc4"
         )
         prev_data_SC = xr.load_dataset(prev_file_SC)
         prev_data_LE = xr.load_dataset(prev_file_LE)
@@ -106,7 +106,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
             prev_data_SC.time == prev_data_SC.time[0], np.nan
         )
 
-        # Load output SpeciesConc and LevelEdgeDiags file
+        # Load output SpeciesConc and StateMetLevEdge file
         output_file_SC = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.SpeciesConc.{start_day}_{timestamp}z.nc4"
         output_data_SC = xr.load_dataset(output_file_SC)
 
@@ -116,7 +116,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
                 prev_data_SC[ds_var] = prev_data_SC["SpeciesConcVV_CH4"]
 
         if "0000" in r or "background" in r:
-            output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_{timestamp}z.nc4"
+            output_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.StateMetLevEdge.{start_day}_{timestamp}z.nc4"
             output_data_LE = xr.load_dataset(output_file_LE)
 
         # Merge output and copied datasets and replace original files that were missing the first hour
@@ -132,7 +132,7 @@ def fill_missing_hour(run_name, run_dirs_pth, prev_run_pth, start_day, res):
         )
         if "0000" in r or "background" in r:
             merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
-            final_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
+            final_file_LE = f"{run_dirs_pth}/{r}/OutputDir/GEOSChem.StateMetLevEdge.{start_day}_0000z.nc4"
             merged_data_LE.to_netcdf(
                 final_file_LE,
                 encoding={
@@ -162,7 +162,7 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
         f"{prev_run_pth}/OutputDir/GEOSChem.SpeciesConc.{start_day}_0000z.nc4"
     )
     prev_file_LE = (
-        f"{prev_run_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
+        f"{prev_run_pth}/OutputDir/GEOSChem.StateMetLevEdge.{start_day}_0000z.nc4"
     )
     prev_data_SC = xr.load_dataset(prev_file_SC)
     prev_data_LE = xr.load_dataset(prev_file_LE)
@@ -176,7 +176,7 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
     )
     output_data_SC = xr.load_dataset(output_file_SC)
     output_file_LE = (
-        f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_{timestamp}z.nc4"
+        f"{run_dirs_pth}/OutputDir/GEOSChem.StateMetLevEdge.{start_day}_{timestamp}z.nc4"
     )
     output_data_LE = xr.load_dataset(output_file_LE)
 
@@ -191,7 +191,7 @@ def fill_missing_hour_posterior(run_dirs_pth, prev_run_pth, start_day, res):
     )
     merged_data_LE = xr.merge([output_data_LE, prev_data_LE])
     final_file_LE = (
-        f"{run_dirs_pth}/OutputDir/GEOSChem.LevelEdgeDiags.{start_day}_0000z.nc4"
+        f"{run_dirs_pth}/OutputDir/GEOSChem.StateMetLevEdge.{start_day}_0000z.nc4"
     )
     merged_data_LE.to_netcdf(
         final_file_LE,

@@ -109,13 +109,13 @@ setup_posterior() {
                 ExtData.rc
         fi
     fi
-    # Turn on LevelEdgeDiags output
+    # Turn on StateMetLevEdge output
     # Output daily restarts to avoid trouble at month boundaries
     if "$HourlyCH4"; then
         if "$UseGCHP"; then
-            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
-                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' \
+            sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+                -e 's/StateMetLevEdge.frequency:.*/StateMetLevEdge.frequency:      010000/g' \
+                -e 's/StateMetLevEdge.duration:.*/StateMetLevEdge.duration:       240000/g' \
                 HISTORY.rc
             # turn on monthly checkpoint
             sed -i -e 's/^Midrun_Checkpoint=OFF/Midrun_Checkpoint=ON/' \
@@ -123,9 +123,9 @@ setup_posterior() {
                 setCommonRunSettings.sh
 
         else
-            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
+            sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+                -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
+                -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
                 -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
                 -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
         fi

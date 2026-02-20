@@ -34,20 +34,20 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
     def process(d):
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
-            # Load the SpeciesConc and LevelEdgeDiags data
+            # Load the SpeciesConc and StateMetLevEdge data
             SpeciesConc_data = xr.load_dataset(
                 f"{gc_source_path}/GEOSChem.SpeciesConc.{d}_0000z.nc4"
             )
-            LevelEdgeDiags_data = xr.load_dataset(
-                f"{gc_source_path}/GEOSChem.LevelEdgeDiags.{d}_0000z.nc4"
+            StateMetLevEdge_data = xr.load_dataset(
+                f"{gc_source_path}/GEOSChem.StateMetLevEdge.{d}_0000z.nc4"
             )
         # Drop the "anchor" variable if it exists 
         # to avoid later handling error of duplicate dimensions(ncontacts, ncontacts)
         if 'anchor' in SpeciesConc_data:
             SpeciesConc_data = SpeciesConc_data.drop_vars('anchor')
 
-        if 'anchor' in LevelEdgeDiags_data:
-            LevelEdgeDiags_data = LevelEdgeDiags_data.drop_vars('anchor')
+        if 'anchor' in StateMetLevEdge_data:
+            StateMetLevEdge_data = StateMetLevEdge_data.drop_vars('anchor')
 
         # For each hour:
         for h in hours:
@@ -61,14 +61,14 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
                         for v in SpeciesConc_for_hour.data_vars
                     },
                 )
-            LevelEdgeDiags_save_pth = f"{gc_destination_path}/GEOSChem.LevelEdgeDiags.{d}_{h:02d}00z.nc4"
-            if not os.path.isfile(LevelEdgeDiags_save_pth):
-                LevelEdgeDiags_for_hour = LevelEdgeDiags_data.isel(time=slice(h, h + 1, 1))
-                LevelEdgeDiags_for_hour.to_netcdf(
-                    LevelEdgeDiags_save_pth,
+            StateMetLevEdge_save_pth = f"{gc_destination_path}/GEOSChem.StateMetLevEdge.{d}_{h:02d}00z.nc4"
+            if not os.path.isfile(StateMetLevEdge_save_pth):
+                StateMetLevEdge_for_hour = StateMetLevEdge_data.isel(time=slice(h, h + 1, 1))
+                StateMetLevEdge_for_hour.to_netcdf(
+                    StateMetLevEdge_save_pth,
                     encoding={
                         v: {"zlib": True, "complevel": 1}
-                        for v in LevelEdgeDiags_for_hour.data_vars
+                        for v in StateMetLevEdge_for_hour.data_vars
                     },
                 )
 

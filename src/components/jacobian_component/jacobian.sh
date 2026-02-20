@@ -178,16 +178,18 @@ create_simulation_dir() {
     else
         if "$UseBCsForRestart"; then
             if "$UseGCHP"; then
-                # regrid restart file to GCHP resolution
-                TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
-                TemplatePrefix="${RunDirs}/hemco_prior_emis/Restarts/GEOSChem.Restart.20190101_0000z"
                 FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
-                cd "${RunDirs}/CS_grids"
-                TROPOMIBC72="temp_tropomi-bc.nc4"
-                python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
-                regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
                 RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
-                cd $runDir
+                if [ ! -f "$RestartFile" ]; then
+                    # regrid restart file to GCHP resolution
+                    TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
+                    TemplatePrefix="${RunDirs}/hemco_prior_emis/Restarts/GEOSChem.Restart.20190101_0000z"
+                    cd "${RunDirs}/CS_grids"
+                    TROPOMIBC72="temp_tropomi-bc.nc4"
+                    python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+                    regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+                    cd $runDir
+                fi
             else
                 RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
                 sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
@@ -267,13 +269,13 @@ create_simulation_dir() {
     # Only save out hourly pressure fields to daily files for base run
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
         if "$UseGCHP"; then
-            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:.*/LevelEdgeDiags.frequency:      010000/g' \
-                -e 's/LevelEdgeDiags.duration:.*/LevelEdgeDiags.duration:       240000/g' HISTORY.rc
+            sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+                -e 's/StateMetLevEdge.frequency:.*/StateMetLevEdge.frequency:      010000/g' \
+                -e 's/StateMetLevEdge.duration:.*/StateMetLevEdge.duration:       240000/g' HISTORY.rc
         else
-            sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-                -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-                -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' HISTORY.rc
+            sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+                -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
+                -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' HISTORY.rc
         fi
     fi
     # disable Restart for all runs
