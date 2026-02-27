@@ -18,7 +18,6 @@ setup_inversion() {
     mkdir -p inversion/data_sensitivities
     mkdir -p inversion/data_visualization
     mkdir -p inversion/operators
-    mkdir -p inversion/src
     if "$LognormalErrors"; then
         mkdir -p inversion/data_converted_prior
         mkdir -p inversion/data_geoschem_prior
@@ -36,6 +35,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
+    cp ${InversionPath}/src/utilities/config_utils.py .
 
     # set inversion period to 1 if not in Kalman mode
     if [ -z "$KalmanMode" ] || [ "$KalmanMode" != true ]; then
