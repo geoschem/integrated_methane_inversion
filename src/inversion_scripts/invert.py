@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import glob
-import yaml
 import numpy as np
 import xarray as xr
 from itertools import product
@@ -13,6 +12,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
 )
+from src.utilities.config_utils import load_config
 
 
 def do_inversion(
@@ -540,8 +540,7 @@ if __name__ == "__main__":
     StateVectorFile = sys.argv[11]
 
     # read in config file
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    config = load_config(config_path)
 
     # set parameters based on config file
     is_Regional = config["isRegional"]

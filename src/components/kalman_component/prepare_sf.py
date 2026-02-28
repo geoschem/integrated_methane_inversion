@@ -3,9 +3,9 @@ import pandas as pd
 import os
 import sys
 import numpy as np
-import yaml
 from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
 from src.inversion_scripts.utils import get_period_mean_emissions
+from src.utilities.config_utils import load_config
 
 
 def prepare_sf(config_path, period_number, base_directory, nudge_factor, species):
@@ -24,7 +24,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor, species
     """
 
     # Read config file
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    config = load_config(config_path)
 
     # Fix nudge_factor type
     nudge_factor = float(nudge_factor)

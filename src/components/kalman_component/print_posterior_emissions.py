@@ -2,12 +2,12 @@ import xarray as xr
 import numpy as np
 import os
 import sys
-import yaml
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     get_posterior_emissions,
     get_period_mean_emissions,
 )
+from src.utilities.config_utils import load_config
 
 
 def print_posterior_emissions(config_path, period_number, base_directory):
@@ -15,7 +15,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     Simple function to print out the total posterior emissions after an inversion.
     """
     # Read config file
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    config = load_config(config_path)
 
     # Useful paths, directories, file names
     statevector_path = os.path.join(base_directory, "StateVector.nc")

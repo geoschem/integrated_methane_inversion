@@ -1,6 +1,5 @@
 import os
 import sys
-import yaml
 import pickle as pickle
 import numpy as np
 import xarray as xr
@@ -9,6 +8,7 @@ from src.inversion_scripts.utils import (
     calculate_superobservation_error,
     ensure_float_list,
 )
+from src.utilities.config_utils import load_config
 
 
 def calc_so(obs_error, obs_GC):
@@ -128,8 +128,7 @@ if __name__ == "__main__":
     precomputed_jacobian = sys.argv[4].lower() == "true"
 
     # Load config file
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    config = load_config(config_path)
 
     # Ensure obs_error is a list of floats
     obs_errors = ensure_float_list(config["ObsError"])

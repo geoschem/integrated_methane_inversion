@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import sys
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
+try:
+    from src.utilities.config_utils import load_config
+except ModuleNotFoundError:
+    from config_utils import load_config
 
 """
 Utility script that validates the passed in IMI config file.
@@ -70,7 +73,7 @@ config_required: Dict[str, Rule] = {
     "DoPosterior": bool,
     "DoPreview": bool,
     "DOFSThreshold": float,
-    "RequestedMemory": int,
+    "RequestedMemory": ANY,
     "RequestedCPUs": int,
     "RequestedTime": str,
     "SchedulerPartition": str,
@@ -129,7 +132,7 @@ optional_rules: Dict[str, Rule] = {
     # Other useful optional inputs
     "PointSourceDatasets": ANY,  # list[str]
     "InversionCPUs": int,
-    "InversionMemory": int,
+    "InversionMemory": ANY,
     "UseWaterObs": bool,  # already required above, here harmless if present
     "OptimizeBCs": bool,
     "OptimizeOH": bool,
@@ -321,13 +324,14 @@ def main() -> None:
     config_path = Path(sys.argv[1])
 
     try:
-        cfg = yaml.safe_load(config_path.read_text())
+        cfg = load_config(config_path)
+    except ValueError as e:
+        print("❌ Config is invalid.", file=sys.stderr)
+        for err in str(e).split("\n"):
+            print(err, file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"Failed to load YAML: {e}", file=sys.stderr)
-        sys.exit(2)
-
-    if not isinstance(cfg, dict):
-        print("Top-level YAML must be a mapping (dict).", file=sys.stderr)
         sys.exit(2)
 
     valid, errs = validate_config(cfg)

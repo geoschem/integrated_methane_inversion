@@ -3,7 +3,6 @@
 
 import os
 import sys
-import yaml
 import warnings
 import datetime
 import numpy as np
@@ -28,6 +27,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     get_posterior_emissions,
 )
+from src.utilities.config_utils import load_config
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -94,10 +94,7 @@ def imi_preview(
     # Setup
     # ----------------------------------
     # Read config file
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    for key in config.keys():
-        if isinstance(config[key], str):
-            config[key] = os.path.expandvars(config[key])
+    config = load_config(config_path)
 
     # Open the state vector file and squeeze time dimension
     state_vector = xr.load_dataset(state_vector_path).squeeze()
@@ -720,8 +717,7 @@ def estimate_averaging_kernel(
 
     # Change units of total prior emissions
     emissions_kgs = emissions * mixing_ratio_conv_factor(species) / (3600 * 24 * 365)  # kg/s from Tg/y
-    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * L ** 2)
-    )  # kg/m2/s from kg/s, per element
+    emissions_kgs_per_m2 = emissions_kgs / (num_native_elements * L ** 2) # kg/m2/s from kg/s, per element
 
     # Use the first element of the error list if multiple values are provided
     sigmaA = config["PriorError"][0] if isinstance(config["PriorError"], list) else config["PriorError"]

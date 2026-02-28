@@ -3,6 +3,7 @@
 
 ## General
 RunName: "Test_IMI_Global"
+Species: "CH4"
 UseSlurm: true
 SafeMode: false
 S3Upload: false
@@ -12,11 +13,27 @@ StartDate: 20190201
 EndDate: 20190202
 SpinupMonths: 1
 
-## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: true
+CH4:
+  ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
+  SatelliteProduct: "BlendedTROPOMI"
+  ## Use observations over water? Set to false to filter out water observations
+  UseWaterObs: false
+  OptimizeOH: true
+  # optimize soil option when using normal errors,
+  # do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors,
+  # current version is not compatible with state vector clustering
+  # either through clustering algorithm or buffer cluster for regional case
+  OptimizeSoil: false
+  PriorErrorOH: [0.1]
+  # Save out GEOS-Chem diagnostics for additional observation operators
+  AdditionalDiagnostics: ["ObsPack"]  ## GOSAT, TCCON, AIRS, PLANEFLIGHT
 
-## Use observations over water? Set to false to filter out water observations
-UseWaterObs: false
+CO2:
+  ## Supported products are OCO2
+  SatelliteProduct: "OCO2"
+  UseWaterObs: false
+  # Save out GEOS-Chem diagnostics for additional observation operators
+  AdditionalDiagnostics: ["ObsPack"]  ## TCCON, PLANEFLIGHT
 
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: false
@@ -56,12 +73,6 @@ nBufferClusters: 0
 BufferDeg: 0
 EmisThreshold: 1.e-12
 OptimizeBCs: false
-OptimizeOH: true
-# optimize soil option when using normal errors, 
-# do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors, 
-# current version is not compatible with state vector clustering 
-# either through clustering algorithm or buffer cluster for regional case
-OptimizeSoil: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -93,7 +104,6 @@ LognormalErrors: false
 PriorError: [0.5]
 PriorErrorBCs: [10.0]
 PriorErrorBufferElements: [0.5]
-PriorErrorOH: [0.1]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
