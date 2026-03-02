@@ -1,9 +1,9 @@
 import os
 import sys
 import glob
-import yaml
 import tarfile
 import boto3
+from src.utilities.config_utils import load_config
 
 """
 A simple utility script that uploads specified files to s3 as a tar archive.
@@ -79,8 +79,7 @@ def zip_and_upload_to_s3(file_paths, bucket_name, s3_key):
 
 if __name__ == "__main__":
     config_path = sys.argv[1]
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    config = load_config(config_path)
 
     bucket = extract_s3_part(config["S3UploadPath"], "bucket")
     key = extract_s3_part(config["S3UploadPath"], "key")

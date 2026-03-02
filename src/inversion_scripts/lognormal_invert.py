@@ -6,7 +6,6 @@
 #       jacobian_sf: (optional) path to numpy array of scale factors for jacobian
 
 import sys
-import yaml
 from itertools import product
 import numpy as np
 import xarray as xr
@@ -14,6 +13,7 @@ from netCDF4 import Dataset
 from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
+from src.utilities.config_utils import load_config
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -34,7 +34,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         "lnxn": [],
         "S_post": [],
         "A": [],
-        "DOFS": [],
         "Ja_normalized": [],
         "prior_err": [],
         "obs_err": [],
@@ -52,10 +51,10 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     convergence_threshold = 5e-3
 
     # Load in the observation and background data
-    ds = np.load("obs_ch4_tropomi.npz")
-    y = np.array(ds["obs_tropomi"])
-    ds = np.load("gc_ch4_bkgd.npz")
-    ybkg = np.array(ds["gc_ch4_bkgd"])
+    ds = np.load("obs_satellite.npz")
+    y = np.array(ds["obs_satellite"])
+    ds = np.load("gc_bkgd.npz")
+    ybkg = np.array(ds["gc_bkgd"])
 
     # We only solve using lognormal errors for state vector elements
     # within the domain of interest, not the buffer elements, the
@@ -292,8 +291,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # Averaging kernel (uses unweighted Sa)
         G = lns @ K_primeT_so
         ak = G @ K_prime
-        dofs = np.trace(ak)
-        print(f"DOFS: {dofs}")
 
         # Calculate posterior mean xhat
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
@@ -325,7 +322,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         results_dict["lnxn"].append(lnxn.flatten()),
         results_dict["S_post"].append(lns),
         results_dict["A"].append(ak),
-        results_dict["DOFS"].append(dofs),
         results_dict["Ja_normalized"].append(Ja.item() / num_sv_elems),
         for k, v in params.items():
             results_dict[k].append(v)
@@ -381,11 +377,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     dataset.lnxn.attrs["long_name"] = "Posterior log scaling factors"
     dataset.lnxn.attrs["units"] = "1"
     dataset.S_post.attrs["long_name"] = "Posterior error covariance matrix"
-    dataset.S_post.attrs["units"] = "1"  
+    dataset.S_post.attrs["units"] = "1"
     dataset.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset.A.attrs["units"] = "1"
-    dataset.DOFS.attrs["long_name"] = "Degrees of freedom for signal"
-    dataset.DOFS.attrs["units"] = "1"
     dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
     dataset.Ja_normalized.attrs["units"] = "1"
     dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
@@ -403,6 +397,30 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # Calculate the mean of the ensemble as the main result
     dataset_mean = dataset.mean(dim="ensemble")
+
+    # Specify attributes
+    dataset_mean.xhat.attrs["long_name"] = "Posterior scaling factors"
+    dataset_mean.xhat.attrs["units"] = "1"
+    dataset_mean.lnxn.attrs["long_name"] = "Posterior log scaling factors"
+    dataset_mean.lnxn.attrs["units"] = "1"
+    dataset_mean.S_post.attrs["long_name"] = "Posterior error covariance matrix"
+    dataset_mean.S_post.attrs["units"] = "1"
+    dataset_mean.A.attrs["long_name"] = "Averaging kernel matrix"
+    dataset_mean.A.attrs["units"] = "1"
+    dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset_mean.Ja_normalized.attrs["units"] = "1"
+    dataset_mean.prior_err.attrs["long_name"] = "Prior error (Sa)"
+    dataset_mean.prior_err.attrs["units"] = "1"
+    dataset_mean.obs_err.attrs["long_name"] = "Observation error (So)"
+    dataset_mean.obs_err.attrs["units"] = "ppb"
+    dataset_mean.gamma.attrs["long_name"] = "Regularization parameter"
+    dataset_mean.gamma.attrs["units"] = "1"
+    dataset_mean.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
+    dataset_mean.prior_err_bc.attrs["units"] = "ppb"
+    dataset_mean.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
+    dataset_mean.prior_err_oh.attrs["units"] = "1"
+    dataset_mean.prior_err_buffer.attrs["long_name"] = "Prior error for buffer elements"
+    dataset_mean.prior_err_buffer.attrs["units"] = "1"
 
     dataset.to_netcdf(
         results_save_path.replace(".nc", "_ensemble.nc"),
@@ -427,6 +445,5 @@ if __name__ == "__main__":
     state_vector_filepath = sys.argv[2]
     jacobian_sf = None if sys.argv[3] == "None" else sys.argv[3]
 
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    config = load_config(config_path)
     lognormal_invert(config, state_vector_filepath, jacobian_sf)

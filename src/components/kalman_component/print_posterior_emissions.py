@@ -2,12 +2,12 @@ import xarray as xr
 import numpy as np
 import os
 import sys
-import yaml
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     get_posterior_emissions,
     get_period_mean_emissions,
 )
+from src.utilities.config_utils import load_config
 
 
 def print_posterior_emissions(config_path, period_number, base_directory):
@@ -15,7 +15,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     Simple function to print out the total posterior emissions after an inversion.
     """
     # Read config file
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    config = load_config(config_path)
 
     # Useful paths, directories, file names
     statevector_path = os.path.join(base_directory, "StateVector.nc")
@@ -41,11 +41,14 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     # Emissions
     hemco_emis = hemco_diags
     posterior_sf = xr.load_dataset(post_sf_path)
-    posterior_emis_ds = get_posterior_emissions(hemco_emis, posterior_sf)
+    species = config["Species"]
+    posterior_emis_ds = get_posterior_emissions(
+        hemco_emis, posterior_sf, species
+    )
     if "time" in posterior_emis_ds.dims:
-        posterior_emis = posterior_emis_ds["EmisCH4_Total"].isel(time=0, drop=True)
+        posterior_emis = posterior_emis_ds[f"Emis{species}_Total"].isel(time=0, drop=True)
     else:
-        posterior_emis = posterior_emis_ds["EmisCH4_Total"].squeeze(drop=True)
+        posterior_emis = posterior_emis_ds[f"Emis{species}_Total"].squeeze(drop=True)
     total_emis = sum_total_emissions(posterior_emis, areas, mask)
 
     # Print

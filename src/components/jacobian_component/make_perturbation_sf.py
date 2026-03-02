@@ -8,11 +8,11 @@ Note: period_number is the kalman filter period number for which to calculate th
 import os
 import sys
 import glob
-import yaml
 import xarray as xr
 import numpy as np
 import pandas as pd
 from src.inversion_scripts.utils import get_mean_emissions, get_period_mean_emissions
+from src.utilities.config_utils import load_config
 
 
 def update_jacobian_perturbation_files(jacobian_dir, state_vector_labels, flat_sf):
@@ -229,5 +229,5 @@ if __name__ == "__main__":
     # use appropriate units for perturbation value
     perturb_value = perturb_value * 1e-8
 
-    config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    config = load_config(config_path)
     make_perturbation_sf(config, period_number, perturb_value)
