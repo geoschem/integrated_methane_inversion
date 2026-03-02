@@ -4,7 +4,6 @@
 ## General
 RunName: "Test_ICI_Global"
 Species: "CO2"
-isAWS: false
 SchedulerType: "PBS"
 SafeMode: false
 S3Upload: false
@@ -24,16 +23,23 @@ CH4:
   ## "Other" is selected, the user must specify the path where observations are
   ## located under "Advanced settings" in this file.
   SatelliteProduct: "Other"
+  ## Use observations over water? Set to false to filter out water observations
   UseWaterObs: false
-  OptimizeOH: false
-  PriorErrorOH: 0.5
+  OptimizeOH: true
+  # optimize soil option when using normal errors,
+  # do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors,
+  # current version is not compatible with state vector clustering
+  # either through clustering algorithm or buffer cluster for regional case
+  OptimizeSoil: false
+  PriorErrorOH: [0.1]
+  # Save out GEOS-Chem diagnostics for additional observation operators
   AdditionalDiagnostics: ["ObsPack"]  ## GOSAT, TCCON, AIRS, PLANEFLIGHT
 
 CO2:
-  SatelliteProduct: "Other"
+  ## Supported products are OCO2
+  SatelliteProduct: "OCO2"
   UseWaterObs: false
-  OptimizeOH: false
-  PriorErrorOH: 0.5
+  # Save out GEOS-Chem diagnostics for additional observation operators
   AdditionalDiagnostics: ["ObsPack"]  ## TCCON, PLANEFLIGHT
 
 ## Is this a regional inversion? Set to false for global inversion
@@ -42,7 +48,7 @@ isRegional: false
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
 ##     "AF" : Africa ([-37,40], [-20,53])
-##     "AS" : Asia ([-11,55],[60,150]) 
+##     "AS" : Asia ([-11,55],[60,150])
 ##     "EU" : Europe ([33,61],[-30,70])
 ##     "ME" : Middle East ([12,50], [-20,70])
 ##     "NA" : North America ([10,70],[-140,-40])
@@ -65,13 +71,14 @@ LatMax: 24
 KalmanMode: false
 UpdateFreqDays: 7
 NudgeFactor: 0.1
+MakePeriodsCSV: true
+CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
 nBufferClusters: 0
 BufferDeg: 0
-LandThreshold: 0.25
-OffshoreEmisThreshold: 0
+EmisThreshold: 1.e-12
 OptimizeBCs: false
 
 ## Point source datasets
@@ -94,17 +101,23 @@ StateVectorFile: "/nobackupnfs1/hnesser/CO2_inversion/state_vector/clusters_annu
 ShapeFile: "None"
 
 ## Inversion
-## Note PriorError and PriorErrorOH are relative fractions (e.g. 0.5 = 50%)
-##  and PriorErrorBCs is in ppb
+## Notes:
+## - PriorError is a relative fraction (e.g. 0.5 = 50%)
+## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
+## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
+## - PriorErrorBCs is in ppb (not used for global)
+## - PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
-PriorError: 0.5
-PriorErrorBCs: 10.0
-ObsError: 15
-Gamma: 1.0
+PriorError: [0.5]
+PriorErrorBCs: [10.0]
+PriorErrorBufferElements: [0.5]
+ObsError: [15]
+Gamma: [1.0]
 PrecomputedJacobian: false
 
 ## Grid
-##   Options are 0.25x0.3125 (GEOSFP only), 0.5x0.625, 2.0x2.5, or 4.0x5.0
+##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
+##   0.5x0.625, 2.0x2.5, or 4.0x5.0
 Res: "2.0x2.5"
 
 ## Meteorology
@@ -112,11 +125,11 @@ Res: "2.0x2.5"
 Met: "MERRA2"
 
 ## Setup modules
-##   Turn on/off different steps in setting up the inversion 
+##   Turn on/off different steps in setting up the inversion
 RunSetup: true
 SetupTemplateRundir: true
 SetupSpinupRun: false
-SetupJacobianRuns: true
+SetupJacobianRuns: false
 SetupInversion: false
 SetupPosteriorRun: false
 
@@ -131,12 +144,14 @@ DoPosterior: false
 
 ## IMI preview
 ##   NOTE: RunSetup must be true to run preview
-DoPreview: false
+DoPreview: true
 DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 16
 RequestedMemory: "20gb"
+InversionCPUs: 16
+InversionMemory: "20gb"
 RequestedTime: "01:00:00"
 SchedulerPartition: "devel"
 
@@ -145,9 +160,9 @@ MaxSimultaneousRuns: -1
 
 ## Number of Jacobians tracers to use for each jacobian simulation
 ##   Specifying a value = 1 will submit a separate jacobian simulation for each
-##   state vector element. Specifying a value > 1 will combine state vector 
+##   state vector element. Specifying a value > 1 will combine state vector
 ##   elements into a single jacobian simulation.
-NumJacobianTracers: 10
+NumJacobianTracers: 1
 
 ##====================================================================
 ##
@@ -158,15 +173,34 @@ NumJacobianTracers: 10
 ## These settings are intended for advanced users who wish to:
 ##   a. modify additional GEOS-Chem options, or
 ##   b. run the IMI on a local cluster.
+##   c. do an Observing System Simulation Experiment (OSSE)
 ## They can be ignored for any standard cloud application of the IMI.
+
+
+##--------------------------------------------------------------------
+## Settings for Observing System Simulation Experiment (OSSE)
+##--------------------------------------------------------------------
+## If true, the IMI will run on synthetic observations
+EnableOSSE: false
+## Run the simulation with randomly perturbed emissions to generate synthetic observations
+DoOSSE: false
+## Perturbation to apply to the prior emissions 
+EmisPerturbationOSSE: 0.5
+## Noise added to the synthetic observations
+ObsErrorOSSE: 15
+## Use randomly perturbed scale factor as "true" emissions (true)
+CreateAutomaticScaleFactorFileOSSE: true
+## Path to a custom scale factor file if CreateAutomaticScaleFactorFileOSSE is false
+ScaleFactorFileOSSE: "/path/to/ScaleFactor.nc"
 
 ##--------------------------------------------------------------------
 ## Additional settings for GEOS-Chem simulations
 ##--------------------------------------------------------------------
 
 ## Jacobian settings
-## Note PerturbValue and PerturbValueOH are relative scale factors and 
-## PerturbValueBCs is in ppb
+## Note PerturbValue is in 1e-8 kg/m2/s. eg specifying 1 means the
+## perturbation will be 1e-8 kg/m2/s
+## PerturbValueOH is a relative scale factor and PerturbValueBCs is in ppb
 PerturbValue: 1.0
 PerturbValueOH: 1.1
 PerturbValueBCs: 10.0
@@ -181,9 +215,13 @@ PerturbValueBCs: 10.0
 ## inversions
 HourlySpecies: true
 
+## IMI validation
+## Turn on ObsPack diagnostic in GEOS-Chem?
+DoObsPack: false
+
 ## Turn on planeflight diagnostic in GEOS-Chem?
 ## For use in comparing GEOS-Chem against planeflight data. The path
-## to those data must be specified in input.geos.
+## to those data must be specified in geoschem_config.yml.
 PLANEFLIGHT: false
 
 ## Turn on old observation operators in GEOS-Chem?
@@ -229,11 +267,10 @@ RestartFilePreviewPrefix: "/nobackup/$USER/CO2_inversion/restart_"
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/nobackup/$USER"
-BCversion: "v2023-10"
+BCversion: "v2025-12"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
-##   NOTE: Must have AWS CLI enabled
-PreviewDryRun: false
+HemcoPriorEmisDryRun: false
 SpinupDryrun: false
 ProductionDryRun: false
 PosteriorDryRun: false
