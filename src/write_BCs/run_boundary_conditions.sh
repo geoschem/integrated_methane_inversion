@@ -36,7 +36,7 @@ cd "${workDir}"
 # Get GCClassic v14.7.0 and create the run directory
 git clone https://github.com/geoschem/GCClassic.git
 cd GCClassic
-git checkout dev/14.7.0
+git checkout 14.7.0
 git submodule update --init --recursive
 cd run
 runDir="gc_run"

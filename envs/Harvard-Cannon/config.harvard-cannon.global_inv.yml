@@ -239,7 +239,7 @@ OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 ## Path to GEOS-Chem input data
 DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
-## Path to TROPOMI Data
+## Path to satellite Data
 DataPathObs: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
@@ -255,12 +255,12 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2025-06/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions/v2025-12/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
 BCpath: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended-boundary-conditions"
-BCversion: "v2025-06"
+BCversion: "v2025-12"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
 HemcoPriorEmisDryRun: false
