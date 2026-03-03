@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 import os
 import sys
-import yaml
+from src.utilities.config_utils import load_config
 
 
 def make_random_sf(state_vector_path, config):
@@ -53,10 +53,8 @@ if __name__ == "__main__":
     config_file = sys.argv[2]
 
     # Load configuration
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
+    config = load_config(config_file)
 
     # Run the script
     if config["CreateAutomaticScaleFactorFileOSSE"]:
         make_random_sf(state_vector_path, config)
-

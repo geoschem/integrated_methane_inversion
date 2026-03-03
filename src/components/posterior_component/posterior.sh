@@ -40,7 +40,8 @@ setup_posterior() {
         RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
         ln -s $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+            sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+                   -e "s|EFYO|CYS|g" HEMCO_Config.rc
             printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
         fi
     fi
@@ -68,7 +69,7 @@ setup_posterior() {
     fi
     # Turn on StateMetLevEdge output
     # Output daily restarts to avoid trouble at month boundaries
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
             -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
             -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
@@ -81,9 +82,9 @@ setup_posterior() {
 
     # Create run script from template
     sed -e "s:namename:${PosteriorName}:g" \
-        -e "s:##:#:g" ch4_run.template >${PosteriorName}.run
+	-e "s:##:#:g" run.template > ${PosteriorName}.run
     chmod 755 ${PosteriorName}.run
-    rm -f ch4_run.template
+    rm -f run.template
 
     ### Perform dry run if requested
     if "$PosteriorDryRun"; then
@@ -174,13 +175,8 @@ run_posterior() {
 
     # Submit job to job scheduler
     printf "\n=== SUBMITTING POSTERIOR SIMULATION ===\n"
-    sbatch --mem $RequestedMemory \
-        -c $RequestedCPUs \
-        -t $RequestedTime \
-        -p $SchedulerPartition \
-        -W ${RunName}_Posterior.run
-    wait
-
+    submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition ${RunName}_Posterior.run
+    
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO posterior.sh
 
@@ -205,7 +201,7 @@ run_posterior() {
     wait
     printf "\n=== DONE -- setup_gc_cache.py ===\n"
 
-    # Sample GEOS-Chem atmosphere with TROPOMI
+    # Sample GEOS-Chem atmosphere with satellite
     LonMinInvDomain=$(ncmin lon ${RunDirs}/StateVector.nc)
     LonMaxInvDomain=$(ncmax lon ${RunDirs}/StateVector.nc)
     LatMinInvDomain=$(ncmin lat ${RunDirs}/StateVector.nc)
@@ -217,14 +213,13 @@ run_posterior() {
     if "$OptimizeOH"; then
         nElements=$((nElements + 1))
     fi
-    FetchTROPOMI="False"
     isPost="True"
     buildJacobian="False"
     # fill kf_period with dummy number here
     kf_period=1
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $tropomiCache $BlendedTROPOMI $UseWaterObs $isPost $kf_period $buildJacobian False
+    python ${InversionPath}/src/inversion_scripts/jacobian.py ${OutputPath}/${RunName}/inversion ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $kf_period $buildJacobian False
     wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)

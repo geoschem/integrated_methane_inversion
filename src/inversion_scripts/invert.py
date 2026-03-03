@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import glob
-import yaml
 import numpy as np
 import xarray as xr
 from itertools import product
@@ -13,6 +12,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
 )
+from src.utilities.config_utils import load_config
 
 
 def do_inversion(
@@ -90,7 +90,7 @@ def do_inversion(
     xlim = [lon_min + degx, lon_max - degx]
     ylim = [lat_min + degy, lat_max - degy]
 
-    # Read output data from jacobian.py (virtual & true TROPOMI columns, Jacobian matrix)
+    # Read output data from jacobian.py (virtual & true satellite columns, Jacobian matrix)
     files = glob.glob(f"{jacobian_dir}/*.pkl")
     files.sort()
 
@@ -133,14 +133,14 @@ def do_inversion(
         if verbose:
             print(fi)
 
-        # Load TROPOMI/GEOS-Chem and Jacobian matrix data from the .pkl file
+        # Load satellite/GEOS-Chem and Jacobian matrix data from the .pkl file
         dat = load_obj(fi)
 
-        # Skip if there aren't any TROPOMI observations on this day
+        # Skip if there aren't any satellite observations on this day
         if dat["obs_GC"].shape[0] == 0:
             continue
 
-        # Otherwise, grab the TROPOMI/GEOS-Chem data
+        # Otherwise, grab the satellite/GEOS-Chem data
         obs_GC = dat["obs_GC"]
 
         # Only consider data within the new latitude and longitude bounds
@@ -155,7 +155,7 @@ def do_inversion(
         if len(ind) == 0:
             continue
 
-        # TROPOMI and GEOS-Chem data within bounds
+        # satellite and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
         # weight obs_err based on the observation count to prevent overfitting
@@ -463,15 +463,62 @@ def do_inversion_ensemble(
         dims = ["ensemble"] + [f"nvar{i}" for i in range(1, v.ndim)]
         dataset[k] = (dims, v)
 
-    # save index number of ens member with J_A/n
-    # closest to 1 as the default member
-    dataset.attrs = {"default_member_index": idx_default_Ja}
-
     # ensemble dimension to end
     dataset = dataset.transpose(..., "ensemble")
 
-    # also calculate the mean of the ensemble as the main result
+    # Specify attributes
+    dataset.xhat.attrs["long_name"] = "Posterior scaling factors"
+    dataset.xhat.attrs["units"] = "1"
+    dataset.S_post.attrs["long_name"] = "Posterior error covariance matrix"
+    dataset.S_post.attrs["units"] = "1"
+    dataset.A.attrs["long_name"] = "Averaging kernel matrix"
+    dataset.A.attrs["units"] = "1"
+    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset.Ja_normalized.attrs["units"] = "1"
+    dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
+    dataset.prior_err.attrs["units"] = "1"
+    dataset.obs_err.attrs["long_name"] = "Observation error (So)"
+    dataset.obs_err.attrs["units"] = "ppb"
+    dataset.gamma.attrs["long_name"] = "Regularization parameter"
+    dataset.gamma.attrs["units"] = "1"
+    dataset.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
+    dataset.prior_err_bc.attrs["units"] = "ppb"
+    dataset.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
+    dataset.prior_err_oh.attrs["units"] = "1"
+    dataset.KTinvSoK.attrs["long_name"] = "K^T * inv(So) * K expression from inversion equation"
+    dataset.KTinvSoK.attrs["units"] = "1"
+    dataset.KTinvSoyKxA.attrs["long_name"] = "K^T * inv(So) * (y-K*xA) expression from inversion equation"
+    dataset.KTinvSoyKxA.attrs["units"] = "1"
+    dataset.ratio.attrs["long_name"] = "Change from prior (xhat - xA)"
+    dataset.ratio.attrs["units"] = "1"
+
+    # Calculate the mean of the ensemble as the main result
     dataset_mean = dataset.mean(dim="ensemble")
+
+    dataset_mean.xhat.attrs["long_name"] = "Posterior scaling factors"
+    dataset_mean.xhat.attrs["units"] = "1"
+    dataset_mean.S_post.attrs["long_name"] = "Posterior error covariance matrix"
+    dataset_mean.S_post.attrs["units"] = "1"
+    dataset_mean.A.attrs["long_name"] = "Averaging kernel matrix"
+    dataset_mean.A.attrs["units"] = "1"
+    dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset_mean.Ja_normalized.attrs["units"] = "1"
+    dataset_mean.prior_err.attrs["long_name"] = "Prior error (Sa)"
+    dataset_mean.prior_err.attrs["units"] = "1"
+    dataset_mean.obs_err.attrs["long_name"] = "Observation error (So)"
+    dataset_mean.obs_err.attrs["units"] = "ppb"
+    dataset_mean.gamma.attrs["long_name"] = "Regularization parameter"
+    dataset_mean.gamma.attrs["units"] = "1"
+    dataset_mean.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
+    dataset_mean.prior_err_bc.attrs["units"] = "ppb"
+    dataset_mean.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
+    dataset_mean.prior_err_oh.attrs["units"] = "1"
+    dataset_mean.KTinvSoK.attrs["long_name"] = "K^T * inv(So) * K expression from inversion equation"
+    dataset_mean.KTinvSoK.attrs["units"] = "1"
+    dataset_mean.KTinvSoyKxA.attrs["long_name"] = "K^T * inv(So) * (y-K*xA) expression from inversion equation"
+    dataset_mean.KTinvSoyKxA.attrs["units"] = "1"
+    dataset_mean.ratio.attrs["long_name"] = "Change from prior (xhat - xA)"
+    dataset_mean.ratio.attrs["units"] = "1"
 
     return dataset, dataset_mean
 
@@ -493,8 +540,7 @@ if __name__ == "__main__":
     StateVectorFile = sys.argv[11]
 
     # read in config file
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    config = load_config(config_path)
 
     # set parameters based on config file
     is_Regional = config["isRegional"]

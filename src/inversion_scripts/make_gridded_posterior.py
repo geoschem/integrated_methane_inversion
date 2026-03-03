@@ -44,7 +44,7 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
     """
 
     # Load state vector and inversion results data
-    statevector = xr.load_dataset(state_vector_path)
+    statevector = xr.load_dataset(state_vector_path).squeeze()
     inv_results = xr.load_dataset(posterior_SF_path)
 
     target_data_prefixes = ["xhat", "S_post", "A"]
@@ -96,8 +96,19 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )
 
-    # Create netcdf for default results
-    ds.isel(ensemble = ds.attrs['default_member_index']).to_netcdf(
+    # Calculate the mean of the ensemble as the main result
+    ds_mean = ds.mean(dim="ensemble")
+
+    # Add attribute metadata for coordinates
+    ds_mean.ScaleFactor.attrs["long_name"] = "Posterior scaling factors"
+    ds_mean.ScaleFactor.attrs["units"] = "1"
+    ds_mean.S_post.attrs["long_name"] = "Posterior error covariance matrix"
+    ds_mean.S_post.attrs["units"] = "1"
+    ds_mean.A.attrs["long_name"] = "Averaging kernel matrix"
+    ds_mean.A.attrs["units"] = "1"
+
+    # Create netcdf for ensemble mean
+    ds_mean.to_netcdf(
         save_path,
         encoding={v: {"zlib": True, "complevel": 1} for v in ds.data_vars}
     )

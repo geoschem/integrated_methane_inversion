@@ -3,6 +3,7 @@
 
 ## General
 RunName: "Test_IMI_Philadelphia"
+Species: "CH4"
 UseSlurm: true
 SafeMode: true
 S3Upload: false
@@ -12,11 +13,27 @@ StartDate: 20220101
 EndDate: 20230101
 SpinupMonths: 1
 
-## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
-BlendedTROPOMI: true
+CH4:
+  ## Use blended TROPOMI+GOSAT data (true)? Or use operational TROPOMI data (false)?
+  SatelliteProduct: "BlendedTROPOMI"
+  ## Use observations over water? Set to false to filter out water observations
+  UseWaterObs: false
+  OptimizeOH: false
+  # optimize soil option when using normal errors,
+  # do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors,
+  # current version is not compatible with state vector clustering
+  # either through clustering algorithm or buffer cluster for regional case
+  OptimizeSoil: false
+  PriorErrorOH: [0.1]
+  # Save out GEOS-Chem diagnostics for additional observation operators
+  AdditionalDiagnostics: ["ObsPack"]  ## GOSAT, TCCON, AIRS, PLANEFLIGHT
 
-## Use observations over water? Set to false to filter out water observations
-UseWaterObs: false
+CO2:
+  ## Supported products are OCO2
+  SatelliteProduct: "OCO2"
+  UseWaterObs: false
+  # Save out GEOS-Chem diagnostics for additional observation operators
+  AdditionalDiagnostics: ["ObsPack"]  ## TCCON, PLANEFLIGHT
 
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
@@ -56,12 +73,6 @@ nBufferClusters: 8
 BufferDeg: 5
 EmisThreshold: 1.e-12
 OptimizeBCs: false
-OptimizeOH: false
-# optimize soil option when using normal errors, 
-# do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors, 
-# current version is not compatible with state vector clustering 
-# either through clustering algorithm or buffer cluster for regional case
-OptimizeSoil: false
 
 ## Point source datasets
 ## Used for visualizations and state vector clustering
@@ -93,7 +104,6 @@ LognormalErrors: false
 PriorError: [0.5]
 PriorErrorBCs: [10.0]
 PriorErrorBufferElements: [0.5]
-PriorErrorOH: [0.1]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
@@ -145,7 +155,7 @@ MaxSimultaneousRuns: -1
 ##   Specifying a value = 1 will submit a separate jacobian simulation for each
 ##   state vector element. Specifying a value > 1 will combine state vector
 ##   elements into a single jacobian simulation.
-NumJacobianTracers: 5
+NumJacobianTracers: 1
 
 ##====================================================================
 ##

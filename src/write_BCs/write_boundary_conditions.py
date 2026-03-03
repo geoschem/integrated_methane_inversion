@@ -16,17 +16,15 @@ with open("config_boundary_conditions.yml", "r") as f:
 
 sys.path.insert(0, "../../")
 from src.inversion_scripts.operators.operator_utilities import nearest_loc
-from src.inversion_scripts.operators.TROPOMI_operator import apply_tropomi_operator
-from src.inversion_scripts.utils import save_obj, load_obj
+from src.inversion_scripts.operators.satellite_operator import apply_satellite_operator
+from src.inversion_scripts.utils import mixing_ratio_conv_factor
 
-
-def get_TROPOMI_times(filename):
+def get_satellite_times(filename):
     """
-    Function that parses the TROPOMI filenames to get the start and end times.
+    Function that parses the satellite filenames to get the start and end times.
     Example input (str): S5P_RPRO_L2__CH4____20220725T152751_20220725T170921_24775_03_020400_20230201T100624.nc
     Example output (tuple): (np.datetime64('2022-07-25T15:27:51'), np.datetime64('2022-07-25T17:09:21'))
     """
-
     ftimes = re.search(r"(\d{8}T\d{6})_(\d{8}T\d{6})", filename)
     assert ftimes is not None
     begint = np.datetime64(datetime.datetime.strptime(ftimes.group(1), "%Y%m%dT%H%M%S"))
@@ -35,47 +33,52 @@ def get_TROPOMI_times(filename):
     return begint, endt
 
 
-def apply_tropomi_operator_to_one_tropomi_file(filename):
+def apply_satellite_operator_to_one_satellite_file(filename, satellite_product, species):
     """
-    Run apply_tropomi_operator from src/inversion_scripts/operators/TROPOMI_operator.py for a single TROPOMI file
+    Run apply_satellite_operator from src/inversion_scripts/operators/satellite_operator.py for a single satellite file
     Example input (str): S5P_RPRO_L2__CH4____20220725T152751_20220725T170921_24775_03_020400_20230201T100624.nc
     """
-
-    result = apply_tropomi_operator(
+    
+    result = apply_satellite_operator(
         filename=filename,
-        BlendedTROPOMI=blendedTROPOMI,
-        n_elements=False,  # Not relevant
+        species=species,
+        satellite_product=satellite_product,
+        n_elements=False, # Not relevant
         gc_startdate=start_time,
         gc_enddate=end_time,
         xlim=[-180, 180],
         ylim=[-90, 90],
         gc_cache=os.path.join(config["workDir"], "gc_run", "OutputDir"),
-        build_jacobian=False,  # Not relevant
-        period_i=False,  # Not relevant
-        config=False,  # Not relevent
+        build_jacobian=False, # Not relevant
+        period_i=False, # Not relevanat
+        config=False # Not relevant
     )
 
     return result["obs_GC"], filename
 
 
-def create_daily_means(satelliteDir, start_time, end_time):
+def create_daily_means(satelliteDir, satellite_product, species, 
+                       start_time, end_time):
 
-    # List of all TROPOMI files that intersect our time period of interest
-    TROPOMI_files = sorted(
+    # List of all satellite files that interesct our time period of interest
+    satellite_files = sorted(
         [
-            file
+            file 
             for file in glob.glob(os.path.join(satelliteDir, "*.nc"))
-            if (start_time <= get_TROPOMI_times(file)[0] <= end_time)
-            or (start_time <= get_TROPOMI_times(file)[1] <= end_time)
+            if (start_time <= get_satellite_times(file)[0] <= end_time)
+            or (start_time <= get_satellite_times(file)[1] <= end_time)
         ]
     )
-    print(f"First TROPOMI file -> {TROPOMI_files[0]}")
-    print(f"Last TROPOMI file  -> {TROPOMI_files[-1]}")
+    print(f"First satellite file -> {satellite_files[0]}")
+    print(f"Last satellite file  -> {satellite_files[-1]}")
 
-    # Using as many cores as you have, apply the TROPOMI operator to each file
+    # Using as many cores as you have, apply the satellite operator to each file
     obsGC_and_filenames = Parallel(n_jobs=-1)(
-        delayed(apply_tropomi_operator_to_one_tropomi_file)(filename)
-        for filename in TROPOMI_files
+        delayed(apply_satellite_operator_to_one_satellite_file)
+        (
+            filename, satellite_product, species
+        ) 
+        for filename in satellite_files
     )
 
     # Read any of the GEOS-Chem files to get the lat/lon grid
@@ -94,17 +97,18 @@ def create_daily_means(satelliteDir, start_time, end_time):
     alldates = [day.astype(datetime.datetime).strftime("%Y%m%d") for day in alldates]
 
     # Initialize arrays for regridding
-    daily_TROPOMI = np.zeros((len(LON), len(LAT), len(alldates)))
+    daily_satellite = np.zeros((len(LON), len(LAT), len(alldates)))
     daily_GC = np.zeros((len(LON), len(LAT), len(alldates)))
     daily_count = np.zeros((len(LON), len(LAT), len(alldates)))
 
-    # Loop thorugh all of the files which now contain TROPOMI and the corresponding GC XCH4
-    for obsGC, filename in obsGC_and_filenames:
+    # Loop thorugh all of the files which now contain satellite data and the 
+    # corresponding GC mixing ratios
+    for obsGC,filename in obsGC_and_filenames:
         NN = obsGC.shape[0]
         if NN == 0:
             continue
 
-        # For each TROPOMI observation, assign it to a GEOS-Chem grid cell
+        # For each satellite observation, assign it to a GEOS-Chem grid cell
         for iNN in range(NN):
 
             # Which day are we on (this is not perfect right now because orbits can cross from one day to the next...
@@ -122,36 +126,36 @@ def create_daily_means(satelliteDir, start_time, end_time):
                 ).strftime("%Y%m%d")
                 time_ind = alldates.index(date)
 
-            c_TROPOMI, c_GC, lon0, lat0 = obsGC[iNN, :4]
+            c_satellite, c_GC, lon0, lat0 = obsGC[iNN, :4]
             ii = nearest_loc(lon0, LON, tolerance=5)
             jj = nearest_loc(lat0, LAT, tolerance=4)
-            daily_TROPOMI[ii, jj, time_ind] += c_TROPOMI
+            daily_satellite[ii, jj, time_ind] += c_satellite
             daily_GC[ii, jj, time_ind] += c_GC
             daily_count[ii, jj, time_ind] += 1
 
     # Normalize by how many observations got assigned to a grid cell to finish the regridding
     daily_count[daily_count == 0] = np.nan
-    daily_TROPOMI = daily_TROPOMI / daily_count
+    daily_satellite = daily_satellite / daily_count
     daily_GC = daily_GC / daily_count
 
     # Change dimensions
-    regrid_TROPOMI = np.einsum(
-        "ijl->lji", daily_TROPOMI
-    )  # (lon, lat, time) -> (time, lat, lon)
-    regrid_GC = np.einsum("ijl->lji", daily_GC)  # (lon, lat, time) -> (time, lat, lon)
+    regrid_satellite = np.einsum(
+        "ijl->lji", daily_satellite
+    ) # (lon, lat, time) -> (time, lat, lon)
+    regrid_GC = np.einsum("ijl->lji", daily_GC) # (lon, lat, time) -> (time, lat, lon)
 
-    # Make a Dataset with variables of (TROPOMI_CH4, GC_CH4) and dims of (lon, lat, time)
+    # Make a Dataset with variables of (satellite, GC) and dims of (lon, lat, time)
     daily_means = xr.Dataset(
         {
-            "TROPOMI_CH4": xr.DataArray(
-                data=regrid_TROPOMI,
+            'satellite': xr.DataArray(
+                data=regrid_satellite,
                 dims=["time", "lat", "lon"],
-                coords={"time": alldates, "lat": LAT, "lon": LON},
+                coords={"time": alldates, "lat": LAT, "lon": LON}
             ),
-            "GC_CH4": xr.DataArray(
+            'GC': xr.DataArray(
                 data=regrid_GC,
                 dims=["time", "lat", "lon"],
-                coords={"time": alldates, "lat": LAT, "lon": LON},
+                coords={"time": alldates, "lat": LAT, "lon": LON}
             ),
         }
     )
@@ -161,7 +165,7 @@ def create_daily_means(satelliteDir, start_time, end_time):
 
 def calculate_bias(daily_means):
 
-    bias = daily_means["GC_CH4"] - daily_means["TROPOMI_CH4"]
+    bias = daily_means["GC"] - daily_means["satellite"]
 
     # Smooth spatially
     bias = bias.rolling(
@@ -206,9 +210,9 @@ def calculate_bias(daily_means):
     # Use these values to fill NaNs
     bias = bias.fillna(nan_value_filler_3d)
 
-    print(f"Average bias (GC-TROPOMI): {bias.mean().values:.2f} ppb\n")
+    print(f"Average bias (GC-satellite): {bias.mean().values:.2f} ppb\n")
 
-    # If there are still NaNs (this will happen when TROPOMI data is missing), use 0.0 ppb as the bias but warn the user
+    # If there are still NaNs (this will happen when satellite data is missing), use 0.0 ppb as the bias but warn the user
     for t in range(len(bias["time"].values)):
         if np.any(np.isnan(bias[t, :, :].values)):
             print(f"WARNING -> using 0.0 ppb as bias for {bias['time'].values[t]}")
@@ -216,12 +220,11 @@ def calculate_bias(daily_means):
 
     return bias
 
-
-def write_bias_corrected_files(bias):
+def write_bias_corrected_files(bias, species, satellite_product):
 
     # Get dates and convert the total column bias to mol/mol
     strdate = bias["time"].values
-    bias_mol_mol = bias.values * 1e-9
+    bias_mol_mol = bias.values / mixing_ratio_conv_factor(species)
 
     # Only write BCs for our date range
     files = sorted(
@@ -263,17 +266,16 @@ def write_bias_corrected_files(bias):
         bias_for_this_boundary_condition_file = bias_mol_mol[index, :, :]
 
         with xr.open_dataset(filename) as ds:
-
-            mixing_ratio = ds["SpeciesBC_CH4"].values.copy()  # [mol/mol]
+            mixing_ratio = ds[f"SpeciesBC_{species}"].values.copy()  # [mol/mol]
             dry_air = ds["Met_AD"] / 28.9644e-3  # [mol]
-            original_xch4 = (mixing_ratio * dry_air).sum(dim="lev") / dry_air.sum(dim="lev")
-            new_xch4 = original_xch4 - bias_for_this_boundary_condition_file
-            ratio = new_xch4 / original_xch4
+            original_xspecies = (mixing_ratio * dry_air).sum(dim="lev") / dry_air.sum(dim="lev")
+            new_xspecies = original_xspecies - bias_for_this_boundary_condition_file
+            ratio = new_xspecies / original_xspecies
 
             for lev in range(mixing_ratio.shape[1]):
                 mixing_ratio[:, lev, :, :] *= ratio
 
-            ds["SpeciesBC_CH4"].values = mixing_ratio
+            ds[f"SpeciesBC_{species}"].values = mixing_ratio
 
             subdir = "blended-boundary-conditions" if blendedTROPOMI else "tropomi-boundary-conditions"
             output_path = os.path.join(config["workDir"], subdir, os.path.basename(filename))
@@ -283,15 +285,18 @@ def write_bias_corrected_files(bias):
 if __name__ == "__main__":
 
     # Arguments from run_boundary_conditions.sh
-    blendedTROPOMI = sys.argv[1] == "True"  # use blended data?
-    satelliteDir = sys.argv[2]  # where is the satellite data?
+    satellite_product = sys.argv[1] # use blended data?
+    satelliteDir = sys.argv[2] # where is the satellite data?
+    species = sys.argv[3]
     # Start of GC output (+1 day except 1 Apr 2018 because we ran 1 day extra at the start to account for data not being written at t=0)
+
     start_time = np.datetime64(datetime.datetime.strptime(sys.argv[3], "%Y%m%d"))
     if start_time != np.datetime64("2018-04-01T00:00:00"):
         start_time += np.timedelta64(1, "D")
     # End of GC output
     end_time = np.datetime64(datetime.datetime.strptime(sys.argv[4], "%Y%m%d"))
-    print(f"\nwrite_boundary_conditions.py output for blendedTROPOMI={blendedTROPOMI}")
+    print(f"\nwrite_boundary_conditions.py output for satellite_product={satellite_product}")
+
     print(f"Using files at {satelliteDir}")
 
     """
@@ -310,6 +315,8 @@ if __name__ == "__main__":
         - using the bias from Part 2, subtract the (GC-TROPOMI) bias from the GC boundary conditions
     """
 
-    daily_means = create_daily_means(satelliteDir, start_time, end_time)
+    daily_means = create_daily_means(
+        satelliteDir, satellite_product, species, start_time, end_time
+    )
     bias = calculate_bias(daily_means)
-    write_bias_corrected_files(bias)
+    write_bias_corrected_files(bias, species, satellite_product)

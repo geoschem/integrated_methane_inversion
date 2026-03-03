@@ -8,6 +8,7 @@
    - `blendedDir`      - where Blended TROPOMI+GOSAT files are located.
    - `CondaEnv`        - conda environment to use for the Python script.
    - `GEOSChemEnv`     - environment file for GEOS-Chem.
+   - `PythonEnv`       - environment file for Python.
    - `Partition`       - which partition to run the jobs on.
    - `restartFilePath` - restart file for GEOS-Chem.
       - if your simulation starts on 1 April 2018, this won't be used (`GEOSChem.Restart.20180401_0000z.nc4` will).

@@ -23,54 +23,54 @@ export GC_USER_REGISTERED=true
 export GC_DATA_ROOT="${geosChemDataPath}"
 
 # As long as it doesn't exist, make the working directory and go to it
-#if [[ -d "${workDir}" ]]; then
-#    echo "ERROR             --> Directory ${workDir} exists." >>"${cwd}/boundary_conditions.log"
-#    exit 1
-#fi
-#mkdir -p "${workDir}"
-#echo "Working directory --> ${workDir}" >>"${cwd}/boundary_conditions.log"
-#mkdir -p "${workDir}/tropomi-boundary-conditions"
-#mkdir -p "${workDir}/blended-boundary-conditions"
-#cd "${workDir}"
-#
-## Get GCClassic v14.7.0 and create the run directory
-#git clone https://github.com/geoschem/GCClassic.git
-#cd GCClassic
-#git checkout dev/14.7.0
-#git submodule update --init --recursive
-#cd run
+if [[ -d "${workDir}" ]]; then
+    echo "ERROR             --> Directory ${workDir} exists." >>"${cwd}/boundary_conditions.log"
+    exit 1
+fi
+mkdir -p "${workDir}"
+echo "Working directory --> ${workDir}" >>"${cwd}/boundary_conditions.log"
+mkdir -p "${workDir}/tropomi-boundary-conditions"
+mkdir -p "${workDir}/blended-boundary-conditions"
+cd "${workDir}"
+
+# Get GCClassic v14.7.0 and create the run directory
+git clone https://github.com/geoschem/GCClassic.git
+cd GCClassic
+git checkout dev/14.7.0
+git submodule update --init --recursive
+cd run
 runDir="gc_run"
-#c="3\n2\n2\ny\n2\n2\n${workDir}\n${runDir}\nn\n" # carbon CH4, GEOS-FP, 2.0 x 2.5, 47L
-#printf ${c} | ./createRunDir.sh
-#cd "${workDir}/${runDir}/build"
-#cmake ../CodeDir -DRUNDIR=.. -DMECH=carbon
-#make -j
-#make install
-#cd "${workDir}/${runDir}"
-#
-## Modify HISTORY.rc (hourly instantaneous CH4/pressure/air and 3-hourly BCs)
-#sed -i -e "s|'Carbon',|#'Carbon',|g" \
-#    -e "s|'Metrics',|#'Metrics',|g" \
-#    -e "s|'Carbon',|#'Carbon',|g" \
-#    -e "s|'StateMet',|#'StateMet',|g" \
-#    -e "s|#'StateMetLevEdge',|'StateMetLevEdge',|g" \
-#    -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000001 000000',|g" \
-#    -e "s|Restart.duration:           'End',|Restart.duration:           '00000001 000000',|g" \
-#    -e "s|00000100 000000|00000000 010000|g" \
-#    -e "s|time-averaged|instantaneous|g" \
-#    -e "s|#'BoundaryConditions',|'BoundaryConditions',|g" \
-#    -e "s|'SpeciesBC_?ADV?             ',|'SpeciesBC_?ADV?_             ',\\n                                 'Met_AD                       ',|g" HISTORY.rc
-#
-## Modify HEMCO_Config.rc so that GEOS-Chem can run into 2024
-#sed -i '/GFED4/s/ RF/ C/g' HEMCO_Config.rc
-#
-## Modify time cycle flag for restart file to skip non-CH4 species
-#sed -i -e "s|EFYO|CYS|g" HEMCO_Config.rc
-#
-## Modify geoschem_config.yml
-## - run GC earlier than you want BCs to accomodate a 15/30 day average going back in time
-## - e.g., the BCs for 15 May 2023 require 1 May 2023-15 May 2023 data (and sometimes 16 April 2023-15 May 2023)
-## - run one day earlier than that because GEOS-Chem won't write SpeciesConc/StateMetLevEdge for t = 0
+c="3\n2\n2\ny\n2\n2\n${workDir}\n${runDir}\nn\n" # carbon CH4, GEOS-FP, 2.0 x 2.5, 47L
+printf ${c} | ./createRunDir.sh
+cd "${workDir}/${runDir}/build"
+cmake ../CodeDir -DRUNDIR=.. -DMECH=carbon
+make -j
+make install
+cd "${workDir}/${runDir}"
+
+# Modify HISTORY.rc (hourly instantaneous CH4/pressure/air and 3-hourly BCs)
+sed -i -e "s|'Carbon',|#'Carbon',|g" \
+    -e "s|'Metrics',|#'Metrics',|g" \
+    -e "s|'Carbon',|#'Carbon',|g" \
+    -e "s|'StateMet',|#'StateMet',|g" \
+    -e "s|#'StateMetLevEdge',|'StateMetLevEdge',|g" \
+    -e "s|Restart.frequency:          'End',|Restart.frequency:          '00000001 000000',|g" \
+    -e "s|Restart.duration:           'End',|Restart.duration:           '00000001 000000',|g" \
+    -e "s|00000100 000000|00000000 010000|g" \
+    -e "s|time-averaged|instantaneous|g" \
+    -e "s|#'BoundaryConditions',|'BoundaryConditions',|g" \
+    -e "s|'SpeciesBC_?ADV?             ',|'SpeciesBC_?ADV?_             ',\\n                                 'Met_AD                       ',|g" HISTORY.rc
+
+# Modify HEMCO_Config.rc so that GEOS-Chem can run into 2024
+sed -i '/GFED4/s/ RF/ C/g' HEMCO_Config.rc
+
+# Modify time cycle flag for restart file to skip non-CH4 species
+sed -i -e "s|EFYO|CYS|g" HEMCO_Config.rc
+
+# Modify geoschem_config.yml
+# - run GC earlier than you want BCs to accomodate a 15/30 day average going back in time
+# - e.g., the BCs for 15 May 2023 require 1 May 2023-15 May 2023 data (and sometimes 16 April 2023-15 May 2023)
+# - run one day earlier than that because GEOS-Chem won't write SpeciesConc/StateMetLevEdge for t = 0
 if [[ ${startDate} -ge "20180501" ]]; then
     gcStartDate=$(date -d "$startDate -30 days" +%Y%m%d)
 else
@@ -79,42 +79,47 @@ fi
 # - run GC to 00:00:00 the day after you want BCs
 # - e.g., you want BCs for 31 Aug 2023 -> run GC to 1 Sep 2023 00:00:00
 gcEndDate=$(date -d "$endDate +1 days" +%Y%m%d)
-#sed -i -e "s|start_date: \[20190101, 000000\]|start_date: [${gcStartDate}, 000000]|g" \
-#    -e "s|end_date: \[20190201, 000000\]|end_date: [${gcEndDate}, 000000]|g" geoschem_config.yml
-#echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00" >>"${cwd}/boundary_conditions.log"
-#
-## Prepare the restart file
-#rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
-#if [[ ${gcStartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
-#    cp "${cwd}/GEOSChem.Restart.20180401_0000z.nc4" Restarts/
-#else
-#    if [[ -e ${restartFilePath} ]]; then # use your own restart file
-#        restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
-#        if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
-#            echo "ERROR             --> your restart file date (${restartFileDate}) doesn't match the simulation start date (${gcStartDate})" >>"${cwd}/boundary_conditions.log"
-#            exit 1
-#        else
-#            cp "${restartFilePath}" Restarts/
-#        fi
-#    else
-#        echo "ERROR             --> the restart file does not exist!" >>"${cwd}/boundary_conditions.log"
-#        exit 1
-#    fi
-#fi
-#
-## Remove debug log file if not debug (everything written via >> debug.log 2>&1)
-#if ! ${debug}; then
-#    rm "${cwd}/debug.log"
-#fi
-#
-## Modify and submit the run script
-#cp runScriptSamples/operational_examples/harvard_cannon/geoschem.run .
-#sed -i -e "s|sapphire,huce_cascade,seas_compute,shared|${partition}|g" \
-#    -e "s|--mem=15000|--mem=128000|g" \
-#    -e "s|-t 0-12:00|-t 07-00:00|g" \
-#    -e "s|-c 8|-c 48|g" geoschem.run
-#sbatch -W geoschem.run
-#wait
+sed -i -e "s|start_date: \[20190101, 000000\]|start_date: [${gcStartDate}, 000000]|g" \
+    -e "s|end_date: \[20190201, 000000\]|end_date: [${gcEndDate}, 000000]|g" geoschem_config.yml
+echo "GC run times      --> ${gcStartDate} 00:00:00 until ${gcEndDate} 00:00:00" >>"${cwd}/boundary_conditions.log"
+
+# Prepare the restart file
+rm Restarts/GEOSChem.Restart.20190101_0000z.nc4
+if [[ ${gcStartDate} -eq "20180401" ]]; then #  use the restart file provided with the IMI
+    cp "${cwd}/GEOSChem.Restart.20180401_0000z.nc4" Restarts/
+else
+    if [[ -e ${restartFilePath} ]]; then # use your own restart file
+        restartFileDate=$(echo "${restartFilePath}" | grep -oP '\d{8}')
+        if [[ ${restartFileDate} -ne ${gcStartDate} ]]; then
+            echo "ERROR             --> your restart file date (${restartFileDate}) doesn't match the simulation start date (${gcStartDate})" >>"${cwd}/boundary_conditions.log"
+            exit 1
+        else
+            cp "${restartFilePath}" Restarts/
+        fi
+    else
+        echo "ERROR             --> the restart file does not exist!" >>"${cwd}/boundary_conditions.log"
+        exit 1
+    fi
+fi
+
+# Remove debug log file if not debug (everything written via >> debug.log 2>&1)
+if ! ${debug}; then
+    rm "${cwd}/debug.log"
+fi
+
+# Modify and submit the run script
+cp runScriptSamples/operational_examples/harvard_cannon/geoschem.run .
+sed -i -e "s|sapphire,huce_cascade,seas_compute,shared|${partition}|g" \
+    -e "s|--mem=15000|--mem=128000|g" \
+    -e "s|-t 0-12:00|-t 07-00:00|g"\
+    -e "s|-c 8|-c 24|g" geoschem.run
+if [[ $SchedulerType = "slurm" ]]; then
+    sbatch -W geoschem.run; wait;
+elif [[ $SchedulerType = "PBS" ]]; then
+    qsub -sync y geoschem.run; wait;
+else
+    echo "Scheduler type $SchedulerType not recognized."
+fi
 
 if [ ! -f  ${workDir}/${runDir}/OutputDir/GEOSChem.BoundaryConditions.${gcEndDate}_0000z.nc4 ]; then
     echo "Error encountered running GEOS-Chem. Please check ${workDir}/${runDir}/GC.log."
@@ -123,12 +128,20 @@ fi
 
 # Write the boundary conditions using write_boundary_conditions.py
 cd "${cwd}"
-sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py True $blendedDir $gcStartDate $gcEndDate"
-wait # run for Blended TROPOMI+GOSAT
-sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source $condaFile; conda activate $condaEnv; python write_boundary_conditions.py False $tropomiDir $gcStartDate $gcEndDate"
-wait # run for TROPOMI data
-echo "" >>"${cwd}/boundary_conditions.log"
-echo "Blended TROPOMI+GOSAT boundary conditions --> ${workDir}/blended-boundary-conditions" >>"${cwd}/boundary_conditions.log"
-echo "TROPOMI boundary conditions               --> ${workDir}/tropomi-boundary-conditions" >>"${cwd}/boundary_conditions.log"
+if [[ $SchedulerType = "slurm" | $SchedulerType = "tmux" ]]; then
+    sbatch -W -J blended -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py "BlendedTROPOMI" $blendedDir $Species $gcStartDate $gcEndDate"
+    wait # run for Blended TROPOMI+GOSAT
+    sbatch -W -J tropomi -o boundary_conditions.log --open-mode=append -p ${partition} -t 7-00:00 --mem 96000 -c 40 --wrap "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py "TROPOMI" $tropomiDir $Species $gcStartDate $gcEndDate"
+    wait # run for TROPOMI data
+elif [[ $SchedulerType = "PBS" ]]; then
+    qsub -sync y -N blended -o boundary_conditions_blended.log -l select=mem=96G:ncpus=40:model=ivy,walltime=07:00:00 -- /usr/bin/bash -c "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py "BlendedTROPOMI" $blendedDir $Species $gcStartDate $gcEndDate"
+    wait # run for Blended TROPOMI+GOSAT
+    qsub -sync y -N blended -o boundary_conditions_operational.log -l select=mem=96G:ncpus=40:model=ivy,walltime=07:00:00 -- /usr/bin/bash -c "source ~/.bashrc; source $PythonEnv; python write_boundary_conditions.py "TROPOMI" $tropomiDir $Species $gcStartDate $gcEndDate"
+    wait # run for TROPOMI data
+fi
+
+echo "" >> "${cwd}/boundary_conditions.log"
+echo "Blended TROPOMI+GOSAT boundary conditions --> ${workDir}/blended-boundary-conditions" >> "${cwd}/boundary_conditions.log"
+echo "TROPOMI boundary conditions               --> ${workDir}/tropomi-boundary-conditions" >> "${cwd}/boundary_conditions.log"
 
 exit 0

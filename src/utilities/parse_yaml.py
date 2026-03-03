@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import yaml
 import sys
+try:
+    from src.utilities.config_utils import load_config
+except ModuleNotFoundError:
+    from config_utils import load_config
 
 # Description: Parse yaml file and convert to shell variables
 # Example Usage as a script:
@@ -18,9 +21,8 @@ def parse_yaml(file_path, prefix=""):
         file_path [str] : path to yaml file
         prefix    [str] : prefix for shell variables
     """
-    with open(file_path, "r") as stream:
-        data = yaml.safe_load(stream)
-        return yaml_to_shell_variables(data, prefix)
+    data = load_config(file_path)
+    return yaml_to_shell_variables(data, prefix)
 
 
 def yaml_to_shell_variables(data, prefix=""):
@@ -63,7 +65,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     yaml_file = sys.argv[1]
-    shell_vars = parse_yaml(yaml_file)
+    try:
+        shell_vars = parse_yaml(yaml_file)
+    except Exception as exc:
+        print(f"Config parsing error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     for var in shell_vars:
         print(var)

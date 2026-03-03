@@ -2,6 +2,35 @@ IMI configuration file
 ======================
 This page documents settings in the IMI configuration file (``config.yml``).
 
+Hierarchical species settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The following keys are now **section-scoped** and must be defined under
+``CH4:`` or ``CO2:`` (not at top level):
+
+- ``SatelliteProduct``
+- ``UseWaterObs``
+- ``OptimizeOH``
+- ``OptimizeSoil``
+- ``PriorErrorOH``
+- ``AdditionalDiagnostics``
+
+The active section is selected by ``Species``. For example:
+
+.. code-block:: yaml
+
+   Species: "CH4"
+   CH4:
+     SatelliteProduct: "BlendedTROPOMI"
+     UseWaterObs: false
+     OptimizeOH: false
+     OptimizeSoil: false
+     PriorErrorOH: [0.1]
+     AdditionalDiagnostics: ["ObsPack"]
+   CO2:
+     SatelliteProduct: "OCO2"
+     UseWaterObs: false
+     AdditionalDiagnostics: ["ObsPack"]
+
 General
 ~~~~~~~
 .. list-table::
@@ -10,10 +39,12 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``UseSlurm``
-     - Boolean for running the IMI as a batch job with ``sbatch`` instead of interactively.
-       Select ``true`` to run the IMI with ``sbatch run_imi.sh``.
-       Select ``false`` to run the IMI with ``./run_imi.sh`` (:doc:`via tmux <../advanced/running-with-tmux>`).
+   * - ``isAWS``
+     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
+   * - ``SchedulerType``
+     - String defining the type of scheduler used to run the IMI.
+        Currently supported options are "slurm", "PBS", or "tmux". Select "tmux"
+        to run the IMI with "./run_imi.sh" instead of PBS or slurm.
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
    * - ``S3Upload``
@@ -36,16 +67,18 @@ Period of interest
    * - ``SpinupMonths``
      - Number of months for the spinup simulation. 
 
-TROPOMI data type
-~~~~~~~~~~~~~~~~~~
+Observation product
+~~~~~~~~~~~~~~~~~~~
 .. list-table::
    :widths: 30, 70
    :class: tight-table
 
-   * - ``BlendedTROPOMI``
-     - Boolean for if the Blended TROPOMI+GOSAT data should be used (``true``) or if the operational data should be used (``false``).
+   * - ``SatelliteProduct``
+     - Product string under ``CH4:`` or ``CO2:``. For CH4, common values are ``"BlendedTROPOMI"``, ``"TROPOMI"``, or ``"Other"``. For CO2, ``"OCO2"`` is supported.
    * - ``UseWaterObs``
-     - Boolean for whether to use observations over water (``true``) or not (``false``). Warning: if ``true``, user should inspect data for potential artifacts.
+     - Boolean under ``CH4:`` or ``CO2:`` for whether to use observations over water (``true``) or not (``false``). Warning: if ``true``, user should inspect data for potential artifacts.
+   * - ``AdditionalDiagnostics``
+     - Optional list under ``CH4:`` or ``CO2:`` to enable extra diagnostics (e.g., ``["ObsPack"]``, ``["TCCON"]``, ``["PLANEFLIGHT"]``).
 
 Region of interest
 ~~~~~~~~~~~~~~~~~~
@@ -104,7 +137,7 @@ State vector
    * - ``OptimizeBCs``
      - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``false``.
    * - ``OptimizeOH``
-     - Boolean to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
+     - Boolean under ``CH4:`` or ``CO2:`` to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
        
 Point source datasets
 ~~~~~~~~~~~~~~~~~~~~~
@@ -166,7 +199,7 @@ Inversion
    * - ``PriorError``
      - Vector of errors in the prior estimates (1-sigma; relative). Default is ``[0.5]`` (50%) error.
    * - ``PriorErrorOH``
-     - Vector of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
+     - Vector under ``CH4:`` or ``CO2:`` of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
    * - ``PriorErrorBCs``
      - Vector of errors in the prior estimates (using ppb). Default is ``[10]`` ppb error.
    * - ``PriorErrorBufferElements``
@@ -320,7 +353,7 @@ These settings are intended for advanced users who wish to modify additional GEO
      - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
    * - ``PerturbValueBCs``
      - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
-   * - ``HourlyCH4``
+   * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``PLANEFLIGHT``
      - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in geoschem_config.yml. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
@@ -346,12 +379,10 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Path for IMI runs and output.
    * - ``DataPath``
      - Path to GEOS-Chem input data.
-   * - ``DataPathTROPOMI``
-     - Path to TROPOMI input data.
-   * - ``CondaFile``
-     - Path to file containing Conda environment settings.
-   * - ``CondaEnv``
-     - Name of conda environment.
+   * - ``DataPathObs``
+     - Path to satellite input data.
+   * - ``PythonEnv``
+     - Path to file that activates the Python environment.
    * - ``RestartDownload``
      - Boolean for downloading an initial restart file from AWS S3. Default value is ``true``.
    * - ``RestartFilePrefix``
