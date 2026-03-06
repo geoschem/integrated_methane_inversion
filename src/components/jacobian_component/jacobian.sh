@@ -27,7 +27,7 @@ setup_jacobian() {
         python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_lowbg_ics_bcs/BCs $StartDate $Species
     fi
 
-    if [[ $PerturbationType = "eigenvector" ]]; then
+    if [[ $PerturbationType = "eigenvector" ]] || [[ $PerturbationType = "grid" ]]; then
         # create lowbg restart file (normally this is done when running the
         # Jacobian for Kalman filter reasons, but when using eigenvectors,
         # the prior run is run first before the Jacobian directories.)
@@ -144,6 +144,13 @@ create_simulation_dir() {
     ln -s ../../GEOSChem_build/gcclassic .
 
     # If it's the prior run, save out the satellite data 
+    working_dir=$(pwd)
+    in="MODEL_LEVEL_EDGE_DIR: '/nobackupnfs1/hnesser/CO2_inversion/jacobian_runs_grid//OutputDir'"
+    out="MODEL_LEVEL_EDGE_DIR: '/nobackupnfs1/hnesser/CO2_inversion/jacobian_runs_${PerturbationType}/CO2_inversion_0000/OutputDir'"
+    sed -i -e "s|${in}|${out}|g" config_satellite_operator.yaml
+    # in="MODEL_CONCENTRATION_DIR: 'OutputDir'"
+    # out="MODEL_CONCENTRATION_DIR: '${working_dir}/OutputDir'"
+    # sed -i -e "s|${in}|${out}|g" config_satellite_operator.yaml
     if [[ $x -eq 0 ]]; then
         sed -i -e "s|SAVE_SATELLITE_DATA: 'False'|SAVE_SATELLITE_DATA: 'True'|g" \
             -e "s|SAVE_INTERPOLATION: 'False'|SAVE_INTERPOLATION: 'True'|g" \
@@ -245,7 +252,10 @@ create_simulation_dir() {
         sed -i -e "s|cleanup=true|cleanup=false|g" \
             -e "s|##|#|g" ${name}.run
         sed -i "/grid_perturbation_outputs/d" ${name}.run
+    else
+        sed -i "/tccon_operator/d" ${name}.run
     fi
+
     rm -f run.template
     chmod 755 ${name}.run
 
@@ -339,16 +349,17 @@ create_simulation_dir() {
     # Initialize previous lines to search
     GcPrevLine='- '${Species}
     HcoPrevLine1='EFYO xyz 1 '${Species}' - 1 '
-    # if ! $PerturbEigenvectors; then
-    if [[ $PerturbationType = "grid" ]]; then
-        HcoPrevLine2='0 FOSSIL '
-    elif [[ $PerturbationType = "eigenvector" ]]; then
-        HcoPrevLine2='${Species} 5 1 500'
-    else
-        printf "PerturbationType $PerturbationType not supported"
-        exit 1
-    fi
-    HcoPrevLine3='Perturbations.txt - - - xy count 1'
+    HcoPrevLine2='(((CMS_FLUX'
+    # # if ! $PerturbEigenvectors; then
+    # if [[ $PerturbationType = "grid" ]]; then
+    #     HcoPrevLine2='0 FOSSIL '
+    # elif [[ $PerturbationType = "eigenvector" ]]; then
+    #     HcoPrevLine2='${Species} 5 1 500'
+    # else
+    #     printf "PerturbationType $PerturbationType not supported"
+    #     exit 1
+    # fi
+    # HcoPrevLine3='Perturbations.txt - - - xy count 1'
     HcoPrevLine4='\* BC_'${Species}
     PertPrevLine='DEFAULT    0     0.0'
 
@@ -356,10 +367,13 @@ create_simulation_dir() {
     # as a $Species tracer in the configuraton files
     if is_number "$x"; then
         if [ $x -gt 0 ] && [ "$BC_elem" = false ] && [ "$OH_elem" = false ]; then
+            i=0
+            add_new_tracer
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
             done
         fi
+        sed -i -e "s|CO2_Emis_Prior_0000|CO2_Emis_Prior|g" HEMCO_Config.rc
     fi
 
     # Navigate back to top-level directory
@@ -425,8 +439,9 @@ add_new_tracer() {
     elif [[ $PerturbationType = "eigenvector" ]]; then
         pert_str='eigenvectors0'
     fi
+
     HcoNewLine2='\
-0 '${Species}'_Emis_Prior_'$istr' '${pert_str}'/perturbation_'$istr'.nc pert 1990-2025/1-12/1/0 C xy kg/m2/s '${Species}'_'$istr' - 1 500'
+0 '${Species}'_Emis_Prior_'$istr' '${RunDirs}'/'${pert_str}'/perturbation_'$istr'.nc pert 1990-2025/1-12/1/0 C xy kg/m2/s '${Species}'_'$istr' - 1 500'
     sed -i "/$HcoPrevLine2/a $HcoNewLine2" HEMCO_Config.rc
     HcoPrevLine2=${Species}'_'$istr' - 1 500'
 
@@ -436,7 +451,6 @@ add_new_tracer() {
         sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
         HcoPrevLine4='BC_'${Species}'_'$istr
     fi
-
 }
 
 # Description: Run jacobian simulations
