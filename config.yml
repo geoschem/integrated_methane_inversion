@@ -79,7 +79,7 @@ PlumeCountFilter: 50
 GroupByCountry: false
 
 ## Custom state vector
-StateVectorFile: "/nobackupnfs1/hnesser/CO2_inversion/clusters_multiscale_2015.nc"
+StateVectorFile: "/home5/hnesser/CO2_inversion/data/state_vector/clusters_annual.nc"
 ShapeFile: "None"
 
 ## Inversion
@@ -137,7 +137,7 @@ MaxSimultaneousRuns: -1
 ##   Specifying a value = 1 will submit a separate jacobian simulation for each
 ##   state vector element. Specifying a value > 1 will combine state vector 
 ##   elements into a single jacobian simulation.
-NumJacobianTracers: 30
+NumJacobianTracers: 20
 
 ##====================================================================
 ##
@@ -163,8 +163,8 @@ PerturbValueBCs: 10.0
 
 ## Specify whether the perturbations are elements of the grid ("grid") or 
 ## eigenvectors of the averaging kernel ("eigenvectors")
-PerturbationType: 'eigenvector'
-nPerturbations: 5000 # Could be replaced by NumberOfElements?
+PerturbationType: "grid"
+nPerturbations: 5000
 
 ## Save out hourly diagnostics from GEOS-Chem?
 ## For use in satellite operators via post-processing -- required for TROPOMI
@@ -198,7 +198,7 @@ OutputPath: "/nobackupnfs1/$USER"
 DataPath: "/nobackupnfs1/$USER/ExtData"
 
 ## Path to satellite data
-DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
+DataPathObs: "/nobackupnfs1/$USER/CO2_inversion/observations/OCO-2"
 DataFormatObs: "oco2*nc"
 DataPathObsPack: "/nobackupnfs1/hnesser/CO2_inversion/observations/ObsPack/obspack_co2.YYYYMMDD.nc"
 
@@ -226,7 +226,7 @@ RunTemplatePath: "/home5/$USER/CO2_inversion/resources/run.template"
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/nobackup/$USER"
+BCpath: "/nobackupnfs1/$USER"
 BCversion: "v2023-10"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
