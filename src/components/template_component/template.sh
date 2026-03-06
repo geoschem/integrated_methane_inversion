@@ -170,14 +170,14 @@ setup_template() {
         sed -i -e "s|export OMP_NUM_THREADS|# export OMP_NUM_THREADS|g" run.template
     fi
 
-    # Copy input file for applying emissions perturbations via HEMCO
-    if [[ $PerturbationType = "grid" ]]; then
-        cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
-    fi
+    # # Copy input file for applying emissions perturbations via HEMCO
+    # if [[ $PerturbationType = "grid" ]]; then
+    #     cp ${InversionPath}/src/geoschem_run_scripts/Perturbations.txt .
+    # fi
 
     if [[ $Species = "CO2" ]]; then
         sed -i -e "s|CH4_STATE_VECTOR|CO2_STATE_VECTOR|g" HEMCO_Config.rc
-        sed -i -e "s|CH4_STATE_VECTOR|CO2_STATE_VECTOR|g" Perturbations.txt
+        # sed -i -e "s|CH4_STATE_VECTOR|CO2_STATE_VECTOR|g" Perturbations.txt
     fi
     
     # Compile GEOS-Chem and store executable in GEOSChem_build directory
@@ -210,7 +210,7 @@ setup_template() {
         -e "s|obsdirobsdir|'$DataPathObs'|g" \
         -e "s|filefile|'$DataFormatObs'|g" \
         -e "s|moddirmoddir|'OutputDir'|g" \
-        -e "s|priordirpriordir|'$RunDirs'/jacobian_runs_'$PerturbationType'/'$RunName'_0000/OutputDir'|g" \
+        -e "s|priordirpriordir|'${RunDirs}/jacobian_runs_${PerturbationType}/${RunName}_0000/OutputDir'|g" \
         -e "s|savedirsavedir|'ProcessedDir'|g" \
         -e "s|FILE_LENGTH_THRESHOLD: 1.0e+6|FILE_LENGTH_THRESHOLD: 1.0e+5|g" \
         config_satellite_operator.yaml
