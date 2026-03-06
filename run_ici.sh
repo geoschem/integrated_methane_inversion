@@ -56,7 +56,7 @@ source $PythonEnv
 
 # Parsing the config file
 eval $(python src/utilities/parse_yaml.py ${ConfigFile})
-
+ 
 if ! "$isAWS"; then
     # Load environment for compiling and running GEOS-Chem
     if [ ! -f "${GEOSChemEnv}" ]; then
