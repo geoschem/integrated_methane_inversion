@@ -136,14 +136,7 @@ setup_imi() {
     fi
 
     # Determine number of elements in state vector file
-    if [[ $PerturbationType = "eigenvector" ]]; then
-        nElements=$nPerturbations
-    elif [[ $PerturbationType = "grid" ]]; then
-        nElements=$(ncmax StateVector ${RunDirs}/StateVector.nc)
-    else
-        printf "\nPerturbationType $PerturbationType is not supported\n"
-        exit 1
-    fi
+    nElements=$nPerturbations
 
     #  Add elements if BCs or OH are optimized
     if "$OptimizeBCs"; then
