@@ -319,12 +319,19 @@ create_simulation_dir() {
     sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
     sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
 
+    # Temporary fix - add back StateVector.nc line that was removed in GC 14.7.0
+    HcoPrevLine='Global CH4 loss frequencies'
+    HcoNewLine='\
+* CH4_STATE_VECTOR ..\/..\/StateVector.nc StateVector 2009/1/1/0 C xy 1 * - 1 1'
+    sed -i -e "/$HcoPrevLine/a $HcoNewLine" HEMCO_Config.rc
+    
     # Initialize previous lines to search
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
     HcoPrevLine2='1 500'
-    HcoPrevLine3='Perturbations.txt - - - xy count 1'
+    HcoPrevLine3='StateVector 2000'
     HcoPrevLine4='\* BC_CH4'
+    HcoPrevLine5='Quantities needed for CH4 chemistry'
     PertPrevLine='DEFAULT    0     0.0'
 
     # Loop over state vector element numbers for this run and add each element

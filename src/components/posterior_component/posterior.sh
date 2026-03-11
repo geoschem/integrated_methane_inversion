@@ -73,8 +73,8 @@ setup_posterior() {
         sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
             -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
             -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
-            -e 's/Restart.frequency:          '\''End'\''/Restart.frequency:          00000001 000000/g' \
-            -e 's/Restart.duration:           '\''End'\''/Restart.duration:           00000001 000000/g' HISTORY.rc
+            -e 's/Restart.frequency:    00000100 000000/Restart.frequency:    00000001 000000/g' \
+            -e 's/Restart.duration:     00000100 000000/Restart.duration:     00000001 000000/g' HISTORY.rc
     fi
 
     ### Turn on observation operators if requested, for posterior run
