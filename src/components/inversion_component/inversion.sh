@@ -35,7 +35,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
-    cp ${InversionPath}/src/utilities/config_utils.py .
+    cp ${InversionPath}/src/utilities/config_utils.py inversion/
 
     # set inversion period to 1 if not in Kalman mode
     if [ -z "$KalmanMode" ] || [ "$KalmanMode" != true ]; then
