@@ -37,12 +37,12 @@ setup_osse() {
     # sed -i -e "s|${StartDate}|${SpinupStart}|g" \
     #     -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
 
-    # Turn on LevelEdgeDiags output
+    # Turn on StateMetLevEdge output
     if "$HourlyCH4"; then
-        sed -i -e 's/#'\''LevelEdgeDiags/'\''LevelEdgeDiags/g' \
-            -e 's/LevelEdgeDiags.frequency:   00000100 000000/LevelEdgeDiags.frequency:   00000000 010000/g' \
-            -e 's/LevelEdgeDiags.duration:    00000100 000000/LevelEdgeDiags.duration:    00000001 000000/g' \
-            -e 's/LevelEdgeDiags.mode:        '\''time-averaged/LevelEdgeDiags.mode:        '\''instantaneous/g' HISTORY.rc
+        sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+            -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
+            -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
+            -e 's/StateMetLevEdge.mode:        '\''time-averaged/StateMetLevEdge.mode:        '\''instantaneous/g' HISTORY.rc
     fi
 
     # Create run script from template

@@ -32,12 +32,12 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
 
     # For each day:
     def process(d):
-        # Load the SpeciesConc and LevelEdgeDiags data
+        # Load the SpeciesConc and StateMetLevEdge data
         SpeciesConc_data = xr.load_dataset(
             f"{gc_source_path}/GEOSChem.SpeciesConc.{d}_0000z.nc4"
         )
-        LevelEdgeDiags_data = xr.load_dataset(
-            f"{gc_source_path}/GEOSChem.LevelEdgeDiags.{d}_0000z.nc4"
+        StateMetLevEdge_data = xr.load_dataset(
+            f"{gc_source_path}/GEOSChem.StateMetLevEdge.{d}_0000z.nc4"
         )
 
         # For each hour:
@@ -45,11 +45,11 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
 
             # Select data for that hour
             SpeciesConc_for_hour = SpeciesConc_data.isel(time=slice(h, h + 1, 1))
-            LevelEdgeDiags_for_hour = LevelEdgeDiags_data.isel(time=slice(h, h + 1, 1))
+            StateMetLevEdge_for_hour = StateMetLevEdge_data.isel(time=slice(h, h + 1, 1))
 
             # Save to new .nc4 file at destination
             SpeciesConc_save_pth = f"{gc_destination_path}/GEOSChem.SpeciesConc.{d}_{zero_pad_num_hour(h)}00z.nc4"
-            LevelEdgeDiags_save_pth = f"{gc_destination_path}/GEOSChem.LevelEdgeDiags.{d}_{zero_pad_num_hour(h)}00z.nc4"
+            StateMetLevEdge_save_pth = f"{gc_destination_path}/GEOSChem.StateMetLevEdge.{d}_{zero_pad_num_hour(h)}00z.nc4"
             SpeciesConc_for_hour.to_netcdf(
                 SpeciesConc_save_pth,
                 encoding={
@@ -57,11 +57,11 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
                     for v in SpeciesConc_for_hour.data_vars
                 },
             )
-            LevelEdgeDiags_for_hour.to_netcdf(
-                LevelEdgeDiags_save_pth,
+            StateMetLevEdge_for_hour.to_netcdf(
+                StateMetLevEdge_save_pth,
                 encoding={
                     v: {"zlib": True, "complevel": 1}
-                    for v in LevelEdgeDiags_for_hour.data_vars
+                    for v in StateMetLevEdge_for_hour.data_vars
                 },
             )
 

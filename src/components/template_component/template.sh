@@ -162,6 +162,7 @@ setup_template() {
     # Modify HISTORY.rc - comment out diagnostics that aren't needed
     sed -i -e "s:'CH4':#'CH4':g" \
         -e "s:'Metrics:#'Metrics:g" \
+        -e "s:'Carbon:#'Carbon:g" \
         -e "s:'StateMet:#'StateMet:g" \
         -e "s:'SpeciesConcMND:#'SpeciesConcMND:g" \
         -e "s:'Met_PEDGEDRY:#'Met_PEDGEDRY:g" \

@@ -46,7 +46,7 @@ setup_spinup() {
         -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
 
     # Disable diagnostic outputs from spinup (we only need restart file from spin up)
-    sed -i -e 's/'\''LevelEdgeDiags/#'\''LevelEdgeDiags/g' \
+    sed -i -e 's/'\''StateMetLevEdge/#'\''StateMetLevEdge/g' \
         -e 's/'\''SpeciesConc/#'\''SpeciesConc/g' \
         HISTORY.rc
 
