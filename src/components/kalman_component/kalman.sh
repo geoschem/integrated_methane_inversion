@@ -118,7 +118,7 @@ run_period() {
     python ${InversionPath}/src/components/kalman_component/change_dates.py $StartDate_i $EndDate_i $PosteriorRunDir
     wait
     echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
-
+    
     # Prepare initial (prior) emission scale factors for the current period
     echo "python path = $PYTHONPATH"
     python ${InversionPath}/src/components/kalman_component/prepare_sf.py $ConfigPath $period_i ${RunDirs} $NudgeFactor $Species; wait

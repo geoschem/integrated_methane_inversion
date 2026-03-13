@@ -7,6 +7,7 @@ rm -f .error_status_file.txt
 if [[ $SchedulerType = "slurm" || $SchedulerType = "tmux" ]]; then
     sbatch --array={START}-{END}{JOBS} --mem $RequestedMemory \
         -c $RequestedCPUs \
+        -N 1 \
         -t $RequestedTime \
         -p $SchedulerPartition \
         -o imi_output.tmp \
