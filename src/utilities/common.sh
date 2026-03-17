@@ -34,16 +34,17 @@ print_stats() {
     printf "\n Posterior  : %s\n\n" "$(time_diff "${posterior_start-}" "${posterior_end-}")"
 }
 
-# Description: Print error message for if the IMI fails
-#   Copy output file to output directory if it exists
+# Description: Print error message with full stack trace for if the IMI fails
 # Usage:
 #   imi_failed
 imi_failed() {
-    file=$(basename "$0")
-    printf "\nFATAL ERROR on line number ${1} of ${file}: IMI exiting."
-    if [ -d "${OutputPath}/${RunName}" ]; then
-        cp "${InversionPath}/imi_output.log" "${OutputPath}/${RunName}/imi_output.log"
-    fi
+    printf "\nFATAL ERROR: IMI exiting."
+    printf "\nError trace (most recent call last):"
+    for ((i=${#FUNCNAME[@]}-1; i>=1; i--)); do
+        printf "\n  File \"%s\", line %s, in %s" \
+            "${BASH_SOURCE[$i]}" "${BASH_LINENO[$i-1]}" "${FUNCNAME[$i]}"
+    done
+    printf "\n"
     exit 1
 }
 

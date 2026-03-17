@@ -50,7 +50,7 @@ run_preview() {
             -o imi_output.tmp \
             -W $preview_file $ConfigPath $state_vector_path $preview_dir $tropomi_cache
         wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
+        cat imi_output.tmp >>${RunDirs}/imi_output.log
         rm imi_output.tmp
         # check for any errors
         [ ! -f "${preview_dir}/.preview_error_status.txt" ] || imi_failed $LINENO

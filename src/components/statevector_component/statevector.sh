@@ -86,8 +86,6 @@ create_statevector() {
 # Usage:
 #   reduce_dimension
 reduce_dimension() {
-    set -euo pipefail
-
     printf "\n=== REDUCING DIMENSION OF STATE VECTOR FILE ===\n"
 
     # set input variables
@@ -129,7 +127,7 @@ reduce_dimension() {
             -o imi_output.tmp \
             -W "${python_args[@]}"
         wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
+        cat imi_output.tmp >>${RunDirs}/imi_output.log
         rm imi_output.tmp
         # check for any errors
         [ ! -f ".aggregation_error.txt" ] || imi_failed $LINENO

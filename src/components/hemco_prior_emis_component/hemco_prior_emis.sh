@@ -140,8 +140,6 @@ fi' runHEMCO.sh
 run_hemco_sa() {
     hemco_start=$1
     hemco_end=$2
-    set -e
-
     pushd ${RunDirs}/${HEMCOdir}
     # replace start and end times in HEMCO_sa_Time.rc
     sed -i -e "s|START.*|START: ${hemco_start:0:4}-${hemco_start:4:2}-${hemco_start:6:2} 00:00:00|g" \

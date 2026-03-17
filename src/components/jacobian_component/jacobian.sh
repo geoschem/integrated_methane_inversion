@@ -106,7 +106,8 @@ setup_jacobian() {
     fi
     sed -i -e "s:{START}:0:g" \
         -e "s:{END}:${nRuns}:g" \
-        -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
+        -e "s:{InversionPath}:${InversionPath}:g" \
+        -e "s:{RunDirs}:${RunDirs}:g" jacobian_runs/submit_jacobian_simulations_array.sh
     if [ $MaxSimultaneousRuns -gt 0 ]; then
         # Error check
         if [ $MaxSimultaneousRuns -gt $nRuns ]; then
@@ -124,7 +125,6 @@ setup_jacobian() {
         jacobian_period=1
     fi
 
-    set -e
     # generate gridded perturbation values for all state vector elements
     printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
     python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
@@ -587,6 +587,7 @@ run_jacobian() {
             
             sed -i -e "s:{RunName}:${RunName}:g" \
                 -e "s:{InversionPath}:${InversionPath}:g" \
+                -e "s:{RunDirs}:${RunDirs}:g" \
                 -e "s:{UseGCHP}:${UseGCHP}:g" \
                 -e "s:{StartDate}:${StartDate}:g" \
                 -e "s:{RunDuration}:${RunDuration}:g" \
@@ -666,7 +667,7 @@ run_jacobian() {
                 -W run_prior_simulation.sh
         fi
         wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
+        cat imi_output.tmp >>${RunDirs}/imi_output.log
         rm imi_output.tmp
         # check if prior simulation exited with non-zero exit code
         [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO

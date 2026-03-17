@@ -3,7 +3,7 @@
 #SBATCH -N 1
 #SBATCH -c 1
 #SBATCH --mem=2000
-#SBATCH -o "imi_output.log"
+#SBATCH -o "imi_output_%j.log"
 
 # This script will run the Integrated Methane Inversion (IMI) with GEOS-Chem.
 # For documentation, see https://imi.readthedocs.io.
@@ -25,8 +25,11 @@ source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
 source src/components/kalman_component/kalman.sh
 
-# trap and exit on errors
-trap 'imi_failed $LINENO' ERR
+# Exit on errors, inherit ERR trap in functions/subshells, catch pipeline errors
+set -eEo pipefail
+
+# trap and exit on errors with full stack trace
+trap 'imi_failed' ERR
 
 start_time=$(date)
 setup_start=$(date +%s)
@@ -136,6 +139,9 @@ export PYTHONPATH=${PYTHONPATH}:${InversionPath}
 # Make run directory
 mkdir -p -v ${RunDirs}
 
+# Redirect all output to the run directory log file
+exec > >(tee -a "${RunDirs}/imi_output.log") 2>&1
+
 # Set/Collect information about the GEOS-Chem version, IMI version,
 # and TROPOMI processor version
 GEOSCHEM_VERSION=14.7.0
@@ -173,7 +179,7 @@ if [[ -z "$DataPathTROPOMI" ]]; then
         -o imi_output.tmp \
         -W $downloadScript $StartDate $EndDate $tropomiCache
     wait
-    cat imi_output.tmp >>${InversionPath}/imi_output.log
+    cat imi_output.tmp >>${RunDirs}/imi_output.log
     rm imi_output.tmp
 else
     # use existing tropomi data and create a symlink to it
@@ -239,11 +245,6 @@ printf "\n"
 
 if ! "$KalmanMode"; then
     print_stats
-fi
-
-# Copy output log to run directory for storage
-if [[ -f ${InversionPath}/imi_output.log ]]; then
-    cp "${InversionPath}/imi_output.log" "${RunDirs}/imi_output.log"
 fi
 
 # copy config file to run directory
