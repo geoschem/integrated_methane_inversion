@@ -140,6 +140,9 @@ setup_template() {
     NEW=" ./RunDirs/StateVector.nc"
     sed -i -e "s@$OLD@$NEW@g" HEMCO_Config.rc
 
+    # use only advected tracers for IMI as non-advected tracers maybe enabled in carbon run for CH4 species only
+    sed -i -e "s|SpeciesRst_?ALL?|SpeciesRst_?ADV?|g" HEMCO_Config.rc
+    
     if "$KalmanMode"; then
         jacobian_period=${period_i}
     else
