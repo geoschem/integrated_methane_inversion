@@ -7,9 +7,7 @@ Species: "CH4"
 SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
-
 UseGCHP: false
-STRETCH_GRID: false
 
 ## Period of interest
 StartDate: 20180501
@@ -69,6 +67,16 @@ LonMin: -105
 LonMax: -103
 LatMin: 31
 LatMax: 33
+
+## Settings specific to GCHP
+##   CS resolution: even integer representing number of grid cells per cubed-sphere face side
+CS_RES: 48
+##   Use stretched grid?
+STRETCH_GRID: false
+STRETCH_FACTOR: 10.0
+TARGET_LAT: 32.0
+# note that target_lon needs to be in range of [-180,180) to accommandate the use of pygeohash for the convection of naming for gridspec file creation, the names for all target_lon > 180 would be the same with pygeohash
+TARGET_LON: 256.0
 
 ## Kalman filter options
 KalmanMode: false
@@ -187,7 +195,7 @@ NumJacobianTracers: 1
 EnableOSSE: false
 ## Run the simulation with randomly perturbed emissions to generate synthetic observations
 DoOSSE: false
-## Perturbation to apply to the prior emissions
+## Perturbation to apply to the prior emissions 
 EmisPerturbationOSSE: 0.5
 ## Noise added to the synthetic observations
 ObsErrorOSSE: 15
