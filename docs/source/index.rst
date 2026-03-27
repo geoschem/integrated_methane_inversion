@@ -3,8 +3,11 @@ Integrated Methane Inversion (IMI)
 .. raw:: html
 
    <p>
+     <a href="https://github.com/geoschem/integrated_methane_inversion/releases"><img src="https://img.shields.io/github/v/release/geoschem/integrated_methane_inversion?label=Latest%20Stable%20Release" alt="Latest release"></a>
+     <a href="https://github.com/geoschem/integrated_methane_inversion/releases/"><img src="https://img.shields.io/github/release-date/geoschem/integrated_methane_inversion" alt="Release date"></a>
+     <a href="https://doi.org/10.5281/zenodo.6081933"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.6081933.svg" alt="DOI"></a><br/>
+     <a href="https://github.com/geoschem/integrated_methane_inversion/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
    <a href="https://imi.readthedocs.io/en/latest/"><img src="https://img.shields.io/readthedocs/imi?label=ReadTheDocs"></a>
-   <a href="https://github.com/ACMG-CH4/CH4_inversion_workflow/releases"><img src="https://img.shields.io/github/v/release/ACMG-CH4/CH4_inversion_workflow?include_prereleases&label=Latest%20Pre-Release"></a>
    </p>
 
 .. important:: Contributions (e.g., suggestions, edits, revisions) would be greatly appreciated. See

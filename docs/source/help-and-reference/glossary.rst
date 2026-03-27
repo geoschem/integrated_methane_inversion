@@ -1,7 +1,7 @@
 
 .. _imi_glossary:
 
-Terminology (TODO: edit this page)
+Terminology
 ==================================
 
 .. glossary::
