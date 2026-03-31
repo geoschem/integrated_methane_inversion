@@ -265,14 +265,16 @@ regrid_tropomi-BC-restart_gcc2gchp() {
             local regridding_method="conserve"
             ESMF_RegridWeightGen -s "$src_grid" -d "$dst_grid" -m "$regridding_method" -w "$regrid_weights_ch4" > /dev/null 2>&1
         fi
-        python -m gcpy.regrid_restart_file       \
-            --stretched-grid                        \
-            --stretch-factor "$STRETCH_FACTOR"     \
-            --target-latitude "$TARGET_LAT"        \
-            --target-longitude "$TARGET_LON"       \
-            "$tropomi_bc"                          \
-            "$regrid_weights_ch4"                  \
-            "$template" > /dev/null 2>&1
+	conda activate $CondaEnv
+        python -m gcpy.regrid_restart_file            \
+	       --stretched-grid                       \
+	       --stretch-factor "$STRETCH_FACTOR"     \
+	       --target-latitude "$TARGET_LAT"        \
+	       --target-longitude "$TARGET_LON"       \
+	       "$tropomi_bc"                          \
+	       "$regrid_weights_ch4"                  \
+	       "$template" > /dev/null 2>&1
+	source "$GEOSChemEnv"
         mv new_restart_file.nc "$restart_ch4"
     else
         if [ ! -f "$dst_grid" ]; then
@@ -283,10 +285,10 @@ regrid_tropomi-BC-restart_gcc2gchp() {
             local regridding_method="conserve"
             ESMF_RegridWeightGen -s "$src_grid" -d "$dst_grid" -m "$regridding_method" -w "$regrid_weights_ch4" > /dev/null 2>&1
         fi
-        python -m gcpy.regrid_restart_file       \
-            "$tropomi_bc"                          \
-            "$regrid_weights_ch4"                  \
-            "$template" > /dev/null 2>&1
+        python -m gcpy.regrid_restart_file            \
+               "$tropomi_bc"                          \
+               "$regrid_weights_ch4"                  \
+               "$template" > /dev/null 2>&1
         mv new_restart_file.nc "$restart_ch4"
     fi
 

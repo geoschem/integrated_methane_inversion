@@ -25,12 +25,6 @@ source src/components/inversion_component/inversion.sh
 source src/components/posterior_component/posterior.sh
 source src/components/kalman_component/kalman.sh
 
-# Exit on errors, inherit ERR trap in functions/subshells, catch pipeline errors
-set -eEo pipefail
-
-# trap and exit on errors with full stack trace
-trap 'imi_failed' ERR
-
 start_time=$(date)
 setup_start=$(date +%s)
 
@@ -63,6 +57,12 @@ CondaFile=$(eval echo $(grep '^CondaFile:' ${ConfigFile} |
 
 # Load conda/mamba/micromamba e.g. ~/.bashrc
 source $CondaFile
+
+# Exit on errors, inherit ERR trap in functions/subshells, catch pipeline errors
+set -eEo pipefail
+
+# trap and exit on errors with full stack trace
+trap 'imi_failed' ERR
 
 # Activate Conda environment
 printf "\nActivating conda environment: ${CondaEnv}\n"
