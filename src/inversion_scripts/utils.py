@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from pyproj import Geod
 import pandas as pd
+from pathlib import Path
 
 
 def save_obj(obj, name):
@@ -49,18 +50,23 @@ def mixing_ratio_conv_factor(species):
     elif species == "CO2":
         return 1e6
     else:
-        raise ValueError(f"{species} is not recognized. Please add a line to "
-                         "mixing_ratio_conv_factor in src/inversion_scripts/utils.py")
+        raise ValueError(
+            f"{species} is not recognized. Please add a line to "
+            "mixing_ratio_conv_factor in src/inversion_scripts/utils.py"
+        )
 
 
 def species_molar_mass(species):
     if species == "CH4":
         return 0.01604  # Molar mass of methane [kg/mol]
     elif species == "CO2":
-        return 0.04401 # Molar mass of CO2 [kg/mol]
+        return 0.04401  # Molar mass of CO2 [kg/mol]
     else:
-        raise ValueError(f"{species} is not recognized. Please add a line to "
-                         "species_molar_mass in src/inversion_scripts/utils.py")
+        raise ValueError(
+            f"{species} is not recognized. Please add a line to "
+            "species_molar_mass in src/inversion_scripts/utils.py"
+        )
+
 
 def sum_total_emissions(emissions, areas, mask):
     """
@@ -81,7 +87,8 @@ def sum_total_emissions(emissions, areas, mask):
     emissions_in_kg_per_s = emissions * areas * mask
     total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
     return float(total)
-    
+
+
 def filter_obs_with_mask(mask, df):
     """
     Select observations lying within a boolean mask
@@ -150,6 +157,7 @@ def check_is_BC_element(sv_elem, nelements, opt_OH, opt_BC, is_OH_element, is_re
         )
     )
 
+
 def plot_hyperparameter_analysis(axs, ens_totals_posterior, params_dict):
     """
     Function to plot the sensitivity of the inversion to the hyperparameters
@@ -171,10 +179,14 @@ def plot_hyperparameter_analysis(axs, ens_totals_posterior, params_dict):
                 ens_totals_posterior,
                 marker="o",
                 linestyle="",
-                label="Ensemble Member"
+                label="Ensemble Member",
             )
             ax.axhline(y=ens_mean_emis, linestyle="-", label="Ensemble Mean")
-            ax.axhline(y=ens_mean_emis - ens_totals_std, linestyle="--", label="Ensemble Standard Deviation")
+            ax.axhline(
+                y=ens_mean_emis - ens_totals_std,
+                linestyle="--",
+                label="Ensemble Standard Deviation",
+            )
             ax.axhline(y=ens_mean_emis + ens_totals_std, linestyle="--")
             ax.set_title(f"Inversion sensitivity to {key}")
             ax.set_ylabel("Total emissions (Tg/yr)")
@@ -185,6 +197,7 @@ def plot_hyperparameter_analysis(axs, ens_totals_posterior, params_dict):
         plt.tight_layout()
     else:
         print("Not enough ensemble members to plot")
+
 
 def plot_ensemble(
     ax,
@@ -484,7 +497,9 @@ def filter_tropomi(tropomi_data, xlim, ylim, startdate, enddate, use_water_obs=F
         & (tropomi_data["time"] <= enddate)
         & (tropomi_data["qa_value"] >= 0.5)
         & (tropomi_data["longitude_bounds"].ptp(axis=2) < 100)
-        & ~(tropomi_data["surface_classification_0xF9"] == 184) # exclude land_snow_or_ice
+        & ~(
+            tropomi_data["surface_classification_0xF9"] == 184
+        )  # exclude land_snow_or_ice
         & (tropomi_data["latitude"] > -60)
     )
 
@@ -522,7 +537,9 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
                 & (blended_data["chi_square_SWIR"][:] > 20000)
             )
         )
-        & ~(blended_data["surface_classification_0xF9"] == 184) # exclude land_snow_or_ice
+        & ~(
+            blended_data["surface_classification_0xF9"] == 184
+        )  # exclude land_snow_or_ice
         & (blended_data["latitude"] > -60)
     )
 
@@ -570,6 +587,7 @@ def calculate_superobservation_error(sO, p):
     s_super = np.sqrt(sO**2 * (((1 - r_retrieval) / p) + r_retrieval) + s_transport**2)
     return s_super
 
+
 def read_tropomi(filename):
     """
     Read TROPOMI data and save important variables to dictionary.
@@ -603,27 +621,41 @@ def read_tropomi(filename):
     try:
         # Store methane, QA, lat, lon, and time
         with xr.open_dataset(filename, group="PRODUCT") as tropomi_data:
-            dat["CH4"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[0, :, :]
+            dat["CH4"] = tropomi_data["methane_mixing_ratio_bias_corrected"].values[
+                0, :, :
+            ]
             dat["qa_value"] = tropomi_data["qa_value"].values[0, :, :]
             dat["longitude"] = tropomi_data["longitude"].values[0, :, :]
             dat["latitude"] = tropomi_data["latitude"].values[0, :, :]
 
-            utc_str = tropomi_data["time_utc"].values[0,:]
-            utc_str = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
+            utc_str = tropomi_data["time_utc"].values[0, :]
+            utc_str = np.array([d.replace("Z", "") for d in utc_str]).astype(
+                "datetime64[ns]"
+            )
             dat["time"] = np.repeat(utc_str[:, np.newaxis], dat["CH4"].shape[1], axis=1)
 
         # Store column averaging kernel, SWIR and NIR surface albedo
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS") as tropomi_data:
-            dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[0, :, :, ::-1]
+        with xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/DETAILED_RESULTS"
+        ) as tropomi_data:
+            dat["column_AK"] = tropomi_data["column_averaging_kernel"].values[
+                0, :, :, ::-1
+            ]
             dat["swir_albedo"] = tropomi_data["surface_albedo_SWIR"].values[0, :, :]
             dat["nir_albedo"] = tropomi_data["surface_albedo_NIR"].values[0, :, :]
             dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
 
         # Store methane prior profile, dry air subcolumns
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA") as tropomi_data:
-            dat["profile_apriori"] = tropomi_data["methane_profile_apriori"].values[0, :, :, ::-1]  # mol m-2
-            dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[0, :, :, ::-1]  # mol m-2
-            
+        with xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/INPUT_DATA"
+        ) as tropomi_data:
+            dat["profile_apriori"] = tropomi_data["methane_profile_apriori"].values[
+                0, :, :, ::-1
+            ]  # mol m-2
+            dat["dry_air_subcolumns"] = tropomi_data["dry_air_subcolumns"].values[
+                0, :, :, ::-1
+            ]  # mol m-2
+
             # Surface classification values of NaN will be filtered out
             # due to a low QA value. We can make sure by setting them to 5
             # and making sure nothing outside of [0,1,2,3] makes it through.
@@ -636,19 +668,31 @@ def read_tropomi(filename):
             sc_0xF9 = (sc_no_nans.astype("uint8") & 0xF9).astype(int)
             sc_0xF9[nan_mask] = 5
             dat["surface_classification_0xF9"] = sc_0xF9
-            
+
             # Also get pressure interval and surface pressure for use below
-            pressure_interval = (tropomi_data["pressure_interval"].values[0, :, :] / 100)  # Pa -> hPa
-            surface_pressure = (tropomi_data["surface_pressure"].values[0, :, :] / 100)  # Pa -> hPa
+            pressure_interval = (
+                tropomi_data["pressure_interval"].values[0, :, :] / 100
+            )  # Pa -> hPa
+            surface_pressure = (
+                tropomi_data["surface_pressure"].values[0, :, :] / 100
+            )  # Pa -> hPa
 
         # Store latitude and longitude bounds for pixels
-        with xr.open_dataset(filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS") as tropomi_data:
-            dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[0, :, :, :]
+        with xr.open_dataset(
+            filename, group="PRODUCT/SUPPORT_DATA/GEOLOCATIONS"
+        ) as tropomi_data:
+            dat["longitude_bounds"] = tropomi_data["longitude_bounds"].values[
+                0, :, :, :
+            ]
             dat["latitude_bounds"] = tropomi_data["latitude_bounds"].values[0, :, :, :]
 
         # Store vertical pressure profile
-        n1 = dat["CH4"].shape[0]  # length of along-track dimension (scanline) of retrieval field
-        n2 = dat["CH4"].shape[1]  # length of across-track dimension (ground_pixel) of retrieval field
+        n1 = dat["CH4"].shape[
+            0
+        ]  # length of along-track dimension (scanline) of retrieval field
+        n2 = dat["CH4"].shape[
+            1
+        ]  # length of across-track dimension (ground_pixel) of retrieval field
         pressures = np.full([n1, n2, 12 + 1], np.nan, dtype=np.float32)
         for i in range(12 + 1):
             pressures[:, :, i] = surface_pressure - i * pressure_interval
@@ -660,6 +704,7 @@ def read_tropomi(filename):
         return None
 
     return dat
+
 
 def read_blended(filename):
     """
@@ -684,7 +729,9 @@ def read_blended(filename):
                             - Chi-Square for SWIR
                             - Vertical pressure profile
     """
-    assert "BLND" in filename, f"BLND not in filename {filename}, but a blended function is being used"
+    assert (
+        "BLND" in filename
+    ), f"BLND not in filename {filename}, but a blended function is being used"
     try:
         # Initialize dictionary for Blended TROPOMI+GOSAT data
         dat = {}
@@ -698,8 +745,12 @@ def read_blended(filename):
             dat["swir_albedo"] = blended_data["surface_albedo_SWIR"][:]
             dat["nir_albedo"] = blended_data["surface_albedo_NIR"].values[:]
             dat["blended_albedo"] = 2.4 * dat["nir_albedo"] - 1.13 * dat["swir_albedo"]
-            dat["profile_apriori"] = blended_data["methane_profile_apriori"].values[:, ::-1]
-            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[:, ::-1]
+            dat["profile_apriori"] = blended_data["methane_profile_apriori"].values[
+                :, ::-1
+            ]
+            dat["dry_air_subcolumns"] = blended_data["dry_air_subcolumns"].values[
+                :, ::-1
+            ]
             dat["longitude_bounds"] = blended_data["longitude_bounds"].values[:]
             dat["latitude_bounds"] = blended_data["latitude_bounds"].values[:]
             dat["surface_classification"] = (
@@ -707,16 +758,22 @@ def read_blended(filename):
             ).astype(int)
             dat["surface_classification_0xF9"] = (
                 blended_data["surface_classification"].values[:].astype("uint8") & 0xF9
-                ).astype(int)
+            ).astype(int)
             dat["chi_square_SWIR"] = blended_data["chi_square_SWIR"].values[:]
 
             # Remove "Z" from time so that numpy doesn't throw a warning
             utc_str = blended_data["time_utc"].values[:]
-            dat["time"] = np.array([d.replace("Z","") for d in utc_str]).astype("datetime64[ns]")
+            dat["time"] = np.array([d.replace("Z", "") for d in utc_str]).astype(
+                "datetime64[ns]"
+            )
 
             # Need to calculate the pressure for the 13 TROPOMI levels (12 layer edges)
-            pressure_interval = (blended_data["pressure_interval"].values[:] / 100)  # Pa -> hPa
-            surface_pressure = (blended_data["surface_pressure"].values[:] / 100)    # Pa -> hPa
+            pressure_interval = (
+                blended_data["pressure_interval"].values[:] / 100
+            )  # Pa -> hPa
+            surface_pressure = (
+                blended_data["surface_pressure"].values[:] / 100
+            )  # Pa -> hPa
             n = len(dat["CH4"])
             pressures = np.full([n, 12 + 1], np.nan, dtype=np.float32)
             for i in range(12 + 1):
@@ -736,19 +793,13 @@ def read_blended(filename):
 
 
 def read_and_filter_satellite(
-    filename,
-    satellite_str,
-    gc_startdate,
-    gc_enddate,
-    xlim,
-    ylim,
-    use_water_obs
+    filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
 ):
 
     # Read TROPOMI data
-    if satellite_str  == "BlendedTROPOMI":
+    if satellite_str == "BlendedTROPOMI":
         satellite = read_blended(filename)
-    elif satellite_str  == "TROPOMI":
+    elif satellite_str == "TROPOMI":
         satellite = read_tropomi(filename)
     else:
         print("Other data source is not currently supported")
@@ -760,20 +811,23 @@ def read_and_filter_satellite(
         return satellite
 
     # Filter the data
-    if satellite_str  == "BlendedTROPOMI":
+    if satellite_str == "BlendedTROPOMI":
         # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(satellite, xlim, ylim, 
-                                 gc_startdate, gc_enddate, use_water_obs)
-    elif satellite_str  == "TROPOMI":
+        sat_ind = filter_blended(
+            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
+    elif satellite_str == "TROPOMI":
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(satellite, xlim, ylim, 
-                                 gc_startdate, gc_enddate, use_water_obs)
+        sat_ind = filter_tropomi(
+            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
 
     else:
         print("Other data source filtering is not currently supported --HON")
         sys.exit(1)
 
     return satellite, sat_ind
+
 
 def get_posterior_emissions(prior, scale, species, OptimizeSoil=False):
     """
@@ -812,10 +866,13 @@ def get_posterior_emissions(prior, scale, species, OptimizeSoil=False):
         # To do this, we:
         # make a copy of the original soil sink
         prior_soil_sink = prior[f"Emis{species}_SoilAbsorb"].copy()
-        
+
         filtered_keys = [
-            key for key in prior.keys()
-            if "EmisCH4" in key and key != "EmisCH4_Total" and key != "EmisCH4_SoilAbsorb"
+            key
+            for key in prior.keys()
+            if "EmisCH4" in key
+            and key != "EmisCH4_Total"
+            and key != "EmisCH4_SoilAbsorb"
         ]
         # scale the prior emissions for all sectors except soil using the scale factors
         for ds_var in filtered_keys:
@@ -825,12 +882,12 @@ def get_posterior_emissions(prior, scale, species, OptimizeSoil=False):
         posterior[f"Emis{species}_SoilAbsorb"] = prior_soil_sink
 
         # Add the original soil sink back to the total emissions
-        posterior[f"Emis{species}_Total"] = posterior[f"Emis{species}_Total_ExclSoilAbs"] + posterior[f"Emis{species}_SoilAbsorb"]
+        posterior[f"Emis{species}_Total"] = (
+            posterior[f"Emis{species}_Total_ExclSoilAbs"]
+            + posterior[f"Emis{species}_SoilAbsorb"]
+        )
     else:
-        filtered_keys = [
-            key for key in prior.keys()
-            if "EmisCH4" in key
-        ]
+        filtered_keys = [key for key in prior.keys() if "EmisCH4" in key]
         # scale the prior emissions for all sectors using the scale factors
         for ds_var in filtered_keys:
             posterior[ds_var] = prior[ds_var] * scale_factors
@@ -911,6 +968,7 @@ def ensure_float_list(variable):
     else:
         raise TypeError("Variable must be a string, float, int, or list.")
 
+
 def compute_min_max_ensemble_sectors(
     prior_ds: xr.Dataset,
     ens_posterior_ds: xr.Dataset,
@@ -940,7 +998,9 @@ def compute_min_max_ensemble_sectors(
     sector_maxes = {sector: float("-inf") for sector in sectors}
 
     for member in range(num_ensemble_members):
-        active_ds = get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=member))
+        active_ds = get_posterior_emissions(
+            prior_ds, ens_scale_ds.isel(ensemble=member)
+        )
 
         for sector in sectors:
             post_val = sum_total_emissions(active_ds[sector], areas, mask)
@@ -950,8 +1010,16 @@ def compute_min_max_ensemble_sectors(
                 sector_maxes[sector] = max(sector_maxes[sector], post_val)
 
     # Remove sectors with inf or -inf values from the results
-    sector_mins = {f"{k.replace('EmisCH4_', '')}_ensMin": v for k, v in sector_mins.items() if np.isfinite(v)}
-    sector_maxes = {f"{k.replace('EmisCH4_', '')}_ensMax": v for k, v in sector_maxes.items() if np.isfinite(v)}
+    sector_mins = {
+        f"{k.replace('EmisCH4_', '')}_ensMin": v
+        for k, v in sector_mins.items()
+        if np.isfinite(v)
+    }
+    sector_maxes = {
+        f"{k.replace('EmisCH4_', '')}_ensMax": v
+        for k, v in sector_maxes.items()
+        if np.isfinite(v)
+    }
 
     return sector_mins, sector_maxes
 
@@ -1020,19 +1088,33 @@ def export_visualization_outputs(
     combined_plus = list(combined_sorted)
 
     if "EmisCH4_Total" in prior_ds and "EmisCH4_Total" in posterior_ds:
-        combined_plus.append((
-            "Total",
-            float(sum_total_emissions(prior_ds["EmisCH4_Total"], areas, mask)),
-            float(sum_total_emissions(posterior_ds["EmisCH4_Total"], areas, mask)),
-        ))
+        combined_plus.append(
+            (
+                "Total",
+                float(sum_total_emissions(prior_ds["EmisCH4_Total"], areas, mask)),
+                float(sum_total_emissions(posterior_ds["EmisCH4_Total"], areas, mask)),
+            )
+        )
 
-    if ("EmisCH4_Total_ExclSoilAbs" in prior_ds and
-        "EmisCH4_Total_ExclSoilAbs" in posterior_ds):
-        combined_plus.append((
-            "TotalExclSoilAbs",
-            float(sum_total_emissions(prior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask)),
-            float(sum_total_emissions(posterior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask)),
-        ))
+    if (
+        "EmisCH4_Total_ExclSoilAbs" in prior_ds
+        and "EmisCH4_Total_ExclSoilAbs" in posterior_ds
+    ):
+        combined_plus.append(
+            (
+                "TotalExclSoilAbs",
+                float(
+                    sum_total_emissions(
+                        prior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask
+                    )
+                ),
+                float(
+                    sum_total_emissions(
+                        posterior_ds["EmisCH4_Total_ExclSoilAbs"], areas, mask
+                    )
+                ),
+            )
+        )
 
     for name, prior_val, post_val in combined_plus:
         sector_totals[f"{name}Prior"] = float(prior_val)
@@ -1041,17 +1123,30 @@ def export_visualization_outputs(
     statistics.update(sector_totals)
 
     # 3) Ensemble stats (optional) + CSV
-    if (num_ensemble_members and num_ensemble_members > 1 and
-        ens_totals_posterior is not None and ens_inv_result is not None):
+    if (
+        num_ensemble_members
+        and num_ensemble_members > 1
+        and ens_totals_posterior is not None
+        and ens_inv_result is not None
+    ):
 
         statistics["EnsemblePosterior_Mean"] = float(np.mean(ens_totals_posterior))
         statistics["EnsemblePosterior_Std"] = float(np.std(ens_totals_posterior))
         statistics["EnsemblePosterior_Max"] = float(np.max(ens_totals_posterior))
         statistics["EnsemblePosterior_Min"] = float(np.min(ens_totals_posterior))
-        statistics["EnsemblePosteriorsArray"] = ",".join([str(x) for x in ens_totals_posterior])
+        statistics["EnsemblePosteriorsArray"] = ",".join(
+            [str(x) for x in ens_totals_posterior]
+        )
 
         rows = []
-        value_names = ["Ja_normalized", "prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh"]
+        value_names = [
+            "Ja_normalized",
+            "prior_err",
+            "obs_err",
+            "gamma",
+            "prior_err_bc",
+            "prior_err_oh",
+        ]
         for member in ens_inv_result.ensemble.values:
             row = {"EnsembleMember": int(member)}
             # Mirror notebook's indexing assumption (member integer indexes into ens_totals_posterior)
@@ -1070,7 +1165,12 @@ def export_visualization_outputs(
         )
 
         sector_mins, sector_maxes = compute_min_max_ensemble_sectors(
-            prior_ds, get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0)), ens_scale_ds, areas, mask, num_ensemble_members
+            prior_ds,
+            get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0)),
+            ens_scale_ds,
+            areas,
+            mask,
+            num_ensemble_members,
         )
 
         statistics.update(sector_mins)
@@ -1078,7 +1178,9 @@ def export_visualization_outputs(
 
     # 4) Write the main statistics CSV
     stats_pd = pd.DataFrame(statistics, index=[0])
-    stats_pd.to_csv(os.path.join(plot_save_path, "viz_notebook_statistics.csv"), index=False)
+    stats_pd.to_csv(
+        os.path.join(plot_save_path, "viz_notebook_statistics.csv"), index=False
+    )
 
     # 5) NetCDF artifacts (optional)
     netcdf_path = os.path.join(plot_save_path, "netCDF")
@@ -1101,7 +1203,10 @@ def export_visualization_outputs(
 
     return stats_pd
 
-def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error, StateVectorFile, n_elements):
+
+def update_prior_error_for_OptimizeSoil(
+    prior_ds, org_prior_error, StateVectorFile, n_elements
+):
     """
     Update prior error for the case when OptimizeSoil is turned on.
 
@@ -1110,29 +1215,107 @@ def update_prior_error_for_OptimizeSoil(prior_ds, org_prior_error, StateVectorFi
         org_prior_error (float): relative prior error
         StateVectorFile (str): Path to gridded state vector file
         n_elements (int): number of state vector elements
-    
+
     Returns:
         np.ndarray: Updated relative prior error for each state vector element
     """
-    prior_soil = prior_ds['EmisCH4_SoilAbsorb'].values
-    prior_flux = prior_ds['EmisCH4_Total'].values
+    prior_soil = prior_ds["EmisCH4_SoilAbsorb"].values
+    prior_flux = prior_ds["EmisCH4_Total"].values
     prior_emis = prior_flux - prior_soil
-    
+
     state_vector = xr.open_dataset(StateVectorFile).squeeze()
-    state_vector_labels = state_vector['StateVector'].fillna(-9999).values.astype(int)
+    state_vector_labels = state_vector["StateVector"].fillna(-9999).values.astype(int)
     last_ROI_element = np.nanmax(state_vector_labels)
-    
+
     prior_err = np.zeros(n_elements)
-    
+
     for i in range(1, last_ROI_element + 1):
         mask = state_vector_labels == i
-        
+
         # mean emissions & soil sinks for this state vector element
         emisi = np.nanmean(prior_emis[mask])
         soili = np.nanmean(prior_soil[mask])
         fluxi = np.nanmean(prior_flux[mask])
-        
+
         if abs(fluxi) > 0:
-            prior_err[i - 1] = np.sqrt((org_prior_error * emisi) ** 2 +
-                                       (org_prior_error * soili) ** 2) / fluxi
+            prior_err[i - 1] = (
+                np.sqrt((org_prior_error * emisi) ** 2 + (org_prior_error * soili) ** 2)
+                / fluxi
+            )
     return prior_err
+
+
+def get_orbit_num(filename: str | Path) -> int:
+    """
+    Extract the orbit number from a TROPOMI or blended data filename.
+    Assumes the filename format includes the orbit number as the 5th element from the end
+    when split by underscores (e.g., S5P_RPRO_L2__CH4____20210704T174744_20210704T192914_19300_03_020400_20221126T123158_GCtoTROPOMI.pkl).
+
+    Args:
+        filename: The filename from which to extract the orbit number.
+
+    Returns:
+        The extracted orbit number as an integer.
+    """
+
+    name = Path(filename).name
+    parts = name.split("_")
+
+    try:
+        orbit_num = parts[-5]
+    except IndexError as exc:
+        raise ValueError(f"Unexpected filename format: {filename}") from exc
+
+    if not orbit_num.isdigit():
+        raise ValueError(f"Orbit number not found in filename: {filename}")
+
+    return int(orbit_num)
+
+
+def build_reference_index(ref_dir: str | Path) -> dict[int, Path]:
+    """
+    Build an index mapping orbit numbers to reference file paths for quick lookup.
+
+    Args:
+        ref_dir: Directory containing reference files (e.g., data_converted_reference).
+
+    Returns:
+        A dictionary mapping orbit numbers to their corresponding reference file paths.
+    """
+    index = {}
+    for path in Path(ref_dir).glob("*.pkl"):
+        orbit = get_orbit_num(path)
+        if orbit in index:
+            raise ValueError(f"Duplicate reference files found for orbit {orbit}")
+        index[orbit] = path
+    return index
+
+
+def map_files_to_reference(
+    target_dir: str | Path, ref_dir: str | Path
+) -> dict[Path, Path]:
+    """
+    Map target files to their corresponding reference files based on orbit numbers.
+    Assumes that both target and reference files have the orbit number in the same position in their filenames.
+
+    Args:
+        target_dir: Directory containing target files (e.g., data_converted).
+        ref_dir: Directory containing reference files (e.g., data_converted_reference).
+
+    Returns:
+        A dictionary mapping each target file path to its corresponding reference file path.
+    """
+
+    ref_index = build_reference_index(ref_dir)
+    mapping = {}
+
+    for target_file in Path(target_dir).glob("*.pkl"):
+        try:
+            orbit = get_orbit_num(target_file)
+            mapping[target_file] = ref_index[orbit]
+        except KeyError:
+            print(f"No reference file found for orbit {orbit} in {target_file}")
+        except ValueError as e:
+            print(e)
+
+    return mapping
