@@ -324,6 +324,13 @@ run_prior_gchp() {
         setCommonRunSettings.sh
 
     # Submit job to job scheduler
+    printf "\nSubmitting GCHP job with slurm settings:\n"
+    printf " - Requested memory: $RequestedMemory\n"
+    printf " - Number of nodes: $NUM_NODES\n"
+    printf " - Total cores: $TOTAL_CORES\n"
+    printf " - Requested time: $RequestedTime\n"
+    printf " - Partition: $SchedulerPartition\n"
+    printf " - Run name: ${RunName}_HEMCO_Prior_Emis.run\n"
     sbatch --mem $RequestedMemory \
         -N $NUM_NODES \
         -n $TOTAL_CORES \
