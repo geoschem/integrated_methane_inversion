@@ -1,8 +1,7 @@
 import xarray as xr
 import datetime
 from joblib import Parallel, delayed
-from src.inversion_scripts.utils import zero_pad_num_hour
-
+import os
 
 def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
     """
@@ -42,30 +41,28 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
 
         # For each hour:
         for h in hours:
+            SpeciesConc_save_pth = f"{gc_destination_path}/GEOSChem.SpeciesConc.{d}_{h:02d}00z.nc4"
+            if not os.path.isfile(SpeciesConc_save_pth):
+                SpeciesConc_for_hour = SpeciesConc_data.isel(time=slice(h, h + 1, 1))
+                SpeciesConc_for_hour.to_netcdf(
+                    SpeciesConc_save_pth,
+                    encoding={
+                        v: {"zlib": True, "complevel": 1}
+                        for v in SpeciesConc_for_hour.data_vars
+                    },
+                )
+            StateMetLevEdge_save_pth = f"{gc_destination_path}/GEOSChem.StateMetLevEdge.{d}_{h:02d}00z.nc4"
+            if not os.path.isfile(StateMetLevEdge_save_pth):
+                StateMetLevEdge_for_hour = StateMetLevEdge_data.isel(time=slice(h, h + 1, 1))
+                StateMetLevEdge_for_hour.to_netcdf(
+                    StateMetLevEdge_save_pth,
+                    encoding={
+                        v: {"zlib": True, "complevel": 1}
+                        for v in StateMetLevEdge_for_hour.data_vars
+                    },
+                )
 
-            # Select data for that hour
-            SpeciesConc_for_hour = SpeciesConc_data.isel(time=slice(h, h + 1, 1))
-            StateMetLevEdge_for_hour = StateMetLevEdge_data.isel(time=slice(h, h + 1, 1))
-
-            # Save to new .nc4 file at destination
-            SpeciesConc_save_pth = f"{gc_destination_path}/GEOSChem.SpeciesConc.{d}_{zero_pad_num_hour(h)}00z.nc4"
-            StateMetLevEdge_save_pth = f"{gc_destination_path}/GEOSChem.StateMetLevEdge.{d}_{zero_pad_num_hour(h)}00z.nc4"
-            SpeciesConc_for_hour.to_netcdf(
-                SpeciesConc_save_pth,
-                encoding={
-                    v: {"zlib": True, "complevel": 1}
-                    for v in SpeciesConc_for_hour.data_vars
-                },
-            )
-            StateMetLevEdge_for_hour.to_netcdf(
-                StateMetLevEdge_save_pth,
-                encoding={
-                    v: {"zlib": True, "complevel": 1}
-                    for v in StateMetLevEdge_for_hour.data_vars
-                },
-            )
-
-    results = Parallel(n_jobs=-1)(delayed(process)(day) for day in days)
+    Parallel(n_jobs=-1)(delayed(process)(day) for day in days)
     print(f"Set up hourly data files in {gc_destination_path}")
 
 
