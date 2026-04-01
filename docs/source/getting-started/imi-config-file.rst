@@ -2,35 +2,6 @@ IMI configuration file
 ======================
 This page documents settings in the IMI configuration file (``config.yml``).
 
-Hierarchical species settings
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The following keys are now **section-scoped** and must be defined under
-``CH4:`` or ``CO2:`` (not at top level):
-
-- ``SatelliteProduct``
-- ``UseWaterObs``
-- ``OptimizeOH``
-- ``OptimizeSoil``
-- ``PriorErrorOH``
-- ``AdditionalDiagnostics``
-
-The active section is selected by ``Species``. For example:
-
-.. code-block:: yaml
-
-   Species: "CH4"
-   CH4:
-     SatelliteProduct: "BlendedTROPOMI"
-     UseWaterObs: false
-     OptimizeOH: false
-     OptimizeSoil: false
-     PriorErrorOH: [0.1]
-     AdditionalDiagnostics: ["ObsPack"]
-   CO2:
-     SatelliteProduct: "OCO2"
-     UseWaterObs: false
-     AdditionalDiagnostics: ["ObsPack"]
-
 General
 ~~~~~~~
 .. list-table::
@@ -39,12 +10,10 @@ General
 
    * - ``RunName``
      - Name for this inversion; will be used for directory names and prefixes.
-   * - ``isAWS``
-     - Boolean for running the IMI on AWS (``true``) or a local cluster (``false``).
+   * - ``Species``
+     - String defining the species to use for the inversion. The currently supported option is ``"CH4"``. Development for ``"CO2"`` is in process and will be available in an upcoming version.
    * - ``SchedulerType``
-     - String defining the type of scheduler used to run the IMI.
-        Currently supported options are "slurm", "PBS", or "tmux". Select "tmux"
-        to run the IMI with "./run_imi.sh" instead of PBS or slurm.
+     - String defining the type of scheduler used to run the IMI. Currently supported options are "slurm", "PBS", or "tmux". Select "tmux" to run the IMI with ``./run_imi.sh``` instead of PBS or slurm.
    * - ``SafeMode``
      - Boolean for running in safe mode to prevent overwriting existing files.
    * - ``S3Upload``
@@ -52,7 +21,7 @@ General
    * - ``S3UploadPath``
      - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
    * - ``S3UploadFiles``
-     - Files to upload from the IMI Output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
+     - Files to upload from the IMI output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -67,8 +36,18 @@ Period of interest
    * - ``SpinupMonths``
      - Number of months for the spinup simulation. 
 
-Observation product
-~~~~~~~~~~~~~~~~~~~
+Hierarchical species settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The following keys are now **section-scoped** and must be defined under
+``CH4:`` or ``CO2:`` (not at top level):
+
+- ``SatelliteProduct``
+- ``UseWaterObs``
+- ``OptimizeOH``
+- ``OptimizeSoil``
+- ``PriorErrorOH``
+- ``AdditionalDiagnostics``
+
 .. list-table::
    :widths: 30, 70
    :class: tight-table
@@ -77,8 +56,33 @@ Observation product
      - Product string under ``CH4:`` or ``CO2:``. For CH4, common values are ``"BlendedTROPOMI"``, ``"TROPOMI"``, or ``"Other"``. For CO2, ``"OCO2"`` is supported.
    * - ``UseWaterObs``
      - Boolean under ``CH4:`` or ``CO2:`` for whether to use observations over water (``true``) or not (``false``). Warning: if ``true``, user should inspect data for potential artifacts.
+   * - ``OptimizeOH``
+     - Boolean under ``CH4:`` or ``CO2:`` to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
+   * - ``OptimizeSoil``
+     - Boolean under ``CH4:`` to optimize soil absorption during the inversion. Default value is ``true``.
+   * - ``PriorErrorOH``
+     - Vector under ``CH4:`` or ``CO2:`` of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
    * - ``AdditionalDiagnostics``
      - Optional list under ``CH4:`` or ``CO2:`` to enable extra diagnostics (e.g., ``["ObsPack"]``, ``["TCCON"]``, ``["PLANEFLIGHT"]``).
+
+
+The active section is selected following the defined ``Species``. For example:
+
+.. code-block:: yaml
+
+   Species: "CH4"
+   CH4:
+     SatelliteProduct: "BlendedTROPOMI"
+     UseWaterObs: false
+     OptimizeOH: false
+     OptimizeSoil: true
+     PriorErrorOH: [0.1]
+     AdditionalDiagnostics: ["ObsPack"]
+   CO2:
+     SatelliteProduct: "OCO2"
+     UseWaterObs: false
+     AdditionalDiagnostics: ["ObsPack"]
+
 
 Region of interest
 ~~~~~~~~~~~~~~~~~~
@@ -89,7 +93,7 @@ Region of interest
    * - ``isRegional``
      - Boolean for using the GEOS-Chem regional simulation. This should be set to ``false`` for global inversions. Default value is ``true``.
    * - ``RegionID``
-     - Two character region ID for using pre-cropped meteorology fields. Select ``AF`` for Africa, ``AS`` for Asia, ``EU`` for Europe, ``ME`` for the Middle East, ``NA`` for North America, ``OC`` for Oceania, ``RU`` for Russia, or ``SA`` for South America. To use global meteorology fields set this option to ``""`` See the `GEOS-Chem horizontal grids <http://wiki.seas.harvard.edu/geos-chem/index.php/GEOS-Chem_horizontal_grids>`_ documentation for details about the available regional domains.
+     - Two character region ID for using pre-cropped meteorology fields. Options are ``"AF"`` (Africa), ``"AS"`` (Asia), ``"EU"`` (Europe), ``"ME"`` (Middle East), ``"NA"`` (North America), ``"OC"`` (Oceania), ``"RU"`` (Russia), or ``"SA"`` (South America). To use global meteorology fields set this option to ``""`` See the `GEOS-Chem horizontal grids <https://geos-chem.readthedocs.io/en/latest/supplemental-guides/horizontal-grids.html>`_ documentation for details about the available regional domains.
    * - ``LonMin``
      - Minimum longitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``, otherwise lat/lon bounds are determined from ``StateVectorFile``).
    * - ``LonMax``
@@ -106,11 +110,11 @@ Kalman filter options
    :class: tight-table
 
    * - ``KalmanMode``
-     - Boolean for running the IMI using a Kalman filter for continuous updates (``true``) or using a single inversion (``false``). See more details about Kalman Mode in the `Kalman filter documentation <../advanced/kalman-filter-mode.html>`_.
+     - Boolean for running the IMI using a Kalman filter for continuous updates (``true``) or using a single inversion (``false``). See more details about Kalman Mode in the `Kalman filter documentation <../advanced/kalman-filter-mode.html>`_.  Default value is ``false``.
    * - ``UpdateFreqDays``
-     - Number of days in each Kalman filter update cycle eg. ``7`` days. 
+     - Number of days in each Kalman filter update cycle (e.g. ``7`` days). 
    * - ``NudgeFactor``
-     - Fraction of original prior emissions to use in the prior for each Kalman filter update (eg. ``0.1``). See Kalman mode documentation for more details.
+     - Fraction of original prior emissions to use in the prior for each Kalman filter update (e.g. ``0.1``). See Kalman mode documentation for more details.
    * - ``MakePeriodsCSV``
      - Option to automatically create ``periods.csv`` based on the constant number of days in ``UpdateFreqDays``. Default is ``true``. If ``false``, a custom ``periods.csv`` will be used instead.
    * - ``CustomPeriodsCSV``
@@ -125,20 +129,16 @@ State vector
    :class: tight-table
 
    * - ``CreateAutomaticRectilinearStateVectorFile``
-     - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. If ``false``, a custom/pre-generated state vector netcdf file must be provided below.
+     - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. If ``false``, a custom/pre-generated state vector netcdf file must be provided under ``StateVectorFile``.
    * - ``nBufferClusters``
      - Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector of emissions being optimized in the inversion. Default value is ``8``.
    * - ``BufferDeg``
      - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``5`` (~500 km).
-   * - ``LandThreshold``
-     - Land-cover fraction below which to exclude GEOS-Chem grid cells from the state vector when creating the state vector file. Default value is ``0.25``.
-   * - ``OffshoreEmisThreshold``
-     - Offshore GEOS-Chem grid cells with oil/gas emissions above this threshold will be included in the state vector. Default value is ``0``.
+   * - ``EmisThreshold``
+     - GEOS-Chem grid cells with emissions above this threshold will be included in the state vector. Default value is ``1.e-12``.
    * - ``OptimizeBCs``
-     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``false``.
-   * - ``OptimizeOH``
-     - Boolean under ``CH4:`` or ``CO2:`` to optimize OH during the inversion. Must also include ``PerturbValueOH`` and ``PriorErrorOH``. Default value is ``false``.
-       
+     - Boolean to optimize boundary conditions during the inversion. Must also include ``PerturbValueBCs`` and ``PriorErrorBCs``. Default value is ``true``.
+    
 Point source datasets
 ~~~~~~~~~~~~~~~~~~~~~
 .. list-table::
@@ -146,7 +146,7 @@ Point source datasets
    :class: tight-table
 
    * - ``PointSourceDatasets``
-     - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Only available option is ``["SRON"]``.
+     - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Current options are ``["SRON"]``,  ``["CarbonMapper"]``, and ``["IMEO"]``.
 
 Clustering Options
 ^^^^^^^^^^^^^^^^^^
@@ -161,15 +161,19 @@ For more information on using the clustering options take a look at the `cluster
    * - ``DynamicKFClustering``
      - Boolean for whether to update the statevector clustering with each Kalman Filter update. Note: ``KalmanMode`` must be set to true.
    * - ``ClusteringMethod``
-     - Clustering method to use for state vector reduction. (eg. "kmeans" or "mini-batch-kmeans")
-   * - ``MaxClusterSize``
-     - Maximum number of native resolution elements in a cluster. Default value is ``64`` (~2x2.5 degrees when using a .25 degree native grid).
+     - Clustering method to use for state vector reduction. (e.g. ``"kmeans"`` or ``"mini-batch-kmeans"``)
    * - ``ClusteringThreshold``
-     - Aggregate DOFS that a cluster must have before being added to the grid. Making this value higher will smooth out the clustering. Default value is ``Estimated_DOFS / NumberOfElements``.
+     - Optional value for aggregate DOFS that a cluster must have before being added to the grid. Making this value higher will smooth out the clustering. Default value is ``Estimated_DOFS / NumberOfElements``.
    * - ``NumberOfElements``
      - Number of elements in the reduced dimension state vector. This is only used if ``ReducedDimensionStateVector`` is ``true``.
    * - ``ForcedNativeResolutionElements``
      - yaml list of of coordinates that you would like to force as native resolution state vector elements [lat, lon]. This is useful for ensuring hotspot locations are at the highest available resolution. 
+   * - ``EmissionRateFilter``
+     -
+   * - ``PlumeCountFilter``
+     -
+   * - ``GroupByCountry``
+     -
 
 Custom/pre-generated state vector
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,8 +202,6 @@ Inversion
      - Boolean value whether to use lognormal error distribution for calculating emissions in the domain of interest. Note: Normal error is used for buffer elements and boundary condition optimization.
    * - ``PriorError``
      - Vector of errors in the prior estimates (1-sigma; relative). Default is ``[0.5]`` (50%) error.
-   * - ``PriorErrorOH``
-     - Vector under ``CH4:`` or ``CO2:`` of errors in the OH estimates (relative percent). Default is ``[0.1]`` (10%) error.
    * - ``PriorErrorBCs``
      - Vector of errors in the prior estimates (using ppb). Default is ``[10]`` ppb error.
    * - ``PriorErrorBufferElements``
