@@ -54,6 +54,7 @@ OutputPath={OUTPUT_PATH}
 Res={RES}
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
+PriorEmisDir="${OutputPath}/${RunName}/hemco_prior_emis/OutputDir"
 BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
 StateVectorFile={STATE_VECTOR_PATH}
@@ -114,6 +115,14 @@ if "$EnableOSSE"; then
     # If simulating observations, we need to postprocess the observation data
     python postproc_diags.py $RunName $RunDirOSSE $PrevDir $StartDate $Res; wait
     python setup_gc_cache.py $StartDate $EndDate "${RunDirOSSE}/OutputDir" $GCDirOSSE; wait
+fi
+
+#=======================================================================
+# Optionally build prior error covariance matrix with off-diagonal 
+# elements based on specified length scale
+#=======================================================================
+if "$OffDiagonalPriorCov"; then
+    python build_full_prior_covariance.py $StateVectorFile $PriorEmisDir $LengthScalePriorCov $StartDate $EndDate $nBufferClusters; wait
 fi
 
 #=======================================================================

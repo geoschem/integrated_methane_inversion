@@ -33,6 +33,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
     cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
+    cp ${InversionPath}/src/inversion_scripts/build_full_prior_covariance.py inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
     cp ${InversionPath}/src/utilities/config_utils.py inversion/

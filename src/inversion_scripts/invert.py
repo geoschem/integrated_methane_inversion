@@ -4,7 +4,6 @@ import glob
 import numpy as np
 import xarray as xr
 from itertools import product
-from netCDF4 import Dataset
 from pathlib import Path
 from src.inversion_scripts.utils import (
     load_obj,
@@ -15,6 +14,153 @@ from src.inversion_scripts.utils import (
     map_files_to_reference,
 )
 from src.utilities.config_utils import load_config
+
+def get_prior_sigma_vector(
+    n_elements,
+    prior_err,
+    OptimizeSoil=False,
+    prior_ds=None,
+    StateVectorFile=None,
+):
+    """Return the prior standard deviation for each state-vector element."""
+    sigma = np.full(n_elements, prior_err, dtype=float)
+    if OptimizeSoil:
+        prior_err_new = update_prior_error_for_OptimizeSoil(
+            prior_ds, prior_err, StateVectorFile, n_elements
+        )
+        sigma[: len(prior_err_new)] = prior_err_new
+    return sigma
+
+
+def get_expected_state_vector_ids(StateVectorFile):
+    """Return the sorted state-vector IDs defined in the active state-vector file."""
+    state_vector = xr.load_dataset(StateVectorFile)
+    state_vector_ids = state_vector["StateVector"].values.reshape(-1)
+    state_vector_ids = state_vector_ids[np.isfinite(state_vector_ids)]
+    state_vector_ids = state_vector_ids[state_vector_ids > 0]
+    state_vector_ids = np.unique(state_vector_ids.astype(np.int32))
+    return np.sort(state_vector_ids)
+
+
+def build_prior_covariance(
+    n_elements,
+    prior_err,
+    OptimizeSoil=False,
+    prior_ds=None,
+    StateVectorFile=None,
+    prebuilt_prior_err_covariance=False,
+):
+    """
+    Build the prior covariance in either full or diagonal form.
+
+    Returns the covariance, the constraint covariance, and a boolean indicating
+    whether the covariance should be treated as a full matrix downstream.
+    """
+    if prebuilt_prior_err_covariance:
+        # Load prebuilt covariance matrix with off-diagonal elements
+        Sa = np.zeros((n_elements, n_elements), dtype=float)
+        covariance_path = Path("prior_norm_error_covariance.npz")
+        if not covariance_path.exists():
+            raise FileNotFoundError(f"Covariance matrix file not found: {covariance_path}")
+        with np.load(covariance_path) as prebuilt:
+            Sa_prebuilt = prebuilt["covariance"]
+            state_vector_ids_prebuilt = prebuilt["state_vector_ids"]
+
+        expected_state_vector_ids = get_expected_state_vector_ids(StateVectorFile)
+        state_vector_ids_prebuilt = np.asarray(state_vector_ids_prebuilt, dtype=np.int32)
+        if Sa_prebuilt.shape[0] != Sa_prebuilt.shape[1]:
+            raise ValueError(
+                f"Prior covariance must be square, got shape {Sa_prebuilt.shape}"
+            )
+        if Sa_prebuilt.shape[0] != state_vector_ids_prebuilt.size:
+            raise ValueError(
+                "Prior covariance size does not match the saved state-vector IDs: "
+                f"{Sa_prebuilt.shape[0]} vs {state_vector_ids_prebuilt.size}"
+            )
+        if not np.array_equal(state_vector_ids_prebuilt, expected_state_vector_ids):
+            raise ValueError(
+                "Saved prior covariance state-vector IDs do not match the active "
+                "StateVectorFile."
+            )
+        if Sa_prebuilt.shape[0] > n_elements:
+            raise ValueError(
+                "Prior covariance block is larger than the inversion state vector: "
+                f"{Sa_prebuilt.shape[0]} > {n_elements}"
+            )
+
+        Sa_prebuilt_elems = Sa_prebuilt.shape[0]
+        # The prebuilt matrix can define only a leading subset of the full state vector,
+        # so we scale and insert it into the top-left block.
+        sigma_prebuilt = get_prior_sigma_vector(
+            Sa_prebuilt_elems,
+            prior_err,
+            OptimizeSoil=OptimizeSoil,
+            prior_ds=prior_ds,
+            StateVectorFile=StateVectorFile,
+        )
+        # The prebuilt matrix stores only the normalized covariance structure, so we
+        # apply sigma_i * sigma_j here. This reduces to a scalar prior_err**2 factor
+        # when all sigmas are the same, but supports element-wise prior_err_new values.
+        Sa[:Sa_prebuilt_elems, :Sa_prebuilt_elems] = (
+            sigma_prebuilt[:, None] * Sa_prebuilt * sigma_prebuilt[None, :]
+        )
+        return Sa, Sa.copy(), True
+
+    # Otherwise, build only a diagonal covariance matrix
+    sigma = get_prior_sigma_vector(
+        n_elements,
+        prior_err,
+        OptimizeSoil=OptimizeSoil,
+        prior_ds=prior_ds,
+        StateVectorFile=StateVectorFile,
+    )
+    Sa_diag = sigma**2
+    return Sa_diag, Sa_diag.copy(), False
+
+
+def apply_diagonal_prior(matrix, indices, value):
+    """Write a prior variance value onto either a 1D diagonal vector or 2D matrix."""
+    if np.isscalar(matrix[0]) or getattr(matrix, "ndim", 1) == 1:
+        matrix[indices] = value
+    else:
+        matrix[indices, indices] = value
+
+
+def get_oh_index_slice(n_elements, is_Regional):
+    """Return the slice occupied by OH state-vector elements."""
+    return slice(-1, None) if is_Regional else slice(-2, None)
+
+
+def get_bc_index_slice(optimize_oh, is_Regional):
+    """Return the slice occupied by boundary-condition state-vector elements."""
+    if optimize_oh:
+        return slice(-5, -1) if is_Regional else slice(-6, -2)
+    return slice(-4, None)
+
+
+def apply_oh_prior(Sa, Sa_constraint, n_elements, prior_err_oh, is_Regional):
+    """Apply OH prior variances to both the unweighted and weighted constraint priors."""
+    if is_Regional:
+        OH_weight = 1 / (n_elements - 1)
+    else:
+        OH_weight = 2 / (n_elements - 2)
+    oh_slice = get_oh_index_slice(n_elements, is_Regional)
+    apply_diagonal_prior(Sa, oh_slice, prior_err_oh**2)
+    apply_diagonal_prior(Sa_constraint, oh_slice, OH_weight * prior_err_oh**2)
+
+
+def apply_bc_prior(Sa, Sa_constraint, prior_err_bc, optimize_oh, is_Regional):
+    """Apply BC prior variances to both the unweighted and weighted constraint priors."""
+    bc_slice = get_bc_index_slice(optimize_oh, is_Regional)
+    apply_diagonal_prior(Sa, bc_slice, prior_err_bc**2)
+    apply_diagonal_prior(Sa_constraint, bc_slice, prior_err_bc**2)
+
+
+def invert_prior_covariance(Sa, Sa_constraint, use_full_prior_covariance):
+    """Invert either full prior covariances or diagonal prior-variance vectors."""
+    if use_full_prior_covariance:
+        return np.linalg.inv(Sa_constraint), np.linalg.inv(Sa)
+    return np.diag(1 / Sa_constraint), np.diag(1 / Sa)
 
 
 def do_inversion(
@@ -36,6 +182,7 @@ def do_inversion(
     prior_ds=None,
     StateVectorFile=None,
     verbose=False,
+    prebuilt_prior_err_covariance=False,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -70,9 +217,11 @@ def do_inversion(
     """
     # make mapping of target files to reference files if using precomputed Jacobian
     if jacobian_sf is not None:
-        reference_dir = jacobian_dir.replace("data_converted", "data_converted_reference")
+        reference_dir = jacobian_dir.replace(
+            "data_converted", "data_converted_reference"
+        )
         K_ref_file_mappings = map_files_to_reference(jacobian_dir, reference_dir)
-        
+
     # boolean for whether we are optimizing boundary conditions
     optimize_bc = prior_err_bc > 0.0
     optimize_oh = prior_err_oh > 0.0
@@ -162,7 +311,7 @@ def do_inversion(
         if len(ind) == 0:
             continue
 
-        # satellite and GEOS-Chem data within bounds
+        # Satellite and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
         # weight obs_err based on the observation count to prevent overfitting
@@ -195,7 +344,7 @@ def do_inversion(
             # Get Jacobian from reference inversion
             fi_ref = str(K_ref_file_mappings.get(Path(fi)))
             if fi_ref is None:
-                print(f"No reference file found for {fi} in {jacobian_dir}. Skipping this file.")
+                print(f"No reference file found for {fi} in {jacobian_dir}")
                 continue
             dat_ref = load_obj(fi_ref)
             K = 1e9 * dat_ref["K"][ind, :]
@@ -250,16 +399,15 @@ def do_inversion(
         KTinvSoK += partial_KTinvSoK
         KTinvSoyKxA += partial_KTinvSoyKxA
 
-    # Inverse of prior error covariance matrix, inv(S_a)
-    Sa_diag = np.zeros(n_elements)
-    if OptimizeSoil:
-        prior_err_new = update_prior_error_for_OptimizeSoil(prior_ds, prior_err, StateVectorFile, n_elements)
-        Sa_diag = prior_err_new**2
-    else:
-        Sa_diag.fill(prior_err**2)
-    Sa_diag_constraint = (
-        Sa_diag.copy()
-    )  # constraint matrix to calculate the solution only
+    # Build either a full precomputed prior covariance or the original diagonal form.
+    Sa, Sa_constraint, use_full_prior_covariance = build_prior_covariance(
+        n_elements,
+        prior_err,
+        OptimizeSoil=OptimizeSoil,
+        prior_ds=prior_ds,
+        StateVectorFile=StateVectorFile,
+        prebuilt_prior_err_covariance=prebuilt_prior_err_covariance,
+    )
 
     # Number of elements to apply scale factor to
     scale_factor_idx = n_elements
@@ -270,39 +418,19 @@ def do_inversion(
         # Following Masakkers et al. (2019, ACP) weight the OH term by the
         # ratio of the number of elements (n_OH_elements/n_emission_elements)
         # use this weighted constraint matrix to calculate the solution only
-        if is_Regional:
-            OH_weight = 1 / (n_elements - 1)
-            Sa_diag[-1:] = OH_weight * prior_err_oh**2
-            scale_factor_idx -= 1
-        else:
-            OH_weight = 2 / (n_elements - 2)
-            Sa_diag_constraint[-2:] = (
-                OH_weight * prior_err_oh**2
-            )  # weighted constraint matrix
-            Sa_diag[-2:] = prior_err_oh**2  # unweighted matrix
-            scale_factor_idx -= 2
+        apply_oh_prior(Sa, Sa_constraint, n_elements, prior_err_oh, is_Regional)
+        scale_factor_idx -= 1 if is_Regional else 2
 
     # If optimizing boundary conditions, adjust for it in the inversion
     if optimize_bc:
         scale_factor_idx -= 4
+        apply_bc_prior(Sa, Sa_constraint, prior_err_bc, optimize_oh, is_Regional)
 
-        # add prior error for BCs as the last 4 elements of the diagonal to both the unweighted (Sa_diag)
-        # and weighted constraint (Sa_diag)
-        if optimize_oh:
-            if is_Regional:
-                Sa_diag[-5:-1] = prior_err_bc**2
-                Sa_diag_constraint[-5:-1] = prior_err_bc**2
-            else:
-                Sa_diag[-6:-1] = prior_err_bc**2
-                Sa_diag_constraint[-6:-2] = prior_err_bc**2
-        else:
-            Sa_diag[-4:] = prior_err_bc**2
-            Sa_diag_constraint[-4:] = prior_err_bc**2
-
-    inv_Sa_constraint = np.diag(
-        1 / Sa_diag_constraint
-    )  # Inverse of weighted constraint matrix
-    inv_Sa = np.diag(1 / Sa_diag)  # Inverse of unweighted prior error covariance matrix
+    # The inversion uses the weighted constraint prior for the state estimate and the
+    # unweighted prior for posterior diagnostics such as S_post and the averaging kernel.
+    inv_Sa_constraint, inv_Sa = invert_prior_covariance(
+        Sa, Sa_constraint, use_full_prior_covariance
+    )
 
     # Solve for posterior scale factors xhat using the weighted constraint matrix
     delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (
@@ -373,6 +501,7 @@ def do_inversion_ensemble(
     OptimizeSoil=False,
     prior_ds=None,
     StateVectorFile=None,
+    prebuilt_prior_err_covariance=False,
 ):
     """
     Run series of inversions with hyperparameter vectors and save out the results.
@@ -424,6 +553,7 @@ def do_inversion_ensemble(
                 prior_ds,
                 StateVectorFile,
                 verbose=False,
+                prebuilt_prior_err_covariance=prebuilt_prior_err_covariance,
             )
         )
         results_dict["KTinvSoK"].append(KTinvSoK)
@@ -563,6 +693,7 @@ if __name__ == "__main__":
     prior_err_OH = config["PriorErrorOH"] if config["OptimizeOH"] else 0.0
     prior_err_BC = ensure_float_list(prior_err_BC)
     prior_err_OH = ensure_float_list(prior_err_OH)
+    prebuilt_prior_err_covariance = config["OffDiagonalPriorCov"]
     
     OptimizeSoil = config["OptimizeSoil"]
     if OptimizeSoil:
@@ -597,6 +728,7 @@ if __name__ == "__main__":
         OptimizeSoil,
         prior_ds,
         StateVectorFile,
+        prebuilt_prior_err_covariance,
     )
 
     # Save the results of the ensemble inversion
