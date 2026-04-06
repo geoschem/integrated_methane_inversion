@@ -52,18 +52,24 @@ nElements={STATE_VECTOR_ELEMENTS}
 nTracers={NUM_JACOBIAN_TRACERS}
 OutputPath={OUTPUT_PATH}
 Res={RES}
+period_i={PERIOD}
+StateVectorFile={STATE_VECTOR_PATH}
+
+if "$KalmanMode"; then
+    InvDir="${OutputPath}/${RunName}/kf_inversions/period${period_i}"
+else
+    InvDir="${OutputPath}/${RunName}/inversion"
+fi
+
 JacobianRunsDir="${OutputPath}/${RunName}/jacobian_runs"
 PriorRunDir="${JacobianRunsDir}/${RunName}_0000"
 PriorEmisDir="${OutputPath}/${RunName}/hemco_prior_emis/OutputDir"
 BackgroundRunDir="${JacobianRunsDir}/${RunName}_background"
 PosteriorRunDir="${OutputPath}/${RunName}/posterior_run"
-StateVectorFile={STATE_VECTOR_PATH}
-GCDir="${OutputPath}/${RunName}/inversion/data_geoschem"
-GCVizDir="${OutputPath}/${RunName}/inversion/data_geoschem_prior"
-JacobianDir="${OutputPath}/${RunName}/inversion/data_converted"
-sensiCache="${OutputPath}/${RunName}/inversion/data_sensitivities"
+GCDir="${InvDir}/data_geoschem"
+GCVizDir="${InvDir}/data_geoschem_prior"
+JacobianDir="${InvDir}/data_converted"
 satelliteCache="${OutputPath}/${RunName}/satellite_data"
-period_i={PERIOD}
 
 # For Kalman filter: assume first inversion period (( period_i = 1 )) by default
 # Switch is flipped to false automatically if (( period_i > 1 ))
@@ -95,14 +101,14 @@ if "$LognormalErrors"; then
     GCsourcepth="${BackgroundRunDir}/OutputDir"
     PriorOutputDir="${PriorRunDir}/OutputDir"
     # also need the prior cache so that we can visualize the prior simulation
-    python ${OutputPath}/${RunName}/inversion/setup_gc_cache.py $StartDate $EndDate $PriorOutputDir $GCVizDir; wait
+    python ${InvDir}/setup_gc_cache.py $StartDate $EndDate $PriorOutputDir $GCVizDir; wait
 else
     # for normal errors we use the prior run
     GCsourcepth="${PriorRunDir}/OutputDir"
 fi
 
 export PYTHONPATH=${PYTHONPATH}:${OutputPath}
-python ${OutputPath}/${RunName}/inversion/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
+python ${InvDir}/setup_gc_cache.py $StartDate $EndDate $GCsourcepth $GCDir; wait
 printf "DONE -- setup_gc_cache.py\n\n"
 
 #=======================================================================
@@ -136,14 +142,14 @@ if ! "$PrecomputedJacobian"; then
     jacobian_sf="None"
 else
     buildJacobian="False"
-    jacobian_sf=${OutputPath}/${RunName}/inversion/jacobian_scale_factors.npy
+    jacobian_sf=${InvDir}/jacobian_scale_factors.npy
 fi
 
-python -u ${OutputPath}/${RunName}/inversion/jacobian.py ${OutputPath}/${RunName}/inversion ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i $buildJacobian False; wait
+python -u ${InvDir}/jacobian.py ${InvDir} ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i $buildJacobian False; wait
 if "$LognormalErrors"; then
     # for lognormal error visualization of the prior we sample the prior run
     # without constructing the jacobian matrix
-    python ${OutputPath}/${RunName}/inversion/jacobian.py ${OutputPath}/${RunName}/inversion ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i False True; wait
+    python ${InvDir}/jacobian.py ${InvDir} ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i False True; wait
 fi
 printf " DONE -- jacobian.py\n\n"
 
@@ -152,15 +158,15 @@ printf " DONE -- jacobian.py\n\n"
 #=======================================================================
 if "$LognormalErrors"; then
     # for lognormal errors we merge our y, y_bkgd and partial K matrices
-    python ${OutputPath}/${RunName}/inversion/merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian
+    python ${InvDir}/merge_partial_k.py $JacobianDir $StateVectorFile ${OutputPath}/${RunName}/config_${RunName}.yml $PrecomputedJacobian
 
     # then we run the inversion
     printf "Calling lognormal_invert.py\n"
-    python ${OutputPath}/${RunName}/inversion/lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
+    python ${InvDir}/lognormal_invert.py ${invPath}/${configFile} $StateVectorFile $jacobian_sf
     printf "DONE -- lognormal_invert.py\n\n"
 else
     posteriorSF="./inversion_result.nc"
-    python_args=(${OutputPath}/${RunName}/inversion/invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile)
+    python_args=(${InvDir}/invert.py ${OutputPath}/${RunName}/config_${RunName}.yml $nElements $JacobianDir $posteriorSF $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $Res $jacobian_sf $StateVectorFile)
 
     printf "Calling invert.py\n"
     python "${python_args[@]}"; wait
@@ -171,7 +177,7 @@ else
     GriddedPosterior="./gridded_posterior.nc"
 
     printf "Calling make_gridded_posterior.py\n"
-    python ${OutputPath}/${RunName}/inversion/make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
+    python ${InvDir}/make_gridded_posterior.py $posteriorSF $StateVectorFile $GriddedPosterior; wait
     printf "DONE -- make_gridded_posterior.py\n\n"
 fi
 
