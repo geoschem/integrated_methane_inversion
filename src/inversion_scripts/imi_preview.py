@@ -12,6 +12,7 @@ import matplotlib
 import colorcet as cc
 import cartopy.crs as ccrs
 from scipy.ndimage import binary_dilation
+import gc
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -21,6 +22,7 @@ from src.inversion_scripts.utils import (
     sum_total_emissions,
     plot_field,
     read_and_filter_satellite,
+    plot_field_gchp, # note we need to set vmin and vmax to make it proper for all cubic faces
     calculate_superobservation_error,
     species_molar_mass,
     mixing_ratio_conv_factor,
@@ -29,7 +31,14 @@ from src.inversion_scripts.utils import (
 )
 from src.utilities.config_utils import load_config
 
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
+    latlon_to_cartesian,
+    build_kdtree,
+    classify_obs_to_cs_grid,
+    map_obs_to_CSgrid,
+)
 warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 def get_satellite_data(
     file_path, satellite_str, species, xlim, ylim, startdate_np64, enddate_np64,
@@ -82,7 +91,7 @@ def get_satellite_data(
 
 
 def imi_preview(
-    inversion_path, config_path, state_vector_path, preview_dir, species, satellite_cache
+    config_path, state_vector_path, preview_dir, species, satellite_cache
 ):
     """
     Function to perform preview
@@ -105,6 +114,50 @@ def imi_preview(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
     )
 
+    if config['UseGCHP']:
+        basedir = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"])
+        )
+        gridfpath = f'{basedir}/CS_grids/grids.c{config["CS_RES"]}.nc'
+        gridds = xr.open_dataset(gridfpath)
+        corner_lons = gridds['corner_lons']
+        corner_lats = gridds['corner_lats']
+        
+    # Set latitude/longitude bounds for plots
+    if not config['UseGCHP']:
+        # Trim 1-2.5 degrees to remove GEOS-Chem buffer zone
+        if config["Res"] == "0.25x0.3125":
+            degx = 4 * 0.3125
+            degy = 4 * 0.25
+        elif config["Res"] == "0.5x0.625":
+            degx = 4 * 0.625
+            degy = 4 * 0.5
+        elif config["Res"] == "2.0x2.5":
+            degx = 4 * 2.5
+            degy = 4 * 2.0
+
+        lon_bounds = [
+            np.min(state_vector.lon.values) + degx,
+            np.max(state_vector.lon.values) - degx,
+        ]
+        lat_bounds = [
+            np.min(state_vector.lat.values) + degy,
+            np.max(state_vector.lat.values) - degy,
+        ]
+    elif config['STRETCH_GRID']:
+        buffer_bounds = 0.
+        temp_lons = gridds['corner_lons'].values[5,...].copy()
+        temp_lons[temp_lons>180] -= 360
+        lon_min = max(temp_lons.min() - buffer_bounds, -180)
+        lon_max = min(temp_lons.max() + buffer_bounds, 180)
+        lat_min = max(gridds['corner_lats'].values[5,...].min(), -90)
+        lat_max = min(gridds['corner_lats'].values[5,...].max(), 90)
+        lon_bounds = [lon_min, lon_max]
+        lat_bounds = [lat_min, lat_max]
+    else:
+        lon_bounds = [-180, 180]
+        lat_bounds = [-90, 90]
+    
     # # Define mask for ROI, to be used below
     a, df, num_days, prior, outstrings = estimate_averaging_kernel(
         config, 
@@ -127,40 +180,53 @@ def imi_preview(
     # Reference number of days = 31
     # Reference cost for EC2 storage = $50 per month
     # Reference area = area of 24-39 N 95-111W
+    # Note: calculate_area_in_km in src.inversion_scripts.utils cannot get the surface area correctly when it is nearly global coverage
+    #       Thus, here we turn to get the ratio of the number of grid boxes relative to reference grid
     reference_cost = 20
     reference_num_compute_hours = 10
     ref_nbox = ((39 - 24) / 0.25) * ((-95 + 111) / 0.3125)
     hours_in_month = 31 * 24
     reference_storage_cost = 50 * reference_num_compute_hours / hours_in_month
     num_state_variables = np.nanmax(state_vector_labels.values)
-
-    lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
-    lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
-
-    if config["Res"] == "0.125x0.15625":
-        deltalat = 0.125
-        deltalon = 0.15625
-    if config["Res"] == "0.25x0.3125":
-        deltalat = 0.25
-        deltalon = 0.3125
-    elif config["Res"] == "0.5x0.625":
-        deltalat = 0.5
-        deltalon = 0.625
-    elif config["Res"] == "2.0x2.5":
-        deltalat = 2.0
-        deltalon = 2.5
-    elif config["Res"] == "4.0x5.0":
-        deltalat = 4.0
-        deltalon = 5.0
-    nbox = (lats[1] - lats[0]) / deltalat * (lons[1] - lons[0]) / deltalon
-    nbox_factor = nbox / ref_nbox
     additional_storage_cost = ((num_days / 31) - 1) * reference_storage_cost
-    expected_cost = (
-        (reference_cost + additional_storage_cost)
-        * (num_state_variables / 243)
-        * nbox_factor
-        * (num_days / 31)
-    )
+
+    if config['UseGCHP']:
+        nbox = 6 * config['CS_RES'] ** 2
+        nbox_factor = nbox / ref_nbox
+
+        expected_cost = (
+            (reference_cost + additional_storage_cost)
+            * (num_state_variables / 243)
+            * nbox_factor
+            * (num_days / 31)
+        )
+    else:
+        lats = [float(state_vector.lat.min()), float(state_vector.lat.max())]
+        lons = [float(state_vector.lon.min()), float(state_vector.lon.max())]
+
+        if config["Res"] == "0.125x0.15625":
+            deltalat = 0.125
+            deltalon = 0.15625
+        elif config["Res"] == "0.25x0.3125":
+            deltalat = 0.25
+            deltalon = 0.3125
+        elif config["Res"] == "0.5x0.625":
+            deltalat = 0.5
+            deltalon = 0.625
+        elif config["Res"] == "2.0x2.5":
+            deltalat = 2.0
+            deltalon = 2.5
+        elif config["Res"] == "4.0x5.0":
+            deltalat = 4.0
+            deltalon = 5.0
+        nbox = (lats[1] - lats[0]) / deltalat * (lons[1] - lons[0]) / deltalon
+        nbox_factor = nbox / ref_nbox
+        expected_cost = (
+            (reference_cost + additional_storage_cost)
+            * (num_state_variables / 243)
+            * nbox_factor
+            * (num_days / 31)
+        )
 
     outstring6 = (
         f"approximate cost = ${np.round(expected_cost,2)} for on-demand instance"
@@ -204,22 +270,41 @@ def imi_preview(
     #---------------------------------
     fig = plt.figure(figsize=(10, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        prior_kgkm2h,
-        cmap=cc.cm.linear_kryw_5_100_c67_r,
-        plot_type="pcolormesh",
-        vmin=0,
-        vmax=14,
-        lon_bounds=None,
-        lat_bounds=None,
-        levels=21,
-        title="Prior emissions",
-        point_sources=get_point_source_coordinates(config),
-        cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
-        mask=mask if config["isRegional"] else None,
-        only_ROI=False,
-    )
+    if config['UseGCHP']:
+        plot_field_gchp(
+            ax,
+            corner_lons,
+            corner_lats,
+            prior_kgkm2h,
+            cmap=cc.cm.linear_kryw_5_100_c67_r,
+            plot_type="pcolormesh",
+            vmin=0,
+            vmax=14,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
+            levels=21,
+            title="Prior emissions",
+            point_sources=get_point_source_coordinates(config),
+            cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
+            only_ROI=False,
+        )
+    else:
+        plot_field(
+            ax,
+            prior_kgkm2h,
+            cmap=cc.cm.linear_kryw_5_100_c67_r,
+            plot_type="pcolormesh",
+            vmin=0,
+            vmax=14,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
+            levels=21,
+            title="Prior emissions",
+            point_sources=get_point_source_coordinates(config),
+            cbar_label="Emissions (kg km$^{-2}$ h$^{-1}$)",
+            mask=mask if config["isRegional"] else None,
+            only_ROI=False,
+        )
     plt.savefig(
         os.path.join(preview_dir, "preview_prior_emissions.png"),
         bbox_inches="tight",
@@ -246,8 +331,8 @@ def imi_preview(
         plot_type="pcolormesh",
         vmin=species_min,
         vmax=species_max,
-        lon_bounds=None,
-        lat_bounds=None,
+        lon_bounds=lon_bounds,
+        lat_bounds=lat_bounds,
         title=f"Satellite $X_{species}$",
         cbar_label="Column mixing ratio (ppb)",
         mask=mask if config["isRegional"] else None,
@@ -273,8 +358,8 @@ def imi_preview(
         plot_type="pcolormesh",
         vmin=0,
         vmax=0.4,
-        lon_bounds=None,
-        lat_bounds=None,
+        lon_bounds=lon_bounds,
+        lat_bounds=lat_bounds,
         title="SWIR Albedo",
         cbar_label="Albedo",
         mask=mask if config["isRegional"] else None,
@@ -297,8 +382,8 @@ def imi_preview(
         plot_type="pcolormesh",
         vmin=0,
         vmax=np.nanmax(ds_counts["counts"].values),
-        lon_bounds=None,
-        lat_bounds=None,
+        lon_bounds=lon_bounds,
+        lat_bounds=lat_bounds,
         title="Observation density",
         cbar_label="Number of observations",
         mask=mask if config["isRegional"] else None,
@@ -318,18 +403,38 @@ def imi_preview(
     sv_cmap = matplotlib.colors.ListedColormap(np.random.rand(int(num_colors), 3))
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        state_vector_labels,
-        cmap=sv_cmap,
-        lon_bounds=None,
-        lat_bounds=None,
-        title="State Vector Elements",
-        cbar_label="Element ID",
-        only_ROI=True,
-        state_vector_labels=state_vector_labels,
-        last_ROI_element=last_ROI_element,
-    )
+    if config['UseGCHP']:
+        plot_field_gchp(
+            ax,
+            corner_lons,
+            corner_lats,
+            state_vector_labels,
+            cmap=sv_cmap,
+            vmin=1,
+            vmax=num_colors,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
+            title="State Vector Elements",
+            cbar_label="Element ID",
+            only_ROI=True,
+            state_vector_labels=state_vector_labels,
+            last_ROI_element=last_ROI_element,
+        )
+    else:
+        plot_field(
+            ax,
+            state_vector_labels,
+            cmap=sv_cmap,
+            vmin=1,
+            vmax=num_colors,
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
+            title="State Vector Elements",
+            cbar_label="Element ID",
+            only_ROI=True,
+            state_vector_labels=state_vector_labels,
+            last_ROI_element=last_ROI_element,
+        )
     plt.savefig(
         os.path.join(preview_dir, "preview_state_vector.png"),
         bbox_inches="tight",
@@ -340,21 +445,41 @@ def imi_preview(
     #-----------------------------------------------
     # plot estimated averaging kernel sensitivities
     #-----------------------------------------------
-    sensitivities_da = map_sensitivities_to_sv(a, state_vector, last_ROI_element)
+    sensitivities = map_sensitivities_to_sv(a, state_vector_labels, last_ROI_element)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.subplots(1, 1, subplot_kw={"projection": ccrs.PlateCarree()})
-    plot_field(
-        ax,
-        sensitivities_da["Sensitivities"],
-        cmap=cc.cm.CET_L19,
-        lon_bounds=None,
-        lat_bounds=None,
-        title="Estimated Averaging kernel sensitivities",
-        cbar_label="Sensitivity",
-        only_ROI=True,
-        state_vector_labels=state_vector_labels,
-        last_ROI_element=last_ROI_element,
-    )
+    if config['UseGCHP']:
+        plot_field_gchp(
+            ax,
+            corner_lons,
+            corner_lats,
+            sensitivities,
+            cmap=cc.cm.CET_L19,
+            vmin=0,
+            vmax=np.nanpercentile(sensitivities.values, 95),
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
+            title="Estimated Averaging kernel sensitivities",
+            cbar_label="Sensitivity",
+            only_ROI=True,
+            state_vector_labels=state_vector_labels,
+            last_ROI_element=last_ROI_element,
+        )
+    else:
+        plot_field(
+            ax,
+            sensitivities,
+            cmap=cc.cm.CET_L19,
+            vmin=0,
+            vmax=np.nanpercentile(sensitivities.values, 95),
+            lon_bounds=lon_bounds,
+            lat_bounds=lat_bounds,
+            title="Estimated Averaging kernel sensitivities",
+            cbar_label="Sensitivity",
+            only_ROI=True,
+            state_vector_labels=state_vector_labels,
+            last_ROI_element=last_ROI_element,
+        )
     plt.savefig(
         os.path.join(preview_dir, "preview_estimated_sensitivities.png"),
         bbox_inches="tight",
@@ -380,19 +505,45 @@ def imi_preview(
         sys.exit(1)
 
 
-def map_sensitivities_to_sv(sensitivities, sv, last_ROI_element):
+def map_sensitivities_to_sv(sensitivities, state_vector_lables, last_ROI_element):
     """
-    maps sensitivities onto 2D xarray Datarray for visualization
-    """
-    s = sv.copy().rename({"StateVector": "Sensitivities"})
-    mask = s["Sensitivities"] <= last_ROI_element
-    s["Sensitivities"] = s["Sensitivities"].where(mask)
-    # map sensitivities onto corresponding xarray DataArray
-    for i in range(1, last_ROI_element + 1):
-        mask = sv["StateVector"] == i
-        s = xr.where(mask, sensitivities[i - 1], s)
+    Map 1D sensitivities onto a label grid.
 
-    return s
+    Parameters
+    ----------
+    sensitivities : array-like, shape (last_ROI_element,)
+        Sensitivity value corresponding to ROI label 1..last_ROI_element.
+    state_vector_lables : xr.DataArray
+        The StateVector array containing integer labels and NaNs.
+        Can have shape (lat, lon), (nf, Ydim, Xdim), (time, nf, Ydim, Xdim), etc.
+    last_ROI_element : int
+
+    Returns
+    -------
+    xr.DataArray with the same dims/coords as labels_da
+    """
+    labels = state_vector_lables.values
+    sens = np.asarray(sensitivities)
+
+    # Valid ROI labels: 1..last_ROI_element
+    valid = np.isfinite(labels) & (labels <= last_ROI_element)
+
+    # Output array
+    out = np.full(labels.shape, np.nan, dtype=sens.dtype)
+
+    # Convert labels → 0-based indices
+    idx = labels[valid].astype(int) - 1
+
+    # Fill output
+    out[valid] = sens[idx]
+
+    # Wrap back into a DataArray
+    return xr.DataArray(
+        out,
+        coords=state_vector_lables.coords,
+        dims=state_vector_lables.dims,
+        name="Sensitivities"
+    )
 
 def get_sectoral_outputs(prior_ds, areas, mask, preview_dir):
     """
@@ -547,14 +698,22 @@ def estimate_averaging_kernel(
     prior = prior_ds[f"Emis{species}_Total"]
 
     # Compute total emissions in the region of interest
-    areas = prior_ds["AREA"]
+    if config['UseGCHP']:
+        basedir = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"])
+        )
+        gridfpath = f'{basedir}/CS_grids/grids.c{config["CS_RES"]}.nc'
+        gridds = xr.open_dataset(gridfpath)
+        areas = gridds['area']
+    else:
+        areas = prior_ds["AREA"]
     total_prior_emissions = sum_total_emissions(prior, areas, mask)
     outstring1 = (
         f"Total prior emissions in region of interest = {total_prior_emissions} Tg/y \n"
     )
     print(outstring1)
-    
-    
+
+
     # calculate sectoral totals if running preview
     if preview:
         get_sectoral_outputs(prior_ds, areas, mask, preview_dir)
@@ -566,9 +725,13 @@ def estimate_averaging_kernel(
     satellite_files = [f for f in os.listdir(satellite_cache) if ".nc" in f]
     satellite_paths = [os.path.join(satellite_cache, f) for f in satellite_files]
 
-    # Latitude/longitude bounds of the inversion domain
-    xlim = [float(state_vector.lon.min()), float(state_vector.lon.max())]
-    ylim = [float(state_vector.lat.min()), float(state_vector.lat.max())]
+    if config['UseGCHP']:
+        xlim = [-180, 180]
+        ylim = [-90, 90]
+    else:
+        # Latitude/longitude bounds of the inversion domain
+        xlim = [float(state_vector.lon.min()), float(state_vector.lon.max())]
+        ylim = [float(state_vector.lat.min()), float(state_vector.lat.max())]
 
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
@@ -632,85 +795,119 @@ def estimate_averaging_kernel(
     df[species] = xspecies
     df["time"] = trtime
 
-    # Set resolution specific variables
-    # L_native = Rough length scale of native state vector element [m]
-    if config["Res"] == "0.125x0.15625":
-        lat_step = 0.125
-        lon_step = 0.15625
-    elif config["Res"] == "0.25x0.3125":
-        lat_step = 0.25
-        lon_step = 0.3125
-    elif config["Res"] == "0.5x0.625":
-        lat_step = 0.5
-        lon_step = 0.625
-    elif config["Res"] == "2.0x2.5":
-        lat_step = 2.0
-        lon_step = 2.5
-    elif config["Res"] == "4.0x5.0":
-        lat_step = 4.0
-        lon_step = 5.0
+    if config['UseGCHP']:
+        df_super = classify_obs_to_cs_grid(df, gridfpath)
+        daily_observation_counts = map_obs_to_CSgrid(df_super, gridfpath)
+    else:
+        # Set resolution specific variables
+        # L_native = Rough length scale of native state vector element [m]
+        if config["Res"] == "0.125x0.15625":
+            L_native = 12.5 * 1000
+            lat_step = 0.125
+            lon_step = 0.15625
+        elif config["Res"] == "0.25x0.3125":
+            L_native = 25 * 1000
+            lat_step = 0.25
+            lon_step = 0.3125
+        elif config["Res"] == "0.5x0.625":
+            L_native = 50 * 1000
+            lat_step = 0.5
+            lon_step = 0.625
+        elif config["Res"] == "2.0x2.5":
+            L_native = 200 * 1000
+            lat_step = 2.0
+            lon_step = 2.5
+        elif config["Res"] == "4.0x5.0":
+            L_native = 400 * 1000
+            lat_step = 4.0
+            lon_step = 5.0
 
-    # bin observations into gridcells and map onto statevector
-    to_lon = lambda x: np.floor(x / lon_step) * lon_step
-    to_lat = lambda x: np.floor(x / lat_step) * lat_step
+        # bin observations into gridcells and map onto statevector
+        to_lon = lambda x: np.floor(x / lon_step) * lon_step
+        to_lat = lambda x: np.floor(x / lat_step) * lat_step
 
-    df_super = df.rename(columns={"lon": "old_lon", "lat": "old_lat"})
+        df_super = df.rename(columns={"lon": "old_lon", "lat": "old_lat"})
 
-    df_super["lat"] = to_lat(df_super.old_lat)
-    df_super["lon"] = to_lon(df_super.old_lon)
+        df_super["lat"] = to_lat(df_super.old_lat)
+        df_super["lon"] = to_lon(df_super.old_lon)
 
-    # extract relevant fields and group by lat, lon, date
-    df_super = df_super[["lat", "lon", "time", "obs_count"]].copy()
-    df_super["date"] = df_super["time"].dt.floor("D")
-    grouped = (
-        df_super.groupby(["lat", "lon", "date"]).size().reset_index(name="obs_count")
-    )
+        # extract relevant fields and group by lat, lon, date
+        df_super = df_super[["lat", "lon", "time", "obs_count"]].copy()
+        df_super["date"] = df_super["time"].dt.floor("D")
+        grouped = (
+            df_super.groupby(["lat", "lon", "date"]).size().reset_index(name="obs_count")
+        )
 
-    # convert the grouped DataFrame to an xarray Dataset
-    daily_observation_counts = grouped.set_index(["lat", "lon", "date"]).to_xarray()
+        # convert the grouped DataFrame to an xarray Dataset
+        daily_observation_counts = grouped.set_index(["lat", "lon", "date"]).to_xarray()
 
     # create a daily superobservation count as well
     daily_observation_counts["superobs_count"] = daily_observation_counts["obs_count"]
 
     # set the nans to 0 if there are no observations. For superobs each day is 1 superob
     daily_observation_counts["superobs_count"].values = np.where(
-        np.isnan(daily_observation_counts["superobs_count"].values), 0, 1
+        np.isnan(np.array(daily_observation_counts["obs_count"].values)), 0, 1
     )
-    daily_observation_counts["obs_count"].values = np.nan_to_num(
-        daily_observation_counts["obs_count"].values
-    )
+    daily_observation_counts["obs_count"] = daily_observation_counts["obs_count"].fillna(0)
+
+    int_sv_labels = state_vector_labels.fillna(-9999).astype(int)
+    structure = np.ones((5, 5))
+    if config["UseGCHP"]:
+        n_neighbors = structure.size
+        CSlons = gridds['lons']
+        CSlats = gridds['lats']
+        kdtree, shape = build_kdtree(CSlats.values, CSlons.values)
 
     # parallel processing function
     def process(i):
-        mask = state_vector_labels == i
-
+        maski = int_sv_labels == i
         # Following eqn. 11 of Nesser et al., 2021 we increase the mask
         # size by adding concentric rings to mimic transport/diffusion
         # when counting observations. We use 2 concentric rings based on
         # empirical evidence -- Nesser et al used 3.
-        structure = np.ones((5, 5))
-        buffered_mask = binary_dilation(mask, structure=structure)
-        buffered_mask = xr.DataArray(
-            buffered_mask,
-            dims=state_vector_labels.dims,
-            coords=state_vector_labels.coords,
-        )
+
+        if config["UseGCHP"]:
+            lati = CSlats.values[np.where(maski.values)]
+            loni = CSlons.values[np.where(maski.values)]
+            query_cart = latlon_to_cartesian(lati, loni)
+            _, neighbor_idxs = kdtree.query(query_cart, k=n_neighbors)
+
+            neighbor_idxs = neighbor_idxs.flatten()
+            f_idx, j_idx, x_idx = np.unravel_index(neighbor_idxs, shape)
+
+            obs_count_values = daily_observation_counts["obs_count"].values[:, f_idx, j_idx, x_idx]
+            superobs_count_values = daily_observation_counts["superobs_count"].values[:, f_idx, j_idx, x_idx]
+            num_obs_temp = np.nansum(obs_count_values).item()
+            n_success_obs_days = np.nansum(superobs_count_values).item()
+
+        else:
+            buffered_mask = binary_dilation(maski, structure=structure)
+            buffered_mask = xr.DataArray(
+                buffered_mask,
+                dims=state_vector_labels.dims,
+                coords=state_vector_labels.coords,
+            )
+            # append the number of obs in each element
+            num_obs_temp = np.nansum(
+                daily_observation_counts["obs_count"].where(buffered_mask).values
+            ).item()
+            # append the number of successful obs days
+            n_success_obs_days = np.nansum(
+                daily_observation_counts["superobs_count"].where(buffered_mask).values
+            ).item()
 
         # prior emissions for each element (in Tg/y)
-        emissions_temp = sum_total_emissions(prior, areas, mask)
+        emissions_temp = sum_total_emissions(prior, areas, maski)
+        
         # number of native state vector elements in each element
-        size_temp = state_vector_labels.where(mask).count().item()
-        # append the calculated length scale of element
-        L_native = np.sqrt(np.nanmean(areas.where(mask).values)).item()
-        # append the number of obs in each element
-        num_obs_temp = np.nansum(
-            daily_observation_counts["obs_count"].where(buffered_mask).values
-        )
-        # append the number of successful obs days
-        n_success_obs_days = np.nansum(
-            daily_observation_counts["superobs_count"].where(buffered_mask).values
-        ).item()
-        return emissions_temp, L_native, size_temp, num_obs_temp, n_success_obs_days
+        size_temp = state_vector_labels.where(maski).count().item()
+        if config['UseGCHP']:
+            L_native = np.sqrt(np.nanmean(areas.where(maski).values)).item()
+        L_temp = L_native * size_temp
+        
+        del maski
+        gc.collect()
+        return emissions_temp, L_temp, size_temp, num_obs_temp, n_success_obs_days
 
     # in parallel, create lists of emissions, number of observations,
     # and rough length scale for each cluster element in ROI
@@ -737,9 +934,10 @@ def estimate_averaging_kernel(
 
     # State vector, observations
     emissions = np.array(emissions)
-    m_superi = np.array(m_superi)  # Number of successful observation days
-    L = np.array(L)
+    L = np.array(L) 
     num_native_elements = np.array(num_native_elements)
+    num_obs = np.array(num_obs)
+    m_superi = np.array(m_superi)  # Number of successful observation days
 
     # If Kalman filter mode, count observations per inversion period
     if config["KalmanMode"]:
@@ -832,15 +1030,14 @@ def estimate_averaging_kernel(
 
 if __name__ == "__main__":
     try:
-        inversion_path = sys.argv[1]
-        config_path = sys.argv[2]
-        state_vector_path = sys.argv[3]
-        preview_dir = sys.argv[4]
-        species = sys.argv[5]
-        satellite_cache = sys.argv[6]
+        config_path = sys.argv[1]
+        state_vector_path = sys.argv[2]
+        preview_dir = sys.argv[3]
+        species = sys.argv[4]
+        satellite_cache = sys.argv[5]
 
         imi_preview(
-            inversion_path, config_path, state_vector_path, preview_dir, species, satellite_cache
+            config_path, state_vector_path, preview_dir, species, satellite_cache
         )
     except Exception as err:
         with open(".preview_error_status.txt", "w") as file1:

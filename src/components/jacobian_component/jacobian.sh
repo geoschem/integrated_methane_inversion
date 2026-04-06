@@ -21,17 +21,37 @@ setup_jacobian() {
 
     # make dir for jacobian ics/bcs
     mkdir -p jacobian_lowbg_ics_bcs/Restarts
-    if $isRegional; then
+    if "$isRegional"; then
         mkdir -p jacobian_lowbg_ics_bcs/BCs
-        OrigBCFile=${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4
-        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigBCFile ${RunDirs}/jacobian_lowbg_ics_bcs/BCs $StartDate $Species
+        OrigBCFile="${fullBCpath}/GEOSChem.BoundaryConditions.${StartDate}_0000z.nc4"
+        python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $OrigBCFile ${RunDirs}/jacobian_lowbg_ics_bcs/BCs $StartDate $Species
     fi
-    OrigRestartFile="${RestartFilePrefix}${StartDate}_0000z.nc4"
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate $Species
+
+    # create lowbg restart file
+    # link to restart file
+    if "$UseGCHP"; then
+        OrigRestartFile="${RunDirs}/CS_grids/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4"
+        if [ ! -f "$OrigRestartFile" ]; then
+            # regrid restart file to GCHP resolution
+            TROPOMIBC=${RestartFilePrefix}${StartDate}_0000z.nc4
+            TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
+            FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
+            cd ${RunDirs}/CS_grids
+            TROPOMIBC72="temp_tropomi-bc.nc4"
+            python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+            regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+            cd ${RunDirs}
+        fi
+    else
+        OrigRestartFile="${RestartFilePrefix}${StartDate}_0000z.nc4"
+    fi
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $OrigRestartFile ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $StartDate $Species
     cd ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/
-    if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
-        mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
-        ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
+    if ! "$UseGCHP"; then
+        if [ -f GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 ]; then
+            mv GEOSChem.BoundaryConditions.lowbg.${StartDate}_0000z.nc4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
+            ncrename -v SpeciesBC_CH4,SpeciesRst_CH4 GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
+        fi
     fi
     cd ${RunDirs}
 
@@ -53,7 +73,11 @@ setup_jacobian() {
     fi
 
     # Copy run scripts
-    cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
+    if "$UseGCHP"; then
+        cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array_gchp.sh jacobian_runs/submit_jacobian_simulations_array.sh
+    else
+        cp ${InversionPath}/src/geoschem_run_scripts/submit_jacobian_simulations_array.sh jacobian_runs/
+    fi
     sed -i -e "s:{START}:0:g" \
         -e "s:{END}:${nRuns}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" jacobian_runs/submit_jacobian_simulations_array.sh
@@ -67,7 +91,7 @@ setup_jacobian() {
     else
         sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
     fi
-    
+
     if "$KalmanMode"; then
         jacobian_period=${period_i}
     else
@@ -113,7 +137,6 @@ setup_jacobian() {
 
     printf "\n=== DONE CREATING JACOBIAN RUN DIRECTORIES ===\n"
 }
-
 # Description: Create simulation directory for defined xstr
 # Usage:
 #   create_simulation_dir
@@ -130,20 +153,52 @@ create_simulation_dir() {
     cd $runDir
 
     # Link to GEOS-Chem executable instead of having a copy in each rundir
-    ln -nsf ../../GEOSChem_build/gcclassic .
+    if "$UseGCHP"; then
+        sed -i -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
+            -e "s/^TOTAL_CORES=.*/TOTAL_CORES=${TOTAL_CORES}/" \
+            -e "s/^NUM_NODES=.*/NUM_NODES=${NUM_NODES}/" \
+            -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
+            setCommonRunSettings.sh
+        ln -nsf ../../GEOSChem_build/gchp .
+    else
+        ln -nsf ../../GEOSChem_build/gcclassic .
+    fi
 
     # link to restart file
-    RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    if "$UseGCHP"; then
+        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.c${CS_RES}.nc4
+    else
+        RestartFileFromSpinup=${RunDirs}/spinup_run/Restarts/GEOSChem.Restart.${SpinupEnd}_0000z.nc4
+    fi
+    
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         RestartFile=$RestartFileFromSpinup
     else
-        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
-            sed -i -e "s|SpeciesRst|SpeciesBC|g" \
-                   -e "s|EFYO|CYS|g" HEMCO_Config.rc
+            if "$UseGCHP"; then
+                # regrid restart file to GCHP resolution
+                TROPOMIBC="${RestartFilePrefix}${StartDate}_0000z.nc4"
+                TemplatePrefix="${RunDirs}/${runDir}/Restarts/GEOSChem.Restart.20190101_0000z"
+                FilePrefix="GEOSChem.Restart.${StartDate}_0000z"
+                cd "${RunDirs}/CS_grids"
+                TROPOMIBC72="temp_tropomi-bc.nc4"
+                python ${InversionPath}/src/utilities/regrid_vertgrid_47-to-72.py $TROPOMIBC $TROPOMIBC72
+                regrid_tropomi-BC-restart_gcc2gchp ${TROPOMIBC72} ${TemplatePrefix} ${FilePrefix} ${CS_RES} ${STRETCH_GRID} ${STRETCH_FACTOR} ${TARGET_LAT} ${TARGET_LON}
+                RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
+                cd "${RunDirs}/jacobian_runs/${name}"
+            else
+                RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
+                sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+                       -e "s|EFYO|CYS|g" HEMCO_Config.rc
+            fi
         fi
     fi
-    ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+
+    if "$UseGCHP"; then
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
+    else
+        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+    fi
 
     # Modify HEMCO_Config.rc to turn off individual emission inventories
     # and use total emissions (without soil absorption) saved out from prior
@@ -152,11 +207,15 @@ create_simulation_dir() {
     sed -i -e "s|UseTotalPriorEmis      :       false|UseTotalPriorEmis      :       true|g" \
         -e "s|AnalyticalInversion    :       false|AnalyticalInversion    :       true|g" \
         -e "s|GFED                   : on|GFED                   : off|g" HEMCO_Config.rc
+
     if [ "$OptimizeSoil" != true ]; then
         sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" \
             HEMCO_Config.rc
+        if "$UseGCHP"; then
+            sed -i -e "s|EmisCH4_Total|EmisCH4_Total_ExclSoilAbs|g" ExtData.rc
+	fi
     fi
-    
+
     # Determine which elements are BC perturbations
     BC_elem=false
     bcThreshold=$nElements
@@ -186,15 +245,18 @@ create_simulation_dir() {
     # Update settings in HISTORY.rc
     # Only save out hourly pressure fields to daily files for base run
     if [[ $x -eq 0 ]] || [[ "$x" = "background" ]]; then
-        if "$HourlySpecies"; then
-            sed -i -e 's/'\''Restart/#'\''Restart/g' \
-                -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+        if "$UseGCHP"; then
+            sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
+                -e 's/StateMetLevEdge.frequency:.*/StateMetLevEdge.frequency:      010000/g' \
+                -e 's/StateMetLevEdge.duration:.*/StateMetLevEdge.duration:       240000/g' HISTORY.rc
+        else
+            sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
                 -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
-                -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
-                HISTORY.rc
+                -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' HISTORY.rc
         fi
-    # For all other runs, just disable Restarts
-    else
+    fi
+    # disable Restart for all runs
+    if ! "$UseGCHP"; then
         if "$HourlySpecies"; then
             sed -i -e 's/'\''Restart/#'\''Restart/g' HISTORY.rc
         fi
@@ -208,8 +270,13 @@ create_simulation_dir() {
     fi
 
     # Create run script from template
-    sed -e "s:namename:${name}:g" run.template >${name}.run
-    rm -f run.template
+    if "$UseGCHP"; then
+        sed -e "s:namename:${name}:g" gchp_ch4_run.template >${name}.run
+        rm -f gchp_ch4_run.template
+    else
+        sed -e "s:namename:${name}:g" run.template >${name}.run
+        rm -f run.template
+    fi
     chmod 755 ${name}.run
 
     ### Turn on observation operators if requested, only for base run
@@ -224,13 +291,15 @@ create_simulation_dir() {
     if is_number "$x"; then
         ### Perform dry run if requested, only for base run
         if [[ $x -eq 0 ]]; then
-            if "$ProductionDryRun"; then
-                printf "\nExecuting dry-run for production runs...\n"
-                ./gcclassic --dryrun &>log.dryrun
-                # prevent restart file from getting downloaded since
-                # we don't want to overwrite the one we link to above
-                sed -i '/GEOSChem.Restart/d' log.dryrun
-                python download_gc_data.py log.dryrun aws
+            if ! "$UseGCHP"; then
+                if "$ProductionDryRun"; then
+                    printf "\nExecuting dry-run for production runs...\n"
+                    ./gcclassic --dryrun &>log.dryrun
+                    # prevent restart file from getting downloaded since
+                    # we don't want to overwrite the one we link to above
+                    sed -i '/GEOSChem.Restart/d' log.dryrun
+                    python download_gc_data.py log.dryrun aws
+                fi
             fi
         fi
 
@@ -252,7 +321,7 @@ create_simulation_dir() {
             OH_elem=true
             if "$isRegional"; then
                 # Perturb OH everywhere if this is a reginoal simulation
-                sed -i -e "s| OH_pert_factor 1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
+                sed -i -e "s| OH_pert_factor  1.0| OH_pert_factor ${PerturbValueOH}|g" HEMCO_Config.rc
             else
                 # Perturb OH by hemisphere if this is a global simulation
                 # Apply hemispheric OH perturbation values using mask file
@@ -265,11 +334,15 @@ create_simulation_dir() {
                 else
                     OptimizeSouth='True'
                 fi
-                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth
-
+                gridded_optimized_OH $PerturbValueOH $PerturbValueOH $Hemis_mask_fpath $Output_fpath $OptimizeNorth $OptimizeSouth $STRETCH_GRID $STRETCH_FACTOR $TARGET_LAT $TARGET_LON
                 # Modify OH scale factor in HEMCO config
                 sed -i -e "s| OH_pert_factor  1.0 - - - xy 1 1| OH_pert_factor ${Output_fpath} oh_scale 2000\/1\/1\/0 C xy 1 1|g" HEMCO_Config.rc
-            fi
+                
+                if "$UseGCHP"; then
+                    # add entry in ExtData.rc for GCHP
+                    sed -i -e "s|^#OH_pert_factor.*|OH_pert_factor 1 N Y - none none oh_scale ${Output_fpath}|" ExtData.rc
+                fi
+           fi
         fi
 
         # If the current state vector element is one of the BC state vector elements, then
@@ -302,6 +375,9 @@ create_simulation_dir() {
             sed -i -e "s|--> Emis_PosteriorSF       :       false|--> Emis_PosteriorSF       :       true|g" \
                 -e "s|--> UseTotalPriorEmis      :       false|--> UseTotalPriorEmis      :       true|g" \
                 -e "s|gridded_posterior.nc|${RunDirs}/ScaleFactors.nc|g" HEMCO_Config.rc
+            if "$UseGCHP"; then
+                sed -i -e "s|gridded_posterior.nc|./RunDirs/ScaleFactors.nc|g" ExtData.rc
+            fi
         fi
 
     else
@@ -313,18 +389,24 @@ create_simulation_dir() {
             sed -i -e "s|.*GEOSChem\.BoundaryConditions.*|\* BC_CH4 ${BCFilelowbg} ${BCSettingslowbg}|g" HEMCO_Config.rc
         fi
         # create symlink to lowbg restart file
-        RestartFilelowbg=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
-        RestartFile=$RestartFilelowbg
-        ln -nsf $RestartFile Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        if "$UseGCHP"; then
+            RestartFilelowbg=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${StartDate}_0000z.c${CS_RES}.nc4
+            ln -nsf $RestartFilelowbg Restarts/GEOSChem.Restart.${StartDate}_0000z.c${CS_RES}.nc4
+        else
+            RestartFilelowbg=${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${StartDate}_0000z.nc4
+            ln -nsf $RestartFilelowbg Restarts/GEOSChem.Restart.${StartDate}_0000z.nc4
+        fi
         # Also, set emissions to zero for default CH4 tracer by applying ZERO scale factor (id 5)
         sed -i -e "s|CH4 - 1 500|CH4 5 1 500|g" HEMCO_Config.rc
     fi
 
     # Modify restart and BC entries in HEMCO_Config.rc to look for CH4 only
     # instead of all advected species
-    sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
-    if "$isRegional"; then
-        sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
+    if ! "$UseGCHP"; then
+        sed -i -e "s/SPC_/SPC_CH4/g" -e "s/?ALL?/CH4/g" -e "s/EFYO xyz 1 \*/EFYO xyz 1 CH4/g" HEMCO_Config.rc
+        if "$isRegional"; then
+            sed -i -e "s/BC_ /BC_CH4 /g" -e "s/?ADV?/CH4/g" -e "s/EFY xyz 1 \*/EFY xyz 1 CH4/g" HEMCO_Config.rc
+        fi
     fi
 
     # Initialize previous lines to search
@@ -333,6 +415,8 @@ create_simulation_dir() {
     HcoPrevLine2='1 500'
     HcoPrevLine3="#300N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
     HcoPrevLine4='\* BC_CH4'
+    ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
+    HisPrevLine1="'SpeciesConcVV_CH4    ', 'GCHPchem',"
 
     # Loop over state vector element numbers for this run and add each element
     # as a CH4 tracer in the configuraton files
@@ -341,6 +425,13 @@ create_simulation_dir() {
             for i in $(seq $start_element $end_element); do
                 add_new_tracer
             done
+            # remove redundant SpeciesConcVV_CH4 when $x > 1
+            if "$UseGCHP"; then
+                if [ $x -gt 1 ]; then
+                    perl -0777 -pe "s/'SpeciesConcVV_CH4\s*',\s*'GCHPchem',\s*\n\s*('SpeciesConcVV_CH4_\d{4}',\s*'GCHPchem',)/\1/" \
+                    -i HISTORY.rc
+                fi
+            fi
         fi
     fi
 
@@ -381,7 +472,7 @@ add_new_tracer() {
         bg_vv="4.0e-6"
         fullname="Carbon dioxide"
     fi
-    SpcNewLines=${Species}'_'$istr':\n  << : *'${Species}'properties\n  Background_VV: '${bg_vv}'\n  FullName: '${fullname}
+    SpcNewLines=${Species}'_'$istr':\n  << : *'${Species}'properties\n  Background_VV: '${bg_vv}'\n  FullName: '${fullname}'\n  Is_JacobianTracer: true'
     sed -i -e "s|$SpcNextLine|$SpcNewLines\n$SpcNextLine|g" species_database.yml
 
     # Add lines for new tracers to HEMCO_Config.rc
@@ -393,14 +484,25 @@ add_new_tracer() {
     sed -i -e "\|$HcoPrevLine3|a $HcoNewLine3" HEMCO_Config.rc
     HcoPrevLine3=$HcoNewLine3
 
-    # Add lines for restarts of new tracers to HEMCO_Config.rc
-    HcoNewLine1='* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
-    sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
-    HcoPrevLine1='SPC_CH4_'$istr
-    if "$isRegional"; then
-        HcoNewLine4='* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
-        sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
-        HcoPrevLine4='BC_CH4_'$istr
+    if ! "$UseGCHP"; then
+        # Add lines for restarts of new tracers to HEMCO_Config.rc
+        HcoNewLine1='* SPC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+        sed -i -e "/$HcoPrevLine1/a $HcoNewLine1" HEMCO_Config.rc
+        HcoPrevLine1='SPC_CH4_'$istr
+        if "$isRegional"; then
+            HcoNewLine4='* BC_CH4_'$istr' - - - - - - CH4_'$istr' - 1 1'
+            sed -i -e "/$HcoPrevLine4/a $HcoNewLine4" HEMCO_Config.rc
+            HcoPrevLine4='BC_CH4_'$istr
+        fi
+    else
+        # Add lines for new tracers to ExtData.rc
+        ExtNewLine1="SCALE_ELEM_$istr  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
+        sed -i -e "\|$ExtPrevLine1|a $ExtNewLine1" ExtData.rc
+        ExtPrevLine1=$ExtNewLine1
+
+        HisNewLine1="                              'SpeciesConcVV_CH4_$istr', 'GCHPchem',"
+        sed -i -e "/${HisPrevLine1}/a\\"$'\n'"${HisNewLine1}" HISTORY.rc
+        HisPrevLine1=$HisNewLine1
     fi
 
 }
@@ -421,6 +523,7 @@ run_jacobian() {
         -e "s:{KalmanMode}:${KalmanMode}:g" \
         -e "s:{StartDate}:${StartDate}:g" \
         -e "s:{EndDate}:${EndDate}:g" \
+        -e "s:{UseGCHP}:${UseGCHP}:g" \
         -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
     if [[ "$SchedulerType" == "PBS" ]]; then
         sed -i "/pwd -P/a \
@@ -453,14 +556,27 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
 
             cp ${InversionPath}/src/geoschem_run_scripts/run_bkgd_simulation.sh ./
+            RunDuration=$(get_run_duration "$StartDate" "$EndDate")
             
             sed -i -e "s:{RunName}:${RunName}:g" \
                 -e "s:{InversionPath}:${InversionPath}:g" \
+                -e "s:{UseGCHP}:${UseGCHP}:g" \
                 -e "s:{StartDate}:${StartDate}:g" \
+                -e "s:{RunDuration}:${RunDuration}:g" \
                 run_bkgd_simulation.sh
-
-            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_bkgd_simulation.sh
-            wait
+            
+            if "$UseGCHP"; then
+                sbatch --mem $RequestedMemory \
+                    -c 1 \
+                    -N $NUM_NODES \
+                    -n $TOTAL_CORES \
+                    -t $RequestedTime \
+                    -p $SchedulerPartition \
+                    -W run_bkgd_simulation.sh
+		wait
+            else
+                submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_bkgd_simulation.sh
+            fi
 
             printf "\n=== DONE BACKGROUND SIMULATION ===\n"
         fi
@@ -492,14 +608,29 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
         # Submit prior simulation to job scheduler
         printf "\n=== SUBMITTING PRIOR SIMULATION ===\n"
         cp ${InversionPath}/src/geoschem_run_scripts/run_prior_simulation.sh ./
+        RunDuration=$(get_run_duration "$StartDate" "$EndDate")
         sed -i -e "s:{RunName}:${RunName}:g" \
             -e "s:{InversionPath}:${InversionPath}:g" \
+            -e "s:{UseGCHP}:${UseGCHP}:g" \
             -e "s:{StartDate}:${StartDate}:g" \
+            -e "s:{RunDuration}:${RunDuration}:g" \
             run_prior_simulation.sh
-        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_prior_simulation.sh
-        wait
-        cat imi_output.tmp >>${InversionPath}/imi_output.log
-        rm imi_output.tmp
+        if "$UseGCHP"; then
+            sbatch --mem $RequestedMemory \
+                -N $NUM_NODES \
+                -n $TOTAL_CORES \
+                -c 1 \
+                -t $RequestedTime \
+                -o imi_output.tmp \
+                -p $SchedulerPartition \
+                -W run_prior_simulation.sh
+	    wait
+	    cat imi_output.tmp >>${InversionPath}/imi_output.log
+            rm imi_output.tmp
+        else
+            submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_prior_simulation.sh
+        fi
+
         # check if prior simulation exited with non-zero exit code
         [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO jacobian.sh
 
@@ -509,8 +640,18 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
         # Run the background simulation if lognormal errors enabled
         if "$LognormalErrors"; then
             printf "\n=== SUBMITTING BACKGROUND SIMULATION ===\n"
-            submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_bkgd_simulation.sh
-            wait
+            if "$UseGCHP"; then
+                sbatch --mem $RequestedMemory \
+                    -c 1 \
+                    -N $NUM_NODES \
+                    -n $TOTAL_CORES \
+                    -t $RequestedTime \
+                    -p $SchedulerPartition \
+                    -W run_bkgd_simulation.sh
+		wait
+            else
+		submit_job $SchedulerType false $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition run_bkgd_simulation.sh
+            fi
             # check if background simulation exited with non-zero exit code
             [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO jacobian.sh
             printf "=== DONE BACKGROUND SIMULATION ===\n"

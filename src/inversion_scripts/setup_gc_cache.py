@@ -2,6 +2,7 @@ import xarray as xr
 import datetime
 from joblib import Parallel, delayed
 import os
+import warnings
 
 def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
     """
@@ -31,13 +32,23 @@ def setup_gc_cache(startday, endday, gc_source_path, gc_destination_path):
 
     # For each day:
     def process(d):
-        # Load the SpeciesConc and StateMetLevEdge data
-        SpeciesConc_data = xr.load_dataset(
-            f"{gc_source_path}/GEOSChem.SpeciesConc.{d}_0000z.nc4"
-        )
-        StateMetLevEdge_data = xr.load_dataset(
-            f"{gc_source_path}/GEOSChem.StateMetLevEdge.{d}_0000z.nc4"
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+            # Load the SpeciesConc and StateMetLevEdge data
+            SpeciesConc_data = xr.load_dataset(
+                f"{gc_source_path}/GEOSChem.SpeciesConc.{d}_0000z.nc4"
+            )
+            StateMetLevEdge_data = xr.load_dataset(
+                f"{gc_source_path}/GEOSChem.StateMetLevEdge.{d}_0000z.nc4"
+            )
+
+        # Drop the "anchor" variable if it exists 
+        # to avoid later handling error of duplicate dimensions(ncontacts, ncontacts)
+        if 'anchor' in SpeciesConc_data:
+            SpeciesConc_data = SpeciesConc_data.drop_vars('anchor')
+
+        if 'anchor' in StateMetLevEdge_data:
+            StateMetLevEdge_data = StateMetLevEdge_data.drop_vars('anchor')
 
         # For each hour:
         for h in hours:

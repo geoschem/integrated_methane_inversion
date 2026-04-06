@@ -40,11 +40,12 @@ run_preview() {
     if [[ $SchedulerType = "slurm" || $SchedulerType = "PBS" ]]; then
         rm -f .preview_error_status.txt
         chmod +x $preview_file
-        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
+        submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition $preview_file $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
+
         # check for any errors
         [ ! -f ".preview_error_status.txt" ] || imi_failed $LINENO preview.sh
     else
-        python $preview_file $InversionPath $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
+        python $preview_file $ConfigPath $state_vector_path $preview_dir $Species $satellite_cache
     fi
     printf "\n=== DONE RUNNING IMI PREVIEW ===\n"
 

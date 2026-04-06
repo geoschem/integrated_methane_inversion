@@ -34,6 +34,7 @@ config_required: Dict[str, Rule] = {
     "SchedulerType": str,
     "SafeMode": bool,
     "S3Upload": bool,
+    "UseGCHP": bool,
     "StartDate": int,
     "EndDate": int,
     "SpinupMonths": int,
@@ -123,6 +124,12 @@ optional_rules: Dict[str, Rule] = {
     "S3UploadFiles": ANY,  # list[str]
     # PrecomputedJacobian-related
     "ReferenceRunDir": str,
+    # GCHP
+    "CS_RES": int,
+    "STRETCH_GRID": bool,
+    "STRETCH_FACTOR": float,
+    "TARGET_LAT": float,
+    "TARGET_LON": float,
     # OSSE
     "DoOSSE": bool,
     "ObsErrorOSSE": int,
@@ -164,8 +171,9 @@ conditional_dict: Dict[str, List[str]] = {
     "OptimizeOH": ["PerturbValueOH", "PriorErrorOH"],
     "EnableOSSE": ["DoOSSE", "ObsErrorOSSE", "CreateAutomaticScaleFactorFileOSSE"],
     "CreateAutomaticScaleFactorFileOSSE": ["EmisPerturbationOSSE"],
+    "UseGCHP": ["CS_RES", "TOTAL_CORES", "NUM_NODES", "NUM_CORES_PER_NODE"],
+    "STRETCH_GRID": ["STRETCH_FACTOR", "TARGET_LAT", "TARGET_LON"]
 }
-
 
 # -------------------- HELPERS -------------------------
 def _is_boolish(value: Any) -> bool:

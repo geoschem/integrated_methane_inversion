@@ -10,14 +10,14 @@ is_valid_nc() {
         return 1
     fi
 
-    # Extract last time string
-    local last_time
-    last_time=$(ncdump -t -v time "$file" | grep -oE '"[^"]+"' | tail -n 1 | tr -d '"')
+    # Extract the length of time dimension
+    local time_len
+    time_len=$(ncdump -h "$file" \
+        | grep -- "time = UNLIMITED" \
+        | sed -E 's/.*\(([0-9]+) currently\).*/\1/')
 
-    # Format YYYYMMDD to YYYY-MM-DD
-    local expected_time="${yyyymmdd:0:4}-${yyyymmdd:4:2}-${yyyymmdd:6:2} 23"
-
-    if [[ "$last_time" != "$expected_time" ]]; then
+    # Check extraction worked and length matches
+    if [[ -z "$time_len" || "$time_len" != "24" ]]; then
         return 1
     fi
 
@@ -61,7 +61,7 @@ if {ReDoJacobian}; then
     last_date=$(date -d "${yyyymmdd} -1 day" +%Y%m%d)
     LastConcFile="GEOSChem.SpeciesConc.${last_date}_0000z.nc4"
 
-    if is_valid_nc "OutputDir/$LastConcFile" "$last_date"; then
+    if is_valid_nc "OutputDir/$LastConcFile"; then
         echo "Not re-running jacobian simulation: ${xstr}"
         exit 0
     else
@@ -80,9 +80,9 @@ else
     retVal=$?
 fi
 
-# Check whether the jacobian finished successfully. If not, write to a hidden file. 
-# The presence of the .error_status_file.txt indicates whether an error ocurred. 
-# This is needed because scripts that set off sbatch jobs have no knowledge of 
+# Check whether the jacobian finished successfully. If not, write to a hidden file.
+# The presence of the .error_status_file.txt indicates whether an error ocurred.
+# This is needed because scripts that set off sbatch jobs have no knowledge of
 # whether the job finished successfully.
 if [ $retVal -ne 0 ]; then
     rm -f .error_status_file.txt

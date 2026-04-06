@@ -136,8 +136,12 @@ if __name__ == "__main__":
     # directory containing partial K matrices
     state_vector = xr.load_dataset(state_vector_filepath)
     state_vector_labels = state_vector["StateVector"]
-    lon_bounds = [np.min(state_vector.lon.values), np.max(state_vector.lon.values)]
-    lat_bounds = [np.min(state_vector.lat.values), np.max(state_vector.lat.values)]
+    if ~config['UseGCHP']:
+        lon_bounds = [np.min(state_vector.lon.values), np.max(state_vector.lon.values)]
+        lat_bounds = [np.min(state_vector.lat.values), np.max(state_vector.lat.values)]
+    else:
+        lon_bounds = [-180, 180]
+        lat_bounds = [-90, 90]
 
     # Paths to GEOS/satellite data
     gc_bkgd, obs_satellite, jacobian_K, so_dict = merge_partial_k(

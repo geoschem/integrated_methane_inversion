@@ -31,7 +31,15 @@ def print_posterior_emissions(config_path, period_number, base_directory):
 
     # Get state vector, grid-cell areas, mask
     statevector = xr.load_dataset(statevector_path)
-    areas = hemco_diags["AREA"]
+    if config['UseGCHP']:
+        CSgrids = os.path.expandvars(
+            os.path.join(config["OutputPath"], config["RunName"], "CS_grids")
+        )
+        gridpath = CSgrids + '/grids.c{}.nc'.format(config['CS_RES'])
+        gridds = xr.open_dataset(gridpath)
+        areas = gridds['area']
+    else:
+        areas = original_emis_ds["AREA"]
     state_vector_labels = statevector["StateVector"]
     last_ROI_element = int(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]

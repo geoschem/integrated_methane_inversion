@@ -10,7 +10,12 @@ import xarray as xr
 from bs4 import BeautifulSoup
 from shapely.geometry import Point
 from shapely.geometry import Polygon
+from shapely.ops import unary_union
 from functools import partial
+from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
+    latlon_to_cartesian,
+    build_kdtree,
+)
 
 
 print = partial(print, flush=True)
@@ -109,48 +114,77 @@ class PointSources:
             warnings.warn(msg)
             return None
 
-        # 3. get I,J indices
-        lon_dist = gdf_inroi.geometry.x.values[:, None] - self.geofilter.lons[None, :]
-        lat_dist = gdf_inroi.geometry.y.values[:, None] - self.geofilter.lats[None, :]
-        ilon = np.argmin(np.abs(lon_dist), 1)
-        ilat = np.argmin(np.abs(lat_dist), 1)
-        gdf_inroi["I"] = ilon
-        gdf_inroi["J"] = ilat
+        # 3. get GC indices in state vector dataset
+        # Build KDTree and polygons
+        kdtree, shape = build_kdtree(self.geofilter.lats, self.geofilter.lons)
+
+        # Cartesian coords of obs
+        plume_cart = latlon_to_cartesian(gdf_inroi.geometry.y.values, gdf_inroi.geometry.x.values)
+        _, neighbor_idx = kdtree.query(plume_cart, k=1)
+        gdf_inroi["sim_index"] = neighbor_idx
 
         # 4. average up to grid, sum count, etc
         gdf_inroi["non_detect"] = gdf_inroi["emission_rate"].isna()
         gdf_inroi["plume_count"] = ~gdf_inroi["non_detect"]
 
-        keepv = ["plume_count", "emission_rate", "non_detect", "I", "J"]
-        dfgb = gdf_inroi[keepv].groupby(["I", "J"])
-
-        gdf_grid = dfgb.sum()[["plume_count"]]
-        gdf_grid["non_detect"] = dfgb.sum()[["non_detect"]]
-        gdf_grid["emission_rate"] = dfgb.agg(np.nanmean)[["emission_rate"]]
-
+        gdf_grouped = (
+            gdf_inroi
+            .groupby("sim_index")
+            .agg({
+                "plume_count": "sum",     # sum detections
+                "non_detect": "sum",      # sum non-detections
+                "emission_rate": np.nanmean,  # average emission_rate over that group
+            })
+            .reset_index()
+        )
+        
         # 5. make it on a grid
-        dalist = []
-        for v in gdf_grid.columns:
+        flat_shape = np.prod(shape)
+        # allocate with NaNs
+        plume_count = np.full(flat_shape, np.nan)
+        non_detect  = np.full(flat_shape, np.nan)
+        emission    = np.full(flat_shape, np.nan)
 
-            indat = np.full(
-                (self.geofilter.lats.shape[0], self.geofilter.lons.shape[0]), np.nan
+        # fill using sim_index as flat index
+        plume_count[gdf_grouped["sim_index"]] = gdf_grouped["plume_count"]
+        non_detect[gdf_grouped["sim_index"]]  = gdf_grouped["non_detect"]
+        emission[gdf_grouped["sim_index"]]    = gdf_grouped["emission_rate"]
+
+        # reshape back to grid shape
+        plume_count = plume_count.reshape(shape)
+        non_detect  = non_detect.reshape(shape)
+        emission    = emission.reshape(shape)
+
+        # build Dataset
+        if self.geofilter.config['UseGCHP']:  # GCHP cube-sphere grid 
+            nf, ny, nx = shape
+            ds = xr.Dataset(
+                {
+                    "plume_count": (("nf","Ydim","Xdim"), plume_count),
+                    "non_detect":  (("nf","Ydim","Xdim"), non_detect),
+                    "emission_rate": (("nf","Ydim","Xdim"), emission),
+                    "lat": (("nf","Ydim","Xdim"), self.geofilter.lats),
+                    "lon": (("nf","Ydim","Xdim"), self.geofilter.lons),
+                },
+                coords={
+                    "nf": np.arange(nf),
+                    "Ydim": np.arange(ny),
+                    "Xdim": np.arange(nx),
+                },
+                attrs=dict(gridtype="GCHP"),
             )
-
-            indat[gdf_grid.reset_index().J, gdf_grid.reset_index().I] = (
-                gdf_grid.reset_index()[v]
-            )
-
-            vda = xr.DataArray(
-                data=indat,
+            
+        else:                # GCC lat-lon grid
+            ds = xr.Dataset(
+                {
+                    "plume_count": (("lat","lon"), plume_count),
+                    "non_detect":  (("lat","lon"), non_detect),
+                    "emission_rate": (("lat","lon"), emission),
+                },
                 coords={"lat": self.geofilter.lats, "lon": self.geofilter.lons},
-                dims=["lat", "lon"],
-                name=v,
+                attrs=dict(gridtype="GCC"),
             )
-            dalist.append(vda)
-
-        # vars of this are columns of gdf_grid
-        ds = xr.merge(dalist)
-
+        
         return ds
 
     def _grid_all_data(self):
@@ -237,15 +271,15 @@ class PointSources:
 
                 criteria = lambda x: x.emission_rate > emission_rate_filter
 
-            dftmp = (
-                self.grid_ds.where(criteria)
-                .emission_rate.mean("observer")
-                .to_dataframe()
-                .reset_index()
-            )
-            coords = dftmp[~dftmp["emission_rate"].isna()][
-                ["lat", "lon"]
-            ].values.tolist()
+            ds_mean = self.grid_ds.where(criteria).mean("observer")
+            # select valid cells
+            valid = ~np.isnan(ds_mean['emission_rate'].values)
+            # extract corresponding lat/lon values
+            latvals = ds_mean["lat"].values[valid]
+            lonvals = ds_mean["lon"].values[valid]
+
+            # stack as [lon,lat] list
+            coords = np.stack([lonvals, latvals], axis=1).tolist()
             return coords
 
 
@@ -273,10 +307,15 @@ class GeoFilter:
     def __init__(self, config, use_shapefile=False):
         self.config = config
         self.use_shapefile = use_shapefile
-        self.geo = self._make_roi_geometry()
         self.svds = self._get_state_vector_file()
-        self.lons = self.svds.lon.values
-        self.lats = self.svds.lat.values
+        if self.config['UseGCHP']:
+            self.lons = self.svds.lons.values
+            self.lons[self.lons>180] -= 360
+            self.lats = self.svds.lats.values
+        else:
+            self.lons = self.svds.lon.values
+            self.lats = self.svds.lat.values
+        self.geo = self._make_roi_geometry()
 
     def _get_state_vector_file(self):
 
@@ -300,7 +339,6 @@ class GeoFilter:
         return svds
 
     def _make_roi_geometry(self):
-
         # optionally use the shapefile
         # provided in the config file
         if self.use_shapefile:
@@ -314,15 +352,32 @@ class GeoFilter:
                 warnings.warn(msg)
             geo = shp_geo.iloc[0]
 
-        # else define ROI based on bounds
+        # else get region of interest from valid StateVector value
         else:
-            lon0 = self.config["LonMin"]
-            lat0 = self.config["LatMin"]
-            lon1 = self.config["LonMax"]
-            lat1 = self.config["LatMax"]
-            geo = Polygon(
-                [[lon0, lat0], [lon1, lat0], [lon1, lat1], [lon0, lat1], [lon0, lat0]]
-            )
+            roi_valid = self.svds.squeeze()['StateVector'].values > 0
+            if not self.config['UseGCHP']:
+                lats_grid, lons_grid = np.meshgrid(self.lats, self.lons, indexing="ij")
+            else:
+                lons_grid = self.lons
+                lats_grid = self.lats
+            lons = lons_grid[roi_valid]
+            lats = lats_grid[roi_valid]
+            lon0 = np.nanmin(lons)
+            lon1 = np.nanmax(lons)
+            lat0 = np.nanmin(lats)
+            lat1 = np.nanmax(lats)
+            
+            if (self.config['UseGCHP']) & (self.config['STRETCH_GRID']) & (np.ptp(lons)>180):
+                # Crosses the dateline: split into two small boxes
+                # Right-side strip: [lon_max, 180]
+                boxA = Polygon([(lon1, lat0), (180.0, lat0), (180.0, lat1), (lon1, lat1), (lon1, lat0)])
+                # Left-side strip: [-180, lon_min]
+                boxB = Polygon([(-180.0, lat0), (lon0, lat0), (lon0, lat1), (-180.0, lat1), (-180.0, lat0)])
+                geo = unary_union([boxA, boxB])
+            else:
+                geo = Polygon(
+                    [[lon0, lat0], [lon1, lat0], [lon1, lat1], [lon0, lat1], [lon0, lat0]]
+                )
 
         return geo
 

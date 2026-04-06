@@ -1,0 +1,131 @@
+#!/bin/bash
+##SBATCH -c 1
+
+###############################################################################
+### Sample GCHP run script for Harvard Cannon cluster (using SLURM).
+###
+### -n           : Requests this many cores (across all nodes)
+### -N           : Requests this number of nodes
+### -c 1         : Forces 1 task per CPU (needed after 2024/03/05 SLURM update)
+### --mem        : Requests this amount of memory in GB
+### -p           : Requests these partitions where the job can run
+### -t           : Requests time for the job (days-hours:minutes)
+###  --exclusive : Reserves entire nodes (i.e. to prevent backfilling jobs)
+###############################################################################
+
+# Exit if command fails
+set -e
+
+# Debug option to print all commands executed in this script
+#set -x
+
+function has_checkpoint() {
+    compgen -G "./Restarts/gcchem_internal_checkpoint*.nc4" > /dev/null
+}
+
+function last_checkpoint() {
+    ls -1 ./Restarts/gcchem_internal_checkpoint*.nc4 | tail -n 1
+}
+
+function last_checkpoint_datetime() {
+    last_checkpoint | sed 's/\.\/Restarts\/gcchem_internal_checkpoint.\([1-9][0-9][0-9][0-9][0-9][0-9][0123][0-9]\)_\([0-9][0-9]00\).*/\1 \200/'
+}
+
+# Calculate RunDuration (YYYYMMDD) between two dates (YYYYMMDD)
+function get_run_duration() {
+  local start_date=$1
+  local end_date=$2
+
+  # Extract components
+  local y1=$(date -d "$start_date" +%Y)
+  local m1=$(date -d "$start_date" +%m)
+  local d1=$(date -d "$start_date" +%d)
+
+  local y2=$(date -d "$end_date" +%Y)
+  local m2=$(date -d "$end_date" +%m)
+  local d2=$(date -d "$end_date" +%d)
+
+  local years=$((y2 - y1))
+  local months=$((m2 - m1))
+  local days=$((d2 - d1))
+
+  # Adjust negative days
+  if (( days < 0 )); then
+    months=$((months - 1))
+    # Days in previous month of end_date
+    local prev_month_days=$(cal $(date -d "$end_date -1 month" +%m) \
+                                 $(date -d "$end_date -1 month" +%Y) | awk 'NF {DAYS=$NF}; END{print DAYS}')
+    days=$((days + prev_month_days))
+  fi
+
+  # Adjust negative months
+  if (( months < 0 )); then
+    years=$((years - 1))
+    months=$((months + 12))
+  fi
+
+  printf "%04d%02d%02d\n" $years $months $days
+}
+
+# Define version ID
+id=namename
+
+# Define GEOS-Chem log file
+log="$id.log"
+
+# remove error status file if present
+rm -f .error_status_file.txt
+echo "Writing output to ${log}"
+
+# Update config files, set restart symlink, load run env, and do sanity checks
+source setCommonRunSettings.sh > ${log}
+source setRestartLink.sh >> ${log}
+source checkRunSettings.sh >> ${log}
+
+# Cannon-specific setting to get around connection issues at high # cores
+export OMPI_MCL_btl=openib
+
+# Run GCHP and evenly distribute tasks across nodes
+NX=$( grep NX GCHP.rc | awk '{print $2}' )
+NY=$( grep NY GCHP.rc | awk '{print $2}' )
+coreCount=$(( ${NX} * ${NY} ))
+planeCount=$(( ${coreCount} / ${SLURM_NNODES} ))
+if [[ $(( ${coreCount} % ${SLURM_NNODES} )) > 0 ]]; then
+    planeCount=$(( ${planeCount} + 1 ))
+fi
+
+START_DATE=$(cat cap_restart)
+if [[ "${START_DATE}" = "" ]]; then
+    echo "ERROR: cap_restart is empty! Write your simulation start date 'YYYYMMDD 000000' to cap_restart." >> $log
+fi
+N=$(grep "CS_RES=" setCommonRunSettings.sh | cut -c 8- | xargs)
+initial_restart=./Restarts/GEOSChem.Restart.${START_DATE:0:8}_0000z.c${N}.nc4
+if [ ! -f $initial_restart ]; then
+    echo "ERROR: inital restart file of ${initial_restart} does not exist! Set a soft link for your initial restart file." >> $log
+fi
+
+if has_checkpoint; then
+    RESTART_FILE=$(last_checkpoint)
+    RESTART_DATE=$(last_checkpoint_datetime)
+    echo "$RESTART_DATE" > cap_restart
+    END_DATE=$(grep "END_DATE" CAP.rc | awk '{print $2, $3}')
+    RunDuration=$(get_run_duration "${RESTART_DATE:0:8}" "${END_DATE:0:8}")
+    sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
+            setCommonRunSettings.sh
+    ln -nsf ${RESTART_FILE} gchp_restart.nc4
+else
+    ./setCommonRunSettings.sh
+    ln -nsf ${initial_restart} gchp_restart.nc4
+fi
+
+time srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> ${log}
+
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo "Error Status: $retVal" > .error_status_file.txt
+    exit $retVal
+fi
+
+echo '===> Run ended at' `date` >> $log
+
+exit 0

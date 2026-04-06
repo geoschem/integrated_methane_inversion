@@ -1,5 +1,6 @@
 #!/bin/bash
 ##SBATCH --mail-type=END
+##SBATCH -N 1
 
 # Set the proper # of threads for OpenMP
 # SLURM_CPUS_PER_TASK ensures this matches the number you set with -c above
