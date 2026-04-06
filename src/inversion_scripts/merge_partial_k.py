@@ -3,10 +3,12 @@ import sys
 import pickle as pickle
 import numpy as np
 import xarray as xr
+from pathlib import Path
 from src.inversion_scripts.utils import (
     load_obj,
     calculate_superobservation_error,
     ensure_float_list,
+    map_files_to_reference,
 )
 from src.utilities.config_utils import load_config
 
@@ -66,6 +68,11 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
     satellite_list = [None for i in range(len(files))]
     geos_prior_list = [None for i in range(len(files))]
     K_list = [None for i in range(len(files))]
+    
+    # If using precomputed jacobian, get the mappings to reference jacobian files
+    if precomp_K:
+        ref_dir = satdat_dir.replace("data_converted", "data_converted_reference")
+        K_ref_file_mappings = map_files_to_reference(satdat_dir, ref_dir)
 
     for i, f in enumerate(files):
         # Get paths
@@ -96,12 +103,17 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
         # read K from reference dir if precomp_K is true
         if precomp_K:
             # Get Jacobian from reference inversion
-            fi_ref = pth.replace("data_converted", "data_converted_reference")
+            fi_ref = str(K_ref_file_mappings.get(Path(pth)))
+            if fi_ref is None:
+                print(f"No reference file found for {pth}. Skipping this file.")
+                continue
             dat_ref = load_obj(fi_ref)
             K_temp = dat_ref["K"][ind[0]]
         else:
             K_temp = obj["K"][ind[0]]
-            K_list[i] = K_temp
+        
+        # add K_temp to K_list
+        K_list[i] = K_temp
 
         for obs_err in obs_errs:
             key = f"so_{obs_err}"

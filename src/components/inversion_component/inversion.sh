@@ -71,14 +71,16 @@ run_inversion() {
     printf "\n=== RUNNING INVERSION ===\n"
     FirstSimSwitch=true
     if "$KalmanMode"; then
-        cd ${RunDirs}/kf_inversions/period${period_i}
+        InvDir=${RunDirs}/kf_inversions/period${period_i}
+        cd $InvDir
         # Modify inversion driver script to reflect current inversion period
         sed -i "s|satellite_data\"|satellite_data\"\n\n# Defined via run_kf.sh:\nStartDate=${StartDate_i}\nEndDate=${EndDate_i}|g" run_inversion.sh
         if ((period_i > 1)); then
             FirstSimSwitch=false
         fi
     else
-        cd ${RunDirs}/inversion
+        InvDir=${RunDirs}/inversion
+        cd $InvDir
     fi
 
     # Set inversion memory, CPUs, and time
@@ -87,7 +89,7 @@ run_inversion() {
     InvTime="${InversionTime:-$RequestedTime}"
     InvPartition="${InvSchedulerPartition:-$SchedulerPartition}"
     # Execute inversion driver script
-    submit_job $SchedulerType false $InvMem $InvCPU $InvTime $InvPartition ${RunDirs}/inversion/run_inversion.sh $FirstSimSwitch
+    submit_job $SchedulerType false $InvMem $InvCPU $InvTime $InvPartition ${InvDir}/run_inversion.sh $FirstSimSwitch
 
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO inversion.sh

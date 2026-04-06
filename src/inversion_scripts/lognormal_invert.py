@@ -329,8 +329,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     # Define the default data variables as those with normalized Ja closest to 1
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
     print(
-        f"J_A/n closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]} with"
-        + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_default_Ja]}"
+        f"J_A/n closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]}"
     )
 
     # Filter ensemble members to only members with Ja between 0.5 and 2
