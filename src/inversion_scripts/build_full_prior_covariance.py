@@ -31,6 +31,7 @@ Example usage:
 python build_full_prior_covariance.py /path/to/StateVector.nc /prior/emissions/dir $length_scale_km $StartDate $EndDate $nbuffer_elements
 """
 
+
 def select_state_vector_subset(
     state_vector: xr.Dataset, prior: xr.Dataset
 ) -> xr.DataArray:
@@ -113,7 +114,9 @@ def build_covariance(
         raise ValueError("No ROI state-vector IDs were found on the prior grid.")
     state_vector_ids = state_vector_ids[valid_mask].astype(np.int32)
     if np.unique(state_vector_ids).size != state_vector_ids.size:
-        raise ValueError("Duplicate state-vector IDs found on the prior grid.")
+        raise ValueError(
+            "Duplicate state-vector IDs found on the prior grid. Covariance of clustered IDs is not supported."
+        )
 
     lat_grid, lon_grid = np.meshgrid(prior.lat.values, prior.lon.values, indexing="ij")
     latitudes = lat_grid.reshape(-1)[valid_mask]
