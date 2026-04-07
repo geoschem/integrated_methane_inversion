@@ -5,6 +5,7 @@ import numpy as np
 import xarray as xr
 from itertools import product
 from pathlib import Path
+from collections import defaultdict, deque
 from src.inversion_scripts.utils import (
     load_obj,
     calculate_superobservation_error,
@@ -14,6 +15,29 @@ from src.inversion_scripts.utils import (
     map_files_to_reference,
 )
 from src.utilities.config_utils import load_config
+
+
+def align_obs_rows_with_reference(obs_GC, obs_GC_ref):
+    """Match target observations to reference rows using shared metadata columns (lat, lon, obs_count)."""
+    ncols = min(obs_GC.shape[1], obs_GC_ref.shape[1])
+
+    def make_key(row):
+        # Ignore the leading observed/model xCH4 columns and match on shared metadata.
+        return tuple(np.round(row[2:ncols], decimals=6))
+
+    ref_lookup = defaultdict(deque)
+    for idx, row in enumerate(obs_GC_ref):
+        ref_lookup[make_key(row)].append(idx)
+
+    obs_indices = []
+    ref_indices = []
+    for idx, row in enumerate(obs_GC):
+        key = make_key(row)
+        if ref_lookup[key]:
+            obs_indices.append(idx)
+            ref_indices.append(ref_lookup[key].popleft())
+
+    return np.asarray(obs_indices, dtype=int), np.asarray(ref_indices, dtype=int)
 
 def get_prior_sigma_vector(
     n_elements,
@@ -123,6 +147,7 @@ def apply_diagonal_prior(matrix, indices, value):
     if np.isscalar(matrix[0]) or getattr(matrix, "ndim", 1) == 1:
         matrix[indices] = value
     else:
+        # Convert slices like [-4:] into explicit diagonal positions for 2D matrices.
         diag_indices = np.arange(matrix.shape[0])[indices]
         matrix[diag_indices, diag_indices] = value
 
@@ -315,6 +340,21 @@ def do_inversion(
         # Satellite and GEOS-Chem data within bounds
         obs_GC = obs_GC[ind, :]
 
+        ref_ind = None
+        if jacobian_sf is not None:
+            # Precomputed Jacobians come from a reference run, so align observations
+            # before indexing K to ensure each retained row maps to the same scene.
+            fi_ref = str(K_ref_file_mappings.get(Path(fi)))
+            if fi_ref is None:
+                print(f"No reference file found for {fi} in {jacobian_dir}")
+                continue
+            dat_ref = load_obj(fi_ref)
+            obs_ind, ref_ind = align_obs_rows_with_reference(obs_GC, dat_ref["obs_GC"])
+            if len(ref_ind) == 0:
+                print(f"No overlapping reference observations found for {fi_ref}")
+                continue
+            obs_GC = obs_GC[obs_ind, :]
+
         # weight obs_err based on the observation count to prevent overfitting
         # Note: weighting function defined by Zichong Chen for his
         # middle east inversions. May need to be tuned based on region.
@@ -342,13 +382,7 @@ def do_inversion(
         if jacobian_sf is None:
             K = 1e9 * dat["K"][ind, :]
         else:
-            # Get Jacobian from reference inversion
-            fi_ref = str(K_ref_file_mappings.get(Path(fi)))
-            if fi_ref is None:
-                print(f"No reference file found for {fi} in {jacobian_dir}")
-                continue
-            dat_ref = load_obj(fi_ref)
-            K = 1e9 * dat_ref["K"][ind, :]
+            K = 1e9 * dat_ref["K"][ref_ind, :]
 
         # Number of observations
         if verbose:
