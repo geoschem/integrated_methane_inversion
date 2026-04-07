@@ -123,7 +123,8 @@ def apply_diagonal_prior(matrix, indices, value):
     if np.isscalar(matrix[0]) or getattr(matrix, "ndim", 1) == 1:
         matrix[indices] = value
     else:
-        matrix[indices, indices] = value
+        diag_indices = np.arange(matrix.shape[0])[indices]
+        matrix[diag_indices, diag_indices] = value
 
 
 def get_oh_index_slice(n_elements, is_Regional):
