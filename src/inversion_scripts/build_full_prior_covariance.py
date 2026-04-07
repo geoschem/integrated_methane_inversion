@@ -179,7 +179,7 @@ def main(
     """Create and save the normalized prior covariance bundle for an inversion run."""
     # only have off diagonal covariance for elements in the ROI,
     # so set all buffer elements to False
-    state_vector = xr.open_dataset(sv_path)
+    state_vector = xr.open_dataset(sv_path).isel(time=0)
     last_ROI_element = int(state_vector["StateVector"].max().values) - nbuffer_elements
     sv_mask = state_vector["StateVector"] <= last_ROI_element
     state_vector["StateVector"] = state_vector["StateVector"].where(sv_mask, np.nan)
