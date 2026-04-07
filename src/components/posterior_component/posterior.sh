@@ -116,15 +116,15 @@ run_posterior() {
     fi
 
     if "$KalmanMode"; then
-        InvPath="${RunDirs}/kf_inversions/period${period_i}"
+        InvDir="${RunDirs}/kf_inversions/period${period_i}"
     else
-        InvPath="${RunDirs}/inversion"
+        InvDir="${RunDirs}/inversion"
     fi
 
     printf "\n=== SETTING UP POSTERIOR OPTIMIZATION ===\n"
 
     if "$OptimizeBCs"; then
-        inv_result_path="${InvPath}/${inversion_result_filename}"
+        inv_result_path="${InvDir}/${inversion_result_filename}"
         
         # set BC optimal delta values
         PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)
@@ -137,7 +137,7 @@ run_posterior() {
     fi
 
     if "$OptimizeOH"; then
-        inv_result_path="${InvPath}/${inversion_result_filename}"
+        inv_result_path="${InvDir}/${inversion_result_filename}"
 
         # set OH optimal delta values
         PerturbOHValue=$(generate_optimized_OH_value $inv_result_path)
@@ -212,7 +212,7 @@ run_posterior() {
     kf_period=1
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py ${InvPath} ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $kf_period $buildJacobian False
+    python ${InversionPath}/src/inversion_scripts/jacobian.py ${InvDir} ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $kf_period $buildJacobian False
     wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)
