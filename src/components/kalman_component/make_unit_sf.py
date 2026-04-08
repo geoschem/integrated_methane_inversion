@@ -18,6 +18,10 @@ def make_unit_sf(state_vector_path, save_directory):
     scale_factor = state_vector.rename({"StateVector": "ScaleFactor"})
     scale_factor["ScaleFactor"][:] = np.ones(scale_factor["ScaleFactor"].values.shape)
     scale_factor["ScaleFactor"].attrs["units"] = "1"
+    
+    # Make sure time dimension comes first, since that's what HEMCO expects
+    if "time" in scale_factor.dims:
+        scale_factor = scale_factor.transpose("time", ...)
 
     # Save to netcdf
     save_path = os.path.join(save_directory, "unit_sf.nc")
