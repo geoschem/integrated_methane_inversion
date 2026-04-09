@@ -1314,6 +1314,7 @@ def map_files_to_reference(
             orbit = get_orbit_num(target_file)
             mapping[target_file] = ref_index[orbit]
         except KeyError:
+            mapping[target_file] = None
             print(f"No reference file found for orbit {orbit} in {target_file}")
         except ValueError as e:
             print(e)

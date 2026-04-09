@@ -275,6 +275,16 @@ def do_inversion(
     # Read output data from jacobian.py (virtual & true satellite columns, Jacobian matrix)
     files = glob.glob(f"{jacobian_dir}/*.pkl")
     files.sort()
+    
+    # make mapping of target files to reference files if using precomputed Jacobian
+    if jacobian_sf is not None:
+        reference_dir = jacobian_dir.replace(
+            "data_converted", "data_converted_reference"
+        )
+        K_ref_file_mappings = map_files_to_reference(jacobian_dir, reference_dir)
+        
+        # filter files to only read files we have reference Jacobians for
+        files = [file for file in files if K_ref_file_mappings[Path(file)] is not None]
 
     # ==========================================================================================
     # Now we will assemble two different expressions needed for the analytical inversion.
