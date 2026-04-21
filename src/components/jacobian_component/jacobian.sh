@@ -410,6 +410,15 @@ add_new_tracer() {
 #   run_jacobian
 run_jacobian() {
 
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+        printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+        printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
+    else
+        jacobian_period=1
+    fi
+
     pushd ${RunDirs}
 
     # Copy run scripts
@@ -430,12 +439,6 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
     fi
 
     popd
-
-    if "$KalmanMode"; then
-        jacobian_period=${period_i}
-    else
-        jacobian_period=1
-    fi
 
     if ! "$PrecomputedJacobian"; then
 

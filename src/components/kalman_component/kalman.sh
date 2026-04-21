@@ -109,6 +109,7 @@ run_period() {
     # check if precomputed prior emissions for this period exists already
     if [[ ! -f ${RunDirs}/hemco_prior_emis/OutputDir/HEMCO_sa_diagnostics.${StartDate_i}0000.nc ]]; then
         printf "\nNeed to compute prior emissions for this period. Running hemco standalone simulation.\n"
+        HEMCOdir="hemco_prior_emis"
         run_hemco_sa $StartDate_i $EndDate_i
     fi
 
