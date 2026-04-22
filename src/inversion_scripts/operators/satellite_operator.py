@@ -462,8 +462,6 @@ def apply_satellite_operator(
         # Otherwise, initialize satellite virtual mixing ratios and virtual
         #  sensitivity as zero
         area_weighted_virtual_satellite = 0  # virtual satellite mixing ratio
-        area_weighted_virtual_satellite_sensitivity = \
-            np.zeros(n_elements, dtype=np.float32) if build_jacobian else None  # virtual satellite sensitivity
 
         # For each GEOS-Chem grid cell that touches the satellite pixel:
         for gridcellIndex in range(len(gc_coords)):
@@ -513,33 +511,6 @@ def apply_satellite_operator(
             area_weighted_virtual_satellite += (
                 overlap_area[gridcellIndex] * virtual_satellite_gridcellIndex
             )  # ppb m2
-
-            # If building Jacobian matrix from GEOS-Chem perturbation simulation sensitivity data:
-            if build_jacobian:
-                if config['UseGCHP']:
-                    sensi_lonlat = GEOSCHEM["jacobian_ch4"][f,j,x, :, :]
-                else:
-                    # Get GEOS-Chem perturbation sensitivities at this lat/lon, for all vertical levels and state vector elements
-                    sensi_lonlat = GEOSCHEM["jacobian_ch4"][iGC, jGC, :, :]
-
-                # Map the sensitivities to the satellite pressure levels
-                sat_deltaCH4 = remap_sensitivities(
-                    sensi_lonlat,
-                    merged["data_type"],
-                    merged["p_merge"],
-                    merged["edge_index"],
-                    merged["first_gc_edge"],
-                )  # mixing ratio, unitless
-
-                # Derive the change in column-averaged species that the satellite would see over this ground cell
-                # in shape of (n_elements,)
-                satellite_sensitivity_gridcellIndex = np.sum(avkern[:, None] * sat_deltaCH4 * \
-                    dry_air_subcolumns[:, None], axis=0) / np.sum(dry_air_subcolumns)  # mixing ratio, unitless
-
-                # Weight by overlapping area (to be divided out later) and add to sum
-                area_weighted_virtual_satellite_sensitivity += (
-                    overlap_area[gridcellIndex] * satellite_sensitivity_gridcellIndex
-                )  # m2
 
         # Compute virtual satellite observation as weighted mean by overlapping area
         # i.e., need to divide out area [m2] from the previous step
@@ -1007,7 +978,7 @@ def get_virtual_satellite(date, gc_cache, gridcell_dict, n_elements, config, bui
                     lon=iGC,
                     drop=True
                 )
-            species = gc_data["SpeciesConcVV_{config['Species']}"].transpose("obs","lev").values
+            species = gc_data[f"SpeciesConcVV_{config['Species']}"].transpose("obs","lev").values
 
     # Read PEDGE from the StateMetLevEdge collection
     filename = f"{gc_cache}/{file_pedge}"
@@ -1193,14 +1164,14 @@ def get_virtual_satellite_pert(gc_date, run_id, gridcell_dict, config, sv_elems,
             keepvars = [f"SpeciesConcVV_{config['Species']}"]
 
     if baserun:
-        keepvars = ["SpeciesConcVV_{config['Species']}"]
+        keepvars = [f"SpeciesConcVV_{config['Species']}"]
 
     # It would fail if open all variables with chunks with GCHP,
     # as ncontact is duplicate for GCHP output dimensions
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
         with xr.open_dataset(filepath, decode_cf=False) as tmp:
-            other_vars = [v for v in tmp.variables if "SpeciesConcVV_{config['Species']}" not in v]
+            other_vars = [v for v in tmp.variables if f"SpeciesConcVV_{config['Species']}" not in v]
 
     # Open only these variables
     with warnings.catch_warnings():

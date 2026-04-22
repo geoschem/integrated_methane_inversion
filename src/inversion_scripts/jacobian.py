@@ -61,7 +61,6 @@ def apply_operator(operator, params, config):
             params["xlim"],
             params["ylim"],
             params["gc_cache"],
-            params["build_jacobian"],
             params["period_i"],
             config,
             params["use_water_obs"],

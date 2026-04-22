@@ -52,6 +52,7 @@ setup_posterior() {
     if test -f "$RestartFileFromSpinup" || "$DoSpinup"; then
         RestartFile=$RestartFileFromSpinup
     else
+        RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
         if "$UseBCsForRestart"; then
             if "$UseGCHP"; then
                 # regrid restart file to GCHP resolution
@@ -65,8 +66,8 @@ setup_posterior() {
                 RestartFile="${RunDirs}/CS_grids/${FilePrefix}.c${CS_RES}.nc4"
                 cd $runDir
             else
-                RestartFile=${RestartFilePrefix}${StartDate}_0000z.nc4
-                sed -i -e "s|SpeciesRst|SpeciesBC|g" HEMCO_Config.rc
+                sed -i -e "s|SpeciesRst|SpeciesBC|g" \
+                       -e "s|EFYO|CYS|g" HEMCO_Config.rc
                 printf "\nWARNING: Changing restart field entry in HEMCO_Config.rc to read the field from a boundary condition file. Please revert SpeciesBC_ back to SpeciesRst_ for subsequent runs.\n"
             fi
         fi
@@ -109,7 +110,7 @@ setup_posterior() {
 
     # Turn on StateMetLevEdge output
     # Output daily restarts to avoid trouble at month boundaries
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         if "$UseGCHP"; then
             sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
                 -e 's/StateMetLevEdge.frequency:.*/StateMetLevEdge.frequency:      010000/g' \
@@ -119,10 +120,8 @@ setup_posterior() {
             sed -i -e 's/^Midrun_Checkpoint=OFF/Midrun_Checkpoint=ON/' \
                 -e 's/^Checkpoint_Freq=.*/Checkpoint_Freq=monthly/' \
                 setCommonRunSettings.sh
-
         else
             sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
-
                 -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
                 -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
                 -e 's/Restart.frequency:    00000100 000000/Restart.frequency:    00000001 000000/g' \
@@ -141,7 +140,7 @@ setup_posterior() {
         rm -f gchp_ch4_run.template
     else
         sed -e "s:namename:${PosteriorName}:g" \
-            -e "s:##:#:g" run.template >${PosteriorName}.run
+            -e "s:##:#:g" run.template > ${PosteriorName}.run
         chmod 755 ${PosteriorName}.run
         rm -f run.template
     fi

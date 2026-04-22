@@ -24,11 +24,11 @@ def do_gridding(vector, statevector):
     outarr = np.where(np.expand_dims(invalid_mask, -1), np.nan, outarr)
 
     # to dataarray    
-    if statevector.StateVector.dims == ('time', 'lat', 'lon'):
+    if statevector.StateVector.dims == ('lat', 'lon'):
         target_array = xr.DataArray(
             outarr,
-            dims = ('time', 'lat', 'lon', 'ensemble'),
-            coords = {'time': statevector.time.values, 'lat': statevector.lat.values, 'lon': statevector.lon.values},
+            dims = ('lat', 'lon', 'ensemble'),
+            coords = {'lat': statevector.lat.values, 'lon': statevector.lon.values},
             attrs={"units": "1"}
         )
     elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
@@ -82,8 +82,8 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
         if var.startswith("A") or var.startswith("S_post"):
             # get the diagonals of the S_post and A matrices
             gridded_data = do_gridding(np.diagonal(inv_results[var].values).transpose(), statevector)
-            if statevector.StateVector.dims == ('time', 'lat', 'lon'):
-                data_dict[var] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
+            if statevector.StateVector.dims == ('lat', 'lon'):
+                data_dict[var] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
             elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
                 data_dict[var] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
         elif var.startswith("xhat"):
@@ -92,20 +92,19 @@ def make_gridded_posterior(posterior_SF_path, state_vector_path, save_path):
             gridded_data = do_gridding(inv_results[var].values, statevector).fillna(1)
             # change key to ScaleFactor to match HEMCO expectations
             new_SF_key = f"ScaleFactor{var[len('xhat'):]}"
-            if statevector.StateVector.dims == ('time', 'lat', 'lon'):
-                data_dict[new_SF_key] = (["time", "lat", "lon", "ensemble"], gridded_data.data, attrs)
+            if statevector.StateVector.dims == ('lat', 'lon'):
+                data_dict[new_SF_key] = (["lat", "lon", "ensemble"], gridded_data.data, attrs)
             elif statevector.StateVector.dims == ('time', 'nf', 'Ydim', 'Xdim'):
                 data_dict[new_SF_key] = (["time", "nf", "Ydim", "Xdim", "ensemble"], gridded_data.data, attrs)
 
     # Create dataset
-    if statevector.StateVector.dims == ('time', 'lat', 'lon'):
-        time = statevector["time"].values
+    if statevector.StateVector.dims == ('lat', 'lon'):
         lat = statevector["lat"].values
         lon = statevector["lon"].values
 
         ds = xr.Dataset(
             data_dict,
-            coords={"time": ("time", time), "lon": ("lon", lon), "lat": ("lat", lat)},
+            coords={"lon": ("lon", lon), "lat": ("lat", lat)},
         )
 
         # Add attribute metadata for coordinates

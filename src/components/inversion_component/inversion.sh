@@ -31,6 +31,7 @@ setup_inversion() {
     cp ${InversionPath}/src/inversion_scripts/make_gridded_posterior.py inversion/
     cp ${InversionPath}/src/inversion_scripts/setup_gc_cache.py inversion/
     cp ${InversionPath}/src/inversion_scripts/utils.py inversion/
+    cp ${InversionPath}/src/inversion_scripts/classify_TROPOMI_obs_to_CSgrids.py inversion/
     cp ${InversionPath}/src/inversion_scripts/merge_partial_k.py inversion/
     cp ${InversionPath}/src/inversion_scripts/run_inversion.sh inversion/
     cp ${InversionPath}/src/notebooks/visualization_notebook.ipynb inversion/

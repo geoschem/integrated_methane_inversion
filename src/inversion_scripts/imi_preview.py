@@ -713,7 +713,6 @@ def estimate_averaging_kernel(
     )
     print(outstring1)
 
-
     # calculate sectoral totals if running preview
     if preview:
         get_sectoral_outputs(prior_ds, areas, mask, preview_dir)
@@ -802,23 +801,18 @@ def estimate_averaging_kernel(
         # Set resolution specific variables
         # L_native = Rough length scale of native state vector element [m]
         if config["Res"] == "0.125x0.15625":
-            L_native = 12.5 * 1000
             lat_step = 0.125
             lon_step = 0.15625
         elif config["Res"] == "0.25x0.3125":
-            L_native = 25 * 1000
             lat_step = 0.25
             lon_step = 0.3125
         elif config["Res"] == "0.5x0.625":
-            L_native = 50 * 1000
             lat_step = 0.5
             lon_step = 0.625
         elif config["Res"] == "2.0x2.5":
-            L_native = 200 * 1000
             lat_step = 2.0
             lon_step = 2.5
         elif config["Res"] == "4.0x5.0":
-            L_native = 400 * 1000
             lat_step = 4.0
             lon_step = 5.0
 
@@ -903,6 +897,17 @@ def estimate_averaging_kernel(
         size_temp = state_vector_labels.where(maski).count().item()
         if config['UseGCHP']:
             L_native = np.sqrt(np.nanmean(areas.where(maski).values)).item()
+        else:
+            if config["Res"] == "0.125x0.15625":
+                L_native = 12.5 * 1000
+            elif config["Res"] == "0.25x0.3125":
+                L_native = 25 * 1000
+            elif config["Res"] == "0.5x0.625":
+                L_native = 50 * 1000
+            elif config["Res"] == "2.0x2.5":
+                L_native = 200 * 1000
+            elif config["Res"] == "4.0x5.0":
+                L_native = 400 * 1000
         L_temp = L_native * size_temp
         
         del maski
