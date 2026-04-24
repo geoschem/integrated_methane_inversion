@@ -7,6 +7,7 @@ SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
 Species: "CH4"
+UseGCHP: false
 
 
 ## Period of interest
