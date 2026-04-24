@@ -22,6 +22,8 @@ General
      - S3 path to upload files to (eg. ``s3://imi-output-dir/example-output/``). Only used if ``S3Upload`` is ``true``.
    * - ``S3UploadFiles``
      - Files to upload from the IMI output directory (eg. ``[*]`` will upload everything). Only used if ``S3Upload`` is ``true``.
+   * - ``UseGCHP``
+     - Boolean for using `GEOS-Chem High Performance (GCHP) <https://gchp.readthedocs.io>`__ for the forward model. Default is ``false``, in which case `GEOS-Chem Classic <https://geos-chem.readthedocs.io>`__ will be used.
 
 Period of interest
 ~~~~~~~~~~~~~~~~~~
@@ -103,6 +105,41 @@ Region of interest
    * - ``LatMax``
      - Maximum latitude edge of the region of interest (only used if ``CreateAutomaticRectilinearStateVectorFile`` is ``true``, otherwise lat/lon bounds are determined from ``StateVectorFile``).
 
+Meteorology
+~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``Met``
+     - Meteorology to use for the inversion. Options are ``"GEOSFP"`` or ``"MERRA2"``. Default value is ``GEOSFP``.
+
+Resolution
+~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``Res``
+     - Horizontal grid resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
+
+Grid settings for GCHP
+~~~~~~~~~~~~~~~~~~~~~~
+.. list-table::
+   :widths: 30, 70
+   :class: tight-table
+
+   * - ``CS_RES``
+     - Cubed-sphere (CS) horizontal grid resolution for GCHP simulations. This is an integer representing the number of grid cells per cubed-sphere face side. Common options are ``24``, ``30``, ``48``, ``90``, ``180``, ``360``, or ``720``.  See `GCHP horizontal grids <https://gchp.readthedocs.io/en/stable/supplement/horizontal-grids.html>`__ for more details.
+   * - ``STRETCH_GRID``
+     - Boolean to use the GCHP `stretched grid <https://gchp.readthedocs.io/en/stable/supplement/stretched-grid.html#stretched-grid>`__ option.
+   * - ``STRETCH_FACTOR`` 
+     -  Parameter controlling the degree of stretching on the target face of the cubed-sphere grid. Minimum ``STRETCH_FACTOR`` value is 1.0001.
+   * - ``TARGET_LAT``
+     - Latitude defining the center point for the target face of the GCHP grid.
+   * - ``TARGET_LON``
+     - Longitude defining the center point for the target face of the GCHP grid. Must be in the range of [-180, 180].
+
 Kalman filter options
 ~~~~~~~~~~~~~~~~~~~~~
 .. list-table::
@@ -169,11 +206,11 @@ For more information on using the clustering options take a look at the `cluster
    * - ``ForcedNativeResolutionElements``
      - yaml list of of coordinates that you would like to force as native resolution state vector elements [lat, lon]. This is useful for ensuring hotspot locations are at the highest available resolution. 
    * - ``EmissionRateFilter``
-     -
+     - Emissions rate filter in kg/hour. Grid cells with mean emissions less than this value are not included. Specifying a value of 0 means all plumes will be included.
    * - ``PlumeCountFilter``
-     -
+     - Grid cells with plume count less than this value are not included. Specifying a value of 0 means no filtering will be applied and only ``EmissionRateFilter`` will be used.
    * - ``GroupByCountry``
-     -
+     - Boolean for whether to use grid cell's country as k-means clustering feature. Set to ``true`` to avoid clusters that cross country boundaries.
 
 Custom/pre-generated state vector
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -188,7 +225,7 @@ These settings are only used if ``CreateAutomaticRectilinearStateVectorFile`` is
    * - ``StateVectorFile``
      - Path to the custom or pre-generated state vector netcdf file. File will be saved here if generating it from a shapefile.
    * - ``ShapeFile``
-     - Path to the shapefile.
+     - Path to a shapefile for use in `creating a custom state vector file <../advanced/custom-state-vector.html>`__. This file is also used in determining bounds for inclusion of emission plumes.
 
 Note: To setup a remote Jupyter notebook check out the quick start guide `visualize results with python <../getting-started/quick-start.html#visualize-results-with-python>`__ section.
 
@@ -215,18 +252,6 @@ Inversion
    * - ``ReferenceRunDir``
      - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
 
-Grid
-~~~~
-.. list-table::
-   :widths: 30, 70
-   :class: tight-table
-
-   * - ``Res``
-     - Resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
-   * - ``Met``
-     - Meteorology to use for the inversion. Options are ``"GEOSFP"``
-       or ``"MERRA2"``. Default value is ``GEOSFP``.
-
 Setup modules
 ~~~~~~~~~~~~~
 These settings turn on/off (``true`` / ``false``) different steps for setting up the IMI.
@@ -236,7 +261,7 @@ These settings turn on/off (``true`` / ``false``) different steps for setting up
    :class: tight-table
 
    * - ``RunSetup``
-     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules above.
+     - Boolean to run the setup script (``setup_imi.sh``), including selected setup modules below.
    * - ``SetupTemplateRundir``
      - Boolean to create a GEOS-Chem run directory and modify it with settings from ``config.yml``.
    * - ``SetupSpinupRun``
@@ -257,20 +282,17 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
    :class: tight-table
 
    * - ``DoHemcoPriorEmis``
-     - Boolean to run a HEMCO standalone simulation to generate the
-       prior emissions.
+     - Boolean to run a HEMCO standalone simulation to generate the prior emissions.
    * - ``DoSpinup``
-     - Boolean to run the spin-up simulation.
+     - Boolean to run a spin-up simulation to generate a new restart file for initializing species concentrations in the Jacobian simulations.
    * - ``DoJacobian``
-     - Boolean to run the reference and sensitivity simulations.
+     - Boolean to run the reference and sensitivity forward model simulations.
    * - ``ReDoJacobian``
      - Boolean to only re-run sensitivity simulations that have not yet completed successfully. This is useful for resuming an interrupted inversion. ``false`` will re-run all sensitivity simulations.
-   * - ``DoJacobian``
-     - Boolean to specify whether the IMI should rerun all sensitivity simulation (``false``) or only rerun previously unsuccessful sensitivity simulations (``true``).
    * - ``DoInversion``
      - Boolean to run the inverse analysis code.
    * - ``DoPosterior``
-     - Boolean to run the posterior simulation.
+     - Boolean to run the posterior simulation and execute the visualization notebook summarizing the IMI results. These results are also saved in ``inversion/output/``.
 
 IMI preview
 ~~~~~~~~~~~
@@ -298,17 +320,15 @@ variables can be convenient.
    * - ``RequestedCPUs``
      - Number of cores to allocate to slurm jobs.
    * - ``RequestedMemory``
-     - Amount of memory to allocate to each in series simulation (in MB).
+     - Amount of memory to allocate to each in series simulation (e.g. "10gb").
+   * - ``InversionCPUs``
+     - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedCPUs``.
+   * - ``InversionMemory``
+     - Optional Variable. Amount of memory to allocate to inversion sbatch job (e.g. "32gb") if different from ``RequestedMemory``.
    * - ``RequestedTime``
      - Max amount of time to allocate to each sbatch job (eg. "0-6:00")
-   * - ``InversionCPUs``
-     - Optional Variable. Number of cores to allocate to the inversion job if different from ``RequestedMemory``.
-   * - ``InversionMemory``
-     - Optional Variable. Amount of memory to allocate to inversion sbatch job (in MB) if different from ``RequestedMemory``.
-   * - ``InversionTime``
-     - Optional Variable. Max amount of time to allocate to inversion sbatch job (eg. "0-6:00") if different from ``RequestedTime``.
    * - ``SchedulerPartition``
-     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug,huce_cascade,seas_compute,etc").
+     - Name of the partition(s) you would like all slurm jobs to run on (eg. "debug"). Partition names will vary depending on the cluster used.
    * - ``MaxSimultaneousRuns``
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
    * - ``NumJacobianTracers``
@@ -336,9 +356,9 @@ by randomly perturbing the prior emissions and adding noise to the generated obs
    * - ``ObsErrorOSSE``
      - Amount of random gaussian error to apply to the observations sampled from the OSSE simulation. Default value is ``15`` ppb.
    * - ``CreateAutomaticScaleFactorFileOSSE``
-      - Boolean to create a scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Default value is ``true``.
+     - Boolean to create a scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Default value is ``true``.
    * - ``ScaleFactorFileOSSE``
-      - Path to the scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Only used if ``CreateAutomaticScaleFactorFileOSSE`` is ``false``.
+     - Path to the scale factor file for the OSSE simulation. This file will be used to define the "true emissions" scaling from the prior emissions. Only used if ``CreateAutomaticScaleFactorFileOSSE`` is ``false``.
 
 
 Advanced settings: GEOS-Chem options
@@ -352,7 +372,7 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``PerturbValue``
      - Target perturbation amount on the emissions in each sensitivity simulation. Default value is ``1``. Corresponding to a 1e-8 kg/m2/s perturbation.
    * - ``PerturbValueOH``
-     - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.5``.
+     - Value to perturb OH by if using ``OptimizeOH``. Default value is ``1.1``.
    * - ``PerturbValueBCs``
      - Number of ppb to perturb emissions by for domain edges (North, South, East, West) if using ``OptimizeBCs``. Default value is ``10.0`` ppb.
    * - ``HourlySpecies``
@@ -367,6 +387,9 @@ These settings are intended for advanced users who wish to modify additional GEO
      - Boolean to turn on the TCCON observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
    * - ``AIRS``
      - Boolean to turn on the AIRS observation operator in GEOS-Chem. This will save out text files comparing GEOS-Chem to observations, but has to be manually incorporated into the IMI. Default value is ``false``.
+   * - ``UseBCsForRestart``
+     - Boolean for using global boundary condition files for initial conditions.
+
 
 Advanced settings: Local cluster
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -383,20 +406,20 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Path to GEOS-Chem input data.
    * - ``DataPathObs``
      - Path to satellite input data.
+   * - ``GEOSChemEnv``
+     - Path to file that activates the GEOS-Chem environment (with fortran comiler, netCDF libraries, etc.)
    * - ``PythonEnv``
      - Path to file that activates the Python environment.
    * - ``RestartDownload``
      - Boolean for downloading an initial restart file from AWS S3. Default value is ``true``.
    * - ``RestartFilePrefix``
      - Path to initial GEOS-Chem restart file plus file prefix (e.g. ``GEOSChem.BoundaryConditions.`` or ``GEOSChem.Restart.``). The date string and file extension (``YYYYMMDD_0000z.nc4``) will be appended. This file will be used to initialize the spinup simulation.
-   * - ``RestartFilePreviewPrefix``
-     - Path to initial GEOS-Chem restart file plus file prefix (e.g. ``GEOSChem.BoundaryConditions.`` or ``GEOSChem.Restart.``). The date string and file extension (``YYYYMMDD_0000z.nc4``) will be appended. This file will be used to initialize the preview simulation.
    * - ``BCpath``
      - Path to GEOS-Chem boundary condition files (for regional simulations).
    * - ``BCversion``
      - Version of TROPOMI smoothed boundary conditions to use (e.g. ``v2025-06``). Note: this will be appended onto BCpath as a subdirectory.
-   * - ``PreviewDryRun``
-     - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
+   * - ``HemcoPriorEmisDryRun``
+     - Boolean to download missing GEOS-Chem data for the HEMCO prior emissions run. Default value is ``true``.
    * - ``SpinupDryRun``
      - Boolean to download missing GEOS-Chem data for the spinup simulation. Default value is ``true``.
    * - ``ProductionDryRun``
@@ -405,5 +428,3 @@ the IMI on a local cluster<../advanced/local-cluster>`).
      - Boolean to download missing GEOS-Chem data for the posterior simulation. Default value is ``true``.
    * - ``BCDryRun``
      - Boolean to download missing GEOS-Chem data for the preview run. Default value is ``true``.
-   * - ``PreviewDryRun``
-     - Boolean to download missing GEOS-Chem boundary condition files. Default value is ``true``.
