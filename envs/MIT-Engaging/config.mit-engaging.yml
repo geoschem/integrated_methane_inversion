@@ -19,7 +19,7 @@ CH4:
   ## Use observations over water? Set to false to filter out water observations
   UseWaterObs: false
   OptimizeOH: false
-  OptimizeSoil: false
+  OptimizeSoil: true
   PriorErrorOH: [0.1]
   AdditionalDiagnostics: ["ObsPack"]
 
