@@ -23,7 +23,7 @@ CH4:
   # do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors,
   # current version is not compatible with state vector clustering
   # either through clustering algorithm or buffer cluster for regional case
-  OptimizeSoil: false
+  OptimizeSoil: true
   PriorErrorOH: [0.1]
   # Save out GEOS-Chem diagnostics for additional observation operators
   AdditionalDiagnostics: ["ObsPack"]  ## GOSAT, TCCON, AIRS, PLANEFLIGHT
