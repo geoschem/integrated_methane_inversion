@@ -91,6 +91,13 @@ fi
 # Check all necessary config variables are present
 python src/utilities/sanitize_input_yaml.py $ConfigFile || imi_failed
 
+# Additional checks to ensure no conflicts in config settings
+if ("$OptimizeSoil" && "$LognormalErrors"); then
+    printf "\nERROR: SoilOptimization can only be used with normal errors."
+    printf "\n  Set LogNormalErrors to false or turn off SoilOptimization.\n"
+    exit 1
+fi
+
 # Set path to IMI runs
 RunDirs="${OutputPath}/${RunName}"
 
