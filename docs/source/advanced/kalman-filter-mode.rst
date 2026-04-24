@@ -30,7 +30,7 @@ the temporal evolution of emissions.
 
 How to use the Kalman Filter mode
 =================================
-The IMI Kalman Mode can be applied simplyy by updating the ``KalmanMode`` config variable to ``true``. 
+The IMI Kalman Mode can be applied simply by updating the ``KalmanMode`` config variable to ``true``. 
 This will enable the Kalman filter mode using the specified update frequency, nudge factor, and first 
 period.
 

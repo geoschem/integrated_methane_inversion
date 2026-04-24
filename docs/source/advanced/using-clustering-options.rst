@@ -7,7 +7,7 @@ The main computational cost of the IMI is running the perturbation simulations n
 construct the jacobian. This requires running a (GEOS-Chem) Jacobian simulation for each 
 state vector element. The default state vector that is generated with the IMI has state 
 vector elements in native resolution, meaning each element corresponds with a GEOS-Chem grid 
-cell (.25 degree or .5 degree resolution). However, if your state vector has a sufficiently 
+cell (at up to 0.125°×0.15625° resolution). However, if your state vector has a sufficiently 
 large number of elements this can limit the feasibility of running the IMI -- either due to
 prohibitively high AWS costs or compute time. Clustering your state vector elements reduces 
 the number of state vector elements by aggregating elements together. 
@@ -18,7 +18,7 @@ To enable the IMI clustering options in the imi config file set
 ``ReducedDimensionStateVector: true``. This enables the clustering component of the IMI. 
 Once enabled the IMI uses your specified ``NumberOfElements`` to aggregate native resolution state vector elements 
 within your domain of interest using the specified ``ClusteringMethod``. Additionally, there are two optional 
-clustering options ``MaxClusterSize`` and ``ClusteringThreshold``which, respectively, control the maximum number 
+clustering options ``MaxClusterSize`` and ``ClusteringThreshold`` which, respectively, control the maximum number 
 of elements per cluster and the size distribution of clusters. eg:
 
 ::
@@ -48,7 +48,7 @@ The ``ClusteringMethod`` specifies which clustering method to use for state vect
 ``kmeans`` or ``mini-batch-kmeans`` are valid options. ``mini-batch-kmeans`` is very similar to ``kmeans``, 
 but can be less accurate. It is best used for very large state vectors to speed up state vector reduction.
 
-Note: The IMI preserves the original state vector file as NativeStateVector.nc in your run directory.
+Note: The IMI preserves the original state vector file as ``NativeStateVector.nc`` in your run directory.
 
 Incorporating point source information
 --------------------------------------
@@ -65,8 +65,8 @@ preserve the element, you must have enough ``NumberOfElements`` specified to acc
 number of gridcells you would like to force to be native resolution.
 
 Additionally, the ``PointSourceDatasets`` config variable can be used to automatically scrape emission 
-hotspots from external point source datasets. Currently, the only supported dataset is the ``"SRON"`` 
-`weekly plumes dataset <https://earth.sron.nl/methane-emissions/>`_.
+hotspots from external point source datasets. Currently, the supported datasets are the ``"SRON"`` 
+`weekly plumes dataset <https://earth.sron.nl/methane-emissions/>`_ ``"CarbonMapper"``, and ``"IMEO"``.
 
 yaml list example:
 ::
@@ -93,8 +93,8 @@ to best reflect the available information content by setting the ``DynamicKFClus
 
 IMI clustering scheme
 ---------------------
-The IMI clustering algorithm uses a similar k-means based method as described 
-`in Nesser et al., 2021 <https://doi.org/10.5194/amt-14-5521-2021>`_ to maintain native 
+The IMI clustering algorithm uses a similar k-means based method as described in
+`Nesser et al., 2021 <https://doi.org/10.5194/amt-14-5521-2021>`_ to maintain native 
 resolution in areas with high information content (high prior emissions, high observation 
 density), while aggregating cells with low information content.
 
@@ -103,10 +103,10 @@ Reducing computational cost while maintaining inversion quality
 While clustering is an effective method for alleviating computational constraints for 
 running inversions at high resolution for large regions, it can introduce aggregation error
 and degrade the quality of your inversion 
-(`Turner and Jacob., 2014 <https://doi.org/10.5194/acp-15-7039-2015>`_ ). 
+(`Turner and Jacob, 2014 <https://doi.org/10.5194/acp-15-7039-2015>`_ ). 
 Therefore, it is important to weigh the computational benefits of reducing your state vector
 against the inversion quality loss. This can be done by iteratively tuning the ``NumberOfElements`` 
-and running the `IMI preview <../advanced/imi-preview.html>`__.IMI preview to assess 
+and running the `IMI preview <../advanced/imi-preview.html>`__ to assess 
 the estimated DOFS. Ideally, you should find a middle groud where the estimated DOFS and 
 computation cost is at a acceptable level before proceeding with the inversion.
 

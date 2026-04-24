@@ -1,7 +1,7 @@
 Running the IMI with tmux
 =========================
 
-The IMI can be run with `tmux <https://man7.org/linux/man-pages/man1/tmux.1.html>`_ as an alternative to sbatch. Like sbatch, tmux
+The IMI can be run with `tmux <https://man7.org/linux/man-pages/man1/tmux.1.html>`_ as an alternative to `sbatch <https://slurm.schedmd.com/sbatch.html>`_ to submit the job. Like sbatch, tmux
 allows you to run a program on your EC2 instance, disconnect, and then reconnect later to check progress. 
 
 Because of the way the IMI is parallelized, using tmux can grant a small to moderate speed-up.
