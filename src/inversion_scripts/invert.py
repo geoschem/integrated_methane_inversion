@@ -7,12 +7,14 @@ import numpy as np
 import xarray as xr
 from itertools import product
 from netCDF4 import Dataset
+from pathlib import Path
 from src.inversion_scripts.utils import (
     load_obj,
     calculate_superobservation_error,
     ensure_float_list,
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
+    map_files_to_reference,
 )
 from src.utilities.config_utils import load_config
 
@@ -68,6 +70,11 @@ def do_inversion(
         A            [float] : Averaging kernel matrix
 
     """
+    # make mapping of target files to reference files if using precomputed Jacobian
+    if jacobian_sf is not None:
+        reference_dir = jacobian_dir.replace("data_converted", "data_converted_reference")
+        K_ref_file_mappings = map_files_to_reference(jacobian_dir, reference_dir)
+        
     # boolean for whether we are optimizing boundary conditions
     optimize_bc = prior_err_bc > 0.0
     optimize_oh = prior_err_oh > 0.0
@@ -190,7 +197,10 @@ def do_inversion(
             K = 1e9 * dat["K"][ind, :]
         else:
             # Get Jacobian from reference inversion
-            fi_ref = fi.replace("data_converted", "data_converted_reference")
+            fi_ref = str(K_ref_file_mappings.get(Path(fi)))
+            if fi_ref is None:
+                print(f"No reference file found for {fi} in {jacobian_dir}. Skipping this file.")
+                continue
             dat_ref = load_obj(fi_ref)
             K = 1e9 * dat_ref["K"][ind, :]
 
