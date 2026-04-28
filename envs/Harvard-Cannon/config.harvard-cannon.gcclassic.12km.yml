@@ -2,16 +2,16 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_Global_1day"
+RunName: "Test_IMI_Philadelphia"
 Species: "CH4"
-SchedulerType: "slurm"
+UseSlurm: true
 SafeMode: true
 S3Upload: false
 UseGCHP: false
 
 ## Period of interest
-StartDate: 20180501
-EndDate: 20180502
+StartDate: 20220101
+EndDate: 20230101
 SpinupMonths: 1
 
 CH4:
@@ -26,7 +26,7 @@ CH4:
   SatelliteProduct: "BlendedTROPOMI"
   ## Use observations over water? Set to false to filter out water observations
   UseWaterObs: false
-  OptimizeOH: true
+  OptimizeOH: false
   # optimize soil option when using normal errors,
   # do not use it when using Lognormal errors as negative flux is not allowed with lognormal errors,
   # current version is not compatible with state vector clustering
@@ -44,7 +44,7 @@ CO2:
   AdditionalDiagnostics: ["ObsPack"]  ## TCCON, PLANEFLIGHT
 
 ## Is this a regional inversion? Set to false for global inversion
-isRegional: false
+isRegional: true
 
 ## Select two character region ID (for using pre-cropped meteorological fields)
 ##   Current options are listed below with ([lat],[lon]) bounds:
@@ -58,17 +58,26 @@ isRegional: false
 ##     "SA" : South America ([-59,16], [-88,-31])
 ##     ""   : Use for global global simulation or custom regions
 ##   For example, if the region of interest is in Europe ([33,61],[-30,70]), select "EU".
-RegionID: ""
+RegionID: "NA"
 
 ## Region of interest
 ##   These lat/lon bounds are only used if CreateAutomaticRectilinearStateVectorFile: true
 ##   Otherwise lat/lon bounds are determined from StateVectorFile
-LonMin: -180
-LonMax: 180
-LatMin: -90
-LatMax: 90
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 33
 
-## Settings specific to GCHP
+## Meteorology
+##   Options are GEOSFP or MERRA2
+Met: "GEOSFP"
+
+## Horizontal grid resolution
+##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
+##   0.5x0.625, 2.0x2.5, or 4.0x5.0
+Res: "0.125x0.15625"
+
+## Grid settings for GCHP
 ##   CS resolution: even integer representing number of grid cells per cubed-sphere face side
 CS_RES: 48
 ##   Use stretched grid?
@@ -87,8 +96,8 @@ CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 0
-BufferDeg: 0
+nBufferClusters: 8
+BufferDeg: 5
 EmisThreshold: 1.e-12
 OptimizeBCs: false
 
@@ -100,7 +109,7 @@ PointSourceDatasets: ["SRON"]
 ReducedDimensionStateVector: false
 DynamicKFClustering: false
 ClusteringMethod: "kmeans"
-NumberOfElements: 1000
+NumberOfElements: 45
 ForcedNativeResolutionElements:
   - [31.5, -104]
 EmissionRateFilter: 2500
@@ -109,14 +118,14 @@ GroupByCountry: false
 
 ## Custom state vector
 StateVectorFile: "/path/to/StateVector.nc"
-ShapeFile: "None"
+ShapeFile: "resources/shapefiles/tmp.shp"
 
 ## Inversion
 ## Notes:
 ## - PriorError is a relative fraction (e.g. 0.5 = 50%)
 ## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
 ## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
-## - PriorErrorBCs is in ppb (not used for global)
+## - PriorErrorBCs is in ppb
 ## - PriorErrorBufferElements is only used if LognormalErrors is true
 LognormalErrors: false
 PriorError: [0.5]
@@ -125,15 +134,6 @@ PriorErrorBufferElements: [0.5]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
-
-## Grid
-##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
-##   0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "2.0x2.5"
-
-## Meteorology
-##   Options are GEOSFP or MERRA2
-Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion
@@ -160,10 +160,10 @@ DOFSThreshold: 0
 
 ## Resource allocation settings for slurm jobs
 RequestedCPUs: 32
-RequestedMemory: 32000
+RequestedMemory: 200000
 InversionCPUs: 32
-InversionMemory: 64000
-RequestedTime: "24:00:00"
+InversionMemory: 100000
+RequestedTime: "0-24:00"
 SchedulerPartition: "sapphire,huce_cascade,seas_compute,shared"
 
 ## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
@@ -238,7 +238,7 @@ TCCON: false
 AIRS: false
 
 ## Use global boundary condition files for initial conditions
-UseBCsForRestart: False
+UseBCsForRestart: false
 
 ##------------------------------------------------------------------
 ## Settings for running on local cluster
@@ -250,7 +250,7 @@ OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 ## Path to GEOS-Chem input data
 DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
-## Path to satellite Data
+## Path to satellite data
 DataPathObs: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)

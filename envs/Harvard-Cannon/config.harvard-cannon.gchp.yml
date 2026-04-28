@@ -68,7 +68,16 @@ LonMax: 180
 LatMin: -90
 LatMax: 90
 
-## Settings specific to GCHP
+## Meteorology
+##   Options are GEOSFP or MERRA2
+Met: "GEOSFP"
+
+## Horizontal grid resolution
+##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
+##   0.5x0.625, 2.0x2.5, or 4.0x5.0
+Res: "2.0x2.5"
+
+## Grid settings for GCHP
 ##   CS resolution: even integer representing number of grid cells per cubed-sphere face side
 CS_RES: 48
 ##   Use stretched grid?
@@ -125,15 +134,6 @@ PriorErrorBufferElements: [0.5]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
-
-## Grid
-##   Options are 0.125x0.15625 (GEOS-FP only), 0.25x0.3125 (GEOS-FP only),
-##   0.5x0.625, 2.0x2.5, or 4.0x5.0
-Res: "2.0x2.5"
-
-## Meteorology
-##   Options are GEOSFP or MERRA2
-Met: "GEOSFP"
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion
@@ -238,7 +238,7 @@ TCCON: false
 AIRS: false
 
 ## Use global boundary condition files for initial conditions
-UseBCsForRestart: False
+UseBCsForRestart: false
 
 ##------------------------------------------------------------------
 ## Settings for running on local cluster
@@ -250,7 +250,7 @@ OutputPath: "/n/holylfs06/LABS/jacob_lab2/Lab/$USER"
 ## Path to GEOS-Chem input data
 DataPath: "/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData"
 
-## Path to satellite Data
+## Path to satellite data
 DataPathObs: "/n/holylfs05/LABS/jacob_lab/imi/ch4/blended"
 
 ## GCHP environment file (with fortran compiler, netcdf libraries, etc.)
