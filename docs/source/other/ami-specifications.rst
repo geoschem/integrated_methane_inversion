@@ -12,4 +12,3 @@ The latest AMI for the IMI Workflow contains the following software libraries:
 - Python 3.9.7
 - GEOS-Chem Classic 13.3.3 
 
-TODO: add additional software dependencies

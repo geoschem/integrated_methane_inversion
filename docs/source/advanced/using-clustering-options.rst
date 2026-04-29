@@ -106,7 +106,7 @@ and degrade the quality of your inversion
 (`Turner and Jacob, 2014 <https://doi.org/10.5194/acp-15-7039-2015>`_ ). 
 Therefore, it is important to weigh the computational benefits of reducing your state vector
 against the inversion quality loss. This can be done by iteratively tuning the ``NumberOfElements`` 
-and running the `IMI preview <../advanced/imi-preview.html>`__ to assess 
+and running the `IMI preview <../getting-started/imi-preview.html>`__ to assess 
 the estimated DOFS. Ideally, you should find a middle groud where the estimated DOFS and 
 computation cost is at a acceptable level before proceeding with the inversion.
 

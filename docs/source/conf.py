@@ -24,11 +24,11 @@ master_doc = 'index'
 # -- Project information -----------------------------------------------------
 
 project = 'IMI'
-copyright = '2021, TODO'
-author = 'TODO'
+copyright = '2026, IMI Support Team'
+author = 'IMI Support Team'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '2.3.0'
 
 
 # -- General configuration ---------------------------------------------------

@@ -25,16 +25,18 @@ allows selection of the inversion results for each ensemble member. In python, t
     
     python
     import xarray as xr
+
     ds = xr.open_dataset('inversion_results_ensemble.nc')
+    
     # select the inversion results for ensemble member 2
     ensemble_member_2 = ds.sel(ensemble=2)
-
+    
     # print the hyperparameters used for ensemble member 2
     params = ["prior_err", "obs_err", "gamma", "prior_err_bc", "prior_err_oh"]
     for param in params:
         print(f"{param}: {ensemble_member_2[param]}")
 
-The output used for the posterior simulation is saved to the ``inversion_results.nc`` and `gridded_posterior.nc``` files.  
+The output used for the posterior simulation is saved to the ``inversion_results.nc`` and ``gridded_posterior.nc``` files.  
 The data in these files represents the mean of the ensemble members.
 
 Choosing ensemble members:
@@ -53,7 +55,7 @@ inversion results match the expected output of the chi-square distribution (:mat
 close to 1. If the `chi-square` value is much greater (or less) than 1, it is likely that the inversion results are not realistic and the 
 ensemble member should be removed from the uncertainty analysis.
 
-**By default, the IMI filters ensemble members such that the ensemble only includes members with (:math:`J_a / n = 0.5-2.0`).** 
+By default, the IMI filters ensemble members such that the ensemble only includes members with (:math:`J_a / n = 0.5-2.0`).
 This filtering can be modified or turned off by changing the ``filter_ens_members`` settings in the ``invert.py`` and ``lognormal_invert.py`` scripts.    
 
 The visualization notebook creates the following figures to analyze the ensemble spread and sensitivity of the inversion results to the hyperparameters:

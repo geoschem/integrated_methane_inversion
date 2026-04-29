@@ -3,24 +3,23 @@ Using custom regions with the IMI
 
 .. include:: <isonum.txt>
 
-The IMI supports regions within the following
-domains:
+The IMI supports regions within the following domains:
 
 * Africa: 37\ |deg|\ S-40\ |deg|\ N, 20\ |deg|\ W-53\ |deg|\ E
 * Asia: 11\ |deg|\ S-55\ |deg|\ N, 60\ |deg|\ E-150\ |deg|\ E
-* Europe: (33\ |deg|\ N-61\ |deg|\ N, 30\ |deg|\ W-70\ |deg|\ E
+* Europe: 33\ |deg|\ N-61\ |deg|\ N, 30\ |deg|\ W-70\ |deg|\ E
 * Middle East: 12\ |deg|\ N-44\ |deg|\ N, 20\ |deg|\ W-70\ |deg|\ E
 * North America: 10\ |deg|\ N-70\ |deg|\ N, 140\ |deg|\ W-40\ |deg|\ W
-* Oceania 50\ |deg|\ S-5\ |deg|\ N, 110\ |deg|\ E-180\ |deg|\ E
-* Russia 41\ |deg|\ N-83\ |deg|\ N, 19\ |deg|\ E-180\ |deg|\ E
-* South America 59\ |deg|\ S-16\ |deg|\ N, 88\ |deg|\ W-31\ |deg|\ W
+* South America: 59\ |deg|\ S-16\ |deg|\ N, 88\ |deg|\ W-31\ |deg|\ W
+* Oceania: 50\ |deg|\ S-5\ |deg|\ N, 110\ |deg|\ E-180\ |deg|\ E (0.25\ |deg| x 0.3125\ |deg| only)
+* Russia: 41\ |deg|\ N-83\ |deg|\ N, 19\ |deg|\ E-180\ |deg|\ E (0.25\ |deg| x 0.3125\ |deg| only)
   
-These are the regional windows used in GEOS-Chem for which pre-cut meteorological files are available. You may apply the
+These are the regional windows used in GEOS-Chem for which pre-cut meteorological files are available at 0.125\ |deg| x 0.15625\ |deg| and 0.25\ |deg| x 0.3125\ |deg| resolution. You may apply the
 IMI to other regions, but this requires either using global meteorological fields which can be 
 computationally expensive (not recommended) or cropping global meteorological fields via
 a pre-processing step.
 
-To facilite cropping global meteorological fields, a sample script (`crop_met.sh <https://github.com/geoschem/integrated_methane_inversion/tree/main/src/utilities/crop_met.sh>`_) has been included with
+To facilite cropping global meteorological fields at at 0.25\ |deg| x 0.3125\ |deg| resolution, a sample script (`crop_met.sh <https://github.com/geoschem/integrated_methane_inversion/tree/main/src/utilities/crop_met.sh>`_) has been included with
 the IMI. This script utilizes the `Climate Data Operators (CDO) <https://code.mpimet.mpg.de/projects/cdo>`_ .
 It also includes an option to first download global meteorological fields
 at 0.25\ |deg| x 0.3125\ |deg| resolution. The global files are large (approx. 300G per month),
@@ -66,3 +65,5 @@ by GEOS-Chem.
 If you have regional emissions that you would like to use, please see :doc:`modifying prior emission estimates <../advanced/custom-prior-emissions-hemco>`.
 
 Finally, you can run the :doc:`IMI preview <../getting-started/imi-preview>` to quickly check that the IMI is working as expected for your custom region. 
+
+Generating 0.125\ |deg| x 0.15625\ |deg| for other regions is not supported at this time. This is an involved process requiring download of C720 mass flux fields from NASA GMAO, converting those to derived winds, and regridding from the cubed-sphere grid to the lat-lon grid. To request other regions, please contact the `IMI Development Team <mailto:integrated-methane-inversion@g.harvard.edu>`_.

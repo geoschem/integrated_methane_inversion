@@ -39,10 +39,15 @@ If they are not satisfactory, modify the configuration file (e.g., the region an
 Running an inversion after the preview
 --------------------------------------
 
-If the preview is complete and the results are satisfactory, you can proceed with the inversion (without re-running the preview or computing prior emissions). ::
+If the preview is complete and the results are satisfactory, you can proceed with the inversion without re-running the preview, computing prior emissions, or 
+generating the state vector file. ::
 
     ## Inversion
     PrecomputedJacobian: false
+
+    ## State vector
+    CreateAutomaticRectilinearStateVectorFile: false
+    StateVectorFile: "/path/to/StateVector.nc"
 
     ## Setup modules
     ##   Turn on/off different steps in setting up the inversion 
@@ -73,7 +78,7 @@ Running a sensitivity inversion
 You've completed an initial inversion. Use the following configuration to run a new inversion with modified 
 error statistics `Lognormal` or `modifying the prior emissions <#modifying-prior-emission-estimates>`_ without
 recomputing the jacobian matrix. Note that if you only wish to update the hyperparamaters, you can take advantage 
-of the `automatic inversion ensemble <../advanced/inversion-ensemble>` feature of the IMI.
+of the :doc:`automatic inversion ensemble <../advanced/inversion-ensemble>` feature of the IMI.
 ::
 
     RunName: "sensitivity_inversion1" # new run name

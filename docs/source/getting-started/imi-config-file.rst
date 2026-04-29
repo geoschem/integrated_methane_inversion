@@ -2,6 +2,10 @@ IMI configuration file
 ======================
 This page documents settings in the IMI configuration file (``config.yml``).
 
+The ``config.yml`` file included with the IMI is setup for running the IMI on AWS. If you want to run
+the IMI elsewhere, you will need to create your own environment and configuration files. See :doc:`Running the IMI on a local cluster <../advanced/local-cluster>` for 
+more information.
+
 General
 ~~~~~~~
 .. list-table::

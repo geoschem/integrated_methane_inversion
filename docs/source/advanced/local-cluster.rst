@@ -22,30 +22,18 @@ This will clone the IMI code into a local folder named ``integrated methane_inve
          ::
             git clone https://github.com/geoschem/integrated_methane_inversion.git imi-v1.0
 
-Next, download the GEOS-Chem source code and its submodules within the
-IMI folder using these commands:
+Navigate to the IMI folder and view the contents:
 
 .. code-block:: console
 
     $ cd integrated_methane_inversion
-    $ git clone https://github.com/geoschem/GCClassic.git
-    $ cd GCClassic
-    $ git submodule update --init --recursive
-
-See `Downloading the GEOS-Chem source code <https://geos-chem.readthedocs.io/en/latest/building-gc/download-source-code.html>`__ for more details.
-
-Navigate back to the top-level IMI folder and view the contents:
-
-.. code-block:: console
-
-    $ cd ..
     $ ls
     config.yml  envs/       LICENSE.md  resources/   setup_imi.sh*
     docs/       GCClassic/  README.md   run_imi.sh*  src/
 
 Within the IMI is a subfolder called ``envs`` that constains files for
-running the IMI on different systems. By default, files are provided
-for AWS and Harvard's Cannon cluster.
+running the IMI on different systems. By default, files are provided 
+for AWS and Harvard's Cannon cluster. 
 
 .. code-block:: console
 
@@ -54,17 +42,22 @@ for AWS and Harvard's Cannon cluster.
     conda_env.yml  python.env slurm/  spack_env.env
     
     envs/Harvard-Cannon:
-    ch4_inv.yml                gcclassic.rocky+gnu10.minimal.env*  gcclassic.rocky+gnu10.env*       python.env
-    config.harvard-cannon.yml  gcclassic.rocky+gnu12.minimal.env*  imi_env.yml                      README
+    config.harvard-cannon.gcclassic.12km.yml    gchp.rocky+gnu12.env
+    config.harvard-cannon.gcclassic.global.yml  gchp.rocky+gnu12.minimal.env
+    config.harvard-cannon.gcclassic.yml         imi_env.yml
+    config.harvard-cannon.gchp.yml              python.env
+    gcclassic.rocky+gnu12.env                   README.md
+    gcclassic.rocky+gnu12.minimal.env
 
-We recommend you add a subfolder within ``envs`` for your own system
+You can add a subfolder within ``envs`` for your own system
 to easily access your customized files needed for the IMI. In this
 directory, we recommend storing any environment files needed to load
 the  libraries for GEOS-Chem (e.g. fortran compiler, netcdf, openmpi,
 cmake), a Python environment file, a file that activates your Python
 environment, and a copy of the IMI configuration fil emodified for 
 your system. See the files in ``envs/Harvard-Cannon`` for examples. 
-We recommend basing your config file off of ``config.harvard-cannon.yml``.
+Once the IMI is operational on your system, we welcome you to `create a pull request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_.
+to have your cluster's environment files included in the IMI repository.
 
 Within the copied IMI configuration file, you will need to modify the
 settings in the section labeled "Settings for running on your local
@@ -92,7 +85,7 @@ argument for the location of your IMI configuration file. For example:
 
 If you do not pass a configuration file, ``config.yml`` in
 the top-level IMI directory will be used. That file is set up for
-running the IMI on AWS by default.
+running the IMI on AWS by default and will not work on local cluster.
 
 You can also run the IMI with slurm if your local cluster supports this by running:
 
