@@ -36,7 +36,6 @@ CH4:
   # Save out GEOS-Chem diagnostics for additional observation operators
   AdditionalDiagnostics: ["ObsPack"]  ## GOSAT, TCCON, AIRS, PLANEFLIGHT
 
-
 ## Is this a regional inversion? Set to false for global inversion
 isRegional: true
 
