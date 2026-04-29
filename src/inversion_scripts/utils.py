@@ -14,7 +14,7 @@ from pyproj import Geod
 import pandas as pd
 import re
 import warnings
-from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
+from classify_TROPOMI_obs_to_CSgrids import(
     latlon_to_cartesian,
     build_kdtree,
 )
