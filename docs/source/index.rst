@@ -10,10 +10,6 @@ Integrated Methane Inversion (IMI)
    <a href="https://imi.readthedocs.io/en/latest/"><img src="https://img.shields.io/readthedocs/imi?label=ReadTheDocs"></a>
    </p>
 
-.. important:: Contributions (e.g., suggestions, edits, revisions) would be greatly appreciated. See
-   :ref:`editing this guide <editing_this_user_guide>` and our :doc:`contributing guidelines <reference/CONTRIBUTING>`. 
-   If you find something hard to understand, let us know!
-
 The Integrated Methane Inversion (IMI) workflow is a cloud-computing tool for quantifying methane emissions
 by inversion of satellite observations from the TROPOspheric Monitoring Instrument (TROPOMI). 
 It uses `GEOS-Chem <http://geos-chem.org>`_ as forward model for the inversion and infers methane emissions 
@@ -65,8 +61,9 @@ local compute cluster by either manually building the environment or using a doc
    :maxdepth: 1
    :caption: Help & Reference
 
-   reference/known-bugs.rst
-   reference/SUPPORT.md
-   reference/CONTRIBUTING.md
+   help-and-reference/known-bugs.rst
+   help-and-reference/SUPPORT.md
+   help-and-reference/CONTRIBUTING.md
    geos-chem-shared-docs/editing_these_docs.rst
-   reference/glossary.rst
+   help-and-reference/version-history.rst	
+   help-and-reference/glossary.rst

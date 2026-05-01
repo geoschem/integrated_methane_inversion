@@ -49,7 +49,7 @@ For more information on costs, see :doc:`Tips for Minimizing AWS costs <minimizi
 .. _s3-permissions-label:
 
 3. Add S3 user permissions (Optional Step)
---------------------------
+------------------------------------------
 
 This is an optional step but is recommended if you plan to use S3 for long-term storage of your inversion results.
 
