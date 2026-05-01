@@ -27,25 +27,32 @@ local compute cluster by either manually building the environment or using a doc
    :caption: Getting Started
 
    getting-started/quick-start.rst
-   getting-started/imi-config-file.rst
-   getting-started/imi-preview.rst
-   getting-started/minimizing-cost-tips.rst
    getting-started/best-practices.rst
-   getting-started/IMI-glossary.rst
+   getting-started/glossary.rst
    getting-started/faqs.rst
 
 .. toctree::
    :maxdepth: 1
-   :caption: Advanced Features
+   :caption: User Guide
 
-   advanced/running-with-tmux.rst
-   advanced/kalman-filter-mode.rst
-   advanced/setting-up-jupyter.rst
+   user-guide/imi-config-file.rst
+   user-guide/imi-preview.rst
+   user-guide/imi-input-data.rst
+   user-guide/imi-output.rst
+   user-guide/ami-specifications.rst
+   user-guide/setting-up-jupyter.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Advanced Features
+   
    advanced/custom-state-vector.rst
    advanced/using-clustering-options.rst
    advanced/custom-prior-emissions-hemco.rst
    advanced/custom-region.rst
    advanced/inversion-ensemble.rst
+   advanced/kalman-filter-mode.rst
+   advanced/running-with-tmux.rst
    advanced/local-cluster.rst
    advanced/imi-docker-container.rst
 
@@ -54,16 +61,14 @@ local compute cluster by either manually building the environment or using a doc
    :caption: Other
 
    other/common-configurations.rst
-   other/listing-directory-contents.rst
-   other/ami-specifications.rst
+   other/minimizing-cost-tips.rst
 
 .. toctree::
    :maxdepth: 1
    :caption: Help & Reference
 
+   help-and-reference/version-history.rst	
    help-and-reference/known-bugs.rst
    help-and-reference/SUPPORT.md
    help-and-reference/CONTRIBUTING.md
    geos-chem-shared-docs/editing_these_docs.rst
-   help-and-reference/version-history.rst	
-   help-and-reference/glossary.rst

@@ -16,11 +16,12 @@ When logged onto your local cluster, navigate to the path where you want to down
 
 This will clone the IMI code into a local folder named ``integrated methane_inversion``.
 
-.. tip:: If you wish, you can clone the IMI repository into a
-	 different local folder by supplying the name of the folder at
-	 the end of the :command:`git clone` command. For example:
-         ::
-            git clone https://github.com/geoschem/integrated_methane_inversion.git imi-v1.0
+.. tip:: 
+   If you wish, you can clone the IMI repository into a different local folder by supplying the name of the folder at the end of the :command:`git clone` command. For example:
+         
+   .. code-block:: console
+
+      $ git clone https://github.com/geoschem/integrated_methane_inversion.git imi-v1.0
 
 Navigate to the IMI folder and view the contents:
 

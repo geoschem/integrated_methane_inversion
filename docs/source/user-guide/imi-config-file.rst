@@ -125,7 +125,7 @@ Resolution
    :class: tight-table
 
    * - ``Res``
-     - Horizontal grid resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
+     - Horizontal grid resolution for inversion. Options are ``"0.125x0.15625"`` (GEOS-FP only), ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
 
 Grid settings for GCHP
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -61,5 +61,6 @@ What can I get from the IMI that's different from point source data providers (G
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * The IMI is a completely different product. It provides total gridded continuous emissions, not snapshot emissions from specific point sources as from point source data providers. 
 * The IMI information is most useful for emission reporting, understanding contributions from different sectors, monitoring emission trends, and quantifying long-term averages.
+* The IMI can now incorporate several of these point source datasets into its clustering algorithm to ensure native resolution at those locations.
 
 

@@ -20,7 +20,7 @@ computationally expensive (not recommended) or cropping global meteorological fi
 a pre-processing step.
 
 To facilite cropping global meteorological fields at at 0.25\ |deg| x 0.3125\ |deg| resolution, a sample script (`crop_met.sh <https://github.com/geoschem/integrated_methane_inversion/tree/main/src/utilities/crop_met.sh>`_) has been included with
-the IMI. This script utilizes the `Climate Data Operators (CDO) <https://code.mpimet.mpg.de/projects/cdo>`_ .
+the IMI. This script utilizes the `Climate Data Operators (CDO) <https://code.mpimet.mpg.de/projects/cdo>`_.
 It also includes an option to first download global meteorological fields
 at 0.25\ |deg| x 0.3125\ |deg| resolution. The global files are large (approx. 300G per month),
 so when using that option it is recommend that you process short periods at a time and delete the
