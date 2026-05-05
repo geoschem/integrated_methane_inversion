@@ -74,7 +74,13 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     num_sv_elems = (
         int(state_vector_labels.max().item()) + BC_element_num + OH_element_num
     )
-    num_buffer_elems = int(config["nBufferClusters"])
+
+    interior = state_vector_labels.isel(
+        lat=slice(config["BufferDeg"], -config["BufferDeg"]), 
+        lon=slice(config["BufferDeg"], -config["BufferDeg"])
+    )
+    num_buffer_elems = state_vector_labels.max().item() - interior.max().item()
+
     num_normal_elems = num_buffer_elems + BC_element_num + OH_element_num
     ds = np.load("full_jacobian_K.npz")
     K_temp = np.array(ds["K"]) * 1e9

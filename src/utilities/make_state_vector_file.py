@@ -47,21 +47,15 @@ def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth)
     return compatible
 
 
-def cluster_buffer_elements(data, num_clusters, offset):
+def cluster_buffer_elements(data, offset):
     """
     Description:
         Cluster all 0 valued elements in dataarray into desired num clusters
     arguments:
         data       [][]dataarray : xarrray sensitivity data
-        num_clusters         int : number of labels to assign data to
         offset              bool : offset labels by this integer value
     Returns:       [][]dataarray : labeled data
     """
-
-    # if using 0 clusters, return data with buffer pixels
-    # infilled with -9999
-    if num_clusters == 0:
-        return xr.where(data == 0, -9999, data)
 
     # Get the latitude and longitude coordinates as separate arrays
     latitudes = data.coords["lat"].values
@@ -74,6 +68,9 @@ def cluster_buffer_elements(data, num_clusters, offset):
     # labels shape for later
     # labels = np.zeros(Z.shape)
     valid_indices = np.where(Z == 0)[0]
+
+    # Get the number of clusters
+    num_clusters = np.floor( len(valid_indices) / 4 )
 
     # Flatten the latitude and longitude arrays into a 2D grid
     # only keeping valid indices
@@ -140,7 +137,6 @@ def make_state_vector_file(
     is_regional = config["isRegional"]
     buffer_deg = config["BufferDeg"]
     emis_threshold = config["EmisThreshold"]
-    k_buffer_clust = config["nBufferClusters"]
     buffer_min_lat = 0
     buffer_min_lon = 0
 
@@ -291,7 +287,7 @@ def make_state_vector_file(
     # -------------------------------------------------------------------------
     if is_regional:
         statevector = cluster_buffer_elements(
-            statevector, k_buffer_clust, statevector.max().item()
+            statevector, statevector.max().item()
         )
 
     refyear = 2000
