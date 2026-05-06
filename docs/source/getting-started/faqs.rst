@@ -1,5 +1,5 @@
-IMI FAQs
-========
+FAQs
+====
 
 This page documents frequently asked questions about the IMI.
 

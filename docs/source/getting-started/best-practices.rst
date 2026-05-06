@@ -1,5 +1,5 @@
-IMI Best Practices
-===================
+Best Practices
+==============
 
 Choosing an inversion time period
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

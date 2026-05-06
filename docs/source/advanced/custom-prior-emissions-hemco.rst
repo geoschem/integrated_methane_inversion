@@ -24,4 +24,4 @@ run directory and open the HEMCO configuration file with vim (``vi``) or emacs::
 Follow `instructions in the HEMCO User's Guide <https://hemco.readthedocs.io/en/latest/hco-ref-guide/hemco-config.html#hco-cfg-base>`_
 to add a new emission field.
 
-You can run the :doc:`IMI preview <../getting-started/imi-preview>` to quickly check that the updated emissions are working as expected. 
+You can run the :doc:`IMI preview <../user-guide/imi-preview>` to quickly check that the updated emissions are working as expected. 

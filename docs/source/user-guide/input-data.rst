@@ -23,7 +23,7 @@ Input data for GEOS-Chem include:
 - `Initial conditions for starting GEOS-Chem simulations <https://geos-chem.readthedocs.io/en/latest/geos-chem-shared-docs/doc/gcid-data-on-aws.html#gcid-data-org-init-cond>`_
 
 To automatically download these data for your inversion domain and time period, we recommend setting the ``DryRun`` options 
-in the :doc:`IMI configuration file <imi-config-file>` to true. This will execute a `GEOS-chem dry-run simulation <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/dry-run.html>`_
+in the :doc:`IMI configuration file <config-file>` to true. This will execute a `GEOS-chem dry-run simulation <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/dry-run.html>`_
 to identify and download the necessary giles.
 
 You may also download these files manually using `AWS CLI <https://aws.amazon.com/cli/>`_. See `this tutorial <https://geos-chem.readthedocs.io/en/latest/geos-chem-shared-docs/doc/gcid-awscli-tutorial.html>`_ for instructions, 

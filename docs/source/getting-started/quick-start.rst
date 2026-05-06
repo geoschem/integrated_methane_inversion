@@ -199,7 +199,7 @@ Open the ``config.yml`` file with vim (``vi``) or emacs::
   $ emacs config.yml
 
 This configuration file contains many settings that you can modify to suit your needs. 
-See the :doc:`IMI configuration file page <../user-guide/imi-config-file>` for information on the different settings/options.
+See the :doc:`IMI configuration file page <../user-guide/config-file>` for information on the different settings/options.
 Also see the :doc:`common configurations page <../other/common-configurations>`.
 
 
@@ -232,7 +232,7 @@ First navigate to the inversion directory::
 
 You can use the ``ls`` command to view the contents of the directory, which will include several scripts, data directories,
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
-see :doc:`IMI output <../user-guide/imi-output>`.
+see :doc:`IMI output <../user-guide/output>`.
 
 To set up and connect to a jupyter notebook server on AWS follow :doc:`these short instructions <../user-guide/setting-up-jupyter>`. 
 Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display key inversion results 

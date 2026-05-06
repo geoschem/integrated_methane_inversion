@@ -9,7 +9,7 @@ accidental initiation of low-quality but potentially expensive inversions. For m
 the preview (default) configuration, see the 
 `Common configurations page <../other/common-configurations.html#default-preview-configuration>`__.
 
-To run the preview after selecting a region and time period of interest in the :doc:`configuration file <imi-config-file>` 
+To run the preview after selecting a region and time period of interest in the :doc:`configuration file <config-file>` 
 (and modifying any other configurable settings), simply `run the IMI <../getting-started/quick-start.html#run-the-imi>`_ with the ``DoPreview``
 configuration option set to ``true``.
 

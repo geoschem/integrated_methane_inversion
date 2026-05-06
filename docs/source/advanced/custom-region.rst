@@ -28,7 +28,7 @@ global files before processing additional periods.
 
 In a text editor, modify the user settings section in ``crop_met.sh``. The region
 defined in ``crop_met.sh`` should be the same or larger than the domain defined for your
-IMI in :doc:`config.yml <../getting-started/imi-config-file>`.
+IMI in `config.yml <../getting-started/config-file.html#region-of-interest>`.
 
 .. list-table::
    :widths: 30, 70
@@ -64,6 +64,6 @@ by GEOS-Chem.
 
 If you have regional emissions that you would like to use, please see :doc:`modifying prior emission estimates <../advanced/custom-prior-emissions-hemco>`.
 
-Finally, you can run the :doc:`IMI preview <../getting-started/imi-preview>` to quickly check that the IMI is working as expected for your custom region. 
+Finally, you can run the :doc:`IMI preview <../user-guide/imi-preview>` to quickly check that the IMI is working as expected for your custom region. 
 
 Generating 0.125\ |deg| x 0.15625\ |deg| for other regions is not supported at this time. This is an involved process requiring download of C720 mass flux fields from NASA GMAO, converting those to derived winds, and regridding from the cubed-sphere grid to the lat-lon grid. To request other regions, please contact the `IMI Development Team <mailto:integrated-methane-inversion@g.harvard.edu>`_.
