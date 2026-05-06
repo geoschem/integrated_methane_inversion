@@ -125,8 +125,11 @@ def imi_preview(
         
     # Set latitude/longitude bounds for plots
     if not config['UseGCHP']:
-        # Trim 1-2.5 degrees to remove GEOS-Chem buffer zone
-        if config["Res"] == "0.25x0.3125":
+        # Trim 0.5-2.5 degrees to remove GEOS-Chem buffer zone
+        if config["Res"] == "0.125x0.15625":
+            degx = 4 * 0.15625
+            degy = 4 * 0.125
+        elif config["Res"] == "0.25x0.3125":
             degx = 4 * 0.3125
             degy = 4 * 0.25
         elif config["Res"] == "0.5x0.625":

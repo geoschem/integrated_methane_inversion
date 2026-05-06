@@ -2,16 +2,16 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_IMI_Philadelphia"
+RunName: "Test_12km_Permian"
 Species: "CH4"
-UseSlurm: true
+SchedulerType: "slurm"
 SafeMode: true
 S3Upload: false
 UseGCHP: false
 
 ## Period of interest
 StartDate: 20220101
-EndDate: 20230101
+EndDate: 20220105
 SpinupMonths: 1
 
 CH4:
