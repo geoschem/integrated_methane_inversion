@@ -38,6 +38,9 @@ setup_inversion() {
     cp ${InversionPath}/src/utilities/cleanup_script.sh .
     cp ${InversionPath}/src/utilities/config_utils.py inversion/
 
+    # Fix path to classify_TROPOMI_obs_to_CSgrids.py in local utils.py
+    sed -i -e "s:src.inversion_scripts.classify:classify:g" inversion/utils.py
+
     # set inversion period to 1 if not in Kalman mode
     if [ -z "$KalmanMode" ] || [ "$KalmanMode" != true ]; then
         sed -i -e "s:{PERIOD}:1:g" inversion/run_inversion.sh
