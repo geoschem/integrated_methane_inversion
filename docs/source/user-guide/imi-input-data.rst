@@ -1,5 +1,5 @@
-IMI input data 
-==============
+Input data
+==========
 
 Input data for the IMI is stored on AWS and automatically accessed when running the IMI on AWS. When
 running the IMI on a local compute cluster, you will need to download the required input data.
@@ -7,8 +7,8 @@ running the IMI on a local compute cluster, you will need to download the requir
 Input data for GEOS-Chem
 ------------------------
 
-The forward model in the IMI is `GEOS-Chem chemical transport model <https://geoschem.github.io/>`_. 
-The input files needed to run GEOS-Chem within the IMI can be accessed from the  `GEOS-Chem Nested Input Data` 
+The forward model in the IMI is the `GEOS-Chem chemical transport model <https://geoschem.github.io/>`_. 
+The input files needed to run GEOS-Chem within the IMI can be accessed from the  `GEOS-Chem Nested Input Data 
 <https://registry.opendata.aws/geoschem-nested-input-data/>`_ portal (aka `s3://gcgrid <https://gcgrid.s3.amazonaws.com/index.html>`_).
 
 The GEOS-Chem Input Data portal is part of the `AWS Open Data Sponsorship Program <https://aws.amazon.com/opendata/open-data-sponsorship-program/>`_.
@@ -22,11 +22,13 @@ Input data for GEOS-Chem include:
 - Chemistry input data (e.g. archived OH fields)
 - `Initial conditions for starting GEOS-Chem simulations <https://geos-chem.readthedocs.io/en/latest/geos-chem-shared-docs/doc/gcid-data-on-aws.html#gcid-data-org-init-cond>`_
 
-To automatically download these data for your inversion domain and time period, we recommend setting the ``*DryRun`` options 
-in the :doc:`IMI configuration file <imi-config-file>` to true. This will execute a `GEOS-chem dry-run simulation`<https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/dry-run.html>_
+To automatically download these data for your inversion domain and time period, we recommend setting the ``DryRun`` options 
+in the :doc:`IMI configuration file <imi-config-file>` to true. This will execute a `GEOS-chem dry-run simulation <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/dry-run.html>`_
 to identify and download the necessary giles.
 
-You may also download these files manually using `AWS CLI <https://aws.amazon.com/cli/`_. See `this tutorial <https://geos-chem.readthedocs.io/en/latest/geos-chem-shared-docs/doc/gcid-awscli-tutorial.html>`_ for instructions.
+You may also download these files manually using `AWS CLI <https://aws.amazon.com/cli/>`_. See `this tutorial <https://geos-chem.readthedocs.io/en/latest/geos-chem-shared-docs/doc/gcid-awscli-tutorial.html>`_ for instructions, 
+swapping out data paths as necessary. 
+
 Alternatively, you can access the data via `AWS S3 Explorer <https://s3.amazonaws.com/gcgrid/index.html>`_.
 
 Satellite data

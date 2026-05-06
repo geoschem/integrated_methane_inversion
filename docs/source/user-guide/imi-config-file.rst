@@ -1,10 +1,12 @@
-IMI configuration file
-======================
+Configuration file
+==================
 This page documents settings in the IMI configuration file (``config.yml``).
 
-The ``config.yml`` file included with the IMI is setup for running the IMI on AWS. If you want to run
-the IMI elsewhere, you will need to create your own environment and configuration files. See :doc:`Running the IMI on a local cluster <../advanced/local-cluster>` for 
-more information.
+.. important::
+    The ``config.yml`` file included with the IMI is setup for running the IMI on AWS.
+    
+    If you want to run the IMI elsewhere, you will need to create your own environment and configuration files. 
+    See :doc:`Running the IMI on a local cluster <../advanced/local-cluster>` for more information.
 
 General
 ~~~~~~~
@@ -190,7 +192,7 @@ Point source datasets
      - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Current options are ``["SRON"]``,  ``["CarbonMapper"]``, and ``["IMEO"]``.
 
 Clustering Options
-^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 For more information on using the clustering options take a look at the `clustering options page <../advanced/using-clustering-options.html>`__.
 
 .. list-table::

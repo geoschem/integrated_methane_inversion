@@ -35,9 +35,10 @@ local compute cluster by either manually building the environment or using a doc
    :maxdepth: 1
    :caption: User Guide
 
+   user-guide/download-code.rst
    user-guide/imi-config-file.rst
-   user-guide/imi-preview.rst
    user-guide/imi-input-data.rst
+   user-guide/imi-preview.rst
    user-guide/imi-output.rst
    user-guide/ami-specifications.rst
    user-guide/setting-up-jupyter.rst
