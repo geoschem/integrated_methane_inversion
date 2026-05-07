@@ -532,10 +532,6 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
 
-    # max cluster size based on user preferences
-    max_cluster_size = (
-        config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else 64
-    )
     max_cluster_size = get_max_cluster_size(config, flat_sensi, desired_num_labels)
 
     try:
@@ -579,8 +575,6 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     print(f"Reducing to {desired_num_labels} elements")
 
-    # total sensitivities of clusters added to the state vector
-    cluster_sensis = []
     # for each agg_level, cluster the data and assign the n_labels
     # with highest total sensitivity to the new label dataset
     for agg_level in cluster_pairs:
