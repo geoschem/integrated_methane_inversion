@@ -515,8 +515,9 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     desired_num_labels = config["NumberOfElements"] - config["nBufferClusters"]
     last_ROI_element = int(orig_sv["StateVector"].max() - config["nBufferClusters"])
 
-    # set dofs threshold based on user preferences
-    if "ClusteringThreshold" in config.keys():
+    # User-supplied ClusteringThreshold stays fixed; if not, the threshold is recalibrated in each iteration below.
+    manual_threshold = "ClusteringThreshold" in config.keys()
+    if manual_threshold:
         dofs_threshold = float(config["ClusteringThreshold"])
     else:
         # default is to use the avg dofs per element
@@ -532,6 +533,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
 
+    # max cluster size based on user preferences
     max_cluster_size = get_max_cluster_size(config, flat_sensi, desired_num_labels)
 
     try:
@@ -627,15 +629,15 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
                 cluster_by_country,
             )
 
-        # assign all remaining clusters if filling the grid
-        # by assigning dofs_threshold to artificially low value
-        if fill_grid:
-            dofs_threshold = -1
+        # In fill-grid mode, accept every generated cluster regardless of DOFS;
+        # A filter_threshold of -1 is below the minimum possible total sensitivity (0).
+        # The recalibrated dofs_threshold is left unchanged so it stays valid for later iterations
+        filter_threshold = -1 if fill_grid else dofs_threshold
 
         # get the n_highes labels with sensitivities above the
-        # dofs threshold and how many elements these labels contain
+        # threshold and how many elements these labels contain
         n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
-            out_labels, sensi["Sensitivities"], dofs_threshold
+            out_labels, sensi["Sensitivities"], filter_threshold
         )
 
         # if too many labels to assign, then we need to assign
@@ -675,6 +677,23 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
                 ind_max = np.where(labels.values == 0)
             labels.values[ind_max] = label_start
             label_start += 1
+
+        # Recalibrate dofs_threshold for the next iteration based on the DOFS
+        # and cluster slots that remain after this iteration's assignments.
+        if not manual_threshold:
+            clusters_left = desired_num_labels - int(labels.max())
+            if clusters_left > 0:
+                remaining_dofs = float(
+                    sensi["Sensitivities"].where(labels == 0).sum()
+                )
+                dofs_threshold = remaining_dofs / clusters_left
+                if dofs_threshold > 1:
+                    msg = (
+                        f"Estimated dofs per element too high ({dofs_threshold}), "
+                        "resetting ClusteringThreshold to 1"
+                    )
+                    print(msg)
+                    dofs_threshold = 1
 
     # scale buffer elements to correct label range
     cluster_number_diff = last_ROI_element - int(labels.max())
