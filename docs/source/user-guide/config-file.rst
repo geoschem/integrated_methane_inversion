@@ -255,6 +255,10 @@ Inversion
      - Vector of regularization parameters; typically between 0 and 1. Default value is ``[1.0]``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``OffDiagonalPriorCov``
+     - Boolean for whether to build and use a prior error covariance matrix with off-diagonal terms during the inversion. Default value is ``false``.
+   * - ``LengthScalePriorCov``
+     - Spatial length scale in km used when building the off-diagonal prior covariance matrix. Only used if ``OffDiagonalPriorCov`` is ``true``. Default value is ``25``.
    * - ``ReferenceRunDir``
      - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
 

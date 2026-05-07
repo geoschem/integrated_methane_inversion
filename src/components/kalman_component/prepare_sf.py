@@ -79,7 +79,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor, species
             if species == "CH4":
                 original_emis = original_emis_ds["EmisCH4_Total_ExclSoilAbs"]
             else:
-                original_emis = original_emis_ds[f"Emis{Species}_Total"]
+                original_emis = original_emis_ds[f"Emis{species}_Total"]
 
             # Get the gridded posterior for period p
             gridded_posterior_filename = (
@@ -140,6 +140,10 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor, species
     emis = get_posterior_emissions(original_emis_ds, sf, species)[f"Emis{species}_Total"]
     total_emis = sum_total_emissions(emis, areas, mask)
     print(f"Total prior emission = {total_emis} Tg a-1")
+    
+    # Make sure time dimension comes first, since that's what HEMCO expects
+    if "time" in sf.dims:
+        sf = sf.transpose("time", ...)
 
     # Ensure good netcdf attributes for HEMCO
     if config['UseGCHP']:
