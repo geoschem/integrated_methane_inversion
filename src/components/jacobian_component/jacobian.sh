@@ -92,17 +92,13 @@ setup_jacobian() {
         sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
     fi
 
-    if "$KalmanMode"; then
-        jacobian_period=${period_i}
-    else
+    if ! "$KalmanMode"; then
         jacobian_period=1
+        # generate gridded perturbation values for all state vector elements
+        printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+        printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
     fi
-
-    set -e
-    # generate gridded perturbation values for all state vector elements
-    printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
-    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
-    printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0

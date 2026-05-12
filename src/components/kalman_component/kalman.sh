@@ -121,9 +121,9 @@ run_period() {
     fi
 
     # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs
-    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $UseGCHP $JacobianRunsDir
+    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $JacobianRunsDir
     wait
-    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $UseGCHP $PosteriorRunDir
+    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $PosteriorRunDir
     wait
     if ! "$UseGCHP"; then
         echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
