@@ -1,0 +1,149 @@
+
+=== PARSING CONFIG FILE ===
+envs/MIT-Engaging/python.env
+
+Activating conda environment: imi_env
+
+=== EXECUTING RUN_INVERSION.SH ===
+Calling setup_gc_cache.py
+Set up hourly data files in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/inversion/data_geoschem
+DONE -- setup_gc_cache.py
+
+Calling jacobian.py
+Start: 2018-05-05T00:00:00.000000
+End: 2018-05-06T23:59:59.000000
+Found 29 satellite data files.
+Wrote files to /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/inversion/data_converted
+========================
+S5P_BLND_L2__CH4____20180505T085402_20180505T103533_02894_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T085402_20180505T103533_02894_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T103533_20180505T121703_02895_03_020400_20230614T001201.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T103533_20180505T121703_02895_03_020400_20230614T001201.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T002632_20180505T020802_02889_03_020400_20230614T000943.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T002632_20180505T020802_02889_03_020400_20230614T000943.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T020802_20180505T034932_02890_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T020802_20180505T034932_02890_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T204433_20180505T222604_02901_03_020400_20230614T001047.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T204433_20180505T222604_02901_03_020400_20230614T001047.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T071232_20180505T085402_02893_03_020400_20230614T001240.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T071232_20180505T085402_02893_03_020400_20230614T001240.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T053102_20180505T071232_02892_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T053102_20180505T071232_02892_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T170235_20180506T184405_02913_03_020400_20230614T001042.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T170235_20180506T184405_02913_03_020400_20230614T001042.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T065334_20180506T083504_02907_03_020400_20230614T001337.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T065334_20180506T083504_02907_03_020400_20230614T001337.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T000734_20180506T014904_02903_03_020400_20230614T000959.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T000734_20180506T014904_02903_03_020400_20230614T000959.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T154003_20180505T172133_02898_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T154003_20180505T172133_02898_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T101635_20180506T115805_02909_03_020400_20230614T001047.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T101635_20180506T115805_02909_03_020400_20230614T001047.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T172133_20180505T190303_02899_03_020400_20230614T001007.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T172133_20180505T190303_02899_03_020400_20230614T001007.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T220706_20180506T234836_02916_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T220706_20180506T234836_02916_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T014904_20180506T033034_02904_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T014904_20180506T033034_02904_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T083504_20180506T101635_02908_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T083504_20180506T101635_02908_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T152105_20180506T170235_02912_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T152105_20180506T170235_02912_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T202535_20180506T220706_02915_03_020400_20230614T001039.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T202535_20180506T220706_02915_03_020400_20230614T001039.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T222604_20180506T000734_02902_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T222604_20180506T000734_02902_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T234836_20180507T013006_02917_03_020400_20230614T000934.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T234836_20180507T013006_02917_03_020400_20230614T000934.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T135833_20180505T154003_02897_03_020400_20230614T001406.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T135833_20180505T154003_02897_03_020400_20230614T001406.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T121703_20180505T135833_02896_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T121703_20180505T135833_02896_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T133935_20180506T152105_02911_03_020400_20230614T001323.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T133935_20180506T152105_02911_03_020400_20230614T001323.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T051204_20180506T065334_02906_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T051204_20180506T065334_02906_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T033034_20180506T051204_02905_03_020400_20230614T001016.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T033034_20180506T051204_02905_03_020400_20230614T001016.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180505T034932_20180505T053102_02891_03_020400_20230614T001010.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180505T034932_20180505T053102_02891_03_020400_20230614T001010.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T115805_20180506T133935_02910_03_020400_20230614T000922.nc
+Applying satellite operator...
+No satellite observations found in /orcd/data/dvaron/001/IMI/outputs/vedrau/baseline_jacobian_inversion3/satellite_data/S5P_BLND_L2__CH4____20180506T115805_20180506T133935_02910_03_020400_20230614T000922.nc. Skipping.
+========================
+S5P_BLND_L2__CH4____20180506T184405_20180506T202535_02914_03_020400_20230614T000922.nc
+Applying satellite operator...
+Found 5723 satellite observations.
+Saving .pkl file
+========================
+S5P_BLND_L2__CH4____20180505T190303_20180505T204433_02900_03_020400_20230614T000922.nc
+Applying satellite operator...
+Found 7993 satellite observations.
+Saving .pkl file
+ DONE -- jacobian.py
+
+Calling invert.py
+hyperparameters: (prior_err: 0.5, obs_err: 15.0, gamma: 1.0, prior_err_bc: 10.0, prior_err_oh: 0.0)
+Normalized J_A: 1.6287583077375787
+Min: 0.2084386018047769 Mean: 1.2248500585087037 Max 3.7377515030717086
+J_A/n closest to 1: 1.6287583077375787 with (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = (0.5, 15.0, 1.0, 10.0, 0.0)
+Saved results to ./inversion_result.nc
+DONE -- invert.py
+
+Calling make_gridded_posterior.py
+Saved gridded file to ./gridded_posterior.nc
+DONE -- make_gridded_posterior.py
+
+Exiting run_inversion.sh

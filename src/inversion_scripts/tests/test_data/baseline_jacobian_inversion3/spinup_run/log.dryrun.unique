@@ -1,0 +1,299 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! LIST OF (UNIQUE) FILES REQUIRED FOR THE SIMULATION
+!!! Start Date       : 20180405 000000
+!!! End Date         : 20180505 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180405 000000
+!!! End Date         : 20180505 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180405 000000
+!!! End Date         : 20180505 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+./HEMCO_Config.rc
+./HEMCO_Config.rc.gmao_metfields
+./HEMCO_Diagn.rc
+./HISTORY.rc
+./geoschem_config.yml
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180405_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180406_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180407_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180408_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180409_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180410_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180411_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180412_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180413_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180414_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180415_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180416_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180417_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180418_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180419_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180420_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180421_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180422_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180423_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180424_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180425_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180426_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180427_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180428_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180429_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180430_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180501_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180502_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180503_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180504_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180505_0000z.nc4
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2011/01/GEOSFP.20110101.CN.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180405.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180405.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180405.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180405.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180405.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180405.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180406.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180406.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180406.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180406.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180406.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180406.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180407.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180407.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180407.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180407.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180407.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180407.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180408.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180408.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180408.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180408.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180408.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180408.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180409.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180409.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180409.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180409.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180409.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180409.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180410.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180410.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180410.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180410.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180410.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180410.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180411.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180411.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180411.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180411.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180411.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180411.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180412.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180412.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180412.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180412.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180412.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180412.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180413.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180413.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180413.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180413.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180413.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180413.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180414.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180414.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180414.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180414.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180414.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180414.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180415.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180415.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180415.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180415.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180415.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180415.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180416.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180416.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180416.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180416.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180416.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180416.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180417.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180417.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180417.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180417.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180417.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180417.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180418.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180418.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180418.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180418.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180418.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180418.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180419.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180419.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180419.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180419.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180419.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180419.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180420.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180420.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180420.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180420.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180420.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180420.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180421.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180421.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180421.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180421.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180421.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180421.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180422.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180422.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180422.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180422.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180422.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180422.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180423.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180423.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180423.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180423.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180423.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180423.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180424.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180424.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180424.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180424.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180424.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180424.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180425.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180425.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180425.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180425.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180425.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180425.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180426.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180426.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180426.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180426.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180426.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180426.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180427.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180427.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180427.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180427.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180427.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180427.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180428.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180428.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180428.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180428.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180428.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180428.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180429.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180429.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180429.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180429.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180429.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180429.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180430.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180430.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180430.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180430.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180430.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/04/GEOSFP.20180430.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180501.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180501.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180501.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180501.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180501.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180501.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180502.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180502.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180502.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180502.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180502.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180502.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180503.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180503.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180503.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180503.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180503.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180503.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180504.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180504.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180504.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180504.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180504.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180504.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180505.A1.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180505.A3cld.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180505.A3dyn.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180505.A3mstC.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180505.A3mstE.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180505.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/GEOS_0.25x0.3125_NA/GEOS_FP/2018/05/GEOSFP.20180506.I3.025x03125.NA.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2017-10/Seasonal_SF/EMICH4_Manure_ScalingFactors.WithClimatology.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2017-10/Seasonal_SF/EMICH4_Rice_ScalingFactors.SetMissing.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2019-10/MeMo_SoilAbs/MeMo_CH4uptake_Climatology.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2020-04/Seeps/Etiope_CH4GeologicalEmis_ScaledToHmiel.1x1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/4x5/termites.geos.4x5.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_coal_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_gas_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_landfill_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_livestock_A_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_livestock_B_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_oil_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_other_anthro_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_rice_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_waste_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-04/EDGARv6_SF/EDGARv6_CH4_MonthlyScaleFactors_ENF.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-04/EDGARv6_SF/EDGARv6_CH4_MonthlyScaleFactors_MNM.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-07/Gridded_GHGI_v2/Express_Extension_Gridded_GHGI_Methane_v2_2018.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-07/Gridded_GHGI_v2/Gridded_GHGI_Methane_v2_Monthly_Scale_Factors_2018.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/GCC_14_Output/2018/GEOSChem.SpeciesConc.20180401_0000z.nc4
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/GCC_14_Output/2018/GEOSChem.SpeciesConc.20180501_0000z.nc4
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/GC_CH4_LOSS/GCC14_72LM.ch4loss.4x5.nc4
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/JPL_WetCharts/HEensemble/JPL_WetCharts_2010-2019.Ensemble_Mean.0.5x0.5.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/ResME/ResME_Dam_Emissions.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/ResME/ResME_Surface_Emissions.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/ResME/reservoir_mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/GFED4/v2023-03/2018/GFED4_dailyfrac_gen.025x025.201804.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/GFED4/v2023-03/2018/GFED4_dailyfrac_gen.025x025.201805.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/GFED4/v2023-03/2018/GFED4_gen.025x025.201804.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/GFED4/v2023-03/2018/GFED4_gen.025x025.201805.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/CONUS_Mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/CONUS_Mask_Mirror.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Canada_Mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Canada_Mask_Mirror.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Mexico_Mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Mexico_Mask_Mirror.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/OH/v2022-11/v5-07-08/OH_3Dglobal.geos5.72L.4x5.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/OLSON_MAP/v2019-02/Olson_2001_Land_Type_Masks.025x025.generic.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/TIMEZONES/v2024-02/timezones_vohra_2017_0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/Yuan_XLAI/v2021-06/Yuan_proc_MODIS_XLAI.025x025.2018.nc
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! LIST OF (UNIQUE) FILES REQUIRED FOR THE SIMULATION
+!!! Start Date       : 20180405 000000
+!!! End Date         : 20180505 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180405 000000
+!!! End Date         : 20180505 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180405 000000
+!!! End Date         : 20180505 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

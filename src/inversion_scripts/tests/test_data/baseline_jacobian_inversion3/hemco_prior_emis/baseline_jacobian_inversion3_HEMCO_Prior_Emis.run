@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH -N 1
+#SBATCH --mail-type=END
+
+# Set the proper # of threads for OpenMP
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+# Run GEOS_Chem.  The "time" command will return CPU and wall times.
+# Stdout and stderr will be directed to the log files specified above.
+time ./hemco_standalone -c HEMCO_sa_Config.rc > HEMCO_sa.log 2>&1
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    rm -f .error_status_file.txt
+    echo "Error Status: $retVal" > .error_status_file.txt
+    echo "HEMCO prior emis run exited with error code: $retVal"
+    exit $retVal
+fi
+
+# Exit normally
+exit 0
+#EOC

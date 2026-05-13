@@ -11,6 +11,7 @@ slurm-*.out
 *~
 *.log
 .env
+.vscode/
 # HON only
 config.yml
 config.aws.yml

@@ -1,0 +1,80 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! LIST OF (UNIQUE) FILES REQUIRED FOR THE SIMULATION
+!!! Start Date       : 20180505 000000
+!!! End Date         : 20180507 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180505 000000
+!!! End Date         : 20180507 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180505 000000
+!!! End Date         : 20180507 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+./HEMCO_Config.rc
+./HEMCO_Config.rc.gmao_metfields
+./HEMCO_Diagn.rc
+./HISTORY.rc
+./geoschem_config.yml
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180505_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180506_0000z.nc4
+/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions.20180507_0000z.nc4
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2017-10/Seasonal_SF/EMICH4_Manure_ScalingFactors.WithClimatology.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2017-10/Seasonal_SF/EMICH4_Rice_ScalingFactors.SetMissing.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2019-10/MeMo_SoilAbs/MeMo_CH4uptake_Climatology.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2020-04/Seeps/Etiope_CH4GeologicalEmis_ScaledToHmiel.1x1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/4x5/termites.geos.4x5.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_coal_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_gas_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_landfill_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_livestock_A_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_livestock_B_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_oil_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_other_anthro_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_rice_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2022-11/Scarpelli_Mexico/MEX_Tia2020_waste_2015.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-04/EDGARv6_SF/EDGARv6_CH4_MonthlyScaleFactors_ENF.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-04/EDGARv6_SF/EDGARv6_CH4_MonthlyScaleFactors_MNM.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-07/Gridded_GHGI_v2/Express_Extension_Gridded_GHGI_Methane_v2_2018.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2023-07/Gridded_GHGI_v2/Gridded_GHGI_Methane_v2_Monthly_Scale_Factors_2018.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/GCC_14_Output/2018/GEOSChem.SpeciesConc.20180501_0000z.nc4
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/GC_CH4_LOSS/GCC14_72LM.ch4loss.4x5.nc4
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/JPL_WetCharts/HEensemble/JPL_WetCharts_2010-2019.Ensemble_Mean.0.5x0.5.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/ResME/ResME_Dam_Emissions.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/ResME/ResME_Surface_Emissions.0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/CH4/v2024-01/ResME/reservoir_mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/GFED4/v2023-03/2018/GFED4_dailyfrac_gen.025x025.201805.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/GFED4/v2023-03/2018/GFED4_gen.025x025.201805.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/CONUS_Mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/CONUS_Mask_Mirror.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Canada_Mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Canada_Mask_Mirror.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Mexico_Mask.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/MASKS/v2024-04/Mexico_Mask_Mirror.01x01.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/OH/v2022-11/v5-07-08/OH_3Dglobal.geos5.72L.4x5.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/OLSON_MAP/v2019-02/Olson_2001_Land_Type_Masks.025x025.generic.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/TIMEZONES/v2024-02/timezones_vohra_2017_0.1x0.1.nc
+/orcd/data/dvaron/001/IMI/ExtData/HEMCO/Yuan_XLAI/v2021-06/Yuan_proc_MODIS_XLAI.025x025.2018.nc
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! LIST OF (UNIQUE) FILES REQUIRED FOR THE SIMULATION
+!!! Start Date       : 20180505 000000
+!!! End Date         : 20180507 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180505 000000
+!!! End Date         : 20180507 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!! Start Date       : 20180505 000000
+!!! End Date         : 20180507 000000
+!!! Simulation       : carbon
+!!! Meteorology      : GEOSFP
+!!! Grid Resolution  : 0.25x0.3125
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

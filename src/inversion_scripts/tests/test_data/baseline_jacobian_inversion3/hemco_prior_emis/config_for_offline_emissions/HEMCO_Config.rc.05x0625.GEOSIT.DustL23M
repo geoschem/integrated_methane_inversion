@@ -1,0 +1,144 @@
+#------------------------------------------------------------------------------
+#                  Harmonized Emissions Component (HEMCO)                     !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !MODULE: HEMCO_sa_Config.rc
+#
+# !DESCRIPTION: Contains configuration information for the HEMCO standalone
+#  model. You can define global settings here.
+#\\
+#\\
+# !REMARKS:
+#  See The HEMCO User's Guide for file details:
+#    http://wiki.geos-chem.org/The_HEMCO_User%27s_Guide
+#
+#  For HEMCO standalone simulations, you can simply "drop in" an existing
+#  HEMCO_Config.rc file from another model (e.g. GEOS-Chem), and those settings
+#  will be activated.  This is done with the ">>>include HEMCO_Config.rc"
+#  statement. Settings in HEMCO_sa_Config.rc will always override any settings
+#  in the included HEMCO_Config.rc.
+#
+#  We recommend to use the emissions options in HEMCO_Config.rc (rather than
+#  overriding them in HEMCO_sa_Config.rc) so that the standalone simulation
+#  will provide the same emissions as would the corresponding model simulation.
+#
+# !REVISION HISTORY:
+#  See https://github.com/geoschem/hemco for complete history
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+###############################################################################
+### BEGIN SECTION SETTINGS
+###############################################################################
+#-----------------------------------------------------
+# Settings for HEMCO standalone input and output
+#-----------------------------------------------------
+ROOT:                /ExtData/HEMCO
+METDIR:              /ExtData/GEOS_0.5x0.625/GEOS_IT
+GridFile:            HEMCO_sa_Grid.05x0625.rc
+SpecFile:            HEMCO_sa_Spec.rc
+TimeFile:            HEMCO_sa_Time.rc
+DiagnFile:           HEMCO_Diagn.rc
+Logfile:             *
+#-----------------------------------------------------
+# Settings for HEMCO grid
+#-----------------------------------------------------
+MET:                 GEOSIT
+RES:                 05x0625
+NC:                  nc
+#-----------------------------------------------------
+# Settings for HEMCO standalone diagnostics
+#-----------------------------------------------------
+DefaultDiagnOn:      false
+DefaultDiagnSname:   TOTAL_
+DefaultDiagnLname:   HEMCO_total_emissions_
+DefaultDiagnDim:     2
+DefaultDiagnUnit:    kgm-2s-1
+DiagnPrefix:         OutputDir/HEMCO_sa_diagnostics
+DiagnFreq:           00000000 010000
+#-----------------------------------------------------
+# Debugging options
+# (set verbose to true to toggle debug printout)
+#-----------------------------------------------------
+Unit tolerance:      1
+Negative values:     0
+Verbose:             false
+#-----------------------------------------------------
+# Additional settings
+#-----------------------------------------------------
+PBL dry deposition:  False
+
+### END SECTION SETTINGS ###
+
+###############################################################################
+### BEGIN SECTION EXTENSION SWITCHES
+###############################################################################
+### Set the below switches below to false and HEMCO extensions to off. They
+### are only needed for GEOS-Chem simualations, but not for HEMCO standalone
+### simulations. Turning off the extensions also avoids having to supply
+### certain data fields for the extentions that usually are obtained directly
+### from GEOS-Chem.
+###############################################################################
+# ExtNr ExtName                on/off Species
+0       Base                   : on   *
+# ----- MAIN SWITCHES ---------------------------------------------------------
+    --> EMISSIONS              :       true
+    --> METEOROLOGY            :       true   # 1980-2021
+    --> CHEMISTRY_INPUT        :       false
+125     DustL23M               : on    TDST/DSTbin1/DSTbin2/DSTbin3/DSTbin4/DSTbin5/DSTbin6/DSTbin7
+    --> Mass tuning factor     :       2.411E-03
+### END SECTION EXTENSION SWITCHES ###
+
+###############################################################################
+### BEGIN SECTION BASE EMISSIONS
+###############################################################################
+
+# ExtNr Name sourceFile sourceVar sourceTime C/R/E SrcDim SrcUnit Species ScalIDs Cat Hier
+(((EMISSIONS
+(((DustL23M
+125 L23M_A_bare       $ROOT/DustL23M/v2025-07/LandCover/MCD12C1.LC.$YYYY.0.1.nc4           LC_bare       1998-2022/1/1/0    C xy 1           * - 1 1
+125 L23M_A_veg        $ROOT/DustL23M/v2025-07/LandCover/MCD12C1.LC.$YYYY.0.1.nc4           LC_veg        1998-2022/1/1/0    C xy 1           * - 1 1
+125 L23M_Csah         $ROOT/DustL23M/v2025-07/scale/DustL23_scale_025x03125_scaleSAv2.nc4  scale         2000/1/1/0         C xy 1           * - 1 1
+125 L23M_LAI          $ROOT/DustL23M/v2025-07/LandCover/XLAI_025x025_$YYYY_MonMean.nc4     LAI           2000-2020/1-12/1/0 C xy 1           * - 1 1
+125 L23M_fclay        $ROOT/DustL23M/v2025-07/GSDE/GSDE_clay-sand-silt_0.1.nc4             f_clay        2000/1/1/0         C xy 1           * - 1 1
+125 L23M_BD           $ROOT/DustL23M/v2025-07/GSDE/GSDE_clay-sand-silt_0.1.nc4             bulk_density  2000/1/1/0         C xy kg-soil/m3  * - 1 1
+125 L23M_poros        $ROOT/DustL23M/v2025-07/poros/MERRA2.const_2d_lnd_Nx.poros.nc4       poros         1980/1/1/0         C xy 1           * - 1 1
+125 L23M_roughness_r  $ROOT/DustL23M/v2025-07/roughness/Surf_roughness_min_rocks_1997.nc4  roughness_r   1997/1/1/0         C xy m           * - 1 1
+)))DustL23M
+)))EMISSIONS
+(((METEOROLOGY
+* USTAR     $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     USTAR    2014-2024/1-12/1-31/*/+30minute EFY xy  m/s       * -  1 1
+* T2M       $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     T2M      2014-2024/1-12/1-31/*/+30minute EFY xy  K         * -  1 1
+* TS        $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     TS       2014-2024/1-12/1-31/*/+30minute EFY xy  K         * -  1 1
+* PBLH      $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     PBLH     2014-2024/1-12/1-31/*/+30minute EFY xy  m         * -  1 1
+* GWETTOP   $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     GWETTOP  2014-2024/1-12/1-31/*/+30minute EFY xy  1         * -  1 1
+* HFLUX     $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     HFLUX    2014-2024/1-12/1-31/*/+30minute EFY xy  W/m2      * -  1 1
+* SNOMAS    $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.A1.$RES.$NC     SNOMAS   2014-2024/1-12/1-31/*/+30minute EFY xy  kg-H2O/m2 * -  1 1
+
+* PS        $METDIR/$YYYY/$MM/$MET.$YYYY$MM$DD.I3.$RES.$NC     PS       2014-2024/1-12/1-31/*           EFY xy  hPa       * -  1 1
+)))METEOROLOGY
+
+#==============================================================================
+# --- Drop in a "HEMCO_Config.rc" file here ---
+#==============================================================================
+# >>>include HEMCO_Config.rc
+
+### END SECTION BASE EMISSIONS ###
+
+###############################################################################
+### BEGIN SECTION SCALE FACTORS
+###############################################################################
+
+# ScalID Name sourceFile sourceVar sourceTime C/R/E SrcDim SrcUnit Oper
+### END SECTION SCALE FACTORS ###
+
+###############################################################################
+### BEGIN SECTION MASKS
+###############################################################################
+
+# ScalID Name sourceFile sourceVar sourceTime C/R/E SrcDim SrcUnit Oper Lon1/Lat1/Lon2/Lat2
+### END SECTION MASKS ###
+
+### END OF HEMCO INPUT FILE ###
+#EOC
