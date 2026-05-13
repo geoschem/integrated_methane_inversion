@@ -360,10 +360,14 @@ create_simulation_dir() {
                 -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
         fi
 
-        # create a break in EMISSIONS logic block for MeMo in background simulation
-        if [[ "$x" = "background" ]]; then
-            sed -i -e "/(((MeMo_SOIL_ABSORPTION/i )))EMISSIONS" HEMCO_Config.rc
-            sed -i -e "/)))MeMo_SOIL_ABSORPTION/a (((EMISSIONS" HEMCO_Config.rc
+        # create a break in EMISSIONS and USE_CH4_DATA logic block for MeMo in background simulation
+        if [[ "$x" == "background" && "$OptimizeSoil" != true ]]; then
+            sed -i \
+                -e "/(((MeMo_SOIL_ABSORPTION/i )))USE_CH4_DATA" \
+                -e "/(((MeMo_SOIL_ABSORPTION/i )))EMISSIONS" HEMCO_Config.rc
+            sed -i \
+                -e "/)))MeMo_SOIL_ABSORPTION/a (((EMISSIONS" \
+                -e "/)))MeMo_SOIL_ABSORPTION/a (((USE_CH4_DATA" HEMCO_Config.rc
         fi
 
         if "$KalmanMode"; then
