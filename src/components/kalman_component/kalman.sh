@@ -169,7 +169,7 @@ run_period() {
     else
         org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
     fi
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $org_restart ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i $Species
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $org_restart ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $EndDate_i $Species
     rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
     for ((idx = 0; idx <= rundir_num; idx++)); do
         # Add zeros to string name
@@ -197,13 +197,13 @@ run_period() {
         # Otherwise use the posterior simulation as the restart file
         if "$UseGCHP"; then
             if [[ "$filename" == *1ppb* ]]; then
-                ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
+                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
             else
                 ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
             fi
         else
             if [[ "$filename" == *1ppb* ]]; then
-                ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
+                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
             else
                 ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
             fi
