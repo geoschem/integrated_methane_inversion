@@ -170,7 +170,7 @@ setup_template() {
         jacobian_period=1
     fi
     scale_OLD=" ./gridded_pert_scale_1.nc"
-    scale_NEW=" ${RunDirs}/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc"
+    scale_NEW=" ${RunDirs}/gridded_perturbation_sf.nc"
     sed -i -e "s@$scale_OLD@$scale_NEW@g" HEMCO_Config.rc
 
     if [ "$UseGCHP" = true ]; then

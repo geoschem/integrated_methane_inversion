@@ -511,15 +511,19 @@ add_new_tracer() {
 # Usage:
 #   run_jacobian
 run_jacobian() {
-
     if "$KalmanMode"; then
         jacobian_period=${period_i}
+        # generate gridded perturbation values for all state vector elements
         printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
         python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
         printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
     else
         jacobian_period=1
     fi
+    set -e
+    # Copy the relevant gridded perturbation scale factor file to a generic name the Jacobian runs will look for
+    cp ${RunDirs}/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc ${RunDirs}/gridded_perturbation_sf.nc
+    set +e
 
     pushd ${RunDirs}
 
