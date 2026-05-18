@@ -69,15 +69,21 @@ class TestEndToEndIntegration:
         return temp_workspace
 
     @pytest.fixture
-    def expected_outputs_dir(self, baseline_test_data_dir):
-        """Path to expected output files for comparison."""
+    def avg_tropomi_expected_outputs_dir(self, baseline_test_data_dir):
+        """Path to expected output files of average tropomi operator."""
         return baseline_test_data_dir / "inversion" / "data_converted"
+
+    @pytest.fixture
+    def regular_tropomi_expected_outputs_dir(self, baseline_test_data_dir):
+        """Path to expected output files of regular tropomi operator."""
+        return baseline_test_data_dir / "inversion" / "data_visualization"
 
     def test_jacobian_end_to_end_baseline(
         self,
         temp_inversion_workspace,
         baseline_test_data_dir,
-        expected_outputs_dir,
+        avg_tropomi_expected_outputs_dir,
+        regular_tropomi_expected_outputs_dir,
     ):
         """
         End-to-end test: Run jacobian.py with baseline test data and verify outputs.
@@ -155,7 +161,7 @@ class TestEndToEndIntegration:
                 f"STDERR:\n{result.stderr}"
             )
 
-        # Verify output pickle files were created
+        # Verify avg tropomi operator output pickle files were created
         output_dir = workdir / "data_converted"
         output_pkl_files = list(output_dir.glob("*_GCtoSatellite.pkl"))
 
@@ -165,8 +171,66 @@ class TestEndToEndIntegration:
         )
 
         # Compare outputs with expected files
-        if expected_outputs_dir.exists():
-            expected_pkl_files = list(expected_outputs_dir.glob("*_GCtoSatellite.pkl"))
+        if avg_tropomi_expected_outputs_dir.exists():
+            expected_pkl_files = list(avg_tropomi_expected_outputs_dir.glob("*_GCtoSatellite.pkl"))
+
+            for expected_file in expected_pkl_files:
+                output_file = output_dir / expected_file.name
+                if output_file.exists():
+                    # Load both pickle files
+                    with open(expected_file, "rb") as f:
+                        expected_output = pickle.load(f)
+
+                    with open(output_file, "rb") as f:
+                        actual_output = pickle.load(f)
+
+                    # Verify structure matches
+                    assert set(expected_output.keys()) == set(actual_output.keys()), (
+                        f"Output keys don't match for {expected_file.name}. "
+                        f"Expected: {set(expected_output.keys())}, "
+                        f"Got: {set(actual_output.keys())}"
+                    )
+
+                    # Compare numerical arrays with tolerance
+                    for key in expected_output.keys():
+                        if isinstance(expected_output[key], np.ndarray):
+                            assert isinstance(actual_output[key], np.ndarray), (
+                                f"Array {key} has different type: "
+                                f"expected ndarray, got {type(actual_output[key])}"
+                            )
+
+                            assert expected_output[key].shape == actual_output[key].shape, (
+                                f"Array {key} has different shape: "
+                                f"expected {expected_output[key].shape}, "
+                                f"got {actual_output[key].shape}"
+                            )
+
+                            # Use relative tolerance for floating point comparisons
+                            if expected_output[key].size > 0:
+                                assert np.allclose(
+                                    expected_output[key],
+                                    actual_output[key],
+                                    rtol=1e-5,
+                                    atol=1e-8,
+                                    equal_nan=True,
+                                ), (
+                                    f"Array {key} values don't match within tolerance. "
+                                    f"Max difference: "
+                                    f"{np.max(np.abs(expected_output[key] - actual_output[key]))}"
+                                )
+
+        # Verify regular tropomi operator output pickle files were created
+        output_dir = workdir / "data_visualization"
+        output_pkl_files = list(output_dir.glob("*_GCtoSatellite.pkl"))
+
+        assert len(output_pkl_files) > 0, (
+            f"No output pickle files found in {output_dir}. "
+            f"Expected *_GCtoSatellite.pkl files"
+        )
+
+        # Compare outputs with expected files
+        if regular_tropomi_expected_outputs_dir.exists():
+            expected_pkl_files = list(regular_tropomi_expected_outputs_dir.glob("*_GCtoSatellite.pkl"))
 
             for expected_file in expected_pkl_files:
                 output_file = output_dir / expected_file.name
