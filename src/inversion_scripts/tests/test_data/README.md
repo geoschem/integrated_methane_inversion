@@ -2,4 +2,4 @@ The outputs in test_data/baseline_jacobian_inversion3/inversion/data_converted a
 
 `python -u src/inversion_scripts/jacobian.py src/inversion_scripts/tests/test_data/baseline_jacobian_inversion3/inversion/ src/inversion_scripts/tests/test_data/baseline_jacobian_inversion3/config_baseline_jacobian_inversion3.yml "20180505" "20180507" "-104" "-103" "31" "32" "27" "CH4" src/inversion_scripts/tests/test_data/baseline_jacobian_inversion3/satellite_data_may/ "BlendedTROPOMI" "false" "false" "1" "true" "false"`
 
-The same command is run in test_jacobian.py::test_jacobian_end_to_end_baseline to verify that the actual outputs of jacobian.py are the same as the expected outputs from a fixed run (a.k.a. when the above command was from a known good state)
+The same command is run in test_jacobian.py::test_jacobian_end_to_end_baseline to verify that the actual outputs of jacobian.py are the same as the expected outputs from a fixed run (a.k.a. when the above command was from a known good state). When you make any functional changes to the observation operator or the jacobian construction, make sure to re-run the above command to regenerate the output files.
