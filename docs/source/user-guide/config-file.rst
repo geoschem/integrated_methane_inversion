@@ -164,8 +164,10 @@ Kalman filter options
      - Path to custom ``periods.csv`` with user-defined start and end dates for each Kalman filter update period.
    * - ``FirstPeriod``
      - Optional variable to specify which Kalman period to start on, if restarting an inversion. Default is ``1``.
+   * - ``AutoAdvanceFirstPeriod``
+     - When ``true``, at the end of every successfully completed Kalman period ``FirstPeriod`` is advanced in the active config file, so that a subsequent re-launch skips already-finished periods. Default is ``false``.
 
-State vector 
+State vector
 ~~~~~~~~~~~~
 .. list-table::
    :widths: 30, 70

@@ -93,6 +93,7 @@ UpdateFreqDays: 7
 NudgeFactor: 0.1
 MakePeriodsCSV: true
 CustomPeriodsCSV: "/path/to/periods.csv"
+AutoAdvanceFirstPeriod: false
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
