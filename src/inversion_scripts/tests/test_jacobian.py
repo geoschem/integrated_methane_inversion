@@ -11,7 +11,6 @@ import numpy as np
 import pytest
 
 
-# TODO: add tests for the regular tropomi observation operator (not just average operator)
 class TestEndToEndIntegration:
     """End-to-end integration tests running jacobian.py with real test data."""
 
