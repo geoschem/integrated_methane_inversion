@@ -5,6 +5,7 @@
 #SBATCH --mem=2000
 #SBATCH --mail-type=END
 #SBATCH -o "imi_output.log"
+#SBATCH --open-mode=append
 
 ## Uncomment to use PBS
 ###PBS -l nodes=1,ncpus=1
@@ -14,6 +15,36 @@
 # For documentation, see https://imi.readthedocs.io.
 #
 # Authors: Daniel Varon, Melissa Sulprizio, Lucas Estrada, Will Downs
+
+
+## Config log rotation - preserves history across re-launches with the same config
+if [[ $# == 1 ]]; then
+    _imi_cfg="$1"
+else
+    _imi_cfg="config.yml"
+fi
+_imi_tag=$(basename "$_imi_cfg" .yml)
+_imi_log="imi_output.log"
+_imi_sentinel="imi_output.log.tag"
+
+if [[ -s "$_imi_log" && -f "$_imi_sentinel" ]]; then
+    _imi_prev=$(<"$_imi_sentinel")
+    if [[ "$_imi_prev" != "$_imi_tag" ]]; then
+        _imi_ts=$(date +%Y%m%d_%H%M%S)
+        cp "$_imi_log" "imi_output.${_imi_prev}.${_imi_ts}.bak.log"
+        # Truncate instead of delete, because slurm has the file open
+        : > "$_imi_log"
+    fi
+fi
+# Always copy the current tag into the sentinel file
+echo "$_imi_tag" > "$_imi_sentinel"
+
+printf "\n================================================================================\n"
+printf "IMI invocation: %s  job=%s  config=%s\n" \
+    "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "${SLURM_JOB_ID:-no-slurm}" "$_imi_tag"
+printf "================================================================================\n"
+
+unset _imi_cfg _imi_tag _imi_log _imi_sentinel _imi_prev _imi_ts
 
 ##=======================================================================
 ## Import Shell functions
