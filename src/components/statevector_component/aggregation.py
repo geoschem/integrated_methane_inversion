@@ -712,6 +712,7 @@ if __name__ == "__main__":
         original_clusters = xr.open_dataset(state_vector_path).squeeze()
         sensitivity_args = [
             config, 
+            config["Species"],
             state_vector_path, 
             preview_dir, 
             satellite_cache, 
