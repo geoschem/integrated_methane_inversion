@@ -202,10 +202,10 @@ class PointSources:
         d_names = []
         for d in self.datasources:
             ds_i = self._grid_datasource(d)
-            d_list.append(ds_i)
             if ds_i is not None:
+                d_list.append(ds_i)
                 d_names.append(d.myname)
-        if not all([i is None for i in d_list]):
+        if len(d_list) > 0:
             ds = xr.concat(d_list, "observer")
             ds = ds.assign_coords({"observer": d_names})
             return ds
