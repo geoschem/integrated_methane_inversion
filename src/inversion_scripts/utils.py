@@ -1176,6 +1176,7 @@ def compute_min_max_ensemble_sectors(
     areas: xr.DataArray,
     mask: xr.DataArray,
     num_ensemble_members: int,
+    species: str,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """
     Compute the minimum and maximum posterior emissions for each sector across the ensemble.
@@ -1187,11 +1188,12 @@ def compute_min_max_ensemble_sectors(
     sector_maxes : dict
         Maximum posterior emissions for each sector.
     """
-    # Identify sectors (EmisCH4 variables, excluding totals/exclusions)
+    # Identify sectors (Emis<species> variables, excluding totals/exclusions)
+    emis_prefix = f"Emis{species}"
     sectors = [
         var
         for var in list(ens_posterior_ds.keys())
-        if "EmisCH4" in var and not ("Total" in var or "Excl" in var)
+        if emis_prefix in var and not ("Total" in var or "Excl" in var)
     ]
 
     sector_mins = {sector: float("inf") for sector in sectors}
@@ -1199,7 +1201,7 @@ def compute_min_max_ensemble_sectors(
 
     for member in range(num_ensemble_members):
         active_ds = get_posterior_emissions(
-            prior_ds, ens_scale_ds.isel(ensemble=member)
+            prior_ds, ens_scale_ds.isel(ensemble=member), species
         )
 
         for sector in sectors:
@@ -1211,12 +1213,12 @@ def compute_min_max_ensemble_sectors(
 
     # Remove sectors with inf or -inf values from the results
     sector_mins = {
-        f"{k.replace('EmisCH4_', '')}_ensMin": v
+        f"{k.replace(emis_prefix + '_', '')}_ensMin": v
         for k, v in sector_mins.items()
         if np.isfinite(v)
     }
     sector_maxes = {
-        f"{k.replace('EmisCH4_', '')}_ensMax": v
+        f"{k.replace(emis_prefix + '_', '')}_ensMax": v
         for k, v in sector_maxes.items()
         if np.isfinite(v)
     }
@@ -1227,6 +1229,7 @@ def compute_min_max_ensemble_sectors(
 def export_visualization_outputs(
     *,
     plot_save_path: str,
+    species: str,
     start_date,
     end_date,
     total_prior_emissions: float,
@@ -1366,11 +1369,12 @@ def export_visualization_outputs(
 
         sector_mins, sector_maxes = compute_min_max_ensemble_sectors(
             prior_ds,
-            get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0)),
+            get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0), species),
             ens_scale_ds,
             areas,
             mask,
             num_ensemble_members,
+            species,
         )
 
         statistics.update(sector_mins)
