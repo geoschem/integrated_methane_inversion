@@ -240,7 +240,7 @@ if __name__ == "__main__":
                 config,
                 use_water_obs=use_water_obs,
             )
-            if obs_mapped_to_gc == None:
+            if obs_mapped_to_gc is None:
                 return 0
 
             output = apply_operator(
@@ -291,7 +291,7 @@ if __name__ == "__main__":
                 config,
             )
 
-            if output == None:
+            if output is None:
                 return 0
         else:
             return 0

@@ -993,7 +993,7 @@ def read_and_filter_satellite(
         sys.exit(1)
 
     # If empty, skip this file
-    if satellite == None:
+    if satellite is None:
         print(f"Skipping {filename} due to file processing issue.")
         return satellite
 
