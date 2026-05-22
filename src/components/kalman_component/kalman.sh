@@ -144,6 +144,9 @@ run_period() {
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
 
+    # Refresh the per-task ReDoJacobian skip check to use this period's EndDate. 
+    sed -i -E "s/^yyyymmdd=[0-9]{8}/yyyymmdd=${EndDate_i}/" "${JacobianRunsDir}/run_jacobian_simulations.sh"
+
     # run jacobian simulation for the given period
     run_jacobian
 
