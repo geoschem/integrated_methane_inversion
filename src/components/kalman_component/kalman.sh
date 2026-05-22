@@ -144,6 +144,24 @@ run_period() {
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
 
+    # Refresh nElements in this period's run_inversion.sh based on the
+    # actual number of elements - can be less than NumberOfElements
+    # if native cells run out before all requested cluster slots are filled.
+
+    nElements_p=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+        nElements_p=$((nElements_p + 4)) # OptimizeBC adds 4 elements
+    fi
+    if "$OptimizeOH"; then # OptimizeOH adds 1 element if regional and 2 if global
+        if "$isRegional"; then
+            nElements_p=$((nElements_p + 1)) 
+        else
+            nElements_p=$((nElements_p + 2))
+        fi
+    fi
+    sed -i -E "s|^nElements=.*|nElements=${nElements_p}|" "${RunDirs}/kf_inversions/period${period_i}/run_inversion.sh"
+    echo "Period ${period_i}: refreshed nElements to ${nElements_p} in run_inversion.sh"
+
     # run jacobian simulation for the given period
     run_jacobian
 

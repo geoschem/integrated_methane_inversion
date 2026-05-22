@@ -606,11 +606,15 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
-            agg_level = int(elements_left / clusters_left)
+            # Also limit clusters if they would exceed the number of remaining elements.
+            n_clusters_fill = min(clusters_left, elements_left)
+            if n_clusters_fill <= 0:
+                break
+            agg_level = max(1, int(elements_left / n_clusters_fill))
             print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
                 sensi["Sensitivities"].where(labels == 0),
-                clusters_left,
+                n_clusters_fill,
                 mini_batch,
                 cluster_by_country,
             )
