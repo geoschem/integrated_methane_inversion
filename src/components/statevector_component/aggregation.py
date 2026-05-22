@@ -562,7 +562,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     sv = new_sv["StateVector"].where(orig_sv_cp <= last_ROI_element)
 
     # match sensitivities with coordinates
-    sensi = map_sensitivities_to_sv(flat_sensi, orig_sv, last_ROI_element)
+    sensi = map_sensitivities_to_sv(flat_sensi, orig_sv["StateVector"], last_ROI_element).to_dataset()
 
     # initialize labels as 0 everywhere in the ROI
     # labels are NaN outside of ROI
