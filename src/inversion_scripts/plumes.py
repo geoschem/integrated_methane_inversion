@@ -274,9 +274,15 @@ class PointSources:
             ds_mean = self.grid_ds.where(criteria).mean("observer")
             # select valid cells
             valid = ~np.isnan(ds_mean['emission_rate'].values)
-            # extract corresponding lat/lon values
-            latvals = ds_mean["lat"].values[valid]
-            lonvals = ds_mean["lon"].values[valid]
+            
+            if "lat" in ds_mean.dims: # GCC
+                # For GCC mode lat/lon are 1-D coords while valid is 2-D
+                lat_idx, lon_idx = np.where(valid)
+                latvals = ds_mean["lat"].values[lat_idx]
+                lonvals = ds_mean["lon"].values[lon_idx]
+            else: # GHCP
+                latvals = ds_mean["lat"].values[valid]
+                lonvals = ds_mean["lon"].values[valid]
 
             # stack as [lon,lat] list
             coords = np.stack([lonvals, latvals], axis=1).tolist()
@@ -367,7 +373,7 @@ class GeoFilter:
             lat0 = np.nanmin(lats)
             lat1 = np.nanmax(lats)
             
-            if (self.config['UseGCHP']) & (self.config['STRETCH_GRID']) & (np.ptp(lons)>180):
+            if self.config['UseGCHP'] and self.config['STRETCH_GRID'] and (np.ptp(lons)>180):
                 # Crosses the dateline: split into two small boxes
                 # Right-side strip: [lon_max, 180]
                 boxA = Polygon([(lon1, lat0), (180.0, lat0), (180.0, lat1), (lon1, lat1), (lon1, lat0)])
