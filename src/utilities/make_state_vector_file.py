@@ -70,7 +70,7 @@ def cluster_buffer_elements(data, offset):
     valid_indices = np.where(Z == 0)[0]
 
     # Get the number of clusters
-    num_clusters = np.floor( len(valid_indices) / 4 )
+    num_clusters = int(np.floor( len(valid_indices) / 4 ))
 
     # Flatten the latitude and longitude arrays into a 2D grid
     # only keeping valid indices
@@ -135,30 +135,30 @@ def make_state_vector_file(
     lon_min = config["LonMin"]
     lon_max = config["LonMax"]
     is_regional = config["isRegional"]
-    buffer_deg = config["BufferDeg"]
+    buffer_rings = config["BufferRings"]
     emis_threshold = config["EmisThreshold"]
     buffer_min_lat = 0
     buffer_min_lon = 0
 
     # set minimum buffer degrees based on resolution
+    if config["Res"] == "4.0x5.0":
+        deg_lat, deg_lon = 4.0, 5.0
+    elif config["Res"] == "2.0x2.5":
+        deg_lat, deg_lon = 2.0, 2.5
+    elif config["Res"] == "0.5x0.625":
+        deg_lat, deg_lon = 0.5, 0.625
+    elif config["Res"] == "0.25x0.3125":
+        deg_lat, deg_lon = 0.25, 0.3125
+    elif config["Res"] == "0.125x0.15625":
+        deg_lat, deg_lon = 0.125, 0.15625
     if config["isRegional"]:
-        if config["Res"] == "4.0x5.0":
-            deg_lat, deg_lon = 4.0, 5.0
-        elif config["Res"] == "2.0x2.5":
-            deg_lat, deg_lon = 2.0, 2.5
-        elif config["Res"] == "0.5x0.625":
-            deg_lat, deg_lon = 0.5, 0.625
-        elif config["Res"] == "0.25x0.3125":
-            deg_lat, deg_lon = 0.25, 0.3125
-        elif config["Res"] == "0.125x0.15625":
-            deg_lat, deg_lon = 0.125, 0.15625
         buffer_min_lat = deg_lat * 4
         buffer_min_lon = deg_lon * 4
 
     # set the buffer degrees to the maximum to ensure
     # that the buffer is at least the minimum (4 extra grid cells on each side)
-    buffer_deg_lat = max(buffer_deg, buffer_min_lat)
-    buffer_deg_lon = max(buffer_deg, buffer_min_lon)
+    buffer_deg_lat = buffer_rings * deg_lat + buffer_min_lat
+    buffer_deg_lon = buffer_rings * deg_lon + buffer_min_lon
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
