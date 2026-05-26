@@ -48,7 +48,7 @@ config_required: Dict[str, Rule] = {
     "LatMax": float,
     "KalmanMode": bool,
     "CreateAutomaticRectilinearStateVectorFile": bool,
-    "BufferDeg": float,
+    "BufferRings": int,
     "BufferReductionFactor": float,
     "EmisThreshold": float,
     "ReducedDimensionStateVector": bool,
