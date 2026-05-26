@@ -171,8 +171,8 @@ State vector
 
    * - ``CreateAutomaticRectilinearStateVectorFile``
      - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. If ``false``, a custom/pre-generated state vector netcdf file must be provided under ``StateVectorFile``.
-   * - ``BufferDeg``
-     - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``3`` (~300 km).
+   * - ``BufferRings``
+     - Number of rings of buffer elements around each state vector element; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``3``.
    * - ``BufferReductionFactor``
      - Factor by which to reduce the number of native resolution buffer elements; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``4``.
    * - ``EmisThreshold``
