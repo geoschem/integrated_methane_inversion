@@ -1,12 +1,12 @@
-IMI Best Practices
-===================
+Best Practices
+==============
 
 Choosing an inversion time period
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * The IMI can be applied to any period of interest beginning 1 May 2018, when the TROPOMI methane record begins.
 * Common choices for the length of the inversion period are one year, one season (~3-6 months), one month, or one week.
 * We recommend choosing time periods of one week or more to ensure there are enough satellite observations for a successful inversion.
-* The `IMI Preview feature <../getting-started/imi-preview.html>`_ can be used to refine the choice of inversion period.
+* The :doc:`IMI Preview feature <../user-guide/imi-preview>` can be used to refine the choice of inversion period.
 
 Defining a region of interest
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

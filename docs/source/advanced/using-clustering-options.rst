@@ -66,7 +66,7 @@ number of gridcells you would like to force to be native resolution.
 
 Additionally, the ``PointSourceDatasets`` config variable can be used to automatically scrape emission 
 hotspots from external point source datasets. Currently, the supported datasets are the ``"SRON"`` 
-`weekly plumes dataset <https://earth.sron.nl/methane-emissions/>`_ ``"CarbonMapper"``, and ``"IMEO"``.
+`weekly plumes dataset <https://earth.sron.nl/methane-emissions/>`_, ``"CarbonMapper"``, and ``"IMEO"``.
 
 yaml list example:
 ::

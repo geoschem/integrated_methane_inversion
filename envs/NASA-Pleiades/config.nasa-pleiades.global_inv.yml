@@ -134,6 +134,8 @@ PriorErrorBufferElements: [0.5]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
+OffDiagonalPriorCov: false
+LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion

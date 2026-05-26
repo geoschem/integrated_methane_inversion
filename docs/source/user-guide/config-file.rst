@@ -1,10 +1,12 @@
-IMI configuration file
-======================
+Configuration file
+==================
 This page documents settings in the IMI configuration file (``config.yml``).
 
-The ``config.yml`` file included with the IMI is setup for running the IMI on AWS. If you want to run
-the IMI elsewhere, you will need to create your own environment and configuration files. See :doc:`Running the IMI on a local cluster <../advanced/local-cluster>` for 
-more information.
+.. important::
+    The ``config.yml`` file included with the IMI is setup for running the IMI on AWS.
+    
+    If you want to run the IMI elsewhere, you will need to create your own environment and configuration files. 
+    See :doc:`Running the IMI on a local cluster <../advanced/local-cluster>` for more information.
 
 General
 ~~~~~~~
@@ -125,7 +127,7 @@ Resolution
    :class: tight-table
 
    * - ``Res``
-     - Horizontal grid resolution for inversion. Options are ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
+     - Horizontal grid resolution for inversion. Options are ``"0.125x0.15625"`` (GEOS-FP only), ``"0.25x0.3125"`` (GEOS-FP only), ``"0.5x0.625"``, ``"2.0x2.5"``, or ``"4.0x5.0"``. Default value is ``0.25x0.3125``
 
 Grid settings for GCHP
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -190,7 +192,7 @@ Point source datasets
      - Optional list of public datasets to use for visualization of point sources to be included in state vector clustering. Current options are ``["SRON"]``,  ``["CarbonMapper"]``, and ``["IMEO"]``.
 
 Clustering Options
-^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 For more information on using the clustering options take a look at the `clustering options page <../advanced/using-clustering-options.html>`__.
 
 .. list-table::
@@ -253,6 +255,10 @@ Inversion
      - Vector of regularization parameters; typically between 0 and 1. Default value is ``[1.0]``.
    * - ``PrecomputedJacobian``
      - Boolean for whether the Jacobian matrix has already been computed (``true``) or not (``false``). Default value is ``false``.
+   * - ``OffDiagonalPriorCov``
+     - Boolean for whether to build and use a prior error covariance matrix with off-diagonal terms during the inversion. Default value is ``false``.
+   * - ``LengthScalePriorCov``
+     - Spatial length scale in km used when building the off-diagonal prior covariance matrix. Only used if ``OffDiagonalPriorCov`` is ``true``. Default value is ``25``.
    * - ``ReferenceRunDir``
      - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
 

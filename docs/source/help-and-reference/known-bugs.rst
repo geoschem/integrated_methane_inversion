@@ -20,30 +20,6 @@ are currently unresolved. We hope to fix these in future releases.
 Other issues that you should know about
 =======================================
 
-.. _gc-known-bugs-gcc12:
-
-GCC 12.2.0 is discontinued in Spack v1.0.0
-------------------------------------------
-
-As of Spack v1.0, `spack-packages <https://packages.spack.io/>`_ has
-been split off into its own separate repository. This change includes
-the unfortunate deprecation of the :program:`GNU Compiler Collection
-(GCC)` version 12.2.0. It appears that only the most recent minor
-release in each major release is now treated as stable. These
-deprecations are updated promptly for example, GCC 12.4.0 is already
-marked as deprecated just 10 days after the release of GCC 12.5.0.
-
-Deprecated GCC versions are no longer listed with the :command:`spack
-info` command, so rather than warning users about deprecation, Spack
-simply fails with an unhelpful error message about not being able to
-satisfy the request.
-
-For the time being, we recommend that you use `Spack release v0.23.1
-<https://github.com/spack/spack/releases/tag/v0.23.1>`_ which still
-supports GCC 12.2.0 and related libraries.  Please see our
-:ref:`spackguide` Supplemental Guide for an updated Spack
-installation workflow.
-
 Discontinuity in GEOS-FP convection at 01 Jun 2020
 --------------------------------------------------
 

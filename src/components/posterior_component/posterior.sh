@@ -124,8 +124,8 @@ setup_posterior() {
             sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
                 -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
                 -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
-                -e 's/Restart.frequency:    00000100 000000/Restart.frequency:    00000001 000000/g' \
-                -e 's/Restart.duration:     00000100 000000/Restart.duration:     00000001 000000/g' HISTORY.rc
+		-e 's/Restart.frequency:          00000100 000000/Restart.frequency:          00000001 000000/g' \
+                -e 's/Restart.duration:           00000100 000000/Restart.duration:           00000001 000000/g' HISTORY.rc
         fi
     fi
 
@@ -176,14 +176,17 @@ run_posterior() {
         inversion_result_filename="inversion_result.nc"
     fi
 
+    if "$KalmanMode"; then
+        InvDir="${RunDirs}/kf_inversions/period${period_i}"
+    else
+        InvDir="${RunDirs}/inversion"
+    fi
+
     printf "\n=== SETTING UP POSTERIOR OPTIMIZATION ===\n"
 
     if "$OptimizeBCs"; then
-        if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
-        else
-            inv_result_path="${RunDirs}/inversion/${inversion_result_filename}"
-        fi
+        inv_result_path="${InvDir}/${inversion_result_filename}"
+        
         # set BC optimal delta values
         PerturbBCValues=$(generate_optimized_BC_values $inv_result_path)
         # add BC optimization delta to boundary condition edges
@@ -195,11 +198,7 @@ run_posterior() {
     fi
 
     if "$OptimizeOH"; then
-        if "$KalmanMode"; then
-            inv_result_path="${RunDirs}/kf_inversions/period${period_i}/${inversion_result_filename}"
-        else
-            inv_result_path="${RunDirs}/inversion/${inversion_result_filename}"
-        fi
+        inv_result_path="${InvDir}/${inversion_result_filename}"
 
         # set OH optimal delta values
         PerturbOHValue=$(generate_optimized_OH_value $inv_result_path)
@@ -297,7 +296,7 @@ run_posterior() {
     kf_period=1
 
     printf "\n=== Calling jacobian.py to sample posterior simulation (without jacobian sensitivity analysis) ===\n"
-    python ${InversionPath}/src/inversion_scripts/jacobian.py ${OutputPath}/${RunName}/inversion ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $kf_period $buildJacobian False
+    python ${InversionPath}/src/inversion_scripts/jacobian.py ${InvDir} ${ConfigPath} $StartDate_i $EndDate_i $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $kf_period $buildJacobian False
     wait
     printf "\n=== DONE sampling the posterior simulation ===\n\n"
     posterior_end=$(date +%s)

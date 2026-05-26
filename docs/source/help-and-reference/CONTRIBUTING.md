@@ -36,7 +36,7 @@ As the author you are responsible for:
   9. If the benchmark simulations reveal a problem with your update, the team will request that you take further corrective action.
 
 ### Coding conventions
-The GEOS-Chem codebase dates back several decades and includes contributions from many people and multiple organizations. Therefore, some inconsistent conventions are inevitable, but we ask that you do your best to be consistent with nearby
+The IMI codebase is open source and includes contributions from many people and multiple organizations. Therefore, some inconsistent conventions are inevitable, but we ask that you do your best to be consistent with nearby
 code.
 
 ### Checklist for submitting code updates
@@ -44,7 +44,7 @@ code.
   1. Include thorough comments in all submitted code.
   2. Include full citations for references at the top of relevant source code modules.
   3. Remove extraneous code updates (e.g. testing options, other science).
-  4. Submit any related code or configuration files for [GCHP](https://gchp.readthedocs.io) and/or [GEOS-Chem Classic](https://geos-chem.readthedocs.io).
+  4. Submit any related code or configuration files for [GCHP](https://gchp.readthedocs.io) and/or [GEOS-Chem Classic](https://geos-chem.readthedocs.io) to the [https://github.com/geoschem/geos-chem](https://github.com/geoschem/geos-chem) repository.
 
 ### Checklist for submitting data files
 
