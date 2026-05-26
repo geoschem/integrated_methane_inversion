@@ -76,8 +76,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     )
 
     interior = state_vector_labels.isel(
-        lat=slice(config["BufferDeg"], -config["BufferDeg"]), 
-        lon=slice(config["BufferDeg"], -config["BufferDeg"])
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4), 
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     )
     num_buffer_elems = state_vector_labels.max().item() - interior.max().item()
 

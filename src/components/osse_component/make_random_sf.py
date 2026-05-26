@@ -19,8 +19,8 @@ def make_random_sf(state_vector_path, config):
 
     # Identify the last element of the region of interest
     last_ROI_element = int(state_vector_labels.isel(
-        lat=slice(config["BufferDeg"], -config["BufferDeg"]),
-        lon=slice(config["BufferDeg"], -config["BufferDeg"])
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     ).max())
     mask = state_vector_labels <= last_ROI_element
     scale_factor = state_vector.rename({"StateVector": "ScaleFactor"})

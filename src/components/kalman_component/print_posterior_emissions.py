@@ -42,8 +42,8 @@ def print_posterior_emissions(config_path, period_number, base_directory):
         areas = original_emis_ds["AREA"]
     state_vector_labels = statevector["StateVector"]
     last_ROI_element = int(state_vector_labels.isel(
-        lat=slice(config["BufferDeg"], -config["BufferDeg"]),
-        lon=slice(config["BufferDeg"], -config["BufferDeg"])
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     ).max())
     mask = state_vector_labels <= last_ROI_element
 

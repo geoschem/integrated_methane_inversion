@@ -111,8 +111,8 @@ def imi_preview(
 
     # Identify the last element of the region of interest
     last_ROI_element = int(state_vector_labels.isel(
-        lat=slice(config["BufferDeg"], -config["BufferDeg"]),
-        lon=slice(config["BufferDeg"], -config["BufferDeg"])
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     ).max())
 
     if config['UseGCHP']:
@@ -660,8 +660,8 @@ def estimate_averaging_kernel(
 
     # Identify the last element of the region of interest
     last_ROI_element = int(state_vector_labels.isel(
-        lat=slice(config["BufferDeg"], -config["BufferDeg"]),
-        lon=slice(config["BufferDeg"], -config["BufferDeg"])
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     ).max())
 
     # Whether to use observations over water?
