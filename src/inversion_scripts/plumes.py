@@ -274,9 +274,11 @@ class PointSources:
             ds_mean = self.grid_ds.where(criteria).mean("observer")
             # select valid cells
             valid = ~np.isnan(ds_mean['emission_rate'].values)
+            # extract indices of valid cells
+            lat_idx, lon_idx = np.where(valid)
             # extract corresponding lat/lon values
-            latvals = ds_mean["lat"].values[valid]
-            lonvals = ds_mean["lon"].values[valid]
+            latvals = ds_mean["lat"].values[lat_idx]
+            lonvals = ds_mean["lon"].values[lon_idx]
 
             # stack as [lon,lat] list
             coords = np.stack([lonvals, latvals], axis=1).tolist()
