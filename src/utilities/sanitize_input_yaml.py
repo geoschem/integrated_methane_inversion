@@ -114,6 +114,8 @@ optional_rules: Dict[str, Rule] = {
     "NudgeFactor": float,
     "DynamicKFClustering": bool,
     "CustomPeriodsCSV": str,
+    "FirstPeriod": int,
+    "AutoAdvanceFirstPeriod": bool,
     # ReducedDimensionStateVector-related
     "ClusteringMethod": str,
     "NumberOfElements": int,

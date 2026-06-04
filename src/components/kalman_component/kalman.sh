@@ -226,6 +226,27 @@ run_period() {
     # Delete unneeded daily restart files from Jacobian and posterior directories
     python ${InversionPath}/src/components/kalman_component/cull_restarts.py $JacobianRunsDir $PosteriorRunDir $StartDate_i $EndDate_i
 
+    # Persist period progress by advancing FirstPeriod in the active config, so a
+    # subsequent re-launch of run_imi.sh skips already-completed periods.
+
+    if [[ "${AutoAdvanceFirstPeriod:-false}" == "true" ]]; then
+        # Check for marker files that indicate completion to ensure no advancing
+        # on an incomplete run.
+        sf_marker="${RunDirs}/archive_sf/posterior_sf_period${period_i}.nc"
+        restart_marker="${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4"
+        if [[ -f "$sf_marker" && -e "$restart_marker" ]]; then
+            next_period=$((period_i + 1))
+            if grep -q "^FirstPeriod:" "$ConfigPath"; then
+                sed -i "s/^FirstPeriod:.*/FirstPeriod: ${next_period}/" "$ConfigPath"
+            else
+                printf "\nFirstPeriod: %s\n" "${next_period}" >> "$ConfigPath"
+            fi
+            echo "Period ${period_i} complete; advanced FirstPeriod to ${next_period} in ${ConfigPath}"
+        else
+            echo "WARNING: period ${period_i} finished but did not produce expected files; FirstPeriod *not* advanced"
+        fi
+    fi
+
     # Move to next time step
     print_stats
     echo -e "Moving to next iteration\n"
