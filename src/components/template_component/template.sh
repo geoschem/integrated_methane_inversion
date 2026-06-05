@@ -251,6 +251,10 @@ setup_template() {
         fi
     fi
 
+    # Update Restart diagnostic to save out daily instead of hourly
+    sed -i -e 's/Restart.frequency:          00000100 000000/Restart.frequency:          00000001 000000/g' \
+        -e 's/Restart.duration:           00000100 000000/Restart.duration:           00000001 000000/g' HISTORY.rc
+
     # Remove sample restart file; GCHP restarts are just soft links and are needed later as template
     if [ "$UseGCHP" != true ]; then
         rm -f Restarts/GEOSChem.Restart.20190101_0000z.nc4
