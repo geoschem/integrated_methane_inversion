@@ -226,7 +226,8 @@ if __name__ == "__main__":
             print("Applying satellite operator...")
 
             # Compute super-observations for this satellite file
-            obs_mapped_to_gc = superobservations(
+            superobservations_output = superobservations(
+            # obs_mapped_to_gc, output_dir = superobservations(
                 filename,
                 species,
                 satellite_product,
@@ -240,8 +241,9 @@ if __name__ == "__main__":
                 config,
                 use_water_obs=use_water_obs,
             )
-            if obs_mapped_to_gc is None:
+            if superobservations_output is None:
                 return 0
+            obs_mapped_to_gc, output_dir = superobservations_output
 
             output = apply_operator(
                 "satellite_average",
@@ -249,6 +251,8 @@ if __name__ == "__main__":
                     "filename": filename,
                     "species" : species,
                     "satellite_product": satellite_product,
+                    # "satellite_cache": satellite_cache,
+                    "satellite_cache": output_dir,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,
@@ -278,6 +282,8 @@ if __name__ == "__main__":
                     "filename": filename,
                     "species" : species,
                     "satellite_product": satellite_product,
+                    "satellite_cache": satellite_cache,
+                    # "satellite_cache": output_dir,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,

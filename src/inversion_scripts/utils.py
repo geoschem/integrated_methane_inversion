@@ -903,6 +903,7 @@ def read_blended(filename):
                             - CH4
                             - Latitude
                             - Longitude
+                            - Layer
                             - Time (utc time reshaped for orbit)
                             - Averaging kernel
                             - SWIR albedo
@@ -928,6 +929,7 @@ def read_blended(filename):
             dat["CH4"] = blended_data["methane_mixing_ratio_blended"].values[:]
             dat["longitude"] = blended_data["longitude"].values[:]
             dat["latitude"] = blended_data["latitude"].values[:]
+            dat["layer"] = blended_data["layer"].values[:]
             dat["column_AK"] = blended_data["column_averaging_kernel"].values[:, ::-1]
             dat["swir_albedo"] = blended_data["surface_albedo_SWIR"][:]
             dat["nir_albedo"] = blended_data["surface_albedo_NIR"].values[:]
@@ -966,6 +968,9 @@ def read_blended(filename):
             for i in range(12 + 1):
                 pressures[:, i] = surface_pressure - i * pressure_interval
             dat["pressures"] = pressures
+
+            # raw surface pressure value in Pa
+            dat["surface_pressure"] = blended_data["surface_pressure"].values[:]
 
         # Add an axis here to mimic the (scanline, groundpixel) format of operational TROPOMI data
         # This is so the blended data will be compatible with the TROPOMI operators

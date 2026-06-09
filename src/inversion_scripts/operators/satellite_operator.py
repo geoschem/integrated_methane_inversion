@@ -25,6 +25,128 @@ from src.inversion_scripts.operators.operator_utilities import (
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
+def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
+    """
+    Convert superobservations from structured numpy array to xarray Dataset.
+    
+    Arguments
+        obs_mapped_to_gc [numpy.ndarray] : Structured array of superobservations
+        species          [str]           : Species name (CH4 or CO2)
+        filename         [str]           : Original satellite filename (for metadata)
+        config           [dict]          : Configuration dictionary
+    
+    Returns
+        ds               [xr.Dataset]    : xarray Dataset with superobservations
+    """
+    n_obs = len(obs_mapped_to_gc)
+    
+    # Get dimensions from the first observation
+    n_lev_p = len(obs_mapped_to_gc["p_sat"][0])
+    n_lev_layer = len(obs_mapped_to_gc["layer"][0])
+    
+    # Create dimensions and coordinates
+    coords = {
+        'nobs': np.arange(n_obs),
+        'layer': obs_mapped_to_gc["layer"][0],  # layer index from first observation
+        'corner': np.arange(4),
+    }
+    
+    # Map species name for netcdf variable name
+    if species.upper() == 'CH4':
+        satellite_column_name = 'methane_mixing_ratio_blended'
+        prior_name = 'methane_profile_apriori'
+    elif species.upper() == 'CO2':
+        satellite_column_name = 'xco2_mixing_ratio_blended'
+        prior_name = 'co2_profile_apriori'
+    else:
+        satellite_column_name = f'{species}_mixing_ratio_blended'
+        prior_name = f'{species}_profile_apriori'
+
+    time_utc = pd.to_datetime(
+        obs_mapped_to_gc['time'],
+        format='%Y%m%d_%H',
+    ).strftime('%Y-%m-%dT%H:%M:%S').to_numpy(dtype=str)
+    
+    # Create data variables matching TROPOMI_blended format from GOOPy config
+    data_vars = {
+        'latitude': (['nobs'], obs_mapped_to_gc['lat_sat'].astype(np.float32)),
+        'longitude': (['nobs'], obs_mapped_to_gc['lon_sat'].astype(np.float32)),
+        'time_utc': (['nobs'], time_utc),
+        satellite_column_name: (['nobs'], obs_mapped_to_gc[species].astype(np.float32)),
+        'surface_pressure': (['nobs'], obs_mapped_to_gc['surface_pressure'].astype(np.float32)),
+        'surface_albedo_NIR': (['nobs'], obs_mapped_to_gc['nir_albedo'].astype(np.float32)),
+        'surface_albedo_SWIR': (['nobs'], obs_mapped_to_gc['swir_albedo'].astype(np.float32)),
+        'column_averaging_kernel': (
+            ['nobs', 'layer'],
+            np.array([obs_mapped_to_gc['avkern'][i] for i in range(n_obs)], dtype=np.float32)
+        ),
+        prior_name: (
+            ['nobs', 'layer'],
+            np.array([obs_mapped_to_gc['apriori'][i] for i in range(n_obs)], dtype=np.float32)
+        ),
+        'pressure_interval': (
+            ['nobs'],
+            obs_mapped_to_gc['p_sat'][:, 0].astype(np.float32) - obs_mapped_to_gc['p_sat'][:, 1].astype(np.float32)
+            if n_lev_p > 1 else np.ones(n_obs, dtype=np.float32)
+        ),
+        'dry_air_subcolumns': (
+            ['nobs', 'layer'],
+            np.array([obs_mapped_to_gc['dry_air_subcolumns'][i] for i in range(n_obs)], dtype=np.float32)
+        ),
+        'observation_count': (['nobs'], obs_mapped_to_gc['observation_count'].astype(np.float32)),
+        'qa_value': (['nobs'], np.ones(n_obs, dtype=np.float32)),  # Set to 1.0 for all valid observations
+        'gc_cell_lat': (['nobs'], obs_mapped_to_gc['lat'].astype(np.float32)),
+        'gc_cell_lon': (['nobs'], obs_mapped_to_gc['lon'].astype(np.float32)),
+        'gc_cell_index_lat': (['nobs'], obs_mapped_to_gc['jGC'].astype(np.int32)),
+        'gc_cell_index_lon': (['nobs'], obs_mapped_to_gc['iGC'].astype(np.int32)),
+    }
+    
+    # Create the xarray Dataset
+    ds = xr.Dataset(data_vars, coords=coords)
+    
+    # Add attributes for metadata
+    ds.attrs['title'] = 'Superobservations: satellite observations averaged to GEOS-Chem grid cells'
+    ds.attrs['source_file'] = os.path.basename(filename)
+    ds.attrs['species'] = species
+    ds.attrs['history'] = f'Created by satellite_operator.py at {pd.Timestamp.now().isoformat()}'
+    
+    return ds
+
+
+def save_superobservations(ds, filename, output_path):
+    """
+    Save superobservations xarray Dataset to netcdf file.
+    
+    Arguments
+        ds          [xr.Dataset] : xarray Dataset of superobservations
+        filename    [str]        : Original satellite filename (for output filename)
+        output_path [str]        : Directory path to save the netcdf file
+    
+    Returns
+        output_file [str]        : Path to the saved netcdf file
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_path, exist_ok=True)
+    
+    # Create output filename based on input filename
+    base_name = os.path.basename(filename)
+    # Replace or append to indicate this is superobservations
+    if base_name.endswith('.nc'):
+        output_file = os.path.join(output_path, base_name.replace('.nc', '_superobservations.nc'))
+    else:
+        output_file = os.path.join(output_path, base_name + '_superobservations.nc')
+    
+    # Save to netcdf with compression
+    ds.to_netcdf(output_file)
+    # ds.to_netcdf(output_file, encoding={
+    #     var: {'zlib': True, 'complevel': 4}
+    #     for var in ds.data_vars
+    # })
+    
+    print(f"Saved superobservations to {output_file}")
+    return output_file
+
+
 def apply_operator(operator, params, obs_mapped_to_gc, config):
     """
     Run the chosen operator based on selected instrument
@@ -40,39 +162,58 @@ def apply_operator(operator, params, obs_mapped_to_gc, config):
                             - satellite lat, lon
                             - satellite lat index, lon index
     """
-    if operator == "satellite_average":
-        return apply_average_satellite_operator(
-            params["filename"],
-            params["species"],
-            params["satellite_product"],
-            params["n_elements"],
-            params["gc_startdate"],
-            params["gc_enddate"],
-            params["xlim"],
-            params["ylim"],
-            params["gc_cache"],
-            params["period_i"],
-            obs_mapped_to_gc,
-            config,
-            params["use_water_obs"],
-        )
-    elif operator == "satellite":
-        return apply_satellite_operator(
-            params["filename"],
-            params["species"],
-            params["satellite_product"],
-            params["n_elements"],
-            params["gc_startdate"],
-            params["gc_enddate"],
-            params["xlim"],
-            params["ylim"],
-            params["gc_cache"],
-            params["period_i"],
-            config,
-            params["use_water_obs"],
-        )
-    else:
-        raise ValueError("Error: invalid operator selected.")
+    return goopy_apply_operator(
+        operator,
+        params["filename"],
+        params["species"],
+        params["satellite_product"],
+        params["satellite_cache"],
+        params["n_elements"],
+        params["gc_startdate"],
+        params["gc_enddate"],
+        params["xlim"],
+        params["ylim"],
+        params["gc_cache"],
+        params["period_i"],
+        obs_mapped_to_gc,
+        config,
+        params["use_water_obs"],
+    )
+    # if operator == "satellite_average":
+    #     return apply_average_satellite_operator(
+    #         params["filename"],
+    #         params["species"],
+    #         params["satellite_product"],
+    #         params["satellite_cache"],
+    #         params["n_elements"],
+    #         params["gc_startdate"],
+    #         params["gc_enddate"],
+    #         params["xlim"],
+    #         params["ylim"],
+    #         params["gc_cache"],
+    #         params["period_i"],
+    #         obs_mapped_to_gc,
+    #         config,
+    #         params["use_water_obs"],
+    #     )
+    # elif operator == "satellite":
+    #     return apply_satellite_operator(
+    #         params["filename"],
+    #         params["species"],
+    #         params["satellite_product"],
+    #         params["satellite_cache"],
+    #         params["n_elements"],
+    #         params["gc_startdate"],
+    #         params["gc_enddate"],
+    #         params["xlim"],
+    #         params["ylim"],
+    #         params["gc_cache"],
+    #         params["period_i"],
+    #         config,
+    #         params["use_water_obs"],
+    #     )
+    # else:
+    #     raise ValueError("Error: invalid operator selected.")
 
 
 def superobservations(
@@ -123,7 +264,7 @@ def superobservations(
         CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
 
         obs_mapped_to_gc = average_satellite_observations_to_CSgrid(
-            satellite, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
+            satellite, species, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
         )
     else:
         # get the lat/lons of gc gridcells
@@ -132,13 +273,267 @@ def superobservations(
             satellite, species, gc_lat_lon, sat_ind, time_threshold
         )
         GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
+    
+    # Create xarray dataset from obs_mapped_to_gc
+    ds = obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config)
+    print(f"{ds=}")
+    
+    # Save superobservations to netcdf files
+    output_dir = os.path.join(os.path.expandvars(config['OutputPath']), config['RunName'], f'{filename}_superobservations')
+    save_superobservations(ds, filename, output_dir)
+
+    return obs_mapped_to_gc, output_dir
+
+def goopy_apply_operator(
+    operator,
+    filename,
+    species,
+    satellite_product,
+    satellite_cache,
+    n_elements,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    gc_cache,
+    period_i,
+    obs_mapped_to_gc,
+    config,
+    use_water_obs=False
+):
+    import sys
+    import yaml
+    import tempfile
+    import glob
+    import importlib
+    
+    # Read the full GOOPy config
+    goopy_config_path = 'GOOPy/config.yaml'
+    with open(goopy_config_path, 'r') as f:
+        goopy_config = yaml.safe_load(f)
+    
+    # Update LOCAL_SETTINGS with the values needed for this run
+    save_dir = f'{gc_cache}/../goopy_output'
+    if operator == "satellite_average":
+        satellite_files = sorted(glob.glob(os.path.join(satellite_cache, '*.nc')))
+        if len(satellite_files) != 1:
+            raise ValueError(
+                f"Expected exactly one superobservation file in {satellite_cache}, "
+                f"found {len(satellite_files)}."
+            )
+        goopy_obs_file = satellite_files[0]
+    elif operator == "satellite":
+        goopy_obs_file = os.path.join(satellite_cache, os.path.basename(filename))
+        if not os.path.exists(goopy_obs_file):
+            raise FileNotFoundError(
+                f"Expected satellite file {goopy_obs_file} does not exist."
+            )
+    else:
+        raise ValueError(f"Error: invalid operator selected: {operator}")
+
+    goopy_config['LOCAL_SETTINGS'].update({
+        'SAVE_INTERPOLATION': 'False',
+        'SATELLITE_NAME': 'TROPOMI_blended',  # TODO: make this not TROPOMI-specific
+        'OBS_DIR': os.path.dirname(goopy_obs_file),
+        'OBS_FILE_FORMAT': os.path.basename(goopy_obs_file),
+        'MODEL_LEVEL_EDGE_DIR': gc_cache,
+        # 'LEVEL_EDGE_FILE_FORMAT': 'GEOSChem.LevelEdgeDiags.*.nc4',
+        'LEVEL_EDGE_FILE_FORMAT': 'GEOSChem.StateMetLevEdge.*.nc4',
+        'MODEL_CONCENTRATION_DIR': gc_cache,
+        'CONCENTRATION_FILE_FORMAT': 'GEOSChem.SpeciesConc.*.nc4',
+        'SAVE_DIR': save_dir,
+    })
+    
+    # Write to a temporary file
+    temp_config = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
+    yaml.dump(goopy_config, temp_config)
+    temp_config.close()
+    
+    # Set the config file path for GOOPy and import
+    sys.argv[1] = temp_config.name
+    GOOPy_main = importlib.import_module("GOOPy.main")
+    GOOPy_main = importlib.reload(GOOPy_main)
+    
+    GOOPy_main.apply_operator(GOOPy_main.config)
+    
+    # Clean up the temporary file
+    os.unlink(temp_config.name)
+
+    goopy_output_file = os.path.join(
+        save_dir,
+        os.path.splitext(os.path.basename(goopy_obs_file))[0] + '_operator.nc'
+    )
+    if not os.path.exists(goopy_output_file):
+        available_outputs = sorted(
+            f for f in os.listdir(save_dir) if f.endswith('_operator.nc')
+        ) if os.path.isdir(save_dir) else []
+        raise FileNotFoundError(
+            f"Expected GOOPy output {goopy_output_file} was not created. "
+            f"Available GOOPy outputs: {available_outputs}"
+        )
+
+    with xr.open_dataset(goopy_output_file) as ds:
+        virtual_satellite = ds['SATELLITE_COLUMN'].values.astype(np.float32)
+
+    if operator == "satellite":
+        return format_goopy_satellite_output(
+            filename,
+            species,
+            satellite_product,
+            gc_startdate,
+            gc_enddate,
+            xlim,
+            ylim,
+            virtual_satellite,
+            config,
+            use_water_obs,
+        )
+
+    # mostly copied from apply_average_satellite_operator() in this file, but with some edits to read in the GOOPy output instead of re-computing the operator components
     n_gridcells = len(obs_mapped_to_gc)
-    return obs_mapped_to_gc
+    gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
+    GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
+
+    # Initialize array with n_gridcells rows and 5 columns. Columns are
+    # satellite species, GEOSChem species, longitude, latitude, observation counts
+    obs_GC = np.empty([n_gridcells, 5], dtype=np.float32)
+    obs_GC.fill(np.nan)
+
+    if config['UseGCHP']:
+        GC_index = np.ravel_multi_index((obs_mapped_to_gc["nfi"],
+                                         obs_mapped_to_gc["Ydimi"],
+                                         obs_mapped_to_gc["Xdimi"]), GC_shape)
+    else:
+        GC_index = np.ravel_multi_index((obs_mapped_to_gc["jGC"], #lat
+                                         obs_mapped_to_gc["iGC"] # lon
+                                         ), GC_shape)
+
+    all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
+    all_strdate = list(set(all_strdate))
+
+    # Read GEOS-Chem data for simulated truth in OSSE simulation
+    if config["EnableOSSE"]:
+        osse_gc_cache = "./data_geoschem_osse"
+
+        # check if the osse_gc_cache exists
+        assert os.path.exists(osse_gc_cache), (
+            f"OSSE GEOS-Chem cache directory {osse_gc_cache} does not exist. "
+            "Please run the OSSE simulation first."
+        )
+
+    if len(virtual_satellite) != n_gridcells:
+        raise ValueError(
+            f"GOOPy output has {len(virtual_satellite)} satellite columns, "
+            f"but {n_gridcells} superobservations were expected."
+        )
+
+    obs_GC[:, 1] = virtual_satellite * 1e9  # convert from mol/mol to ppb
+    obs_GC[:, 2] = obs_mapped_to_gc["lon_sat"]
+    obs_GC[:, 3] = obs_mapped_to_gc["lat_sat"]
+    obs_GC[:, 4] = obs_mapped_to_gc["observation_count"]
+
+    for strdate in all_strdate:
+        gridcell_dict = obs_mapped_to_gc[obs_mapped_to_gc["time"] == strdate]
+        sel_idx = np.where(obs_mapped_to_gc["time"] == strdate)[0]
+        # virtual_satellite = get_virtual_satellite(
+        #     strdate, gc_cache, gridcell_dict, n_elements, config
+        # )
+        if config["EnableOSSE"]:
+            synthetic_virtual_satellite = get_virtual_satellite(
+                strdate, osse_gc_cache, gridcell_dict, n_elements, config
+            ) * 1e9  # convert to ppb
+
+        # Save actual and virtual satellite data
+        if config["EnableOSSE"]:
+            # Synthetic observations if using OSSE, add random noise later
+            obs_GC[sel_idx, 0] = synthetic_virtual_satellite
+        else:
+            # Actual satellite species column observation
+            obs_GC[sel_idx, 0] = gridcell_dict[species]
+
+    # add random noise to synthetic observations if using OSSE
+    if config["EnableOSSE"]:
+        noise = np.random.normal(
+            loc=0.0,
+            scale=float(config["ObsErrorOSSE"]),
+            size=obs_GC[:,0].shape,
+        )
+        obs_GC[:,0] += noise
+
+    # Output
+    output = {}
+
+    # Always return the coincident satellite and GEOS-Chem data
+    output["obs_GC"] = obs_GC
+    output["GC_index"] = GC_index
+
+    return output
+
+
+def format_goopy_satellite_output(
+    filename,
+    species,
+    satellite_product,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    virtual_satellite,
+    config,
+    use_water_obs=False,
+):
+    """
+    Format GOOPy output for the unaveraged satellite visualization path.
+
+    GOOPy operates on the whole input file, while IMI visualization uses the
+    same spatial/quality-filtered pixels as the native satellite operator. If
+    GOOPy returned full-file output, subset it to those filtered pixels.
+    """
+    satellite, sat_ind = read_and_filter_satellite(
+        filename, satellite_product, gc_startdate, gc_enddate,
+        xlim, ylim, use_water_obs
+    )
+
+    n_obs = len(sat_ind[0])
+    if n_obs == 0:
+        return None
+
+    satellite_shape = satellite["longitude"].shape
+    sat_flat_ind = np.ravel_multi_index(sat_ind, satellite_shape)
+
+    if len(virtual_satellite) == np.product(satellite_shape):
+        virtual_satellite = virtual_satellite[sat_flat_ind]
+    elif len(virtual_satellite) != n_obs:
+        raise ValueError(
+            f"GOOPy output has {len(virtual_satellite)} satellite columns, "
+            f"but the filtered satellite data has {n_obs} observations and "
+            f"the full satellite grid has {np.product(satellite_shape)} pixels."
+        )
+
+    obs_GC = np.empty([n_obs, 6], dtype=np.float32)
+    obs_GC.fill(np.nan)
+
+    i_sat = sat_ind[0]
+    j_sat = sat_ind[1]
+
+    obs_GC[:, 0] = satellite[species][i_sat, j_sat]
+    obs_GC[:, 1] = virtual_satellite * 1e9  # convert from mol/mol to ppb
+    obs_GC[:, 2] = satellite["longitude"][i_sat, j_sat]
+    obs_GC[:, 3] = satellite["latitude"][i_sat, j_sat]
+    obs_GC[:, 4] = i_sat
+    obs_GC[:, 5] = j_sat
+
+    output = {}
+    output["obs_GC"] = obs_GC
+
+    return output
+
 
 def apply_average_satellite_operator(
     filename,
     species,
     satellite_product,
+    satellite_cache,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -254,6 +649,7 @@ def apply_satellite_operator(
     filename,
     species,
     satellite_product,
+    satellite_cache,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -627,6 +1023,11 @@ def average_satellite_observations(
                 gridcell_dict["lon_sat"].append(satellite["longitude"][iSat, jSat])
                 gridcell_dict["overlap_area"].append(overlap)
                 gridcell_dict["p_sat"].append(satellite["pressures"][iSat, jSat, :])
+                gridcell_dict["surface_pressure"].append(
+                    satellite["surface_pressure"][iSat, jSat]
+                )
+                gridcell_dict["nir_albedo"].append(satellite["nir_albedo"][iSat, jSat])
+                gridcell_dict["swir_albedo"].append(satellite["swir_albedo"][iSat, jSat])
                 gridcell_dict["dry_air_subcolumns"].append(
                     satellite["dry_air_subcolumns"][iSat, jSat, :]
                 )
@@ -682,6 +1083,18 @@ def average_satellite_observations(
             axis=0,
             weights=gridcell_dict["observation_weights"],
         )
+        gridcell_dict["surface_pressure"] = np.average(
+            gridcell_dict["surface_pressure"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["nir_albedo"] = np.average(
+            gridcell_dict["nir_albedo"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["swir_albedo"] = np.average(
+            gridcell_dict["swir_albedo"],
+            weights=gridcell_dict["observation_weights"],
+        )
         gridcell_dict["dry_air_subcolumns"] = np.average(
             gridcell_dict["dry_air_subcolumns"],
             axis=0,
@@ -705,9 +1118,13 @@ def average_satellite_observations(
             ("lat_sat","f4"), ("lon_sat","f4"),
             (species,"f4"), ("time","U13"),
             ("p_sat","f4",(0,)),
+            ("surface_pressure","f4"),
+            ("nir_albedo","f4"),
+            ("swir_albedo","f4"),
             ("dry_air_subcolumns","f4",(0,)),
             ("apriori","f4",(0,)),
             ("avkern","f4",(0,)),
+            ("layer","f4",(0,)),
             ("observation_count","f4"),
             ("lat","f4"), ("lon","f4"),
         ])
@@ -717,15 +1134,20 @@ def average_satellite_observations(
     n_lev_dryair  = len(gridcell_dicts[0]["dry_air_subcolumns"])
     n_lev_apriori = len(gridcell_dicts[0]["apriori"])
     n_lev_avkern  = len(gridcell_dicts[0]["avkern"])
+    n_layers  = len(gridcell_dicts[0]["layer"])
 
     dtype_latlon = [
         ("iGC","i4"), ("jGC","i4"),
         ("lat_sat","f4"), ("lon_sat","f4"),
         (species,"f4"), ("time","U13"),
         ("p_sat","f4",(n_lev_p,)),
+        ("surface_pressure","f4"),
+        ("nir_albedo","f4"),
+        ("swir_albedo","f4"),
         ("dry_air_subcolumns","f4",(n_lev_dryair,)),
         ("apriori","f4",(n_lev_apriori,)),
         ("avkern","f4",(n_lev_avkern,)),
+        ("layer","f4",(n_layers,)),
         ("observation_count","f4"),
         ("lat","f4"), ("lon","f4"),
     ]
@@ -740,15 +1162,21 @@ def average_satellite_observations(
         arr[species][idx] = np.float32(cell[species])
         arr["time"][idx]    = cell["time"]  # already a short string from get_strdate
         arr["p_sat"][idx]   = np.asarray(cell["p_sat"], dtype=np.float32)
+        arr["surface_pressure"][idx] = np.float32(cell["surface_pressure"])
+        arr["nir_albedo"][idx] = np.float32(cell["nir_albedo"])
+        arr["swir_albedo"][idx] = np.float32(cell["swir_albedo"])
         arr["dry_air_subcolumns"][idx] = np.asarray(cell["dry_air_subcolumns"], dtype=np.float32)
         arr["apriori"][idx] = np.asarray(cell["apriori"], dtype=np.float32)
         arr["avkern"][idx]  = np.asarray(cell["avkern"], dtype=np.float32)
         arr["observation_count"][idx] = np.float32(cell["observation_count"])
         arr["lat"][idx] = np.float32(cell["lat"])
         arr["lon"][idx] = np.float32(cell["lon"])
+        # arr["layer"][idx] = np.asarray(cell["layer"], dtype=np.float32)
+        arr["layer"][idx] = np.arange(n_layers)
 
     return arr
 
+# TODO: update this to match what average_sat_observations does with layers
 def average_satellite_observations_to_CSgrid(
         satellite, species, filename, sat_ind, time_threshold,
         CSgridDir, gridspec_path, GC_shape):
@@ -822,6 +1250,9 @@ def average_satellite_observations_to_CSgrid(
     sat_lon_flat = satellite["longitude"].ravel()[sat_mask]
     sat_lat_flat = satellite["latitude"].ravel()[sat_mask]
     sat_species_flat = satellite[species].ravel()[sat_mask]
+    surface_pressure_flat = satellite["surface_pressure"].ravel()[sat_mask]
+    nir_albedo_flat = satellite["nir_albedo"].ravel()[sat_mask]
+    swir_albedo_flat = satellite["swir_albedo"].ravel()[sat_mask]
     sat_time_flat = pd.to_datetime(satellite["time"].ravel()[sat_mask])
 
     # For each destination grid cell j which overlap with at least one observation cell i,
@@ -829,6 +1260,9 @@ def average_satellite_observations_to_CSgrid(
     sat_lon_avg = (obs_weights[GC_indices, :] @ sat_lon_flat).astype(np.float32) / sum_obs_weights[GC_indices]
     sat_lat_avg = (obs_weights[GC_indices, :] @ sat_lat_flat).astype(np.float32) / sum_obs_weights[GC_indices]
     sat_species_avg = (obs_weights[GC_indices, :] @ sat_species_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    surface_pressure_avg = (obs_weights[GC_indices, :] @ surface_pressure_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    nir_albedo_avg = (obs_weights[GC_indices, :] @ nir_albedo_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    swir_albedo_avg = (obs_weights[GC_indices, :] @ swir_albedo_flat).astype(np.float32) / sum_obs_weights[GC_indices]
     sat_time_avg = (obs_weights[GC_indices, :] @ sat_time_flat.astype(np.int64)) / sum_obs_weights[GC_indices]
 
     sat_time_avg = pd.to_datetime(sat_time_avg)  # convert back to datetime
@@ -865,6 +1299,9 @@ def average_satellite_observations_to_CSgrid(
         ("nfi", "i4"), ("Ydimi", "i4"), ("Xdimi", "i4"),
         ("lat_sat", "f4"), ("lon_sat", "f4"), (species, "f4"),
         ("time", "U13"), ("p_sat", "f4", (n_lev_p,)),
+        ("surface_pressure", "f4"),
+        ("nir_albedo", "f4"),
+        ("swir_albedo", "f4"),
         ("dry_air_subcolumns", "f4", (n_lev_dryair,)),
         ("apriori", "f4", (n_lev_apriori,)), ("avkern", "f4", (n_lev_avkern,)),
         ("observation_count", "f4")
@@ -879,6 +1316,9 @@ def average_satellite_observations_to_CSgrid(
     output_dicts[species] = sat_species_avg
     output_dicts["time"] = sat_time_str
     output_dicts["p_sat"] = p_sat_avg
+    output_dicts["surface_pressure"] = surface_pressure_avg
+    output_dicts["nir_albedo"] = nir_albedo_avg
+    output_dicts["swir_albedo"] = swir_albedo_avg
     output_dicts["dry_air_subcolumns"] = dryair_avg
     output_dicts["apriori"] = apriori_avg
     output_dicts["avkern"] = avkern_avg
