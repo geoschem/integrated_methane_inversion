@@ -38,18 +38,31 @@ setup_osse() {
     #     -e "s|${EndDate}|${SpinupEnd}|g" geoschem_config.yml
 
     # Turn on StateMetLevEdge output
-    if "$HourlyCH4"; then
+    if "$HourlySpecies"; then
         sed -i -e 's/#'\''StateMetLevEdge/'\''StateMetLevEdge/g' \
             -e 's/StateMetLevEdge.frequency:   00000100 000000/StateMetLevEdge.frequency:   00000000 010000/g' \
-            -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' \
-            -e 's/StateMetLevEdge.mode:        '\''time-averaged/StateMetLevEdge.mode:        '\''instantaneous/g' HISTORY.rc
+            -e 's/StateMetLevEdge.duration:    00000100 000000/StateMetLevEdge.duration:    00000001 000000/g' HISTORY.rc
+#	\
+#            -e 's/StateMetLevEdge.mode:        '\''time-averaged/StateMetLevEdge.mode:        '\''instantaneous/g' HISTORY.rc
+    fi
+
+    if "$UseGCHP"; then
+        sed -e "s:namename:${OSSEName}:g" \
+            -e "s:##:#:g" gchp_ch4_run.template >${OSSEName}.run
+        chmod 755 ${OSSEName}.run
+        rm -f gchp_ch4_run.template
+    else
+        sed -e "s:namename:${OSSEName}:g" \
+            -e "s:##:#:g" run.template >${OSSEName}.run
+        chmod 755 ${OSSEName}.run
+        rm -f run.template
     fi
 
     # Create run script from template
-    sed -e "s:namename:${OSSEName}:g" \
-        -e "s:##:#:g" ch4_run.template >${OSSEName}.run
-    chmod 755 ${OSSEName}.run
-    rm -f ch4_run.template
+#    sed -e "s:namename:${OSSEName}:g" \
+#        -e "s:##:#:g" ch4_run.template >${OSSEName}.run
+#    chmod 755 ${OSSEName}.run
+#    rm -f ch4_run.template
 
     ### Perform dry run if requested
     if "$ProductionDryRun"; then

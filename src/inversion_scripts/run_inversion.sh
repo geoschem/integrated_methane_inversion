@@ -119,7 +119,7 @@ if "$EnableOSSE"; then
     GCDirOSSE="./data_geoschem_osse"
     mkdir -p  $GCDirOSSE
     # If simulating observations, we need to postprocess the observation data
-    python postproc_diags.py $RunName $RunDirOSSE $PrevDir $StartDate $Res; wait
+    # python postproc_diags.py $RunName $RunDirOSSE $PrevDir $StartDate $Res; wait
     python setup_gc_cache.py $StartDate $EndDate "${RunDirOSSE}/OutputDir" $GCDirOSSE; wait
 fi
 
