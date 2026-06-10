@@ -329,6 +329,8 @@ def goopy_apply_operator(
     goopy_config_path = get_goopy_config_path()
     with open(goopy_config_path, 'r') as f:
         goopy_config = yaml.safe_load(f)
+    goopy_package_path = goopy_config_path.parent
+    goopy_repo_path = goopy_package_path.parent
     
     # Update LOCAL_SETTINGS with the values needed for this run
     save_dir = f'{gc_cache}/../goopy_output'
@@ -369,6 +371,10 @@ def goopy_apply_operator(
     
     # Set the config file path for GOOPy and import
     sys.argv[1] = temp_config.name
+    for import_path in (goopy_repo_path, goopy_package_path):
+        import_path = str(import_path)
+        if import_path not in sys.path:
+            sys.path.insert(0, import_path)
     GOOPy_main = importlib.import_module("GOOPy.main")
     GOOPy_main = importlib.reload(GOOPy_main)
     
