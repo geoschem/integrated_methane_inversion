@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import pickle
@@ -93,6 +95,163 @@ def sum_total_emissions(emissions, areas, mask):
     emissions_in_kg_per_s = emissions * areas * mask
     total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
     return float(total)
+
+
+def get_default_sector_groups(ds, species="CH4", include_soil=False):
+    """
+    Return a simple default sector grouping for emissions variables.
+
+    Wastewater and landfills are grouped as Waste; oil and gas are grouped as
+    Oil/Gas. Other sector variables are returned individually.
+    """
+
+    prefix = f"Emis{species}_"
+    grouped_suffixes = {
+        "Wetlands": ["Wetlands"],
+        "Livestock": ["Livestock"],
+        "Waste": ["Landfills", "Wastewater"],
+        "Oil/Gas": ["Oil", "Gas"],
+        "Coal": ["Coal"],
+        "Reservoirs": ["Reservoirs"],
+        "Rice": ["Rice"],
+        "Other": ["OtherAnth"],
+    }
+
+    emis_vars = [
+        var
+        for var in ds.data_vars
+        if var.startswith(prefix)
+        and "Total" not in var
+        and "Excl" not in var
+        and (include_soil or "Soil" not in var)
+    ]
+
+    sector_groups = {}
+    used_vars = set()
+    for sector, suffixes in grouped_suffixes.items():
+        sector_vars = [
+            f"{prefix}{suffix}"
+            for suffix in suffixes
+            if f"{prefix}{suffix}" in emis_vars
+        ]
+        if sector_vars:
+            sector_groups[sector] = sector_vars
+            used_vars.update(sector_vars)
+
+    for var in sorted(emis_vars):
+        if var not in used_vars:
+            sector_groups[var.replace(prefix, "")] = [var]
+
+    return sector_groups
+
+
+def aggregate_state_vector_field(field, state_vector_labels, last_ROI_element):
+    """
+    Sum a gridded field over each ROI state-vector element.
+    """
+
+    labels = np.asarray(state_vector_labels).ravel()
+    values = np.asarray(field).ravel()
+    valid = (
+        np.isfinite(labels)
+        & np.isfinite(values)
+        & (labels >= 1)
+        & (labels <= last_ROI_element)
+    )
+    labels = labels[valid].astype(int)
+    values = values[valid]
+    sums = np.bincount(labels, weights=values, minlength=last_ROI_element + 1)
+    return sums[1 : last_ROI_element + 1]
+
+
+def build_sector_weight_matrix(
+    prior_ds,
+    state_vector_labels,
+    last_ROI_element,
+    sector_groups=None,
+    areas=None,
+    species="CH4",
+    include_soil=False,
+):
+    """
+    Build normalized sector weights over ROI state-vector elements.
+
+    Rows are sectors and columns are state-vector elements from 1 through
+    ``last_ROI_element``. Each nonzero sector row sums to one, so multiplying
+    the matrix by ROI state-vector scale factors gives sector-level scale
+    factors.
+    """
+
+    if sector_groups is None:
+        sector_groups = get_default_sector_groups(
+            prior_ds, species=species, include_soil=include_soil
+        )
+    if areas is None:
+        areas = prior_ds["AREA"]
+
+    weights = {}
+    for sector, variables in sector_groups.items():
+        field = sum((prior_ds[var] for var in variables if var in prior_ds), 0)
+        if not hasattr(field, "dims"):
+            continue
+        sector_emissions = aggregate_state_vector_field(
+            field * areas, state_vector_labels, last_ROI_element
+        )
+        total = np.sum(sector_emissions)
+        if total > 0:
+            weights[sector] = sector_emissions / total
+
+    if len(weights) == 0:
+        raise ValueError("No nonzero sector emissions were found in the ROI.")
+
+    return pd.DataFrame(
+        weights,
+        index=np.arange(1, last_ROI_element + 1),
+    ).T
+
+
+def reduce_matrix_by_sector(matrix, sector_weights, use_pseudoinverse=False):
+    """
+    Reduce a state-vector matrix to sector space.
+
+    Use ``use_pseudoinverse=True`` for averaging kernels (W A W*). Use the
+    default for covariance-like matrices (W S W.T).
+    """
+
+    W = sector_weights.to_numpy(dtype=float)
+    matrix = np.asarray(matrix, dtype=float)
+    if matrix.ndim != 2:
+        raise ValueError("Expected a two-dimensional state-vector matrix.")
+    n_roi = W.shape[1]
+    if matrix.shape[0] < n_roi or matrix.shape[1] < n_roi:
+        raise ValueError(
+            "Matrix dimensions are smaller than the number of ROI state-vector "
+            "elements in sector_weights."
+        )
+    matrix = matrix[:n_roi, :n_roi]
+
+    if use_pseudoinverse:
+        W_star = W.T @ np.linalg.pinv(W @ W.T)
+        reduced = W @ matrix @ W_star
+    else:
+        reduced = W @ matrix @ W.T
+
+    return pd.DataFrame(
+        reduced,
+        index=sector_weights.index,
+        columns=sector_weights.index,
+    )
+
+
+def covariance_to_correlation(covariance):
+    """Convert a covariance matrix to a correlation matrix."""
+
+    covariance = np.asarray(covariance, dtype=float)
+    std = np.sqrt(np.diag(covariance))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        correlation = covariance / np.outer(std, std)
+    correlation[~np.isfinite(correlation)] = np.nan
+    return correlation
 
 
 def filter_obs_with_mask(mask, df, UseGCHP=False):
