@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+import importlib.util
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -24,6 +26,22 @@ from src.inversion_scripts.operators.operator_utilities import (
 )
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
+
+def get_goopy_config_path():
+    spec = importlib.util.find_spec("GOOPy")
+    if spec is not None and spec.submodule_search_locations:
+        config_path = Path(spec.submodule_search_locations[0]) / "config.yaml"
+        if config_path.exists():
+            return config_path
+
+    repo_config_path = Path(__file__).resolve().parents[3] / "GOOPy" / "config.yaml"
+    if repo_config_path.exists():
+        return repo_config_path
+
+    raise FileNotFoundError(
+        "Could not locate GOOPy/config.yaml from the importable GOOPy package "
+        "or the repository root. Make sure the IMI repository root is on PYTHONPATH."
+    )
 
 def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
     """
@@ -308,7 +326,7 @@ def goopy_apply_operator(
     import importlib
     
     # Read the full GOOPy config
-    goopy_config_path = 'GOOPy/config.yaml'
+    goopy_config_path = get_goopy_config_path()
     with open(goopy_config_path, 'r') as f:
         goopy_config = yaml.safe_load(f)
     
