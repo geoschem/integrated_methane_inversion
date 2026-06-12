@@ -84,11 +84,34 @@ def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
         obs_mapped_to_gc['time'],
         format='%Y%m%d_%H',
     ).strftime('%Y-%m-%dT%H:%M:%S').to_numpy(dtype=str)
+
+    # IMI stores these layer-resolved fields surface-to-TOA. GOOPy's
+    # TROPOMI_blended parser constructs pressure edges in the native file order
+    # and then flips N_EDGES/N_CENTERS to get descending pressure. Write the
+    # center fields in that native order so GOOPy's flip restores IMI ordering.
+    avkern_for_goopy = np.array(
+        [obs_mapped_to_gc['avkern'][i] for i in range(n_obs)],
+        dtype=np.float32,
+    )[:, ::-1]
+    apriori_for_goopy = np.array(
+        [obs_mapped_to_gc['apriori'][i] for i in range(n_obs)],
+        dtype=np.float32,
+    )[:, ::-1]
+    dryair_for_goopy = np.array(
+        [obs_mapped_to_gc['dry_air_subcolumns'][i] for i in range(n_obs)],
+        dtype=np.float32,
+    )[:, ::-1]
     
-    # Create data variables matching TROPOMI_blended format from GOOPy config
+    # Create data variables matching TROPOMI_blended format from GOOPy config.
+    # GOOPy uses latitude/longitude to choose the model grid cell. These
+    # superobservations have already been assigned to GEOS-Chem cells by IMI,
+    # so use the GC cell centers here rather than the weighted satellite
+    # footprint centers.
     data_vars = {
-        'latitude': (['nobs'], obs_mapped_to_gc['lat_sat'].astype(np.float32)),
-        'longitude': (['nobs'], obs_mapped_to_gc['lon_sat'].astype(np.float32)),
+        'latitude': (['nobs'], obs_mapped_to_gc['lat'].astype(np.float32)),
+        'longitude': (['nobs'], obs_mapped_to_gc['lon'].astype(np.float32)),
+        'satellite_latitude': (['nobs'], obs_mapped_to_gc['lat_sat'].astype(np.float32)),
+        'satellite_longitude': (['nobs'], obs_mapped_to_gc['lon_sat'].astype(np.float32)),
         'time_utc': (['nobs'], time_utc),
         satellite_column_name: (['nobs'], obs_mapped_to_gc[species].astype(np.float32)),
         'surface_pressure': (['nobs'], obs_mapped_to_gc['surface_pressure'].astype(np.float32)),
@@ -96,20 +119,20 @@ def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
         'surface_albedo_SWIR': (['nobs'], obs_mapped_to_gc['swir_albedo'].astype(np.float32)),
         'column_averaging_kernel': (
             ['nobs', 'layer'],
-            np.array([obs_mapped_to_gc['avkern'][i] for i in range(n_obs)], dtype=np.float32)
+            avkern_for_goopy
         ),
         prior_name: (
             ['nobs', 'layer'],
-            np.array([obs_mapped_to_gc['apriori'][i] for i in range(n_obs)], dtype=np.float32)
+            apriori_for_goopy
         ),
         'pressure_interval': (
             ['nobs'],
-            obs_mapped_to_gc['p_sat'][:, 0].astype(np.float32) - obs_mapped_to_gc['p_sat'][:, 1].astype(np.float32)
+            (obs_mapped_to_gc['p_sat'][:, 0].astype(np.float32) - obs_mapped_to_gc['p_sat'][:, 1].astype(np.float32)) * 100.0
             if n_lev_p > 1 else np.ones(n_obs, dtype=np.float32)
-        ),
+        ), # NOTE: we multiply by 100 to convert from hPa to Pa, which is the unit expected by GOOPy and the TROPOMI_blended format
         'dry_air_subcolumns': (
             ['nobs', 'layer'],
-            np.array([obs_mapped_to_gc['dry_air_subcolumns'][i] for i in range(n_obs)], dtype=np.float32)
+            dryair_for_goopy
         ),
         'observation_count': (['nobs'], obs_mapped_to_gc['observation_count'].astype(np.float32)),
         'qa_value': (['nobs'], np.ones(n_obs, dtype=np.float32)),  # Set to 1.0 for all valid observations
@@ -294,7 +317,6 @@ def superobservations(
     
     # Create xarray dataset from obs_mapped_to_gc
     ds = obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config)
-    print(f"{ds=}")
     
     # Save superobservations to netcdf files
     output_dir = os.path.join(os.path.expandvars(config['OutputPath']), config['RunName'], f'{filename}_superobservations')
@@ -396,8 +418,41 @@ def goopy_apply_operator(
             f"Available GOOPy outputs: {available_outputs}"
         )
 
+    # debug_row = int(os.environ.get("IMI_DEBUG_ROW", "-1"))
+
+    # print("GOOPy output operator:", operator)
+    # print("GOOPy output file:", goopy_output_file)
+    # with xr.open_dataset(goopy_output_file) as ds:
+    #     if operator == "satellite_average" and debug_row >= 0:
+    #         print("\n=== GOOPy AVERAGED OUTPUT ROW DEBUG ===")
+    #         print("operator:", operator)
+    #         print("file:", goopy_output_file)
+    #         print("row:", debug_row)
+    #         print("dims:", dict(ds.sizes))
+    #         print("data vars:", list(ds.data_vars))
+
+    #         for var_name, da in ds.data_vars.items():
+    #             if "N_OBS" in da.dims:
+    #                 row = da.isel(N_OBS=debug_row).values
+    #             elif "nobs" in da.dims:
+    #                 row = da.isel(nobs=debug_row).values
+    #             else:
+    #                 continue
+
+    #             print(f"\n{var_name}")
+    #             print("  dims:", da.dims)
+    #             print("  shape:", da.shape)
+    #             print("  row value:", row)
+
+    #             arr = np.asarray(row)
+    #             if arr.size == 1 and np.isfinite(arr).all():
+    #                 print("  scalar as ppb if mol/mol:", float(arr) * 1e9)
+
+    #         print("=== END GOOPy AVERAGED OUTPUT ROW DEBUG ===\n")
+
     with xr.open_dataset(goopy_output_file) as ds:
-        virtual_satellite = ds['SATELLITE_COLUMN'].values.astype(np.float32)
+        # virtual_satellite = ds['SATELLITE_COLUMN'].values.astype(np.float32)
+        virtual_satellite = ds['MODEL_COLUMN_CH4'].values.astype(np.float32)
 
     if operator == "satellite":
         return format_goopy_satellite_output(
@@ -450,6 +505,67 @@ def goopy_apply_operator(
             f"GOOPy output has {len(virtual_satellite)} satellite columns, "
             f"but {n_gridcells} superobservations were expected."
         )
+
+    # TODO: delete after testing
+    debug_row = int(os.environ.get("IMI_DEBUG_ROW", "-1"))
+    # print(f"HELLO\n\n\n\n\n\n\n\n\n\n{n_gridcells=}, {len(virtual_satellite)=}, {debug_row=}\n\n\n\n\n\n\n\n\n\n")
+
+    debug_file = os.environ.get("IMI_DEBUG_FILE_SUBSTR")
+
+    if debug_file and debug_file not in os.path.basename(filename):
+        pass
+    elif 0 <= debug_row < n_gridcells:
+        np.set_printoptions(precision=8, suppress=False)
+
+        one = obs_mapped_to_gc[debug_row:debug_row + 1]
+        native_virtual = get_virtual_satellite(
+            one["time"][0],
+            gc_cache,
+            one,
+            n_elements,
+            config,
+        )
+
+        print("\n=== IMI -> GOOPy SUPEROBS DEBUG ===")
+        print("filename:", os.path.basename(filename))
+        print("n_gridcells:", n_gridcells)
+        print("native IMI virtual column ppb:", native_virtual[0] * 1e9)
+        print("GOOPy virtual column ppb:", virtual_satellite[debug_row] * 1e9)
+        print("GOOPy - native IMI ppb:", virtual_satellite[debug_row] * 1e9 - native_virtual[0] * 1e9)
+
+        dryair = obs_mapped_to_gc["dry_air_subcolumns"][debug_row]
+        apriori = obs_mapped_to_gc["apriori"][debug_row]
+        avkern = obs_mapped_to_gc["avkern"][debug_row]
+        p_sat = obs_mapped_to_gc["p_sat"][debug_row]
+
+        print("\n--- IMI arrays in GOOPy-comparable form ---")
+        print("IMI pressure edges:", p_sat)
+        print("IMI pressure diffs:", np.diff(p_sat))
+        print("IMI pressure descending?", np.all(np.diff(p_sat) < 0))
+
+        print("IMI pressure weights:", dryair / np.sum(dryair))
+        print("IMI prior profile vmr:", apriori / dryair)
+        print("IMI averaging kernel:", avkern)
+
+        print("IMI pressure weights reversed:", (dryair / np.sum(dryair))[::-1])
+        print("IMI prior profile vmr reversed:", (apriori / dryair)[::-1])
+        print("IMI averaging kernel reversed:", avkern[::-1])
+        print("------------------------------------------\n")
+
+        print(f"debug row: {debug_row}")
+        print("iGC, jGC:", obs_mapped_to_gc["iGC"][debug_row], obs_mapped_to_gc["jGC"][debug_row])
+        print("GC lat/lon:", obs_mapped_to_gc["lat"][debug_row], obs_mapped_to_gc["lon"][debug_row])
+        print("sat lat/lon:", obs_mapped_to_gc["lat_sat"][debug_row], obs_mapped_to_gc["lon_sat"][debug_row])
+        print("time:", obs_mapped_to_gc["time"][debug_row])
+        print("satellite column:", obs_mapped_to_gc[species][debug_row])
+        print("GOOPy virtual column ppb:", virtual_satellite[debug_row] * 1e9)
+        print("p_sat:", obs_mapped_to_gc["p_sat"][debug_row])
+        print("dry_air_subcolumns:", obs_mapped_to_gc["dry_air_subcolumns"][debug_row])
+        print("apriori:", obs_mapped_to_gc["apriori"][debug_row])
+        print("avkern:", obs_mapped_to_gc["avkern"][debug_row])
+        print("observation_count:", obs_mapped_to_gc["observation_count"][debug_row])
+        print("===================================\n")
+
 
     obs_GC[:, 1] = virtual_satellite * 1e9  # convert from mol/mol to ppb
     obs_GC[:, 2] = obs_mapped_to_gc["lon_sat"]

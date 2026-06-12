@@ -147,7 +147,7 @@ class TestEndToEndIntegration:
             cmd,
             cwd=workspace_root,
             env=env,
-            capture_output=True,
+            capture_output=False,
             text=True,
             timeout=300,
         )
@@ -203,6 +203,37 @@ class TestEndToEndIntegration:
                                 f"expected {expected_output[key].shape}, "
                                 f"got {actual_output[key].shape}"
                             )
+
+                            # if key == 'obs_GC':
+
+                            #     # Plotting differences
+                            #     import matplotlib.pyplot as plt
+
+                            #     # Compute absolute difference
+                            #     matrix_diff = np.abs(expected_output[key] - actual_output[key])
+
+                            #     # Plotting the heatmap
+                            #     plt.figure(figsize=(6, 5))
+                            #     plt.imshow(matrix_diff, cmap='coolwarm', interpolation='nearest')
+                            #     plt.colorbar(label='Absolute Error')
+                            #     plt.title("Matrix Mismatch Heatmap")
+                            #     plt.savefig("./obs_gc_matrix_mismatch_heatmap.png")
+
+                            # if key == "obs_GC":
+                            #     diff = expected_output[key] - actual_output[key]
+                            #     abs_diff_col1 = np.abs(diff[:, 1])
+                            #     worst = int(np.nanargmax(abs_diff_col1))
+
+                            #     np.set_printoptions(precision=8, suppress=False)
+
+                            #     print("\n=== obs_GC DEBUG ===")
+                            #     print(f"file: {expected_file.name}")
+                            #     print(f"worst row: {worst}")
+                            #     print(f"max abs diff col 1: {abs_diff_col1[worst]}")
+                            #     print("expected obs_GC row:", expected_output[key][worst])
+                            #     print("actual   obs_GC row:", actual_output[key][worst])
+                            #     print("diff     obs_GC row:", diff[worst])
+                            #     print("====================\n")
 
                             # Use relative tolerance for floating point comparisons
                             if expected_output[key].size > 0:
