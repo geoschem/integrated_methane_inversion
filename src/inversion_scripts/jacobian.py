@@ -227,7 +227,6 @@ if __name__ == "__main__":
 
             # Compute super-observations for this satellite file
             superobservations_output = superobservations(
-            # obs_mapped_to_gc, output_dir = superobservations(
                 filename,
                 species,
                 satellite_product,
@@ -251,7 +250,6 @@ if __name__ == "__main__":
                     "filename": filename,
                     "species" : species,
                     "satellite_product": satellite_product,
-                    # "satellite_cache": satellite_cache,
                     "satellite_cache": output_dir,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
@@ -283,7 +281,6 @@ if __name__ == "__main__":
                     "species" : species,
                     "satellite_product": satellite_product,
                     "satellite_cache": satellite_cache,
-                    # "satellite_cache": output_dir,
                     "n_elements": n_elements,
                     "gc_startdate": gc_startdate,
                     "gc_enddate": gc_enddate,
