@@ -179,10 +179,6 @@ def save_superobservations(ds, filename, output_path):
     
     # Save to netcdf with compression
     ds.to_netcdf(output_file)
-    # ds.to_netcdf(output_file, encoding={
-    #     var: {'zlib': True, 'complevel': 4}
-    #     for var in ds.data_vars
-    # })
     
     print(f"Saved superobservations to {output_file}")
     return output_file
