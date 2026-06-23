@@ -184,7 +184,47 @@ def save_superobservations(ds, filename, output_path):
     return output_file
 
 
-def apply_operator(operator, params, obs_mapped_to_gc, config):
+def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
+    """
+    Run the satellite observation operator. By default, GOOPy is used but the original IMI operator can be used by setting use_goopy=False.
+
+    Arguments
+        operator [str]    : Data conversion operator to use
+        params   [dict]   : parameters to run the given operator
+        obs_mapped_to_gc [dict] : Mapped satellite observations
+        config   [dict]   : Configuration parameters
+        use_goopy [bool]  : Whether to use GOOPy (default: True)
+    Returns
+        output   [dict]   : Dictionary with:
+                            - obs_GC : GEOS-Chem and satellite column data
+                            - satellite columns
+                            - GEOS-Chem columns
+                            - satellite lat, lon
+                            - satellite lat index, lon index
+    """
+    if use_goopy:
+        return goopy_apply_operator(
+            operator,
+            params["filename"],
+            params["species"],
+            params["satellite_product"],
+            params["satellite_cache"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["period_i"],
+            obs_mapped_to_gc,
+            config,
+            params["use_water_obs"],
+        )
+    else:
+        return apply_original_imi_operator(operator, params, config)
+
+
+def apply_original_imi_operator(operator, params, config):
     """
     Run the chosen operator based on selected instrument
 
@@ -198,59 +238,42 @@ def apply_operator(operator, params, obs_mapped_to_gc, config):
                             - GEOS-Chem columns
                             - satellite lat, lon
                             - satellite lat index, lon index
+                              If build_jacobian=True, also include:
+                                - K      : Jacobian matrix
     """
-    return goopy_apply_operator(
-        operator,
-        params["filename"],
-        params["species"],
-        params["satellite_product"],
-        params["satellite_cache"],
-        params["n_elements"],
-        params["gc_startdate"],
-        params["gc_enddate"],
-        params["xlim"],
-        params["ylim"],
-        params["gc_cache"],
-        params["period_i"],
-        obs_mapped_to_gc,
-        config,
-        params["use_water_obs"],
-    )
-    # if operator == "satellite_average":
-    #     return apply_average_satellite_operator(
-    #         params["filename"],
-    #         params["species"],
-    #         params["satellite_product"],
-    #         params["satellite_cache"],
-    #         params["n_elements"],
-    #         params["gc_startdate"],
-    #         params["gc_enddate"],
-    #         params["xlim"],
-    #         params["ylim"],
-    #         params["gc_cache"],
-    #         params["period_i"],
-    #         obs_mapped_to_gc,
-    #         config,
-    #         params["use_water_obs"],
-    #     )
-    # elif operator == "satellite":
-    #     return apply_satellite_operator(
-    #         params["filename"],
-    #         params["species"],
-    #         params["satellite_product"],
-    #         params["satellite_cache"],
-    #         params["n_elements"],
-    #         params["gc_startdate"],
-    #         params["gc_enddate"],
-    #         params["xlim"],
-    #         params["ylim"],
-    #         params["gc_cache"],
-    #         params["period_i"],
-    #         config,
-    #         params["use_water_obs"],
-    #     )
-    # else:
-    #     raise ValueError("Error: invalid operator selected.")
+    if operator == "satellite_average":
+        return apply_average_satellite_operator(
+            params["filename"],
+            params["species"],
+            params["satellite_product"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["build_jacobian"],
+            params["period_i"],
+            config,
+            params["use_water_obs"],
+        )
+    elif operator == "satellite":
+        return apply_satellite_operator(
+            params["filename"],
+            params["species"],
+            params["satellite_product"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["period_i"],
+            config,
+            params["use_water_obs"],
+        )
+    else:
+        raise ValueError("Error: invalid operator selected.")
 
 
 def superobservations(
@@ -375,7 +398,6 @@ def goopy_apply_operator(
         'OBS_DIR': os.path.dirname(goopy_obs_file),
         'OBS_FILE_FORMAT': os.path.basename(goopy_obs_file),
         'MODEL_LEVEL_EDGE_DIR': gc_cache,
-        # 'LEVEL_EDGE_FILE_FORMAT': 'GEOSChem.LevelEdgeDiags.*.nc4',
         'LEVEL_EDGE_FILE_FORMAT': 'GEOSChem.StateMetLevEdge.*.nc4',
         'MODEL_CONCENTRATION_DIR': gc_cache,
         'CONCENTRATION_FILE_FORMAT': 'GEOSChem.SpeciesConc.*.nc4',
@@ -414,38 +436,6 @@ def goopy_apply_operator(
             f"Available GOOPy outputs: {available_outputs}"
         )
 
-    # debug_row = int(os.environ.get("IMI_DEBUG_ROW", "-1"))
-
-    # print("GOOPy output operator:", operator)
-    # print("GOOPy output file:", goopy_output_file)
-    # with xr.open_dataset(goopy_output_file) as ds:
-    #     if operator == "satellite_average" and debug_row >= 0:
-    #         print("\n=== GOOPy AVERAGED OUTPUT ROW DEBUG ===")
-    #         print("operator:", operator)
-    #         print("file:", goopy_output_file)
-    #         print("row:", debug_row)
-    #         print("dims:", dict(ds.sizes))
-    #         print("data vars:", list(ds.data_vars))
-
-    #         for var_name, da in ds.data_vars.items():
-    #             if "N_OBS" in da.dims:
-    #                 row = da.isel(N_OBS=debug_row).values
-    #             elif "nobs" in da.dims:
-    #                 row = da.isel(nobs=debug_row).values
-    #             else:
-    #                 continue
-
-    #             print(f"\n{var_name}")
-    #             print("  dims:", da.dims)
-    #             print("  shape:", da.shape)
-    #             print("  row value:", row)
-
-    #             arr = np.asarray(row)
-    #             if arr.size == 1 and np.isfinite(arr).all():
-    #                 print("  scalar as ppb if mol/mol:", float(arr) * 1e9)
-
-    #         print("=== END GOOPy AVERAGED OUTPUT ROW DEBUG ===\n")
-
     with xr.open_dataset(goopy_output_file) as ds:
         # virtual_satellite = ds['SATELLITE_COLUMN'].values.astype(np.float32)
         virtual_satellite = ds['MODEL_COLUMN_CH4'].values.astype(np.float32)
@@ -463,8 +453,36 @@ def goopy_apply_operator(
             config,
             use_water_obs,
         )
+    elif operator == "satellite_average":
+        return format_goopy_average_satellite_output(
+            species,
+            gc_cache,
+            gc_startdate,
+            n_elements,
+            obs_mapped_to_gc,
+            virtual_satellite,
+            config,
+        )
+    else:
+        raise ValueError(f"Error: invalid operator selected: {operator}")
 
-    # mostly copied from apply_average_satellite_operator() in this file, but with some edits to read in the GOOPy output instead of re-computing the operator components
+
+def format_goopy_average_satellite_output(
+    species,
+    gc_cache,
+    gc_startdate,
+    n_elements,
+    obs_mapped_to_gc,
+    virtual_satellite,
+    config,
+):
+    """
+    Format GOOPy output for the grid-cell-averaged satellite operator path.
+
+    GOOPy computes the modeled satellite column for each superobservation.
+    This wraps those modeled columns in the IMI satellite_average output
+    structure without recomputing the standard operator components.
+    """
     n_gridcells = len(obs_mapped_to_gc)
     gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
     GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
@@ -502,67 +520,6 @@ def goopy_apply_operator(
             f"but {n_gridcells} superobservations were expected."
         )
 
-    # TODO: delete after testing
-    debug_row = int(os.environ.get("IMI_DEBUG_ROW", "-1"))
-    # print(f"HELLO\n\n\n\n\n\n\n\n\n\n{n_gridcells=}, {len(virtual_satellite)=}, {debug_row=}\n\n\n\n\n\n\n\n\n\n")
-
-    debug_file = os.environ.get("IMI_DEBUG_FILE_SUBSTR")
-
-    if debug_file and debug_file not in os.path.basename(filename):
-        pass
-    elif 0 <= debug_row < n_gridcells:
-        np.set_printoptions(precision=8, suppress=False)
-
-        one = obs_mapped_to_gc[debug_row:debug_row + 1]
-        native_virtual = get_virtual_satellite(
-            one["time"][0],
-            gc_cache,
-            one,
-            n_elements,
-            config,
-        )
-
-        print("\n=== IMI -> GOOPy SUPEROBS DEBUG ===")
-        print("filename:", os.path.basename(filename))
-        print("n_gridcells:", n_gridcells)
-        print("native IMI virtual column ppb:", native_virtual[0] * 1e9)
-        print("GOOPy virtual column ppb:", virtual_satellite[debug_row] * 1e9)
-        print("GOOPy - native IMI ppb:", virtual_satellite[debug_row] * 1e9 - native_virtual[0] * 1e9)
-
-        dryair = obs_mapped_to_gc["dry_air_subcolumns"][debug_row]
-        apriori = obs_mapped_to_gc["apriori"][debug_row]
-        avkern = obs_mapped_to_gc["avkern"][debug_row]
-        p_sat = obs_mapped_to_gc["p_sat"][debug_row]
-
-        print("\n--- IMI arrays in GOOPy-comparable form ---")
-        print("IMI pressure edges:", p_sat)
-        print("IMI pressure diffs:", np.diff(p_sat))
-        print("IMI pressure descending?", np.all(np.diff(p_sat) < 0))
-
-        print("IMI pressure weights:", dryair / np.sum(dryair))
-        print("IMI prior profile vmr:", apriori / dryair)
-        print("IMI averaging kernel:", avkern)
-
-        print("IMI pressure weights reversed:", (dryair / np.sum(dryair))[::-1])
-        print("IMI prior profile vmr reversed:", (apriori / dryair)[::-1])
-        print("IMI averaging kernel reversed:", avkern[::-1])
-        print("------------------------------------------\n")
-
-        print(f"debug row: {debug_row}")
-        print("iGC, jGC:", obs_mapped_to_gc["iGC"][debug_row], obs_mapped_to_gc["jGC"][debug_row])
-        print("GC lat/lon:", obs_mapped_to_gc["lat"][debug_row], obs_mapped_to_gc["lon"][debug_row])
-        print("sat lat/lon:", obs_mapped_to_gc["lat_sat"][debug_row], obs_mapped_to_gc["lon_sat"][debug_row])
-        print("time:", obs_mapped_to_gc["time"][debug_row])
-        print("satellite column:", obs_mapped_to_gc[species][debug_row])
-        print("GOOPy virtual column ppb:", virtual_satellite[debug_row] * 1e9)
-        print("p_sat:", obs_mapped_to_gc["p_sat"][debug_row])
-        print("dry_air_subcolumns:", obs_mapped_to_gc["dry_air_subcolumns"][debug_row])
-        print("apriori:", obs_mapped_to_gc["apriori"][debug_row])
-        print("avkern:", obs_mapped_to_gc["avkern"][debug_row])
-        print("observation_count:", obs_mapped_to_gc["observation_count"][debug_row])
-        print("===================================\n")
-
-
     obs_GC[:, 1] = virtual_satellite * 1e9  # convert from mol/mol to ppb
     obs_GC[:, 2] = obs_mapped_to_gc["lon_sat"]
     obs_GC[:, 3] = obs_mapped_to_gc["lat_sat"]
@@ -571,9 +528,6 @@ def goopy_apply_operator(
     for strdate in all_strdate:
         gridcell_dict = obs_mapped_to_gc[obs_mapped_to_gc["time"] == strdate]
         sel_idx = np.where(obs_mapped_to_gc["time"] == strdate)[0]
-        # virtual_satellite = get_virtual_satellite(
-        #     strdate, gc_cache, gridcell_dict, n_elements, config
-        # )
         if config["EnableOSSE"]:
             synthetic_virtual_satellite = get_virtual_satellite(
                 strdate, osse_gc_cache, gridcell_dict, n_elements, config
@@ -665,6 +619,7 @@ def format_goopy_satellite_output(
     return output
 
 
+# DEPRECATED: in favor of goopy_apply_operator()
 def apply_average_satellite_operator(
     filename,
     species,
@@ -781,6 +736,7 @@ def apply_average_satellite_operator(
     return output
 
 
+# DEPRECATED: in favor of goopy_apply_operator()
 def apply_satellite_operator(
     filename,
     species,
@@ -1307,12 +1263,11 @@ def average_satellite_observations(
         arr["observation_count"][idx] = np.float32(cell["observation_count"])
         arr["lat"][idx] = np.float32(cell["lat"])
         arr["lon"][idx] = np.float32(cell["lon"])
-        # arr["layer"][idx] = np.asarray(cell["layer"], dtype=np.float32)
         arr["layer"][idx] = np.arange(n_layers)
 
     return arr
 
-# TODO: update this to match what average_sat_observations does with layers
+# TODO: update this to add layers to the returned dicts to match what average_sat_observations does 
 def average_satellite_observations_to_CSgrid(
         satellite, species, filename, sat_ind, time_threshold,
         CSgridDir, gridspec_path, GC_shape):
