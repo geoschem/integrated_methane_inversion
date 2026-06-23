@@ -392,9 +392,17 @@ def goopy_apply_operator(
     else:
         raise ValueError(f"Error: invalid operator selected: {operator}")
 
+
+    # TODO: we should update the IMI satellite products and GOOPy satellite names to be the same, workaround for now
+    satellite_product_to_goopy_name_map = {
+        'BlendedTROPOMI': 'TROPOMI_blended',
+        'TROPOMI': 'TROPOMI',
+    }
+    goopy_satellite_name = satellite_product_to_goopy_name_map.get(satellite_product, satellite_product)
+
     goopy_config['LOCAL_SETTINGS'].update({
         'SAVE_INTERPOLATION': 'False',
-        'SATELLITE_NAME': 'TROPOMI_blended',  # TODO: make this not TROPOMI-specific
+        'SATELLITE_NAME': goopy_satellite_name,
         'OBS_DIR': os.path.dirname(goopy_obs_file),
         'OBS_FILE_FORMAT': os.path.basename(goopy_obs_file),
         'MODEL_LEVEL_EDGE_DIR': gc_cache,
