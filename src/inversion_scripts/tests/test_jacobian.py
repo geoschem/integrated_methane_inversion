@@ -96,7 +96,7 @@ class TestEndToEndIntegration:
 
         workdir = temp_inversion_workspace / "inversion"
         config_file = baseline_test_data_dir / "config_baseline_jacobian_inversion3.yml"
-        satellite_cache = baseline_test_data_dir / "satellite_data_may"
+        satellite_cache = temp_inversion_workspace / "satellite_data_may"
 
         # Test parameters (matching baseline_jacobian_inversion3 setup)
         startday = "20180505"
