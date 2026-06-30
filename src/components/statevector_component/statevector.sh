@@ -90,7 +90,7 @@ reduce_dimension() {
     state_vector_path=${RunDirs}/StateVector.nc
     native_state_vector_path=${RunDirs}/NativeStateVector.nc
 
-    preview_dir=${RunDirs}/preview_run
+    preview_dir=${RunDirs}/preview
     satellite_cache=${RunDirs}/satellite_data
     aggregation_file=${InversionPath}/src/components/statevector_component/aggregation.py
 
