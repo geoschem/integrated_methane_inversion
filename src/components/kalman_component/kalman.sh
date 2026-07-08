@@ -144,6 +144,9 @@ run_period() {
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
 
+    # Refresh the per-task ReDoJacobian skip check to use this period's EndDate. 
+    sed -i -E "s/^yyyymmdd=[0-9]{8}/yyyymmdd=${EndDate_i}/" "${JacobianRunsDir}/run_jacobian_simulations.sh"
+
     # run jacobian simulation for the given period
     run_jacobian
 
@@ -163,7 +166,7 @@ run_period() {
     run_posterior
 
     # Make link to restart file from posterior run directory in prior, OH, and background simulation
-    # and link to 1ppb restart file for perturbations
+    # and link to lowbg restart file for perturbations.
     if "$UseGCHP"; then
         org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
     else
@@ -193,17 +196,18 @@ run_period() {
         # Extract the filename from the target path
         filename=$(basename "$target")
 
-        # Check if the filename contains "1ppb". If so, use the 1ppb restart file
-        # Otherwise use the posterior simulation as the restart file
+        # Check if the filename contains "lowbg". If so, use the lowbg restart file.
+        # Otherwise use the posterior simulation as the restart file.
+
         if "$UseGCHP"; then
-            if [[ "$filename" == *1ppb* ]]; then
-                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
+            if [[ "$filename" == *lowbg* ]]; then
+                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
             else
                 ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
             fi
         else
-            if [[ "$filename" == *1ppb* ]]; then
-                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
+            if [[ "$filename" == *lowbg* ]]; then
+                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
             else
                 ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
             fi

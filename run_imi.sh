@@ -204,7 +204,7 @@ if [[ -z "$DataPathObs" ]]; then
     else
         printf "$SatelliteProduct is not currently supported for download"
     fi
-    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $downloadScript $StartDate $EndDate $satelliteCache
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition $downloadScript $StartDate $EndDate $satelliteCache
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $satelliteCache ]]; then
