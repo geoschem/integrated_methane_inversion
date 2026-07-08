@@ -280,7 +280,16 @@ setup_imi() {
     fi
 
     ##=======================================================================
-    ## Generate Prior Emissions using a HEMCO standalone run or GCHP prior run
+    ## Compile GEOS-Chem
+    ##=======================================================================
+    if "$CompileGEOSChem"; then
+        compile_geoschem
+    fi
+
+
+    
+    ##=======================================================================
+    ## Setup and Generate Prior Emissions
     ##=======================================================================
     if "$DoHemcoPriorEmis"; then
         if [ "$UseGCHP" != "true" ]; then
