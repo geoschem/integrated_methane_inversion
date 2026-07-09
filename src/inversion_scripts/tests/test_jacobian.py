@@ -11,15 +11,59 @@ import numpy as np
 import pytest
 
 
+BASELINE_JACOBIAN_RUN_NAME = "baseline_jacobian_inversion3"
+
+
+def copy_config_with_output_path(src_config_file, dest_config_file, output_path):
+    """Copy test config and point OutputPath at the temporary test workspace."""
+    lines = src_config_file.read_text().splitlines()
+    updated_lines = []
+
+    for line in lines:
+        if line.startswith("OutputPath:"):
+            updated_lines.append(f'OutputPath: "{Path(output_path).resolve()}"')
+        else:
+            updated_lines.append(line)
+
+    dest_config_file.write_text("\n".join(updated_lines) + "\n")
+
+
+def jacobian_subprocess_env(repo_root, temp_workspace):
+    """Environment for jacobian.py subprocesses that keeps caches out of the repo."""
+    env = {**os.environ}
+    env["PYTHONPATH"] = f"{repo_root}:{env.get('PYTHONPATH', '')}"
+    env["MPLCONFIGDIR"] = str(temp_workspace / ".matplotlib")
+    env["PYTHONPYCACHEPREFIX"] = str(temp_workspace / ".pycache")
+    env["JOBLIB_TEMP_FOLDER"] = str(temp_workspace / ".joblib")
+    return env
+
+
 class TestEndToEndIntegration:
     """End-to-end integration tests running jacobian.py with real test data."""
 
     @pytest.fixture
     def baseline_test_data_dir(self):
         """Path to baseline test data directory."""
-        test_data_dir = Path(__file__).parent / "test_data" / "baseline_jacobian_inversion3"
+        test_data_root = os.environ.get("JACOBIAN_TEST_DATA_ROOT")
+        if test_data_root is None:
+            pytest.skip(
+                "JACOBIAN_TEST_DATA_ROOT must be set to the directory containing "
+                "baseline_jacobian_inversion3 or to baseline_jacobian_inversion3 itself."
+            )
+
+        test_data_root = Path(test_data_root).expanduser().resolve()
+        test_data_dir = (
+            test_data_root
+            if test_data_root.name == BASELINE_JACOBIAN_RUN_NAME
+            else test_data_root / BASELINE_JACOBIAN_RUN_NAME
+        )
         if not test_data_dir.exists():
-            pytest.skip(f"Test data not found at {test_data_dir}")
+            pytest.skip(
+                "Test data not found at "
+                f"{test_data_dir}. Set JACOBIAN_TEST_DATA_ROOT to the directory "
+                "containing baseline_jacobian_inversion3 or to "
+                "baseline_jacobian_inversion3 itself."
+            )
         return test_data_dir
 
     @pytest.fixture
@@ -30,8 +74,15 @@ class TestEndToEndIntegration:
         """
 
         # Copy the entire baseline directory to temp location (note this includes golden files)
-        temp_workspace = temp_dir / "inversion_workspace"
+        temp_workspace = temp_dir / BASELINE_JACOBIAN_RUN_NAME
         temp_workspace.mkdir(exist_ok=True)
+
+        config_file = temp_workspace / "config_baseline_jacobian_inversion3.yml"
+        copy_config_with_output_path(
+            baseline_test_data_dir / "config_baseline_jacobian_inversion3.yml",
+            config_file,
+            temp_workspace.parent,
+        )
 
         # Copy inversion subdirectory and all its contents
         src_inversion_dir = baseline_test_data_dir / "inversion"
@@ -52,6 +103,21 @@ class TestEndToEndIntegration:
 
         if src_satellite_dir.exists():
             shutil.copytree(src_satellite_dir, dest_satellite_dir)
+
+        # Copy perturbation scale factors used by jacobian.py via
+        # config["OutputPath"] / config["RunName"] / archive_perturbation_sfs.
+        src_perturbation_sf_dir = baseline_test_data_dir / "archive_perturbation_sfs"
+        dest_perturbation_sf_dir = temp_workspace / "archive_perturbation_sfs"
+
+        if src_perturbation_sf_dir.exists():
+            shutil.copytree(src_perturbation_sf_dir, dest_perturbation_sf_dir)
+
+        # Copy Jacobian run outputs used to build K from perturbation runs.
+        src_jacobian_runs_dir = baseline_test_data_dir / "jacobian_runs"
+        dest_jacobian_runs_dir = temp_workspace / "jacobian_runs"
+
+        if src_jacobian_runs_dir.exists():
+            shutil.copytree(src_jacobian_runs_dir, dest_jacobian_runs_dir)
 
         # Create data directories that will be populated by jacobian.py
         (dest_inversion_dir / "data_geoschem").mkdir(exist_ok=True)
@@ -95,7 +161,7 @@ class TestEndToEndIntegration:
         """
 
         workdir = temp_inversion_workspace / "inversion"
-        config_file = baseline_test_data_dir / "config_baseline_jacobian_inversion3.yml"
+        config_file = temp_inversion_workspace / "config_baseline_jacobian_inversion3.yml"
         satellite_cache = temp_inversion_workspace / "satellite_data_may"
 
         # Test parameters (matching baseline_jacobian_inversion3 setup)
@@ -139,13 +205,12 @@ class TestEndToEndIntegration:
         ]
 
         # Run jacobian.py
-        env = {**os.environ}
-        workspace_root = Path(__file__).parent.parent.parent.parent
-        env["PYTHONPATH"] = f"{workspace_root}:{env.get('PYTHONPATH', '')}"
+        repo_root = Path(__file__).resolve().parents[3]
+        env = jacobian_subprocess_env(repo_root, temp_inversion_workspace)
 
         result = subprocess.run(
             cmd,
-            cwd=workspace_root,
+            cwd=repo_root,
             env=env,
             capture_output=False,
             text=True,
@@ -279,14 +344,14 @@ class TestEndToEndIntegration:
 
     # NOTE: this test is a bit extraneous, it's literally just testing whether the .pkl outputs of jacobian.py have obs_GC and K as expected
     def test_jacobian_output_structure_validation(
-        self, temp_inversion_workspace, baseline_test_data_dir
+        self, temp_inversion_workspace
     ):
         """
         Verify that jacobian.py output has correct structure and data types.
         """
 
         workdir = temp_inversion_workspace / "inversion"
-        config_file = baseline_test_data_dir / "config_baseline_jacobian_inversion3.yml"
+        config_file = temp_inversion_workspace / "config_baseline_jacobian_inversion3.yml"
         satellite_cache = temp_inversion_workspace / "satellite_data_may"
 
         cmd = [
@@ -312,13 +377,12 @@ class TestEndToEndIntegration:
             "false",
         ]
 
-        env = {**os.environ}
-        workspace_root = Path(__file__).parent.parent.parent.parent
-        env["PYTHONPATH"] = f"{workspace_root}:{env.get('PYTHONPATH', '')}"
+        repo_root = Path(__file__).resolve().parents[3]
+        env = jacobian_subprocess_env(repo_root, temp_inversion_workspace)
 
         result = subprocess.run(
             cmd,
-            cwd=workspace_root,
+            cwd=repo_root,
             env=env,
             capture_output=True,
             text=True,
