@@ -1,8 +1,10 @@
 import xarray as xr
 import os
 
+from src.utilities.config_utils import load_config
 
-def multiply_posteriors(period_number, base_directory, lognormal):
+
+def multiply_posteriors(config_path, period_number, base_directory, lognormal):
     """
     Before running the posterior simulation to update initial conditions for the next period, need to
     apply the latest posterior scale factors to the dynamic ScaleFactors.nc file. The posterior
@@ -13,6 +15,8 @@ def multiply_posteriors(period_number, base_directory, lognormal):
         base_directory  [str] : The base directory for the inversion, where e.g., "preview_sim/" resides
 
     """
+
+    config = load_config(config_path)
 
     # Useful paths
     sf_path = os.path.join(base_directory, "ScaleFactors.nc")
@@ -60,8 +64,9 @@ def multiply_posteriors(period_number, base_directory, lognormal):
 if __name__ == "__main__":
     import sys
 
-    period_number = sys.argv[1]
-    base_directory = sys.argv[2]
-    lognormal = sys.argv[3] == "true"
+    config_path = sys.argv[1]
+    period_number = sys.argv[2]
+    base_directory = sys.argv[3]
+    lognormal = sys.argv[4] == "true"
 
-    multiply_posteriors(period_number, base_directory, lognormal)
+    multiply_posteriors(config_path, period_number, base_directory, lognormal)

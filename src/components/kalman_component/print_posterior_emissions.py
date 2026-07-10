@@ -39,7 +39,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
         gridds = xr.open_dataset(gridpath)
         areas = gridds['area']
     else:
-        areas = original_emis_ds["AREA"]
+        areas = hemco_diags["AREA"]
     state_vector_labels = statevector["StateVector"]
     last_ROI_element = int(
         np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
