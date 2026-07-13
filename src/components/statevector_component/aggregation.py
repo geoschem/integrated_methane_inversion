@@ -512,8 +512,14 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             "Error: Invalid Clustering Method. Valid values are: 'kmeans', 'mini-batch-kmeans'."
         )
 
-    desired_num_labels = config["NumberOfElements"] - config["nBufferClusters"]
-    last_ROI_element = int(orig_sv["StateVector"].max() - config["nBufferClusters"])
+    # Identify the last element of the region of interest
+    nStateOrig = orig_sv["StateVector"].max().values
+    last_ROI_element = int(orig_sv["StateVector"].isel(
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
+    ).max())
+    nBufferClusters = nStateOrig - last_ROI_element
+    desired_num_labels = config["NumberOfElements"] - nBufferClusters
 
     # set dofs threshold based on user preferences
     if "ClusteringThreshold" in config.keys():
@@ -555,7 +561,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     # set buffer elements to 0, retain buffer labels for rejoining
     _, buffer_labels = zero_buffer_elements(
-        orig_sv.copy()["StateVector"], config["nBufferClusters"]
+        orig_sv.copy()["StateVector"], nBufferClusters
     )
     # sv with no buffer elements
     orig_sv_cp = orig_sv.copy()["StateVector"]

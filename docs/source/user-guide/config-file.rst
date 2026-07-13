@@ -175,10 +175,10 @@ State vector
 
    * - ``CreateAutomaticRectilinearStateVectorFile``
      - Boolean for whether the IMI should automatically create a rectilinear state vector for the inversion. If ``false``, a custom/pre-generated state vector netcdf file must be provided under ``StateVectorFile``.
-   * - ``nBufferClusters``
-     - Number of buffer elements (clusters of GEOS-Chem grid cells lying outside the region of interest) to add to the state vector of emissions being optimized in the inversion. Default value is ``8``.
-   * - ``BufferDeg``
-     - Width of the buffer elements, in degrees; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``5`` (~500 km).
+   * - ``BufferRings``
+     - Number of rings of buffer elements around each state vector element; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``3``.
+   * - ``BufferReductionFactor``
+     - Factor by which to reduce the number of native resolution buffer elements; will not be used if ``CreateAutomaticRectilinearStateVectorFile`` is ``false``. Default is ``4``.
    * - ``EmisThreshold``
      - GEOS-Chem grid cells with emissions above this threshold will be included in the state vector. Default value is ``1.e-12``.
    * - ``OptimizeBCs``

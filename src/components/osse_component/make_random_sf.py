@@ -17,7 +17,11 @@ def make_random_sf(state_vector_path, config):
     state_vector = xr.load_dataset(state_vector_path)
     state_vector_labels = state_vector["StateVector"]
 
-    last_ROI_element = int(np.nanmax(state_vector_labels.values) - config["nBufferClusters"])
+    # Identify the last element of the region of interest
+    last_ROI_element = int(state_vector_labels.isel(
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
+    ).max())
     mask = state_vector_labels <= last_ROI_element
     scale_factor = state_vector.rename({"StateVector": "ScaleFactor"})
     scale_factor["ScaleFactor"].attrs["units"] = "1"

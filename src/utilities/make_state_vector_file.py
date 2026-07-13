@@ -47,21 +47,15 @@ def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth)
     return compatible
 
 
-def cluster_buffer_elements(data, num_clusters, offset):
+def cluster_buffer_elements(data, offset):
     """
     Description:
         Cluster all 0 valued elements in dataarray into desired num clusters
     arguments:
         data       [][]dataarray : xarrray sensitivity data
-        num_clusters         int : number of labels to assign data to
         offset              bool : offset labels by this integer value
     Returns:       [][]dataarray : labeled data
     """
-
-    # if using 0 clusters, return data with buffer pixels
-    # infilled with -9999
-    if num_clusters == 0:
-        return xr.where(data == 0, -9999, data)
 
     # Get the latitude and longitude coordinates as separate arrays
     latitudes = data.coords["lat"].values
@@ -74,6 +68,9 @@ def cluster_buffer_elements(data, num_clusters, offset):
     # labels shape for later
     # labels = np.zeros(Z.shape)
     valid_indices = np.where(Z == 0)[0]
+
+    # Get the number of clusters
+    num_clusters = int(np.floor( len(valid_indices) / 4 ))
 
     # Flatten the latitude and longitude arrays into a 2D grid
     # only keeping valid indices
@@ -138,31 +135,30 @@ def make_state_vector_file(
     lon_min = config["LonMin"]
     lon_max = config["LonMax"]
     is_regional = config["isRegional"]
-    buffer_deg = config["BufferDeg"]
+    buffer_rings = config["BufferRings"]
     emis_threshold = config["EmisThreshold"]
-    k_buffer_clust = config["nBufferClusters"]
     buffer_min_lat = 0
     buffer_min_lon = 0
 
     # set minimum buffer degrees based on resolution
+    if config["Res"] == "4.0x5.0":
+        deg_lat, deg_lon = 4.0, 5.0
+    elif config["Res"] == "2.0x2.5":
+        deg_lat, deg_lon = 2.0, 2.5
+    elif config["Res"] == "0.5x0.625":
+        deg_lat, deg_lon = 0.5, 0.625
+    elif config["Res"] == "0.25x0.3125":
+        deg_lat, deg_lon = 0.25, 0.3125
+    elif config["Res"] == "0.125x0.15625":
+        deg_lat, deg_lon = 0.125, 0.15625
     if config["isRegional"]:
-        if config["Res"] == "4.0x5.0":
-            deg_lat, deg_lon = 4.0, 5.0
-        elif config["Res"] == "2.0x2.5":
-            deg_lat, deg_lon = 2.0, 2.5
-        elif config["Res"] == "0.5x0.625":
-            deg_lat, deg_lon = 0.5, 0.625
-        elif config["Res"] == "0.25x0.3125":
-            deg_lat, deg_lon = 0.25, 0.3125
-        elif config["Res"] == "0.125x0.15625":
-            deg_lat, deg_lon = 0.125, 0.15625
         buffer_min_lat = deg_lat * 4
         buffer_min_lon = deg_lon * 4
 
     # set the buffer degrees to the maximum to ensure
     # that the buffer is at least the minimum (4 extra grid cells on each side)
-    buffer_deg_lat = max(buffer_deg, buffer_min_lat)
-    buffer_deg_lon = max(buffer_deg, buffer_min_lon)
+    buffer_deg_lat = buffer_rings * deg_lat + buffer_min_lat
+    buffer_deg_lon = buffer_rings * deg_lon + buffer_min_lon
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
@@ -291,7 +287,7 @@ def make_state_vector_file(
     # -------------------------------------------------------------------------
     if is_regional:
         statevector = cluster_buffer_elements(
-            statevector, k_buffer_clust, statevector.max().item()
+            statevector, statevector.max().item()
         )
 
     refyear = 2000

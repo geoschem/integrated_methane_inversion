@@ -41,9 +41,10 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     else:
         areas = hemco_diags["AREA"]
     state_vector_labels = statevector["StateVector"]
-    last_ROI_element = int(
-        np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
-    )
+    last_ROI_element = int(state_vector_labels.isel(
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
+    ).max())
     mask = state_vector_labels <= last_ROI_element
 
     # Emissions

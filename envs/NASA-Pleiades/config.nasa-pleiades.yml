@@ -2,7 +2,7 @@
 ## Documentation @ https://imi.readthedocs.io/en/latest/getting-started/imi-config-file.html
 
 ## General
-RunName: "Test_ICI_Global"
+RunName: "Test_ICI"
 Species: "CO2"
 SchedulerType: "PBS"
 SafeMode: false
@@ -96,8 +96,8 @@ CustomPeriodsCSV: "/path/to/periods.csv"
 
 ## State vector
 CreateAutomaticRectilinearStateVectorFile: true
-nBufferClusters: 0
-BufferDeg: 0
+BufferRings: 3
+BufferReductionFactor: 4
 EmisThreshold: 1.e-12
 OptimizeBCs: false
 
@@ -252,14 +252,14 @@ UseBCsForRestart: false
 ##------------------------------------------------------------------
 
 ## Path for IMI runs and output
-OutputPath: "/nobackupnfs1/$USER/IMI_demo"
+OutputPath: "/nobackupnfs1/$USER/integrated_methane_inversion"
 
 ## Path to GEOS-Chem input data
 DataPath: "/nobackupnfs1/$USER/ExtData"
 
 ## Path to satellite data
 # DataPathObs: "/nobackup/$USER/CO2_inversion/observations/OCO-2"
-DataPathObs: "/nobackupnfs1/$USER/IMI_demo/data_TROPOMI"
+DataPathObs: "/nobackupnfs1/$USER/integrated_methane_inversion/data_TROPOMI"
 
 ## GEOS-Chem environment file (with fortran compiler, netcdf libraries, etc.)
 ##   NOTE: Copy your own file in the envs/ directory within the IMI
