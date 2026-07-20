@@ -1,9 +1,10 @@
 import os
+from pathlib import Path
+import importlib.util
 import numpy as np
 import xarray as xr
 import pandas as pd
 import datetime
-import gc
 import pygeohash as pgh
 from shapely.geometry import Polygon
 from src.inversion_scripts.utils import (
@@ -18,7 +19,6 @@ from src.inversion_scripts.operators.operator_utilities import (
     read_all_geoschem,
     merge_pressure_grids,
     remap,
-    remap_sensitivities,
     remapping_weights,
     get_gridcell_list,
     nearest_loc,
@@ -27,7 +27,256 @@ from src.inversion_scripts.operators.operator_utilities import (
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
-def apply_average_satellite_operator(
+def get_goopy_config_path():
+    spec = importlib.util.find_spec("GOOPy")
+    if spec is not None and spec.submodule_search_locations:
+        config_path = Path(spec.submodule_search_locations[0]) / "config.yaml"
+        if config_path.exists():
+            return config_path
+
+    repo_config_path = Path(__file__).resolve().parents[3] / "GOOPy" / "config.yaml"
+    if repo_config_path.exists():
+        return repo_config_path
+
+    raise FileNotFoundError(
+        "Could not locate GOOPy/config.yaml from the importable GOOPy package "
+        "or the repository root. Make sure the IMI repository root is on PYTHONPATH."
+    )
+
+def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
+    """
+    Convert superobservations from structured numpy array to xarray Dataset.
+    
+    Arguments
+        obs_mapped_to_gc [numpy.ndarray] : Structured array of superobservations
+        species          [str]           : Species name (CH4 or CO2)
+        filename         [str]           : Original satellite filename (for metadata)
+        config           [dict]          : Configuration dictionary
+    
+    Returns
+        ds               [xr.Dataset]    : xarray Dataset with superobservations
+    """
+    n_obs = len(obs_mapped_to_gc)
+    
+    # Get dimensions from the first observation
+    n_lev_p = len(obs_mapped_to_gc["p_sat"][0])
+    n_lev_layer = len(obs_mapped_to_gc["layer"][0])
+    
+    # Create dimensions and coordinates
+    coords = {
+        'nobs': np.arange(n_obs),
+        'layer': obs_mapped_to_gc["layer"][0],  # layer index from first observation
+        'corner': np.arange(4),
+    }
+    
+    # Map species name for netcdf variable name
+    if species.upper() == 'CH4':
+        satellite_column_name = 'methane_mixing_ratio_blended'
+        prior_name = 'methane_profile_apriori'
+    elif species.upper() == 'CO2':
+        satellite_column_name = 'xco2_mixing_ratio_blended'
+        prior_name = 'co2_profile_apriori'
+    else:
+        satellite_column_name = f'{species}_mixing_ratio_blended'
+        prior_name = f'{species}_profile_apriori'
+
+    time_utc = pd.to_datetime(
+        obs_mapped_to_gc['time'],
+        format='%Y%m%d_%H',
+    ).strftime('%Y-%m-%dT%H:%M:%S').to_numpy(dtype=str)
+
+    # IMI stores these layer-resolved fields surface-to-TOA. GOOPy's
+    # TROPOMI_blended parser constructs pressure edges in the native file order
+    # and then flips N_EDGES/N_CENTERS to get descending pressure. Write the
+    # center fields in that native order so GOOPy's flip restores IMI ordering.
+    avkern_for_goopy = np.array(
+        [obs_mapped_to_gc['avkern'][i] for i in range(n_obs)],
+        dtype=np.float32,
+    )[:, ::-1]
+    apriori_for_goopy = np.array(
+        [obs_mapped_to_gc['apriori'][i] for i in range(n_obs)],
+        dtype=np.float32,
+    )[:, ::-1]
+    dryair_for_goopy = np.array(
+        [obs_mapped_to_gc['dry_air_subcolumns'][i] for i in range(n_obs)],
+        dtype=np.float32,
+    )[:, ::-1]
+    
+    # Create data variables matching TROPOMI_blended format from GOOPy config.
+    # GOOPy uses latitude/longitude to choose the model grid cell. These
+    # superobservations have already been assigned to GEOS-Chem cells by IMI,
+    # so use the GC cell centers here rather than the weighted satellite
+    # footprint centers.
+    data_vars = {
+        'latitude': (['nobs'], obs_mapped_to_gc['lat'].astype(np.float32)),
+        'longitude': (['nobs'], obs_mapped_to_gc['lon'].astype(np.float32)),
+        'satellite_latitude': (['nobs'], obs_mapped_to_gc['lat_sat'].astype(np.float32)),
+        'satellite_longitude': (['nobs'], obs_mapped_to_gc['lon_sat'].astype(np.float32)),
+        'time_utc': (['nobs'], time_utc),
+        satellite_column_name: (['nobs'], obs_mapped_to_gc[species].astype(np.float32)),
+        'surface_pressure': (['nobs'], obs_mapped_to_gc['surface_pressure'].astype(np.float32)),
+        'surface_albedo_NIR': (['nobs'], obs_mapped_to_gc['nir_albedo'].astype(np.float32)),
+        'surface_albedo_SWIR': (['nobs'], obs_mapped_to_gc['swir_albedo'].astype(np.float32)),
+        'column_averaging_kernel': (
+            ['nobs', 'layer'],
+            avkern_for_goopy
+        ),
+        prior_name: (
+            ['nobs', 'layer'],
+            apriori_for_goopy
+        ),
+        'pressure_interval': (
+            ['nobs'],
+            (obs_mapped_to_gc['p_sat'][:, 0].astype(np.float32) - obs_mapped_to_gc['p_sat'][:, 1].astype(np.float32)) * 100.0
+            if n_lev_p > 1 else np.ones(n_obs, dtype=np.float32)
+        ), # NOTE: we multiply by 100 to convert from hPa to Pa, which is the unit expected by GOOPy and the TROPOMI_blended format
+        'dry_air_subcolumns': (
+            ['nobs', 'layer'],
+            dryair_for_goopy
+        ),
+        'observation_count': (['nobs'], obs_mapped_to_gc['observation_count'].astype(np.float32)),
+        'qa_value': (['nobs'], np.ones(n_obs, dtype=np.float32)),  # Set to 1.0 for all valid observations
+        'gc_cell_lat': (['nobs'], obs_mapped_to_gc['lat'].astype(np.float32)),
+        'gc_cell_lon': (['nobs'], obs_mapped_to_gc['lon'].astype(np.float32)),
+        'gc_cell_index_lat': (['nobs'], obs_mapped_to_gc['jGC'].astype(np.int32)),
+        'gc_cell_index_lon': (['nobs'], obs_mapped_to_gc['iGC'].astype(np.int32)),
+    }
+    
+    # Create the xarray Dataset
+    ds = xr.Dataset(data_vars, coords=coords)
+    
+    # Add attributes for metadata
+    ds.attrs['title'] = 'Superobservations: satellite observations averaged to GEOS-Chem grid cells'
+    ds.attrs['source_file'] = os.path.basename(filename)
+    ds.attrs['species'] = species
+    ds.attrs['history'] = f'Created by satellite_operator.py at {pd.Timestamp.now().isoformat()}'
+    
+    return ds
+
+
+def save_superobservations(ds, filename, output_path):
+    """
+    Save superobservations xarray Dataset to netcdf file.
+    
+    Arguments
+        ds          [xr.Dataset] : xarray Dataset of superobservations
+        filename    [str]        : Original satellite filename (for output filename)
+        output_path [str]        : Directory path to save the netcdf file
+    
+    Returns
+        output_file [str]        : Path to the saved netcdf file
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_path, exist_ok=True)
+    
+    # Create output filename based on input filename
+    base_name = os.path.basename(filename)
+    # Replace or append to indicate this is superobservations
+    if base_name.endswith('.nc'):
+        output_file = os.path.join(output_path, base_name.replace('.nc', '_superobservations.nc'))
+    else:
+        output_file = os.path.join(output_path, base_name + '_superobservations.nc')
+    
+    # Save to netcdf with compression
+    ds.to_netcdf(output_file)
+    
+    print(f"Saved superobservations to {output_file}")
+    return output_file
+
+
+def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
+    """
+    Run the satellite observation operator. By default, GOOPy is used but the original IMI operator can be used by setting use_goopy=False.
+
+    Arguments
+        operator [str]    : Data conversion operator to use
+        params   [dict]   : parameters to run the given operator
+        obs_mapped_to_gc [dict] : Mapped satellite observations
+        config   [dict]   : Configuration parameters
+        use_goopy [bool]  : Whether to use GOOPy (default: True)
+    Returns
+        output   [dict]   : Dictionary with:
+                            - obs_GC : GEOS-Chem and satellite column data
+                            - satellite columns
+                            - GEOS-Chem columns
+                            - satellite lat, lon
+                            - satellite lat index, lon index
+    """
+    if use_goopy:
+        return goopy_apply_operator(
+            operator,
+            params["filename"],
+            params["species"],
+            params["satellite_product"],
+            params["satellite_cache"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["period_i"],
+            obs_mapped_to_gc,
+            config,
+            params["use_water_obs"],
+        )
+    else:
+        return apply_original_imi_operator(operator, params, config)
+
+
+def apply_original_imi_operator(operator, params, config):
+    """
+    Run the chosen operator based on selected instrument
+
+    Arguments
+        operator [str]    : Data conversion operator to use
+        params   [dict]   : parameters to run the given operator
+    Returns
+        output   [dict]   : Dictionary with:
+                            - obs_GC : GEOS-Chem and satellite column data
+                            - satellite columns
+                            - GEOS-Chem columns
+                            - satellite lat, lon
+                            - satellite lat index, lon index
+                              If build_jacobian=True, also include:
+                                - K      : Jacobian matrix
+    """
+    if operator == "satellite_average":
+        return apply_average_satellite_operator(
+            params["filename"],
+            params["species"],
+            params["satellite_product"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["build_jacobian"],
+            params["period_i"],
+            config,
+            params["use_water_obs"],
+        )
+    elif operator == "satellite":
+        return apply_satellite_operator(
+            params["filename"],
+            params["species"],
+            params["satellite_product"],
+            params["n_elements"],
+            params["gc_startdate"],
+            params["gc_enddate"],
+            params["xlim"],
+            params["ylim"],
+            params["gc_cache"],
+            params["period_i"],
+            config,
+            params["use_water_obs"],
+        )
+    else:
+        raise ValueError("Error: invalid operator selected.")
+
+
+def superobservations(
     filename,
     species,
     satellite_product,
@@ -37,40 +286,13 @@ def apply_average_satellite_operator(
     xlim,
     ylim,
     gc_cache,
-    build_jacobian,
     period_i,
     config,
     use_water_obs=False
 ):
     """
-    Apply the averaging satellite operator to map GEOS-Chem data to satellite observation space.
-
-    Arguments
-        filename          [str]        : satellite netcdf data file to read
-        species           [str]        : The species (CH4 or CO2) to use
-        satellite_product [str]        : "BlendedTROPOMI", "TROPOMI", or "Other", specifying the data used in the inversion.
-        n_elements        [int]        : Number of state vector elements
-        gc_startdate      [datetime64] : First day of inversion period, for GEOS-Chem and satellite
-        gc_enddate        [datetime64] : Last day of inversion period, for GEOS-Chem and satellite
-        xlim              [float]      : Longitude bounds for simulation domain
-        ylim              [float]      : Latitude bounds for simulation domain
-        gc_cache          [str]        : Path to GEOS-Chem output data
-        build_jacobian    [log]        : Are we trying to map GEOS-Chem sensitivities to satellite observation space?
-        period_i       [int]        : kalman filter period
-        config         [dict]       : dict of the config file
-        use_water_obs  [bool]       : if True, use observations over water
-
-    Returns
-        output            [dict]       : Dictionary with:
-                                        - obs_GC : GEOS-Chem and satellite data
-                                        - satellite gas
-                                        - GEOS-Chem gas
-                                        - satellite lat, lon
-                                        - satellite lat index, lon index
-                                          If build_jacobian=True, also include:
-                                            - K      : Jacobian matrix
+    Compute superobservations for the given satellite file by averaging observations within each grid cell. 
     """
-
     # Read satellite data
     satellite, sat_ind = read_and_filter_satellite(
         filename, satellite_product, gc_startdate, gc_enddate,
@@ -101,8 +323,8 @@ def apply_average_satellite_operator(
         GC_shape = (6, config['CS_RES'], config['CS_RES'])
         CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
 
-        obs_mapped_to_gc = average_tropomi_observations_to_CSgrid(
-            TROPOMI, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
+        obs_mapped_to_gc = average_satellite_observations_to_CSgrid(
+            satellite, species, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
         )
     else:
         # get the lat/lons of gc gridcells
@@ -111,51 +333,346 @@ def apply_average_satellite_operator(
             satellite, species, gc_lat_lon, sat_ind, time_threshold
         )
         GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
-    n_gridcells = len(obs_mapped_to_gc)
+    
+    # Create xarray dataset from obs_mapped_to_gc
+    ds = obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config)
+    
+    # Save superobservations to netcdf files
+    output_dir = os.path.join(os.path.expandvars(config['OutputPath']), config['RunName'], f'{filename}_superobservations')
+    save_superobservations(ds, filename, output_dir)
 
-    if build_jacobian:
-        # Initialize Jacobian K
-        jacobian_K = np.empty([n_gridcells, n_elements], dtype=np.float32)
-        jacobian_K.fill(np.nan)
+    return obs_mapped_to_gc, output_dir
 
-        pertf = os.path.expandvars(
-            f'{config["OutputPath"]}/{config["RunName"]}/'
-            f"archive_perturbation_sfs/pert_sf_{period_i}.npz"
+def goopy_apply_operator(
+    operator,
+    filename,
+    species,
+    satellite_product,
+    satellite_cache,
+    n_elements,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    gc_cache,
+    period_i,
+    obs_mapped_to_gc,
+    config,
+    use_water_obs=False
+):
+    import sys
+    import yaml
+    import tempfile
+    import glob
+    import importlib
+    
+    # Read the full GOOPy config
+    goopy_config_path = get_goopy_config_path()
+    with open(goopy_config_path, 'r') as f:
+        goopy_config = yaml.safe_load(f)
+    goopy_package_path = goopy_config_path.parent
+    goopy_repo_path = goopy_package_path.parent
+    
+    # Update LOCAL_SETTINGS with the values needed for this run
+    save_dir = f'{gc_cache}/../goopy_output'
+    if operator == "satellite_average":
+        satellite_files = sorted(glob.glob(os.path.join(satellite_cache, '*.nc')))
+        if len(satellite_files) != 1:
+            raise ValueError(
+                f"Expected exactly one superobservation file in {satellite_cache}, "
+                f"found {len(satellite_files)}."
+            )
+        goopy_obs_file = satellite_files[0]
+    elif operator == "satellite":
+        goopy_obs_file = os.path.join(satellite_cache, os.path.basename(filename))
+        if not os.path.exists(goopy_obs_file):
+            raise FileNotFoundError(
+                f"Expected satellite file {goopy_obs_file} does not exist."
+            )
+    else:
+        raise ValueError(f"Error: invalid operator selected: {operator}")
+
+
+    # TODO: we should update the IMI satellite products and GOOPy satellite names to be the same, workaround for now
+    satellite_product_to_goopy_name_map = {
+        'BlendedTROPOMI': 'TROPOMI_blended',
+        'TROPOMI': 'TROPOMI',
+    }
+    goopy_satellite_name = satellite_product_to_goopy_name_map.get(satellite_product, satellite_product)
+
+    goopy_config['LOCAL_SETTINGS'].update({
+        'SAVE_INTERPOLATION': 'False',
+        'SATELLITE_NAME': goopy_satellite_name,
+        'OBS_DIR': os.path.dirname(goopy_obs_file),
+        'OBS_FILE_FORMAT': os.path.basename(goopy_obs_file),
+        'MODEL_LEVEL_EDGE_DIR': gc_cache,
+        'LEVEL_EDGE_FILE_FORMAT': 'GEOSChem.StateMetLevEdge.*.nc4',
+        'MODEL_CONCENTRATION_DIR': gc_cache,
+        'CONCENTRATION_FILE_FORMAT': 'GEOSChem.SpeciesConc.*.nc4',
+        'SAVE_DIR': save_dir,
+    })
+    
+    # Write to a temporary file
+    temp_config = tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False)
+    yaml.dump(goopy_config, temp_config)
+    temp_config.close()
+    
+    # Set the config file path for GOOPy and import
+    sys.argv[1] = temp_config.name
+    for import_path in (goopy_repo_path, goopy_package_path):
+        import_path = str(import_path)
+        if import_path not in sys.path:
+            sys.path.insert(0, import_path)
+    GOOPy_main = importlib.import_module("GOOPy.main")
+    GOOPy_main = importlib.reload(GOOPy_main)
+    
+    GOOPy_main.apply_operator(GOOPy_main.config)
+    
+    # Clean up the temporary file
+    os.unlink(temp_config.name)
+
+    goopy_output_file = os.path.join(
+        save_dir,
+        os.path.splitext(os.path.basename(goopy_obs_file))[0] + '_operator.nc'
+    )
+    if not os.path.exists(goopy_output_file):
+        available_outputs = sorted(
+            f for f in os.listdir(save_dir) if f.endswith('_operator.nc')
+        ) if os.path.isdir(save_dir) else []
+        raise FileNotFoundError(
+            f"Expected GOOPy output {goopy_output_file} was not created. "
+            f"Available GOOPy outputs: {available_outputs}"
         )
 
-        emis_perturbations_dict = np.load(pertf, mmap_mode='r')
-        emis_perturbations = emis_perturbations_dict["effective_pert_sf"]
+    with xr.open_dataset(goopy_output_file) as ds:
+        # virtual_satellite = ds['SATELLITE_COLUMN'].values.astype(np.float32)
+        virtual_satellite = ds['MODEL_COLUMN_CH4'].values.astype(np.float32)
 
-        # Calculate sensitivities and save in K matrix
-        # determine which elements are for emis,
-        # BCs, and OH
-        oh_indices = []
-        bc_indices = []
-        emis_indices = []
+    if operator == "satellite":
+        return format_goopy_satellite_output(
+            filename,
+            species,
+            satellite_product,
+            gc_startdate,
+            gc_enddate,
+            xlim,
+            ylim,
+            virtual_satellite,
+            config,
+            use_water_obs,
+        )
+    elif operator == "satellite_average":
+        return format_goopy_average_satellite_output(
+            species,
+            gc_cache,
+            gc_startdate,
+            n_elements,
+            obs_mapped_to_gc,
+            virtual_satellite,
+            config,
+        )
+    else:
+        raise ValueError(f"Error: invalid operator selected: {operator}")
 
-        for e in range(n_elements):
-            i_elem = e + 1
-            # booleans for whether this element is a
-            # BC element or OH element
-            is_OH_element = check_is_OH_element(
-                i_elem, n_elements, config["OptimizeOH"], config["isRegional"]
-            )
 
-            is_BC_element = check_is_BC_element(
-                i_elem,
-                n_elements,
-                config["OptimizeOH"],
-                config["OptimizeBCs"],
-                is_OH_element,
-                config["isRegional"],
-            )
+def format_goopy_average_satellite_output(
+    species,
+    gc_cache,
+    gc_startdate,
+    n_elements,
+    obs_mapped_to_gc,
+    virtual_satellite,
+    config,
+):
+    """
+    Format GOOPy output for the grid-cell-averaged satellite operator path.
 
-            if is_OH_element:
-                oh_indices.append(e)
-            elif is_BC_element:
-                bc_indices.append(e)
-            else:
-                emis_indices.append(e)
+    GOOPy computes the modeled satellite column for each superobservation.
+    This wraps those modeled columns in the IMI satellite_average output
+    structure without recomputing the standard operator components.
+    """
+    n_gridcells = len(obs_mapped_to_gc)
+    gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
+    GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
+
+    # Initialize array with n_gridcells rows and 5 columns. Columns are
+    # satellite species, GEOSChem species, longitude, latitude, observation counts
+    obs_GC = np.empty([n_gridcells, 5], dtype=np.float32)
+    obs_GC.fill(np.nan)
+
+    if config['UseGCHP']:
+        GC_index = np.ravel_multi_index((obs_mapped_to_gc["nfi"],
+                                         obs_mapped_to_gc["Ydimi"],
+                                         obs_mapped_to_gc["Xdimi"]), GC_shape)
+    else:
+        GC_index = np.ravel_multi_index((obs_mapped_to_gc["jGC"], #lat
+                                         obs_mapped_to_gc["iGC"] # lon
+                                         ), GC_shape)
+
+    all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
+    all_strdate = list(set(all_strdate))
+
+    # Read GEOS-Chem data for simulated truth in OSSE simulation
+    if config["EnableOSSE"]:
+        osse_gc_cache = "./data_geoschem_osse"
+
+        # check if the osse_gc_cache exists
+        assert os.path.exists(osse_gc_cache), (
+            f"OSSE GEOS-Chem cache directory {osse_gc_cache} does not exist. "
+            "Please run the OSSE simulation first."
+        )
+
+    if len(virtual_satellite) != n_gridcells:
+        raise ValueError(
+            f"GOOPy output has {len(virtual_satellite)} satellite columns, "
+            f"but {n_gridcells} superobservations were expected."
+        )
+
+    obs_GC[:, 1] = virtual_satellite * 1e9  # convert from mol/mol to ppb
+    obs_GC[:, 2] = obs_mapped_to_gc["lon_sat"]
+    obs_GC[:, 3] = obs_mapped_to_gc["lat_sat"]
+    obs_GC[:, 4] = obs_mapped_to_gc["observation_count"]
+
+    for strdate in all_strdate:
+        gridcell_dict = obs_mapped_to_gc[obs_mapped_to_gc["time"] == strdate]
+        sel_idx = np.where(obs_mapped_to_gc["time"] == strdate)[0]
+        if config["EnableOSSE"]:
+            synthetic_virtual_satellite = get_virtual_satellite(
+                strdate, osse_gc_cache, gridcell_dict, n_elements, config
+            ) * 1e9  # convert to ppb
+
+        # Save actual and virtual satellite data
+        if config["EnableOSSE"]:
+            # Synthetic observations if using OSSE, add random noise later
+            obs_GC[sel_idx, 0] = synthetic_virtual_satellite
+        else:
+            # Actual satellite species column observation
+            obs_GC[sel_idx, 0] = gridcell_dict[species]
+
+    # add random noise to synthetic observations if using OSSE
+    if config["EnableOSSE"]:
+        noise = np.random.normal(
+            loc=0.0,
+            scale=float(config["ObsErrorOSSE"]),
+            size=obs_GC[:,0].shape,
+        )
+        obs_GC[:,0] += noise
+
+    # Output
+    output = {}
+
+    # Always return the coincident satellite and GEOS-Chem data
+    output["obs_GC"] = obs_GC
+    output["GC_index"] = GC_index
+
+    return output
+
+
+def format_goopy_satellite_output(
+    filename,
+    species,
+    satellite_product,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    virtual_satellite,
+    config,
+    use_water_obs=False,
+):
+    """
+    Format GOOPy output for the unaveraged satellite visualization path.
+
+    GOOPy operates on the whole input file, while IMI visualization uses the
+    same spatial/quality-filtered pixels as the native satellite operator. If
+    GOOPy returned full-file output, subset it to those filtered pixels.
+    """
+    satellite, sat_ind = read_and_filter_satellite(
+        filename, satellite_product, gc_startdate, gc_enddate,
+        xlim, ylim, use_water_obs
+    )
+
+    n_obs = len(sat_ind[0])
+    if n_obs == 0:
+        return None
+
+    satellite_shape = satellite["longitude"].shape
+    sat_flat_ind = np.ravel_multi_index(sat_ind, satellite_shape)
+
+    if len(virtual_satellite) == np.product(satellite_shape):
+        virtual_satellite = virtual_satellite[sat_flat_ind]
+    elif len(virtual_satellite) != n_obs:
+        raise ValueError(
+            f"GOOPy output has {len(virtual_satellite)} satellite columns, "
+            f"but the filtered satellite data has {n_obs} observations and "
+            f"the full satellite grid has {np.product(satellite_shape)} pixels."
+        )
+
+    obs_GC = np.empty([n_obs, 6], dtype=np.float32)
+    obs_GC.fill(np.nan)
+
+    i_sat = sat_ind[0]
+    j_sat = sat_ind[1]
+
+    obs_GC[:, 0] = satellite[species][i_sat, j_sat]
+    obs_GC[:, 1] = virtual_satellite * 1e9  # convert from mol/mol to ppb
+    obs_GC[:, 2] = satellite["longitude"][i_sat, j_sat]
+    obs_GC[:, 3] = satellite["latitude"][i_sat, j_sat]
+    obs_GC[:, 4] = i_sat
+    obs_GC[:, 5] = j_sat
+
+    output = {}
+    output["obs_GC"] = obs_GC
+
+    return output
+
+
+# DEPRECATED: in favor of goopy_apply_operator()
+def apply_average_satellite_operator(
+    filename,
+    species,
+    satellite_product,
+    satellite_cache,
+    n_elements,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    gc_cache,
+    period_i,
+    obs_mapped_to_gc,
+    config,
+    use_water_obs=False
+):
+    """
+    Apply the averaging satellite operator to map GEOS-Chem data to satellite observation space.
+
+    Arguments
+        filename          [str]        : satellite netcdf data file to read
+        species           [str]        : The species (CH4 or CO2) to use
+        satellite_product [str]        : "BlendedTROPOMI", "TROPOMI", or "Other", specifying the data used in the inversion.
+        n_elements        [int]        : Number of state vector elements
+        gc_startdate      [datetime64] : First day of inversion period, for GEOS-Chem and satellite
+        gc_enddate        [datetime64] : Last day of inversion period, for GEOS-Chem and satellite
+        xlim              [float]      : Longitude bounds for simulation domain
+        ylim              [float]      : Latitude bounds for simulation domain
+        gc_cache          [str]        : Path to GEOS-Chem output data
+        period_i       [int]        : kalman filter period
+        obs_mapped_to_gc [numpy.ndarray] : structured array of grid-cell-averaged satellite observations mapped to GC gridcells
+        config         [dict]       : dict of the config file
+        use_water_obs  [bool]       : if True, use observations over water
+
+    Returns
+        output            [dict]       : Dictionary with:
+                                        - obs_GC : GEOS-Chem and satellite data
+                                        - satellite gas
+                                        - GEOS-Chem gas
+                                        - satellite lat, lon
+                                        - satellite lat index, lon index
+    """
+    n_gridcells = len(obs_mapped_to_gc)
+    gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
+    GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
 
     # Initialize array with n_gridcells rows and 5 columns. Columns are
     # satellite species, GEOSChem species, longitude, latitude, observation counts
@@ -187,17 +704,12 @@ def apply_average_satellite_operator(
     for strdate in all_strdate:
         gridcell_dict = obs_mapped_to_gc[obs_mapped_to_gc["time"] == strdate]
         sel_idx = np.where(obs_mapped_to_gc["time"] == strdate)[0]
-        if build_jacobian:
-            virtual_satellite_pert, virtual_satellite_base, virtual_satellite = get_virtual_satellite(
-                strdate, gc_cache, gridcell_dict, n_elements, config, build_jacobian
-            )
-        else:
-            virtual_satellite = get_virtual_satellite(
-                strdate, gc_cache, gridcell_dict, n_elements, config, build_jacobian
-            )
+        virtual_satellite = get_virtual_satellite(
+            strdate, gc_cache, gridcell_dict, n_elements, config
+        )
         if config["EnableOSSE"]:
             synthetic_virtual_satellite = get_virtual_satellite(
-                strdate, osse_gc_cache, gridcell_dict, n_elements, config, False
+                strdate, osse_gc_cache, gridcell_dict, n_elements, config
             ) * 1e9  # convert to ppb
 
         # Save actual and virtual satellite data
@@ -212,46 +724,6 @@ def apply_average_satellite_operator(
         obs_GC[sel_idx, 2] = gridcell_dict["lon_sat"]  # satellite longitude
         obs_GC[sel_idx, 3] = gridcell_dict["lat_sat"]  # satellite latitude
         obs_GC[sel_idx, 4] = gridcell_dict["observation_count"]  # observation counts
-
-        if build_jacobian:
-            pert_jacobian_xspecies = virtual_satellite_pert # (n_superobs, n_element)
-            emis_base_xspecies = virtual_satellite_base # emis_base and BC_base is "RunName_0001" and "SpeciesConcVV_species"
-            oh_base_xspecies = virtual_satellite # OH base is "RunName_0000"
-
-            # get perturbations and calculate sensitivities
-            perturbations = np.ones((len(gridcell_dict), n_elements), dtype=np.float32)
-
-            # fill pert base array with values
-            # array contains 1 entry for each state vector element
-            # fill array with nans
-            base_xspecies = np.full((len(gridcell_dict), n_elements), np.nan, dtype=np.float32)
-            # fill emission elements with the base value
-            base_xspecies[:,emis_indices] = np.repeat(emis_base_xspecies,
-                                                  np.asarray(emis_indices).size, axis=1)
-
-            # emissions perturbations
-            perturbations[:,emis_indices] = np.repeat(emis_perturbations[None,:],
-                                                      len(gridcell_dict), axis=0)
-
-            # OH perturbations
-            if config["OptimizeOH"]:
-                # fill OH elements with the OH base value
-                base_xspecies[:,oh_indices] = np.repeat(oh_base_xspecies[:,None],
-                                                    np.asarray(oh_indices).size, axis=1)
-                # update perturbations array to include OH perturbations
-                perturbations[:,oh_indices] = float(config["PerturbValueOH"]) - 1.0
-
-            # BC perturbations
-            if config["OptimizeBCs"]:
-                # fill BC elements with the base value, which is same as emis value
-                base_xspecies[:,bc_indices] = np.repeat(emis_base_xspecies,
-                                                    np.asarray(bc_indices).size, axis=1)
-
-                # compute BC perturbation for jacobian construction
-                perturbations[:,bc_indices] = config["PerturbValueBCs"]
-
-            # calculate sensitivities
-            jacobian_K[sel_idx,:] = ((pert_jacobian_xspecies - base_xspecies) / perturbations).astype(np.float32)
 
     # add random noise to synthetic observations if using OSSE
     if config["EnableOSSE"]:
@@ -269,17 +741,15 @@ def apply_average_satellite_operator(
     output["obs_GC"] = obs_GC
     output["GC_index"] = GC_index
 
-    # Optionally return the Jacobian
-    if build_jacobian:
-        output["K"] = jacobian_K
-
     return output
 
 
+# DEPRECATED: in favor of goopy_apply_operator()
 def apply_satellite_operator(
     filename,
     species,
     satellite_product,
+    satellite_cache,
     n_elements,
     gc_startdate,
     gc_enddate,
@@ -368,7 +838,7 @@ def apply_satellite_operator(
         GC_shape = (6, config['CS_RES'], config['CS_RES'])
         CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
 
-        overlap_area_all = get_overlap_area_CSgrid(TROPOMI, filename, sat_ind, CSgridDir,
+        overlap_area_all = get_overlap_area_CSgrid(satellite, filename, sat_ind, CSgridDir,
                             gridspec_path, GC_shape) # (n_dst, n_valid_obs)
 
     # For each satellite observation:
@@ -653,6 +1123,11 @@ def average_satellite_observations(
                 gridcell_dict["lon_sat"].append(satellite["longitude"][iSat, jSat])
                 gridcell_dict["overlap_area"].append(overlap)
                 gridcell_dict["p_sat"].append(satellite["pressures"][iSat, jSat, :])
+                gridcell_dict["surface_pressure"].append(
+                    satellite["surface_pressure"][iSat, jSat]
+                )
+                gridcell_dict["nir_albedo"].append(satellite["nir_albedo"][iSat, jSat])
+                gridcell_dict["swir_albedo"].append(satellite["swir_albedo"][iSat, jSat])
                 gridcell_dict["dry_air_subcolumns"].append(
                     satellite["dry_air_subcolumns"][iSat, jSat, :]
                 )
@@ -708,6 +1183,18 @@ def average_satellite_observations(
             axis=0,
             weights=gridcell_dict["observation_weights"],
         )
+        gridcell_dict["surface_pressure"] = np.average(
+            gridcell_dict["surface_pressure"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["nir_albedo"] = np.average(
+            gridcell_dict["nir_albedo"],
+            weights=gridcell_dict["observation_weights"],
+        )
+        gridcell_dict["swir_albedo"] = np.average(
+            gridcell_dict["swir_albedo"],
+            weights=gridcell_dict["observation_weights"],
+        )
         gridcell_dict["dry_air_subcolumns"] = np.average(
             gridcell_dict["dry_air_subcolumns"],
             axis=0,
@@ -731,9 +1218,13 @@ def average_satellite_observations(
             ("lat_sat","f4"), ("lon_sat","f4"),
             (species,"f4"), ("time","U13"),
             ("p_sat","f4",(0,)),
+            ("surface_pressure","f4"),
+            ("nir_albedo","f4"),
+            ("swir_albedo","f4"),
             ("dry_air_subcolumns","f4",(0,)),
             ("apriori","f4",(0,)),
             ("avkern","f4",(0,)),
+            ("layer","f4",(0,)),
             ("observation_count","f4"),
             ("lat","f4"), ("lon","f4"),
         ])
@@ -743,15 +1234,20 @@ def average_satellite_observations(
     n_lev_dryair  = len(gridcell_dicts[0]["dry_air_subcolumns"])
     n_lev_apriori = len(gridcell_dicts[0]["apriori"])
     n_lev_avkern  = len(gridcell_dicts[0]["avkern"])
+    n_layers  = len(gridcell_dicts[0]["layer"])
 
     dtype_latlon = [
         ("iGC","i4"), ("jGC","i4"),
         ("lat_sat","f4"), ("lon_sat","f4"),
         (species,"f4"), ("time","U13"),
         ("p_sat","f4",(n_lev_p,)),
+        ("surface_pressure","f4"),
+        ("nir_albedo","f4"),
+        ("swir_albedo","f4"),
         ("dry_air_subcolumns","f4",(n_lev_dryair,)),
         ("apriori","f4",(n_lev_apriori,)),
         ("avkern","f4",(n_lev_avkern,)),
+        ("layer","f4",(n_layers,)),
         ("observation_count","f4"),
         ("lat","f4"), ("lon","f4"),
     ]
@@ -766,15 +1262,20 @@ def average_satellite_observations(
         arr[species][idx] = np.float32(cell[species])
         arr["time"][idx]    = cell["time"]  # already a short string from get_strdate
         arr["p_sat"][idx]   = np.asarray(cell["p_sat"], dtype=np.float32)
+        arr["surface_pressure"][idx] = np.float32(cell["surface_pressure"])
+        arr["nir_albedo"][idx] = np.float32(cell["nir_albedo"])
+        arr["swir_albedo"][idx] = np.float32(cell["swir_albedo"])
         arr["dry_air_subcolumns"][idx] = np.asarray(cell["dry_air_subcolumns"], dtype=np.float32)
         arr["apriori"][idx] = np.asarray(cell["apriori"], dtype=np.float32)
         arr["avkern"][idx]  = np.asarray(cell["avkern"], dtype=np.float32)
         arr["observation_count"][idx] = np.float32(cell["observation_count"])
         arr["lat"][idx] = np.float32(cell["lat"])
         arr["lon"][idx] = np.float32(cell["lon"])
+        arr["layer"][idx] = np.arange(n_layers)
 
     return arr
 
+# TODO: update this to add layers to the returned dicts to match what average_sat_observations does 
 def average_satellite_observations_to_CSgrid(
         satellite, species, filename, sat_ind, time_threshold,
         CSgridDir, gridspec_path, GC_shape):
@@ -848,6 +1349,9 @@ def average_satellite_observations_to_CSgrid(
     sat_lon_flat = satellite["longitude"].ravel()[sat_mask]
     sat_lat_flat = satellite["latitude"].ravel()[sat_mask]
     sat_species_flat = satellite[species].ravel()[sat_mask]
+    surface_pressure_flat = satellite["surface_pressure"].ravel()[sat_mask]
+    nir_albedo_flat = satellite["nir_albedo"].ravel()[sat_mask]
+    swir_albedo_flat = satellite["swir_albedo"].ravel()[sat_mask]
     sat_time_flat = pd.to_datetime(satellite["time"].ravel()[sat_mask])
 
     # For each destination grid cell j which overlap with at least one observation cell i,
@@ -855,6 +1359,9 @@ def average_satellite_observations_to_CSgrid(
     sat_lon_avg = (obs_weights[GC_indices, :] @ sat_lon_flat).astype(np.float32) / sum_obs_weights[GC_indices]
     sat_lat_avg = (obs_weights[GC_indices, :] @ sat_lat_flat).astype(np.float32) / sum_obs_weights[GC_indices]
     sat_species_avg = (obs_weights[GC_indices, :] @ sat_species_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    surface_pressure_avg = (obs_weights[GC_indices, :] @ surface_pressure_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    nir_albedo_avg = (obs_weights[GC_indices, :] @ nir_albedo_flat).astype(np.float32) / sum_obs_weights[GC_indices]
+    swir_albedo_avg = (obs_weights[GC_indices, :] @ swir_albedo_flat).astype(np.float32) / sum_obs_weights[GC_indices]
     sat_time_avg = (obs_weights[GC_indices, :] @ sat_time_flat.astype(np.int64)) / sum_obs_weights[GC_indices]
 
     sat_time_avg = pd.to_datetime(sat_time_avg)  # convert back to datetime
@@ -891,6 +1398,9 @@ def average_satellite_observations_to_CSgrid(
         ("nfi", "i4"), ("Ydimi", "i4"), ("Xdimi", "i4"),
         ("lat_sat", "f4"), ("lon_sat", "f4"), (species, "f4"),
         ("time", "U13"), ("p_sat", "f4", (n_lev_p,)),
+        ("surface_pressure", "f4"),
+        ("nir_albedo", "f4"),
+        ("swir_albedo", "f4"),
         ("dry_air_subcolumns", "f4", (n_lev_dryair,)),
         ("apriori", "f4", (n_lev_apriori,)), ("avkern", "f4", (n_lev_avkern,)),
         ("observation_count", "f4")
@@ -905,6 +1415,9 @@ def average_satellite_observations_to_CSgrid(
     output_dicts[species] = sat_species_avg
     output_dicts["time"] = sat_time_str
     output_dicts["p_sat"] = p_sat_avg
+    output_dicts["surface_pressure"] = surface_pressure_avg
+    output_dicts["nir_albedo"] = nir_albedo_avg
+    output_dicts["swir_albedo"] = swir_albedo_avg
     output_dicts["dry_air_subcolumns"] = dryair_avg
     output_dicts["apriori"] = apriori_avg
     output_dicts["avkern"] = avkern_avg
@@ -912,37 +1425,11 @@ def average_satellite_observations_to_CSgrid(
 
     return output_dicts
 
-def get_virtual_satellite(date, gc_cache, gridcell_dict, n_elements, config, build_jacobian=False):
+
+def virtual_satellite_species_and_pedge(date, gc_cache, gridcell_dict, n_elements, config):
     """
-    Generate virtual satellite species observations from GEOS-Chem.
-
-    Extracts species and pressure from GEOS-Chem, remaps to satellite layers,
-    and applies averaging kernels. Optionally computes Jacobian using
-    perturbation runs.
-
-    Parameters
-    ----------
-    date : str
-        Date of interest ("YYYYMMDD_HH").
-    gc_cache : str
-        Path to GEOS-Chem output files.
-    gridcell_dict : dict
-        Gridcell info with obs indices and satellite data.
-    n_elements : int
-        Number of state vector elements.
-    config : dict
-        Inversion configuration options.
-    build_jacobian : bool, optional
-        Whether to compute sensitivities (default False).
-
-    Returns
-    -------
-    If build_jacobian=False:
-        ndarray (N,) of virtual satellite columns.
-    If build_jacobian=True:
-        (perturbation columns, base columns, final columns).
+    Read species and pressure edge data from GEOS-Chem output for the grid cells of interest. 
     """
-
     UseGCHP = config['UseGCHP']
 
     # Assemble file paths to GEOS-Chem output collections for input data
@@ -1005,6 +1492,40 @@ def get_virtual_satellite(date, gc_cache, gridcell_dict, n_elements, config, bui
             lev_dim = "lev" if "lev" in gc_data["Met_PEDGE"].dims else "ilev"
             PEDGE = gc_data["Met_PEDGE"].transpose("obs", lev_dim).values
 
+    return species, PEDGE
+
+def get_virtual_satellite(
+    date, gc_cache, gridcell_dict, n_elements, config, 
+):
+    """
+    Generate virtual satellite species observations from GEOS-Chem.
+
+    Extracts species and pressure from GEOS-Chem, remaps to satellite layers,
+    and applies averaging kernels. 
+
+    Parameters
+    ----------
+    date : str
+        Date of interest ("YYYYMMDD_HH").
+    gc_cache : str
+        Path to GEOS-Chem output files.
+    gridcell_dict : dict
+        Gridcell info with obs indices and satellite data.
+    n_elements : int
+        Number of state vector elements.
+    config : dict
+        Inversion configuration options.
+
+    Returns
+    -------
+    If build_jacobian=False:
+        ndarray (N,) of virtual satellite columns.
+    If build_jacobian=True:
+        (perturbation columns, base columns, final columns).
+    """
+
+    species, PEDGE = virtual_satellite_species_and_pedge(date, gc_cache, gridcell_dict, n_elements, config)
+
     n_superobs = len(gridcell_dict)
     virtual_satellite = np.empty([n_superobs, ], dtype=np.float32)
     virtual_satellite.fill(np.nan)
@@ -1026,84 +1547,111 @@ def get_virtual_satellite(date, gc_cache, gridcell_dict, n_elements, config, bui
         np.sum(dry_air_subcolumns, axis=1)
     ).astype(np.float32)                      # (N,), unitless mixing ratio
 
-    # If need to construct Jacobian, read sensitivity data from GEOS-Chem perturbation simulations
-    if build_jacobian:
-        emis_elements = n_elements
-        if config['OptimizeOH']:
-            emis_elements -= 2 if config['isRegional'] else 1
-        if config['OptimizeBCs']:
-            emis_elements -= 4
-        ntracers = config["NumJacobianTracers"]
-        opt_OH = config["OptimizeOH"]
-        opt_BC = config["OptimizeBCs"]
-        is_Regional = config["isRegional"]
+    return virtual_satellite
 
-        num_BC = 4
-        if is_Regional:
-            num_OH = 1
-        else:
-            num_OH = 2
 
-        n_base_runs = (
-            n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
-        ) / ntracers
+def get_virtual_satellite_pert_and_base(
+    date, gc_cache, gridcell_dict, n_elements, config, 
+):
+    """
+    Compute virtual satellite species columns from GEOS-Chem perturbation and base simulations.
 
-        nruns = (
-            np.ceil(n_base_runs).astype(int)
-            + (int(opt_OH) * num_OH)
-            + (int(opt_BC) * num_BC)
+    Parameters
+    ----------
+    date : str
+        Date of interest ("YYYYMMDD_HH").
+    gc_cache : str
+        Path to GEOS-Chem output files.
+    gridcell_dict : dict
+        Gridcell info with obs indices and satellite data.
+    n_elements : int
+        Number of state vector elements.
+    config : dict
+        Inversion configuration options.
+
+    Returns
+    -------
+    A tuple of (perturbation columns, base columns)
+    """
+    # Read sensitivity data from GEOS-Chem perturbation simulations
+    emis_elements = n_elements
+    if config['OptimizeOH']:
+        emis_elements -= 2 if config['isRegional'] else 1
+    if config['OptimizeBCs']:
+        emis_elements -= 4
+    ntracers = config["NumJacobianTracers"]
+    opt_OH = config["OptimizeOH"]
+    opt_BC = config["OptimizeBCs"]
+    is_Regional = config["isRegional"]
+
+    num_BC = 4
+    if is_Regional:
+        num_OH = 1
+    else:
+        num_OH = 2
+
+    n_base_runs = (
+        n_elements - int(opt_OH * num_OH) - (int(opt_BC) * num_BC)
+    ) / ntracers
+
+    nruns = (
+        np.ceil(n_base_runs).astype(int)
+        + (int(opt_OH) * num_OH)
+        + (int(opt_BC) * num_BC)
+    )
+
+    # Dictionary that stores mapping of state vector elements to
+    # perturbation simulation numbers
+    pert_simulations_dict = {}
+    for e in range(n_elements):
+        # State vector elements are numbered 1..nelements
+        sv_elem = e + 1
+
+        is_OH_element = check_is_OH_element(
+            sv_elem, n_elements, opt_OH, is_Regional
         )
-
-        # Dictionary that stores mapping of state vector elements to
-        # perturbation simulation numbers
-        pert_simulations_dict = {}
-        for e in range(n_elements):
-            # State vector elements are numbered 1..nelements
-            sv_elem = e + 1
-
-            is_OH_element = check_is_OH_element(
-                sv_elem, n_elements, opt_OH, is_Regional
-            )
-            is_BC_element = check_is_BC_element(
-                sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
-            )
-            # Determine which run directory to look in
-            if is_OH_element:
-                if is_Regional:
-                    run_number = nruns
-                else:
-                    num_back = n_elements % sv_elem
-                    run_number = nruns - num_back
-            elif is_BC_element:
+        is_BC_element = check_is_BC_element(
+            sv_elem, n_elements, opt_OH, opt_BC, is_OH_element, is_Regional
+        )
+        # Determine which run directory to look in
+        if is_OH_element:
+            if is_Regional:
+                run_number = nruns
+            else:
                 num_back = n_elements % sv_elem
                 run_number = nruns - num_back
-            else:
-                run_number = np.ceil(sv_elem / ntracers).astype(int)
+        elif is_BC_element:
+            num_back = n_elements % sv_elem
+            run_number = nruns - num_back
+        else:
+            run_number = np.ceil(sv_elem / ntracers).astype(int)
 
-            run_num = str(run_number).zfill(4)
+        run_num = str(run_number).zfill(4)
 
-            # add the element to the dictionary for the relevant simulation number
-            if run_num not in pert_simulations_dict:
-                pert_simulations_dict[run_num] = [sv_elem]
-            else:
-                pert_simulations_dict[run_num].append(sv_elem)
+        # add the element to the dictionary for the relevant simulation number
+        if run_num not in pert_simulations_dict:
+            pert_simulations_dict[run_num] = [sv_elem]
+        else:
+            pert_simulations_dict[run_num].append(sv_elem)
 
-        gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
-        virtual_satellite_pert = [
-            get_virtual_satellite_pert(gc_date, k, gridcell_dict, config, v, n_elements, vertical_weights)
-            for k, v in pert_simulations_dict.items()
-        ]
+    _, PEDGE = virtual_satellite_species_and_pedge(date, gc_cache, gridcell_dict, n_elements, config)
+    p_sat = gridcell_dict["p_sat"]
+    vertical_weights = remapping_weights(p_sat, PEDGE)
 
-        virtual_satellite_pert = np.concatenate(virtual_satellite_pert, axis=1)
+    gc_date = pd.to_datetime(date, format="%Y%m%d_%H")
+    virtual_satellite_pert = [
+        get_virtual_satellite_pert(gc_date, k, gridcell_dict, config, v, n_elements, vertical_weights)
+        for k, v in pert_simulations_dict.items()
+    ]
 
-        virtual_satellite_base = get_virtual_satellite_pert(
-            gc_date, "0001", gridcell_dict, config, [0], n_elements, vertical_weights, baserun=True
-        )
+    virtual_satellite_pert = np.concatenate(virtual_satellite_pert, axis=1)
 
-    if build_jacobian:
-        return virtual_satellite_pert, virtual_satellite_base, virtual_satellite
-    else:
-        return virtual_satellite
+    virtual_satellite_base = get_virtual_satellite_pert(
+        gc_date, "0001", gridcell_dict, config, [0], n_elements, vertical_weights, baserun=True
+    )
+
+    return virtual_satellite_pert, virtual_satellite_base
+
 
 def get_virtual_satellite_pert(gc_date, run_id, gridcell_dict, config, sv_elems, n_elements, vertical_weights, baserun=False):
     """
