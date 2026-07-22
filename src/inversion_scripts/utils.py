@@ -4,6 +4,7 @@ import os
 import sys
 import pickle
 from datetime import datetime, timedelta
+from typing import Optional
 import numpy as np
 import xarray as xr
 import cartopy
@@ -1140,7 +1141,7 @@ def read_blended(filename):
 
 def read_and_filter_satellite(
     filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
-):
+) -> Optional[tuple[dict, np.ndarray]]:
 
     # Read TROPOMI data
     if satellite_str == "BlendedTROPOMI":
