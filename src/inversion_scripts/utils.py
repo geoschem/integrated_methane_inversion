@@ -4,7 +4,6 @@ import os
 import sys
 import pickle
 from datetime import datetime, timedelta
-from typing import Optional
 import numpy as np
 import xarray as xr
 import cartopy
@@ -1141,7 +1140,18 @@ def read_blended(filename):
 
 def read_and_filter_satellite(
     filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
-) -> Optional[tuple[dict, np.ndarray]]:
+) -> tuple[dict, np.ndarray] | None:
+    """
+    Reads the satellite data from the given file and filters it by lat/lon bounds and date range.
+
+    Args:
+        user_id: The unique identifier for the user.
+
+    Returns:
+        tuple[dict, np.ndarray] | None: dictionary of satellite data and 2d array of "valid" lat/lon indices, 
+            or None if error reading the satellite data
+    
+    """
 
     # Read TROPOMI data
     if satellite_str == "BlendedTROPOMI":
