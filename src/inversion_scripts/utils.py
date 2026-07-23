@@ -1144,9 +1144,6 @@ def read_and_filter_satellite(
     """
     Reads the satellite data from the given file and filters it by lat/lon bounds and date range.
 
-    Args:
-        user_id: The unique identifier for the user.
-
     Returns:
         tuple[dict, np.ndarray] | None: dictionary of satellite data and 2d array of "valid" lat/lon indices, 
             or None if error reading the satellite data
