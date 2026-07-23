@@ -1140,7 +1140,15 @@ def read_blended(filename):
 
 def read_and_filter_satellite(
     filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
-):
+) -> tuple[dict, np.ndarray] | None:
+    """
+    Reads the satellite data from the given file and filters it by lat/lon bounds and date range.
+
+    Returns:
+        tuple[dict, np.ndarray] | None: dictionary of satellite data and 2d array of "valid" lat/lon indices, 
+            or None if error reading the satellite data
+    
+    """
 
     # Read TROPOMI data
     if satellite_str == "BlendedTROPOMI":
