@@ -72,9 +72,12 @@ def get_satellite_data(
                       "time" : []}
     
     # Load the satellite data
-    satellite, sat_ind = read_and_filter_satellite(
+    result = read_and_filter_satellite(
         file_path, satellite_str, startdate_np64, enddate_np64, xlim, ylim,
         use_water_obs)
+    if result is None:
+        return None
+    satellite, sat_ind = result
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
