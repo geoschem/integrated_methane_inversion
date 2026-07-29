@@ -18,7 +18,8 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
     build_kdtree,
 )
 
-import os 
+import os
+import yaml
 
 # clustering
 from sklearn.preprocessing import StandardScaler
@@ -625,7 +626,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             agg_level = max(1, int(elements_left / n_clusters_fill))
             print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
-                sensi["Sensitivities"].where(labels == 0),
+                sensi.where(labels == 0),
                 n_clusters_fill,
                 mini_batch,
                 cluster_by_country,
@@ -643,7 +644,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
             # generate clusters that are approximately agg_level in size
             out_labels = cluster_data_kmeans(
-                sensi["Sensitivities"].where(labels == 0),
+                sensi.where(labels == 0),
                 n_clusters,
                 mini_batch,
                 cluster_by_country,
@@ -656,7 +657,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         # get the n_highes labels with sensitivities above the
         # threshold and how many elements these labels contain
         n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
-            out_labels, sensi["Sensitivities"], filter_threshold
+            out_labels, sensi, filter_threshold
         )
 
         # if too many labels to assign, then we need to assign
