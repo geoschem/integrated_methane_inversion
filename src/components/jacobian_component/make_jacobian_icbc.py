@@ -54,7 +54,7 @@ def make_jacobian_icbc(config, original_file_path, new_file_path, file_date, spe
     elif f"SpeciesRst_{species}" in data_vars:
         key = f"SpeciesRst_{species}"
         file_prefix = "GEOSChem.Restart.lowbg."
-    elif "SPC_{species}" in data_vars:
+    elif f"SPC_{species}" in data_vars:
         key = f"SPC_{species}"
         file_prefix = "GEOSChem.Restart.lowbg."
     else:
