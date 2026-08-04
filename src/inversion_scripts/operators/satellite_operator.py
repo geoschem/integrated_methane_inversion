@@ -72,9 +72,12 @@ def apply_average_satellite_operator(
     """
 
     # Read satellite data
-    satellite, sat_ind = read_and_filter_satellite(
+    result = read_and_filter_satellite(
         filename, satellite_product, gc_startdate, gc_enddate,
         xlim, ylim, use_water_obs)
+    if result is None:
+        return None
+    satellite, sat_ind = result
 
     # Number of satellite observations
     n_obs = len(sat_ind[0])
@@ -319,9 +322,12 @@ def apply_satellite_operator(
     """
 
     # Read satellite data
-    satellite, sat_ind = read_and_filter_satellite(
+    result = read_and_filter_satellite(
         filename, satellite_product, gc_startdate, gc_enddate,
         xlim, ylim, use_water_obs)
+    if result is None:
+        return None
+    satellite, sat_ind = result
 
     # Number of satellite observations
     n_obs = len(sat_ind[0])
