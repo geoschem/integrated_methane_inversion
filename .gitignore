@@ -9,7 +9,7 @@ __pycache__/
 .ipynb_checkpoints/
 slurm-*.out
 *~
-*.log
+*.log*
 .env
 # HON only
 config.yml
