@@ -184,16 +184,15 @@ def save_superobservations(ds, filename, output_path):
     return output_file
 
 
-def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
+def apply_operator(operator, params, obs_mapped_to_gc, config):
     """
-    Run the satellite observation operator. By default, GOOPy is used but the original IMI operator can be used by setting use_goopy=False.
+    Run the satellite observation operator. By default, GOOPy is used but the original IMI operator can be used by setting UseGOOPy to False in the config file
 
     Arguments
         operator [str]    : Data conversion operator to use
         params   [dict]   : parameters to run the given operator
         obs_mapped_to_gc [dict] : Mapped satellite observations
         config   [dict]   : Configuration parameters
-        use_goopy [bool]  : Whether to use GOOPy (default: True)
     Returns
         output   [dict]   : Dictionary with:
                             - obs_GC : GEOS-Chem and satellite column data
@@ -202,7 +201,10 @@ def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
                             - satellite lat, lon
                             - satellite lat index, lon index
     """
+    use_goopy = config["UseGOOPy"]
+    print(f"{use_goopy=}", flush=True)
     if use_goopy:
+        print(f"Using GOOPy for satellite operator: {use_goopy}", flush=True)
         return goopy_apply_operator(
             operator,
             params["filename"],
@@ -221,6 +223,7 @@ def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
             params["use_water_obs"],
         )
     else:
+        print(f"Not using GOOPy for satellite operator: {use_goopy}", flush=True)
         return apply_original_imi_operator(operator, params, config)
 
 
