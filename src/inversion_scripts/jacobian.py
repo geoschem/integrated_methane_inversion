@@ -94,7 +94,7 @@ if __name__ == "__main__":
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
 
     # Configuration
-    if isPost:  # if sampling prior simulation
+    if not isPost:  # if sampling prior simulation
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
         vizdir = f"{workdir}/data_visualization"
