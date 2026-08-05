@@ -80,19 +80,21 @@ if __name__ == "__main__":
     latmin = float(sys.argv[7])
     latmax = float(sys.argv[8])
     n_elements = int(sys.argv[9])
-    species = sys.argv[10]
-    satellite_cache = sys.argv[11]
-    satellite_product = sys.argv[12]
-    use_water_obs = sys.argv[13].strip().lower() == "true"
-    isPost = sys.argv[14].strip().lower() == "true"
-    period_i = int(sys.argv[15])
-    build_jacobian = sys.argv[16].strip().lower() == "true"
-    viz_prior = sys.argv[17].strip().lower() == "true"
+    satellite_cache = sys.argv[10]
+    isPost = sys.argv[11].strip().lower() == "true"
+    period_i = int(sys.argv[12])
+    build_jacobian = sys.argv[13].strip().lower() == "true"
+    viz_prior = sys.argv[14].strip().lower() == "true"
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
 
+    # Get config parameters
+    satellite_product = config["SatelliteProduct"]
+    use_water_obs = config["UseWaterObs"]
+    species = config["Species"]
+        
     # Configuration
     if not isPost:  # if sampling prior simulation
         gc_cache = f"{workdir}/data_geoschem"
