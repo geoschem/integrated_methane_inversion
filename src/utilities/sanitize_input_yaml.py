@@ -145,6 +145,7 @@ optional_rules: Dict[str, Rule] = {
     "InversionCPUs": int,
     "InversionMemory": ANY,
     "UseWaterObs": bool,  # already required above, here harmless if present
+    "EmulatedJacobian": bool,
     "OptimizeBCs": bool,
     "OptimizeOH": bool,
     "PerturbValueOH": float,

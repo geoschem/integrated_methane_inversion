@@ -1,10 +1,17 @@
 #!/bin/bash
-echo "running {END} jacobian simulations" >> {InversionPath}/imi_output.log
+
+# Determine which simulations of the job array to submit. This is every
+# simulation unless EmulatedJacobian is enabled, in which case only a subset
+# of the simulations is needed (see get_jacobian_array_indices in jacobian.sh)
+JacobianArray=$(get_jacobian_array_indices {START} {END} \
+    "${EmulatedJacobian:-false}" "$OptimizeBCs" "$OptimizeOH" "$isRegional")
+
+echo "running jacobian simulations ${JacobianArray}" >> {InversionPath}/imi_output.log
 
 # remove error status file if present
 rm -f .error_status_file.txt
 
-sbatch --array={START}-{END}{JOBS} --mem $RequestedMemory \
+sbatch --array=${JacobianArray}{JOBS} --mem $RequestedMemory \
 -c 1 \
 -N $NUM_NODES \
 -n $TOTAL_CORES \

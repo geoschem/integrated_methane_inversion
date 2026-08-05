@@ -5,6 +5,7 @@
 #   - run_jacobian
 #   - create_simulation_dir
 #   - generate_BC_perturb_values
+#   - get_jacobian_array_indices
 
 # Description: Setup jacobian run directory
 # Usage:
@@ -740,6 +741,52 @@ nRuns = math.ceil((nElements - numStandaloneRuns) / nTracers)
 nRuns += numStandaloneRuns
 print(nRuns)
 " $1 $2 $3 $4 $5
+}
+
+# Description: Print the job array indices of the Jacobian simulations to submit.
+#   Normally every simulation from <first-run> to <last-run> is submitted. If
+#   the Jacobian is emulated, only the prior simulation is needed, plus the
+#   standalone perturbation simulations that the emulator does not provide:
+#   the first emissions perturbation simulation and the 4 BC simulations if BCs
+#   are optimized, and the 1 (regional) or 2 (global) OH simulations if OH is
+#   optimized. The standalone simulations are always the last simulations in the
+#   array, ordered BCs first and then OH.
+#   Returns a job array specification (e.g. "0-16" or "0,1,12-16")
+# Usage:
+#   get_jacobian_array_indices <first-run> <last-run> <jacobian-emulated>
+#       <bc-optimized> <oh-optimized> <is-regional>
+get_jacobian_array_indices() {
+    python -c "
+import sys
+first_run = int(sys.argv[1])
+last_run = int(sys.argv[2])
+emulated = sys.argv[3].lower() == 'true'
+bcOptimized = sys.argv[4].lower() == 'true'
+ohOptimized = sys.argv[5].lower() == 'true'
+isRegional = sys.argv[6].lower() == 'true'
+
+if emulated:
+    # the prior simulation is always needed
+    runs = set([first_run])
+    numOHRuns = (1 if isRegional else 2) if ohOptimized else 0
+    if ohOptimized:
+        runs.update(range(last_run - numOHRuns + 1, last_run + 1))
+    if bcOptimized:
+        runs.add(first_run + 1)
+        runs.update(range(last_run - numOHRuns - 3, last_run - numOHRuns + 1))
+    runs = sorted(r for r in runs if first_run <= r <= last_run)
+else:
+    runs = list(range(first_run, last_run + 1))
+
+# compress the run indices into contiguous groups
+groups = []
+for run in runs:
+    if groups and run == groups[-1][1] + 1:
+        groups[-1][1] = run
+    else:
+        groups.append([run, run])
+print(','.join(str(a) if a == b else '%d-%d' % (a, b) for a, b in groups))
+" $1 $2 $3 $4 $5 $6
 }
 
 is_number() {

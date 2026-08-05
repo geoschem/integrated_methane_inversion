@@ -345,9 +345,19 @@ variables can be convenient.
      - The maximum number of jacobian simulations to run simultaneously. The default is -1 (no limit) which will submit all jacobian simulations at once. If the value is greater than zero, the sbatch array statement will be modified to include the "%" separator and will limit the number of simultaneously running tasks from the job array to the specifed value.
    * - ``NumJacobianTracers``
      - The number of tracers to use for each jacobian simulation. A value of 1
-       will create and submit a jacobian run for each state vector element. 
-       Specifying a value greater than 1 will combine state vector elements 
+       will create and submit a jacobian run for each state vector element.
+       Specifying a value greater than 1 will combine state vector elements
        into fewer runs. The default values is 5 tracers per simulation.
+   * - ``EmulatedJacobian``
+     - Boolean for whether the Jacobian is built from an emulator rather than from the
+       full ensemble of perturbation simulations. If ``true``, ``DoJacobian`` only submits
+       the prior simulation (``0000``) plus the standalone perturbation simulations that
+       the emulator does not provide, which are always the last simulations in the job
+       array: if ``OptimizeBCs`` is ``true``, the first perturbation simulation (``0001``)
+       and the four boundary condition simulations; if ``OptimizeOH`` is ``true``, the OH
+       simulation (or two OH simulations for a global inversion). Run directories are
+       still created for all state vector elements by ``SetupJacobianRuns``.
+       Default value is ``false``.
 
 Advanced settings: Observing System Simulation Experiment (OSSE)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

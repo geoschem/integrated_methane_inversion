@@ -175,6 +175,15 @@ MaxSimultaneousRuns: -1
 ##   elements into a single jacobian simulation.
 NumJacobianTracers: 1
 
+## Build the Jacobian from an emulator instead of running the full ensemble
+##   of perturbation simulations. If true, DoJacobian only submits the prior
+##   simulation (0000) plus the standalone perturbation simulations that the
+##   emulator does not provide, which are always the last simulations in the
+##   job array: if OptimizeBCs is true, the first perturbation simulation
+##   (0001) and the four boundary condition simulations; if OptimizeOH is
+##   true, the OH simulation(s).
+EmulatedJacobian: false
+
 ##====================================================================
 ##
 ## Advanced Settings (optional)
