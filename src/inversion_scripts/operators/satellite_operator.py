@@ -256,7 +256,6 @@ def apply_original_imi_operator(operator, params, config):
             params["xlim"],
             params["ylim"],
             params["gc_cache"],
-            params["build_jacobian"],
             params["period_i"],
             config,
             params["use_water_obs"],
@@ -792,8 +791,6 @@ def apply_satellite_operator(
                                                     - GEOS-Chem species
                                                     - satellite lat, lon
                                                     - satellite lat index, lon index
-                                                      If build_jacobian=True, also include:
-                                                        - K      : Jacobian matrix
     """
 
     # Read satellite data
@@ -1529,10 +1526,7 @@ def get_virtual_satellite(
 
     Returns
     -------
-    If build_jacobian=False:
-        ndarray (N,) of virtual satellite columns.
-    If build_jacobian=True:
-        (perturbation columns, base columns, final columns).
+    ndarray (N,) of virtual satellite columns.
     """
 
     species, PEDGE = virtual_satellite_species_and_pedge(date, gc_cache, gridcell_dict, n_elements, config)
