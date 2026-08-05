@@ -83,29 +83,25 @@ if __name__ == "__main__":
     species = sys.argv[10]
     satellite_cache = sys.argv[11]
     satellite_product = sys.argv[12]
-    use_water_obs = sys.argv[13]
-    isPost = sys.argv[14]
+    use_water_obs = sys.argv[13].strip().lower() == "true"
+    isPost = sys.argv[14].strip().lower() == "true"
     period_i = int(sys.argv[15])
-    build_jacobian = sys.argv[16]
-    viz_prior = sys.argv[17]
+    build_jacobian = sys.argv[16].strip().lower() == "true"
+    viz_prior = sys.argv[17].strip().lower() == "true"
 
     # Reformat start and end days for datetime in configuration
     start = f"{startday[0:4]}-{startday[4:6]}-{startday[6:8]} 00:00:00"
     end = f"{endday[0:4]}-{endday[4:6]}-{endday[6:8]} 23:59:59"
 
     # Configuration
-    if build_jacobian.lower() == "true":
-        build_jacobian = True
-    else:
-        build_jacobian = False
-    if isPost.lower() == "false":  # if sampling prior simulation
+    if isPost:  # if sampling prior simulation
         gc_cache = f"{workdir}/data_geoschem"
         outputdir = f"{workdir}/data_converted"
         vizdir = f"{workdir}/data_visualization"
 
         # for lognormal, we also sample the prior simulation in a
         # separate call to jacobian.py solely for visualization purposes
-        if viz_prior.lower() == "true":
+        if viz_prior:
             gc_cache = f"{gc_cache}_prior"
             outputdir = f"{outputdir}_prior"
             vizdir = f"{vizdir}_prior"
