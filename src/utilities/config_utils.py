@@ -95,6 +95,9 @@ def normalize_config(config):
         if mapped is not None:
             cfg[mapped] = True
 
+    # NOTE: we default to using GOOPy for all inversions, but users can turn it off if GOOPy doesn't work yet for their use case
+    cfg.setdefault("UseGOOPy", True)
+
     return cfg
 
 
