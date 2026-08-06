@@ -225,10 +225,10 @@ def apply_operator(operator, params, obs_mapped_to_gc, config):
         )
     else:
         print(f"Not using GOOPy for satellite operator: {use_goopy}", flush=True)
-        return apply_original_imi_operator(operator, params, config)
+        return apply_original_imi_operator(operator, params, config, obs_mapped_to_gc)
 
 
-def apply_original_imi_operator(operator, params, config):
+def apply_original_imi_operator(operator, params, config, obs_mapped_to_gc):
     """
     Run the chosen operator based on selected instrument
 
@@ -258,8 +258,9 @@ def apply_original_imi_operator(operator, params, config):
             params["ylim"],
             params["gc_cache"],
             params["period_i"],
-            config,
-            params["use_water_obs"],
+            obs_mapped_to_gc=obs_mapped_to_gc,
+            config=config,
+            use_water_obs=params["use_water_obs"],
         )
     elif operator == "satellite":
         return apply_satellite_operator(
@@ -274,8 +275,8 @@ def apply_original_imi_operator(operator, params, config):
             params["ylim"],
             params["gc_cache"],
             params["period_i"],
-            config,
-            params["use_water_obs"],
+            config=config,
+            use_water_obs=params["use_water_obs"],
         )
     else:
         raise ValueError("Error: invalid operator selected.")
