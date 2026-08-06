@@ -202,9 +202,7 @@ def apply_operator(operator, params, obs_mapped_to_gc, config):
                             - satellite lat index, lon index
     """
     use_goopy = config["UseGOOPy"]
-    print(f"{use_goopy=}", flush=True)
     if use_goopy:
-        print(f"Using GOOPy for satellite operator: {use_goopy}", flush=True)
         return goopy_apply_operator(
             operator,
             params["filename"],
@@ -223,7 +221,6 @@ def apply_operator(operator, params, obs_mapped_to_gc, config):
             params["use_water_obs"],
         )
     else:
-        print(f"Not using GOOPy for satellite operator: {use_goopy}", flush=True)
         return apply_original_imi_operator(operator, params, config, obs_mapped_to_gc)
 
 
