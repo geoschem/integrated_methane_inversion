@@ -47,14 +47,15 @@ def check_grid_compatibility(lat_min, lat_max, lon_min, lon_max, land_cover_pth)
     return compatible
 
 
-def cluster_buffer_elements(data, offset):
+def cluster_buffer_elements(data, offset, buffer_reduction_factor):
     """
     Description:
         Cluster all 0 valued elements in dataarray into desired num clusters
     arguments:
-        data       [][]dataarray : xarrray sensitivity data
-        offset              bool : offset labels by this integer value
-    Returns:       [][]dataarray : labeled data
+        data            [][]dataarray : xarrray sensitivity data
+        offset                   bool : offset labels by this integer value
+        buffer_reduction_factor float : factor to reduce the number of buffer elements
+    Returns:            [][]dataarray : labeled data
     """
 
     # Get the latitude and longitude coordinates as separate arrays
@@ -69,8 +70,13 @@ def cluster_buffer_elements(data, offset):
     # labels = np.zeros(Z.shape)
     valid_indices = np.where(Z == 0)[0]
 
-    # Get the number of clusters
-    num_clusters = int(np.floor( len(valid_indices) / 4 ))
+    # Nothing to cluster (eg. BufferRings = 0), so return the data unchanged
+    if len(valid_indices) == 0:
+        return data_copy
+
+    # Get the number of clusters, using at least one cluster for any
+    # remaining buffer elements
+    num_clusters = max(1, int(np.floor( len(valid_indices) / buffer_reduction_factor )))
 
     # Flatten the latitude and longitude arrays into a 2D grid
     # only keeping valid indices
@@ -136,6 +142,7 @@ def make_state_vector_file(
     lon_max = config["LonMax"]
     is_regional = config["isRegional"]
     buffer_rings = config["BufferRings"]
+    buffer_reduction_factor = config["BufferReductionFactor"]
     emis_threshold = config["EmisThreshold"]
     buffer_min_lat = 0
     buffer_min_lon = 0
@@ -286,9 +293,17 @@ def make_state_vector_file(
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
     if is_regional:
-        statevector = cluster_buffer_elements(
-            statevector, statevector.max().item()
-        )
+        if (statevector.values == 0).any():
+            statevector = cluster_buffer_elements(
+                statevector, statevector.max().item(), buffer_reduction_factor
+            )
+        else:
+            # BufferRings = 0, so the entire buffer area is taken up by the
+            # 4 non advected cells on each side, which are excluded (-9999)
+            print(
+                "No buffer elements to cluster; the state vector contains "
+                "only elements in the region of interest."
+            )
 
     refyear = 2000
 
