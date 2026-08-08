@@ -52,6 +52,7 @@ unset _imi_cfg _imi_tag _imi_log _imi_sentinel _imi_prev _imi_ts
 source src/utilities/common.sh
 source src/components/setup_component/setup.sh
 source src/components/template_component/template.sh
+source src/components/template_component/compile.sh
 source src/components/statevector_component/statevector.sh
 source src/components/hemco_prior_emis_component/hemco_prior_emis.sh
 source src/components/preview_component/preview.sh
@@ -219,7 +220,11 @@ python src/utilities/test_TROPOMI_dir.py $satelliteCache
 ##  Run the setup script
 ##=======================================================================
 if "$RunSetup"; then
+    echo 'calling setup_imi'
     setup_imi
+    echo 'setup_imi done'
+else
+    echo 'skipping setup_imi'
 fi
 setup_end=$(date +%s)
 
@@ -227,7 +232,11 @@ setup_end=$(date +%s)
 ##  Submit spinup simulation
 ##=======================================================================
 if "$DoSpinup"; then
+    echo 'calling run_spinup'
     run_spinup
+    echo 'run_spinup done'
+else
+    echo 'skipping run_spinup'
 fi
 
 if ("$DoOSSE" && "$EnableOSSE"); then
@@ -239,29 +248,47 @@ fi
 ##  Run Kalman Filter Mode
 ##=======================================================================
 if "$KalmanMode"; then
+    echo 'calling setup_kf'
     setup_kf
+    echo 'setup_kf done'
+    echo 'calling run_kf'
     run_kf
+    echo 'run_kf done'
+else
+    echo 'skipping run_kf'
 fi
 
 ##=======================================================================
 ##  Submit Jacobian simulation
 ##=======================================================================
 if ("$DoJacobian" && ! "$KalmanMode"); then
+    echo 'calling run_jacobian'
     run_jacobian
+    echo 'run_jacobian done'
+else
+    echo 'skipping run_jacobian'
 fi
 
 ##=======================================================================
 ##  Process data and run inversion
 ##=======================================================================
 if ("$DoInversion" && ! "$KalmanMode"); then
+    echo 'calling run_inversion'
     run_inversion
+    echo 'run_inversion done'
+else
+    echo 'skipping run_inversion'
 fi
 
 ##=======================================================================
 ##  Submit posterior simulation and process the output
 ##=======================================================================
 if ("$DoPosterior" && ! "$KalmanMode"); then
+    echo 'calling run_posterior'
     run_posterior
+    echo 'run_posterior done'
+else
+    echo 'skipping run_posterior'
 fi
 
 printf "\n=== DONE RUNNING THE IMI ===\n"
@@ -273,7 +300,11 @@ printf "\nIMI ended   : %s" "$end_time"
 printf "\n"
 
 if ! "$KalmanMode"; then
+    echo 'calling print_stats'
     print_stats
+    echo 'print_stats done'
+else
+    echo 'skipping print_stats'
 fi
 
 # Copy output log to run directory for storage
@@ -287,7 +318,11 @@ cp $ConfigFile "${RunDirs}/config_${RunName}.yml"
 
 # Upload output to S3 if specified
 if "$S3Upload"; then
+    echo 'calling s3_upload.py to upload output to S3'
     python src/utilities/s3_upload.py $ConfigFile
+    echo 's3 upload done'
+else
+    echo 'skipping s3 upload'
 fi
 
 exit 0
