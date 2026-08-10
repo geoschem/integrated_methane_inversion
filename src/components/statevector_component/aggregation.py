@@ -747,8 +747,7 @@ if __name__ == "__main__":
         preview_dir = sys.argv[3]
         satellite_cache = sys.argv[4]
         kf_index = int(sys.argv[5]) if len(sys.argv) > 5 else None
-        # config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-        config = load_config(config_path)
+        config = yaml.load(open(config_path), Loader=yaml.FullLoader)
 
         original_clusters = xr.open_dataset(state_vector_path).squeeze()
         sensitivity_args = [
