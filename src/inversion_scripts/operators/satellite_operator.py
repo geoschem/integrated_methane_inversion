@@ -154,30 +154,31 @@ def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
     return ds
 
 
-def save_superobservations(ds, filename, output_path):
+def superobs_file_path(filename: str, output_dir: str) -> str:
+    """Construct the path for a superobservations file based on the input filename and output directory."""
+    filename_stem, _ = os.path.splitext(os.path.basename(filename))
+    return os.path.join(
+        output_dir,
+        f'{filename_stem}_superobservations.nc',
+    )
+
+
+def save_superobservations(ds, filename, output_dir) -> str:
     """
     Save superobservations xarray Dataset to netcdf file.
     
     Arguments
         ds          [xr.Dataset] : xarray Dataset of superobservations
         filename    [str]        : Original satellite filename (for output filename)
-        output_path [str]        : Directory path to save the netcdf file
+        output_dir [str]        : Directory path to save the netcdf file
     
     Returns
         output_file [str]        : Path to the saved netcdf file
     """
     # Create output directory if it doesn't exist
-    os.makedirs(output_path, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Create output filename based on input filename
-    base_name = os.path.basename(filename)
-    # Replace or append to indicate this is superobservations
-    if base_name.endswith('.nc'):
-        output_file = os.path.join(output_path, base_name.replace('.nc', '_superobservations.nc'))
-    else:
-        output_file = os.path.join(output_path, base_name + '_superobservations.nc')
-    
-    # Save to netcdf with compression
+    output_file = superobs_file_path(filename, output_dir)
     ds.to_netcdf(output_file)
     
     print(f"Saved superobservations to {output_file}")
@@ -191,7 +192,7 @@ def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
     Arguments
         operator [str]    : Data conversion operator to use
         params   [dict]   : parameters to run the given operator
-        obs_mapped_to_gc [dict] : Mapped satellite observations
+        obs_mapped_to_gc [np.ndarray] : Mapped satellite observations
         config   [dict]   : Configuration parameters
         use_goopy [bool]  : Whether to use GOOPy (default: True)
     Returns
@@ -289,7 +290,7 @@ def superobservations(
     period_i,
     config,
     use_water_obs=False
-):
+) -> tuple[np.ndarray, str] | None:
     """
     Compute superobservations for the given satellite file by averaging observations within each grid cell. 
     """
@@ -340,8 +341,12 @@ def superobservations(
     # Create xarray dataset from obs_mapped_to_gc
     ds = obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config)
     
-    # Save superobservations to netcdf files
-    output_dir = os.path.join(os.path.expandvars(config['OutputPath']), config['RunName'], f'{filename}_superobservations')
+    # Save all superobservation files in a common directory for this run.
+    output_dir = os.path.join(
+        os.path.expandvars(config['OutputPath']),
+        config['RunName'],
+        'superobservations',
+    )
     save_superobservations(ds, filename, output_dir)
 
     return obs_mapped_to_gc, output_dir
@@ -366,7 +371,6 @@ def goopy_apply_operator(
     import sys
     import yaml
     import tempfile
-    import glob
     import importlib
     
     # Read the full GOOPy config
@@ -379,13 +383,11 @@ def goopy_apply_operator(
     # Update LOCAL_SETTINGS with the values needed for this run
     save_dir = f'{gc_cache}/../goopy_output'
     if operator == "satellite_average":
-        satellite_files = sorted(glob.glob(os.path.join(satellite_cache, '*.nc')))
-        if len(satellite_files) != 1:
-            raise ValueError(
-                f"Expected exactly one superobservation file in {satellite_cache}, "
-                f"found {len(satellite_files)}."
+        goopy_obs_file = superobs_file_path(filename, satellite_cache)
+        if not os.path.isfile(goopy_obs_file):
+            raise FileNotFoundError(
+                f"Expected superobservation file {goopy_obs_file} does not exist."
             )
-        goopy_obs_file = satellite_files[0]
     elif operator == "satellite":
         goopy_obs_file = os.path.join(satellite_cache, os.path.basename(filename))
         if not os.path.exists(goopy_obs_file):
