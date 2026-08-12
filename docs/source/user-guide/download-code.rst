@@ -21,6 +21,12 @@ To download the latest stable IMI version, type:
 
 This will clone the IMI code into a local folder named ``integrated methane_inversion``.
 
+Next, download and initialize the submodules for the IMI with:
+
+.. code-block:: console
+
+    $ git submodule update --init --recursive
+
 .. tip:: 
    To download IMI source code into a folder named something other than :file:`integrated_methane_inversion`, supply the name of the
    folder at the end of the :command:`git clone` command.  For example:
