@@ -1,4 +1,8 @@
-"""Unit and integration tests for jacobian.py."""
+"""
+Unit and integration tests for jacobian.py.
+
+Example command to run tests: JACOBIAN_TEST_DATA_ROOT=/path/to/baseline_jacobian_inversion3 pytest -v src/inversion_scripts/tests/test_jacobian.py
+"""
 
 import pickle
 import os
@@ -328,6 +332,7 @@ class TestEndToEndIntegration:
                             )
 
                             # Max differences between original IMI operator and current one should be small (order of 0.1% or 1ppb)
+                            # Currently we check that all differences are within 2ppb
                             if expected_output[key].size > 0:
                                 assert np.allclose(
                                     expected_output[key],
