@@ -58,10 +58,18 @@ if {ReDoJacobian}; then
     # it has 24 timestep
     # check if it is valid and has 24 entries of time
     yyyymmdd={EndDate}
-    last_date=$(date -d "${yyyymmdd} -1 day" +%Y%m%d)
-    LastConcFile="GEOSChem.SpeciesConc.${last_date}_0000z.nc4"
-
-    if is_valid_nc "OutputDir/$LastConcFile"; then
+    startdate=$(grep " start_date" geoschem_config.yml | grep -oE "[0-9]{8}")
+    all_valid=true
+    d="$startdate"
+    while [ "$d" != "$yyyymmdd" ]; do
+        if ! is_valid_nc "OutputDir/GEOSChem.SpeciesConc.${d}_0000z.nc4"; then
+            all_valid=false
+            echo "jacobian ${xstr}: day ${d} missing/invalid -> re-running"
+            break
+        fi
+        d=$(date -d "${d} +1 day" +%Y%m%d)
+    done
+    if $all_valid; then
         echo "Not re-running jacobian simulation: ${xstr}"
         exit 0
     else

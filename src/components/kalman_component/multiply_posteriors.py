@@ -30,7 +30,7 @@ def multiply_posteriors(period_number, base_directory, lognormal):
     sf["ScaleFactor"] = sf["ScaleFactor"] * latest_posterior["ScaleFactor"]
 
     # Ensure good netcdf attributes for HEMCO
-    if config['UseGCHP']:
+    if 'lats' in sf.coords or 'lats' in sf.dims:  # upstream bug fix: config was undefined
         sf.lats.attrs["units"] = "degrees_north"
         sf.lats.attrs["long_name"] = "Latitude"
         sf.lons.attrs["units"] = "degrees_east"

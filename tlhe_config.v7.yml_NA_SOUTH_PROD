@@ -1,0 +1,189 @@
+## IMI configuration file — v6 production (fresh: full setup incl. spinup)
+## Schema: upstream main (nested CH4 block, SatelliteProduct, PythonEnv).
+## Chain script (run_one_unit.sh) sets: RunName, StateVectorFile,
+## CustomPeriodsCSV, nBufferClusters (per-unit, from SV attrs).
+
+## General
+RunName: "NA_SOUTH_v7_prod"
+Species: "CH4"
+SchedulerType: "slurm"
+SafeMode: false
+S3Upload: false
+UseGCHP: false
+
+## Period of interest (full production span; the KF period loop is governed
+## by the periods.csv row count, truncated per window by the chain script)
+StartDate: 20250901
+EndDate: 20260401
+SpinupMonths: 1
+
+CH4:
+  ## "BlendedTROPOMI" (Balasus), "TROPOMI" (operational), or "Other"
+  SatelliteProduct: "BlendedTROPOMI"
+  ## Use observations over water? Set to false to filter out water observations
+  UseWaterObs: false
+  OptimizeOH: false
+  # OptimizeSoil incompatible with lognormal errors and with clustered/buffered
+  # state vectors -> keep false for this hybrid-SV production
+  OptimizeSoil: false
+  PriorErrorOH: [0.1]
+  # Save out GEOS-Chem diagnostics for additional observation operators
+  AdditionalDiagnostics: []
+
+## Is this a regional inversion? Set to false for global inversion
+isRegional: true
+
+## Two character region ID (for pre-cropped meteorological fields)
+RegionID: "NA"
+
+## Region of interest (unused: custom StateVectorFile below)
+LonMin: -105
+LonMax: -103
+LatMin: 31
+LatMax: 33
+
+## Meteorology
+Met: "GEOSFP"
+
+## Horizontal grid resolution
+Res: "0.125x0.15625"
+
+## Grid settings for GCHP (unused: UseGCHP false)
+CS_RES: 48
+STRETCH_GRID: false
+STRETCH_FACTOR: 10.0
+TARGET_LAT: 32.0
+TARGET_LON: 256.0
+
+## Kalman filter options
+KalmanMode: true
+UpdateFreqDays: 30
+NudgeFactor: 0.1
+MakePeriodsCSV: false
+CustomPeriodsCSV: "/orcd/data/dvaron/001/tlhe/IMI/integrated_methane_inversion/periods_prod_v7/NA_SOUTH_PROD/periods.csv"
+
+## State vector
+CreateAutomaticRectilinearStateVectorFile: false
+## nBufferClusters is PER-UNIT (64 + 16*(n_members-1), cap 128) and is set by
+## the chain script from the SV file's n_buffer attribute. Do not hand-edit.
+nBufferClusters: 128
+BufferDeg: 2
+EmisThreshold: 1.e-12
+OptimizeBCs: true
+
+## Point source datasets
+PointSourceDatasets: ["SRON"]
+
+## Clustering Options (unused: custom StateVectorFile)
+ReducedDimensionStateVector: false
+DynamicKFClustering: false
+ClusteringMethod: "kmeans"
+NumberOfElements: 45
+ForcedNativeResolutionElements:
+  - [31.5, -104]
+EmissionRateFilter: 2500
+PlumeCountFilter: 50
+GroupByCountry: false
+
+## Custom state vector
+StateVectorFile: "/orcd/data/dvaron/001/tlhe/IMI_state_vector/adaptive_sv_v7_merged/NA_SOUTH_statevector.nc"
+ShapeFile: "None"
+
+## Inversion — ensemble hyperparameters (collaborator's Appalachian setup)
+## + off-diagonal prior covariance (exp decay, 25 km length scale).
+## Analytic ensemble: Jacobian computed once, one solve per combination;
+## KF chain propagates the Ja-filtered ensemble MEAN (Lu et al. 2021 filter).
+LognormalErrors: false
+PriorError: [0.5, 0.75]
+PriorErrorBCs: [10.0]
+PriorErrorBufferElements: [0.5]
+ObsError: [15, 10]
+Gamma: [0.1, 0.25, 0.5, 0.75, 1.0]
+OffDiagonalPriorCov: true
+LengthScalePriorCov: 25
+PrecomputedJacobian: false
+
+## Setup modules
+RunSetup: true
+SetupTemplateRundir: false
+SetupSpinupRun: false
+SetupJacobianRuns: false
+SetupInversion: false
+SetupPosteriorRun: false
+
+## Run modules
+DoHemcoPriorEmis: false
+DoSpinup: false
+DoJacobian: true
+## ReDoJacobian: true enables per-member skip-if-valid (ncks + 24-timestep
+## check on the last-day file) — essential for preemption recovery
+ReDoJacobian: true
+DoInversion: true
+DoPosterior: true
+
+## IMI preview
+DoPreview: false
+DOFSThreshold: 0
+
+## Resource allocation settings for slurm jobs
+RequestedCPUs: 12
+RequestedMemory: 32000
+InversionCPUs: 8
+InversionMemory: 128000
+RequestedTime: "1-00:00"
+SchedulerPartition: "mit_preemptable"
+
+## Max number of simultaneous Jacobian runs from the job array (-1: no limit)
+## QOS caps at cpu=1024/user anyway (~85 concurrent 12-core members)
+MaxSimultaneousRuns: -1
+
+## Number of Jacobian tracers per jacobian simulation
+NumJacobianTracers: 27
+
+##====================================================================
+## Advanced Settings (optional)
+##====================================================================
+
+## OSSE
+EnableOSSE: false
+DoOSSE: false
+EmisPerturbationOSSE: 0.5
+ObsErrorOSSE: 15
+CreateAutomaticScaleFactorFileOSSE: true
+ScaleFactorFileOSSE: "/path/to/ScaleFactor.nc"
+
+## Jacobian settings
+PerturbValue: 1.0
+PerturbValueOH: 1.1
+PerturbValueBCs: 10.0
+
+## Save out hourly diagnostics from GEOS-Chem? (required for TROPOMI inversions)
+HourlySpecies: true
+
+## IMI validation
+DoObsPack: false
+PLANEFLIGHT: false
+GOSAT: false
+TCCON: false
+AIRS: false
+
+## Use global boundary condition files for initial conditions
+UseBCsForRestart: false
+
+##------------------------------------------------------------------
+## Settings for running on local cluster
+##------------------------------------------------------------------
+OutputPath: "/orcd/data/dvaron/001/tlhe/IMI/outputs/$USER"
+DataPath: "/orcd/data/dvaron/001/IMI/ExtData"
+DataPathObs: "/orcd/data/dvaron/001/IMI/TropomiData/ch4/blended"
+GEOSChemEnv: "envs/MIT-Engaging/tlhe_gcclassic.rocky+gnu12.env"
+PythonEnv: "envs/MIT-Engaging/tlhe_python.env"
+RestartDownload: false
+RestartFilePrefix: "/orcd/data/dvaron/001/IMI/BCs/v2025-06-blended/GEOSChem.BoundaryConditions."
+BCpath: "/orcd/data/dvaron/001/IMI/BCs"
+BCversion: "v2025-06-blended"
+HemcoPriorEmisDryRun: false
+SpinupDryrun: false
+ProductionDryRun: false
+PosteriorDryRun: false
+BCdryrun: false

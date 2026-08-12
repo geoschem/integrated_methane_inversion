@@ -108,33 +108,48 @@ def build_covariance(
     nbuffer_elements: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Build the normalized prior covariance ordered by state-vector ID."""
-    state_vector_ids = state_vector_subset.values.reshape(-1)
-    valid_mask = np.isfinite(state_vector_ids)
+    ids_flat = state_vector_subset.values.reshape(-1)
+    valid_mask = np.isfinite(ids_flat)
     if not np.any(valid_mask):
         raise ValueError("No ROI state-vector IDs were found on the prior grid.")
-    state_vector_ids = state_vector_ids[valid_mask].astype(np.int32)
-    if np.unique(state_vector_ids).size != state_vector_ids.size:
-        raise ValueError(
-            "Duplicate state-vector IDs found on the prior grid. Covariance of clustered IDs is not supported."
-        )
+    ids_flat = ids_flat[valid_mask].astype(np.int32)
 
     lat_grid, lon_grid = np.meshgrid(prior.lat.values, prior.lon.values, indexing="ij")
-    latitudes = lat_grid.reshape(-1)[valid_mask]
-    longitudes = lon_grid.reshape(-1)[valid_mask]
+    lats_flat = lat_grid.reshape(-1)[valid_mask]
+    lons_flat = lon_grid.reshape(-1)[valid_mask]
 
-    distances = haversine_distance_km(latitudes, longitudes)
-    spatial_decay = np.exp(-distances / length_scale_km)
-
+    # Aggregate grid cells -> state-vector elements. Hybrid/clustered state
+    # vectors share one ID across several cells; element position is the
+    # centroid of its member cells and its sector mix is the emission-weighted
+    # aggregate. For 1:1 (fully native) state vectors this reduces exactly to
+    # the original per-cell behavior.
     sector_fields = get_sector_fields(prior)
-    proportions = build_sector_proportions(prior, sector_fields)[valid_mask]
+    stacked = np.stack(
+        [prior[name].values.astype(np.float64) for name in sector_fields], axis=-1
+    )
+    emis_flat = stacked.reshape(-1, len(sector_fields))[valid_mask]
+
+    unique_ids, inverse = np.unique(ids_flat, return_inverse=True)
+    counts = np.bincount(inverse).astype(np.float64)
+    lat_c = np.bincount(inverse, weights=lats_flat) / counts
+    lon_c = np.bincount(inverse, weights=lons_flat) / counts
+    emis_elem = np.zeros((unique_ids.size, emis_flat.shape[1]), dtype=np.float64)
+    for k in range(emis_flat.shape[1]):
+        emis_elem[:, k] = np.bincount(inverse, weights=emis_flat[:, k])
+    totals = emis_elem.sum(axis=1, keepdims=True)
+    proportions = np.divide(
+        emis_elem, totals, out=np.zeros_like(emis_elem), where=totals > 0.0
+    )
+
+    distances = haversine_distance_km(lat_c, lon_c)
+    spatial_decay = np.exp(-distances / length_scale_km)
     similarity = cosine_similarity_matrix(proportions)
 
     covariance = spatial_decay * similarity
     np.fill_diagonal(covariance, 1.0)
 
-    order = np.argsort(state_vector_ids)
-    covariance = covariance[order][:, order]
-    state_vector_ids = state_vector_ids[order]
+    # np.unique returns IDs sorted ascending, matching the original ordering
+    state_vector_ids = unique_ids
     state_vector_ids, covariance = append_buffer_diagonal_elements(
         state_vector_ids=state_vector_ids,
         covariance=covariance,
