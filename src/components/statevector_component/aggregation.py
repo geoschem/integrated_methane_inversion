@@ -18,7 +18,8 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
     build_kdtree,
 )
 
-import os 
+import os
+import yaml
 
 # clustering
 from sklearn.preprocessing import StandardScaler
@@ -144,6 +145,12 @@ def get_highest_labels_threshold(labels, sensitivities, threshold):
                                   contained in labels, and list of
                                   sensitivity values
     """
+    # If `sensitivities` is a DataArray, numpy-style indexing, as implemented
+    # in the following loop (`sensitivities[indices]`), will be interpreted as orthogonal indexing,
+    # which is DataArray’s default behavior. This would produce inflated clusters.
+    if hasattr(sensitivities, "values"):
+        sensitivities = sensitivities.values
+
     sensitivity_dict = {}
     max_label = int(np.nanmax(labels))
     n = 0
@@ -512,11 +519,22 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             "Error: Invalid Clustering Method. Valid values are: 'kmeans', 'mini-batch-kmeans'."
         )
 
-    desired_num_labels = config["NumberOfElements"] - config["nBufferClusters"]
-    last_ROI_element = int(orig_sv["StateVector"].max() - config["nBufferClusters"])
+    # Identify the last element of the region of interest
+    nStateOrig = orig_sv["StateVector"].max().values
+    last_ROI_element = int(orig_sv["StateVector"].isel(
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
+    ).max())
+    nBufferClusters = nStateOrig - last_ROI_element
+    desired_num_labels = config["NumberOfElements"] - nBufferClusters
 
-    # set dofs threshold based on user preferences
-    if "ClusteringThreshold" in config.keys():
+    # Used to track if something has changed since we set the threshold
+    labels_assigned_since_last_threshold = False
+
+    # User-supplied ClusteringThreshold stays fixed; if not, the threshold is recalibrated in each iteration below.
+    auto_threshold = "ClusteringThreshold" not in config.keys()
+
+    if not auto_threshold:
         dofs_threshold = float(config["ClusteringThreshold"])
     else:
         # default is to use the avg dofs per element
@@ -533,9 +551,6 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
     print(f"Target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
 
     # max cluster size based on user preferences
-    max_cluster_size = (
-        config["MaxClusterSize"] if "MaxClusterSize" in config.keys() else 64
-    )
     max_cluster_size = get_max_cluster_size(config, flat_sensi, desired_num_labels)
 
     try:
@@ -555,14 +570,14 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     # set buffer elements to 0, retain buffer labels for rejoining
     _, buffer_labels = zero_buffer_elements(
-        orig_sv.copy()["StateVector"], config["nBufferClusters"]
+        orig_sv.copy()["StateVector"], nBufferClusters
     )
     # sv with no buffer elements
     orig_sv_cp = orig_sv.copy()["StateVector"]
     sv = new_sv["StateVector"].where(orig_sv_cp <= last_ROI_element)
 
     # match sensitivities with coordinates
-    sensi = map_sensitivities_to_sv(flat_sensi, orig_sv, last_ROI_element)
+    sensi = map_sensitivities_to_sv(flat_sensi, orig_sv["StateVector"], last_ROI_element).to_dataset()
 
     # initialize labels as 0 everywhere in the ROI
     # labels are NaN outside of ROI
@@ -579,8 +594,6 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     print(f"Reducing to {desired_num_labels} elements")
 
-    # total sensitivities of clusters added to the state vector
-    cluster_sensis = []
     # for each agg_level, cluster the data and assign the n_labels
     # with highest total sensitivity to the new label dataset
     for agg_level in cluster_pairs:
@@ -606,11 +619,15 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             # if there are fewer clusters left to assign than n_labels
             # then evenly distribute the remaining clusters
             # prevents the algorithm from generating one massive cluster
-            agg_level = int(elements_left / clusters_left)
+            # Also limit clusters if they would exceed the number of remaining elements.
+            n_clusters_fill = min(clusters_left, elements_left)
+            if n_clusters_fill <= 0:
+                break
+            agg_level = max(1, int(elements_left / n_clusters_fill))
             print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
-                sensi["Sensitivities"].where(labels == 0),
-                clusters_left,
+                sensi.where(labels == 0),
+                n_clusters_fill,
                 mini_batch,
                 cluster_by_country,
             )
@@ -627,21 +644,20 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
             # generate clusters that are approximately agg_level in size
             out_labels = cluster_data_kmeans(
-                sensi["Sensitivities"].where(labels == 0),
+                sensi.where(labels == 0),
                 n_clusters,
                 mini_batch,
                 cluster_by_country,
             )
 
-        # assign all remaining clusters if filling the grid
-        # by assigning dofs_threshold to artificially low value
-        if fill_grid:
-            dofs_threshold = -1
+        # In fill-grid mode, accept every generated cluster regardless of DOFS;
+        # A filter_threshold of -1 is below the minimum possible total sensitivity (0).
+        filter_threshold = -1 if fill_grid else dofs_threshold
 
         # get the n_highes labels with sensitivities above the
-        # dofs threshold and how many elements these labels contain
+        # threshold and how many elements these labels contain
         n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
-            out_labels, sensi["Sensitivities"], dofs_threshold
+            out_labels, sensi, filter_threshold
         )
 
         # if too many labels to assign, then we need to assign
@@ -668,6 +684,8 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         # informational output
         if len(n_max_labels) > 0:
             print(f"assigning {len(n_max_labels)} labels with agg level: {agg_level}")
+            labels_assigned_since_last_threshold = True
+
         # assign the n_max_labels to the labels dataset
         # starting from the highest sensitivity label in the dataset
         label_start = int(labels.max()) + 1
@@ -681,6 +699,28 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
                 ind_max = np.where(labels.values == 0)
             labels.values[ind_max] = label_start
             label_start += 1
+
+        # Recalibrate dofs_threshold for the next iteration based on the DOFS
+        # and cluster slots that remain after this iteration's assignments.
+        if  auto_threshold and labels_assigned_since_last_threshold:
+            clusters_left = desired_num_labels - int(labels.max())
+            if clusters_left > 0:
+                remaining_dofs = float(
+                    sensi["Sensitivities"].where(labels == 0).sum()
+                )
+
+                dofs_threshold = remaining_dofs / clusters_left
+                print(f"Updated target DOFS per cluster (ClusteringThreshold): {dofs_threshold}")
+
+                if dofs_threshold > 1:
+                    msg = (
+                        f"Estimated dofs per element too high ({dofs_threshold}), "
+                        "resetting ClusteringThreshold to 1"
+                    )
+                    print(msg)
+                    dofs_threshold = 1
+
+                labels_assigned_since_last_threshold = False
 
     # scale buffer elements to correct label range
     cluster_number_diff = last_ROI_element - int(labels.max())
@@ -712,6 +752,7 @@ if __name__ == "__main__":
         original_clusters = xr.open_dataset(state_vector_path).squeeze()
         sensitivity_args = [
             config, 
+            config["Species"],
             state_vector_path, 
             preview_dir, 
             satellite_cache, 

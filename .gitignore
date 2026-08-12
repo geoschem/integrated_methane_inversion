@@ -9,7 +9,7 @@ __pycache__/
 .ipynb_checkpoints/
 slurm-*.out
 *~
-*.log
+*.log*
 .env
 .vscode/
 # HON only

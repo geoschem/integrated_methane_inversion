@@ -54,7 +54,7 @@ def make_jacobian_icbc(config, original_file_path, new_file_path, file_date, spe
     elif f"SpeciesRst_{species}" in data_vars:
         key = f"SpeciesRst_{species}"
         file_prefix = "GEOSChem.Restart.lowbg."
-    elif "SPC_{species}" in data_vars:
+    elif f"SPC_{species}" in data_vars:
         key = f"SPC_{species}"
         file_prefix = "GEOSChem.Restart.lowbg."
     else:
@@ -69,8 +69,10 @@ def make_jacobian_icbc(config, original_file_path, new_file_path, file_date, spe
     else:
         write_path = os.path.join(new_file_path, f"{file_prefix}{file_date}_0000z.nc4")
 
-    # write to new file path
-    new_restart.to_netcdf(write_path)
+    # Atomic write to new file path
+    tmp_path = write_path + ".tmp"
+    new_restart.to_netcdf(tmp_path, mode="w")
+    os.replace(tmp_path, write_path)
 
 
 if __name__ == "__main__":

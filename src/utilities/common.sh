@@ -473,9 +473,9 @@ get_run_duration() {
   local m2=$(date -d "$end_date" +%m)
   local d2=$(date -d "$end_date" +%d)
 
-  local years=$((y2 - y1))
-  local months=$((m2 - m1))
-  local days=$((d2 - d1))
+  local years=$((10#$y2 - 10#$y1))
+  local months=$((10#$m2 - 10#$m1))
+  local days=$((10#$d2 - 10#$d1))
 
   # Adjust negative days
   if (( days < 0 )); then
