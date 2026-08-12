@@ -1,5 +1,5 @@
-IMI FAQs
-========
+FAQs
+====
 
 This page documents frequently asked questions about the IMI.
 
@@ -11,13 +11,17 @@ What is the IMI?
 
 How do I access the IMI?
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-* There are two ways to access the IMI:
+* There are two ways to access the IMI
     * Use the free IMI product on the `Amazon Web Services (AWS) Marketplace <https://aws.amazon.com/marketplace/pp/prodview-hkuxx4h2vpjba>`_.
     * Download the `IMI source code <https://github.com/geoschem/integrated_methane_inversion>`_ and run it on a local compute cluster.
 
 How do I cite the IMI?
 ~~~~~~~~~~~~~~~~~~~~~~~
-* You can cite the IMI with the corresponding research paper for your application: `IMI 1.0 paper <https://doi.org/10.5194/gmd-15-5787-2022>`_ and/or `IMI 2.0 paper <https://doi.org/10.5194/egusphere-2024-2700>`_.
+* You can cite the IMI with the corresponding research paper for your application.
+* IMI 2.0 paper: Estrada et al. (2025)
+    * Cite as: Estrada, L.A., D.J. Varon, M. Sulprizio, H. Nesser, Z. Chen, N. Balasus, S.E. Hancock, M. He, J.D. East, T.A. Mooring, A. Oort Alonso, J.D. Maasakkers, I. Aben, S. Baray, K.W. Bowman, J.R. Worden, F.J. Cardoso-Saldaña, E. Reidy, and D.J. Jacob, Integrated Methane Inversion (IMI) 2.0: an improved research and stakeholder tool for monitoring total methane emissions with high resolution worldwide using TROPOMI satellite observations, Geoscientific Model Development, 18, 3311–3330, https://doi.org/10.5194/gmd-18-3311-2025, 2025.
+* IMI 1.0 Paper: Varon et al. (2022)
+    * Cite as: Varon, D.J., D.J. Jacob, M. Sulprizio, L.A. Estrada, W.B. Downs, L. Shen, S.E. Hancock, H. Nesser, Z. Qu, E. Penn, Z. Chen, X. Lu, A. Lorente, A. Tewari, and C.A. Randles, Integrated Methane Inversion (IMI 1.0): A user-friendly, cloud-based facility for inferring high-resolution methane emissions from TROPOMI satellite observations, Geosci. Model Dev., https://doi.org/10.5194/gmd-15-5787-2022, 2022.
 
 How much does it cost to use the IMI on AWS?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,5 +65,6 @@ What can I get from the IMI that's different from point source data providers (G
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * The IMI is a completely different product. It provides total gridded continuous emissions, not snapshot emissions from specific point sources as from point source data providers. 
 * The IMI information is most useful for emission reporting, understanding contributions from different sectors, monitoring emission trends, and quantifying long-term averages.
+* The IMI can now incorporate several of these point source datasets into its clustering algorithm to ensure native resolution at those locations.
 
 

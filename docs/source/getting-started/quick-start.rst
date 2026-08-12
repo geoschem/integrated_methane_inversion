@@ -9,7 +9,7 @@ We encourage new users to email the IMI team at
 **integrated-methane-inversion@g.harvard.edu** with a 
 description of your project and the organization you are affiliated with. Knowing our user base helps us to 
 prioritize new features and updates to the IMI. Additionally, registered users can 
-`contact us for support <../reference/SUPPORT.html>`__ and will receive notifications of any critical 
+:doc:`contact us for support <../help-and-reference/SUPPORT>` and will receive notifications of any critical 
 bugfixes or new releases/features added to the IMI.
 
 Template introduction email:
@@ -22,6 +22,10 @@ Template introduction email:
   We work on <research-interests> and are interested in using the IMI to <insert-application>. 
   Here is the link to our research page: <insert-link>. Please send us updates on any future 
   releases or critical bugfixes to the IMI.
+
+.. note::
+  The rest of this quick start guide is for running the IMI on AWS. If you have a compute cluster available and would like
+  to run the IMI there, please see :doc:`running the IMI on a local cluster <../advanced/local-cluster>`.
 
 
 2. Create an Amazon Web Services (AWS) account
@@ -40,7 +44,7 @@ Running the IMI is relatively inexpensive (usually on the order of USD $10-$100)
 The cost depends on the length of the inversion period, the size of the inversion domain, 
 how long you retain your compute instance after completing the inversion, and how you store the final results.
 
-For more information on costs, see :doc:`Tips for Minimizing AWS costs <minimizing-cost-tips>`.
+For more information on costs, see :doc:`Tips for Minimizing AWS costs <../other/minimizing-cost-tips>`.
 
 .. note::
   Students can check out subsidized educational credits at https://aws.amazon.com/education/awseducate/.
@@ -49,7 +53,7 @@ For more information on costs, see :doc:`Tips for Minimizing AWS costs <minimizi
 .. _s3-permissions-label:
 
 3. Add S3 user permissions (Optional Step)
---------------------------
+------------------------------------------
 
 This is an optional step but is recommended if you plan to use S3 for long-term storage of your inversion results.
 
@@ -60,8 +64,6 @@ The easiest way to do this is to grant S3 access to an IAM role.
 Attaching the IAM role to a compute instance on the AWS Elastic Compute Cloud (EC2; Amazon's basic computing service) 
 will give the EC2 instance full access to S3. 
 
-Instructions to create an IAM role with full S3 access are provided in the 
-`GEOS-Chem Cloud Documentation <https://cloud-gc.readthedocs.io/en/latest/chapter03_advanced-tutorial/iam-role.html#create-a-new-iam-role>`_. 
 For more information on IAM roles, `check out the AWS Documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`_.
 
 
@@ -69,7 +71,7 @@ For more information on IAM roles, `check out the AWS Documentation <https://doc
 ----------------------------------
 
 Once you've setup S3 permissions on your AWS account, login to the AWS console and go to the  
-`AWS Marketplace IMI listing <https://aws.amazon.com/marketplace/pp/prodview-hkuxx4h2vpjba?sr=0-1&ref_=beagle&applicationId=AWS-Marketplace-Console>`_
+`AWS Marketplace IMI listing <https://aws.amazon.com/marketplace/pp/prodview-hkuxx4h2vpjba>`_
 (listed for free). This image contains the latest version of the IMI including all required software dependencies on an Amazon Machine Image (AMI).
 An AMI fully specifies the software side of your virtual system, including the operating system, software libraries, and default data files. 
 
@@ -197,7 +199,7 @@ Open the ``config.yml`` file with vim (``vi``) or emacs::
   $ emacs config.yml
 
 This configuration file contains many settings that you can modify to suit your needs. 
-See the :doc:`IMI configuration file page <imi-config-file>` for information on the different settings/options.
+See the :doc:`IMI configuration file page <../user-guide/config-file>` for information on the different settings/options.
 Also see the :doc:`common configurations page <../other/common-configurations>`.
 
 
@@ -217,7 +219,7 @@ You can safely disconnect from your instance during this time, but the instance 
 Alternatively, you can :doc:`run the IMI with tmux <../advanced/running-with-tmux>` to obtain a small to moderate speed-up.
 
 .. note::
-  We strongly recommend using the :doc:`IMI preview feature <imi-preview>` before running an inversion.
+  We strongly recommend using the :doc:`IMI preview feature <../user-guide/imi-preview>` before running an inversion.
 
 8. Visualize results with Python
 --------------------------------
@@ -230,9 +232,9 @@ First navigate to the inversion directory::
 
 You can use the ``ls`` command to view the contents of the directory, which will include several scripts, data directories,
 and netcdf output files, along with ``visualization_notebook.ipynb``. For more information on the contents, 
-see `Contents of the inversion directory <../other/listing-directory-contents.html#inversion-directory>`__.
+see :doc:`IMI output <../user-guide/output>`.
 
-To set up and connect to a jupyter notebook server on AWS follow `these short instructions <../advanced/setting-up-jupyter.html>`__. 
+To set up and connect to a jupyter notebook server on AWS follow :doc:`these short instructions <../user-guide/setting-up-jupyter>`. 
 Once connected to the server, open ``visualization_notebook.ipynb`` and run its contents to display key inversion results 
 including the state vector, prior and posterior emissions, TROPOMI data for the region/period of interest, 
 averaging kernel sensitivities, and more.
@@ -267,4 +269,4 @@ You can use the ``cp`` command to copy your output files to an S3 bucket for lon
 
   $ aws s3 cp </path/to/output/files> s3://<bucket-name> --recursive
 
-For more information on using ``s3`` check out our `tips for exporting data to S3 <minimizing-cost-tips.html#exporting-data-to-s3>`__.
+For more information on using ``s3`` check out our :doc:`tips for exporting data to S3 <../other/minimizing-cost-tips>`.

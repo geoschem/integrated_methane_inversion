@@ -162,6 +162,7 @@ run_hemco_sa() {
     hemco_start=$1
     hemco_end=$2
     set -e
+    HEMCOdir="hemco_prior_emis"
 
     pushd ${RunDirs}/${HEMCOdir}
     # replace start and end times in HEMCO_sa_Time.rc

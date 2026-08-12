@@ -20,7 +20,7 @@ computationally expensive (not recommended) or cropping global meteorological fi
 a pre-processing step.
 
 To facilite cropping global meteorological fields at at 0.25\ |deg| x 0.3125\ |deg| resolution, a sample script (`crop_met.sh <https://github.com/geoschem/integrated_methane_inversion/tree/main/src/utilities/crop_met.sh>`_) has been included with
-the IMI. This script utilizes the `Climate Data Operators (CDO) <https://code.mpimet.mpg.de/projects/cdo>`_ .
+the IMI. This script utilizes the `Climate Data Operators (CDO) <https://code.mpimet.mpg.de/projects/cdo>`_.
 It also includes an option to first download global meteorological fields
 at 0.25\ |deg| x 0.3125\ |deg| resolution. The global files are large (approx. 300G per month),
 so when using that option it is recommend that you process short periods at a time and delete the
@@ -28,7 +28,7 @@ global files before processing additional periods.
 
 In a text editor, modify the user settings section in ``crop_met.sh``. The region
 defined in ``crop_met.sh`` should be the same or larger than the domain defined for your
-IMI in :doc:`config.yml <../getting-started/imi-config-file>`.
+IMI in `config.yml <../getting-started/config-file.html#region-of-interest>`.
 
 .. list-table::
    :widths: 30, 70
@@ -64,6 +64,6 @@ by GEOS-Chem.
 
 If you have regional emissions that you would like to use, please see :doc:`modifying prior emission estimates <../advanced/custom-prior-emissions-hemco>`.
 
-Finally, you can run the :doc:`IMI preview <../getting-started/imi-preview>` to quickly check that the IMI is working as expected for your custom region. 
+Finally, you can run the :doc:`IMI preview <../user-guide/imi-preview>` to quickly check that the IMI is working as expected for your custom region. 
 
 Generating 0.125\ |deg| x 0.15625\ |deg| for other regions is not supported at this time. This is an involved process requiring download of C720 mass flux fields from NASA GMAO, converting those to derived winds, and regridding from the cubed-sphere grid to the lat-lon grid. To request other regions, please contact the `IMI Development Team <mailto:integrated-methane-inversion@g.harvard.edu>`_.

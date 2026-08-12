@@ -92,8 +92,7 @@ with one optional, additional feature. By setting the config variable ``DynamicK
 for areas with large seasonal differences in observation density to ensure that the clustering algorithm
 allocates high resolution state vector elements to areas with enough observations to constrain them.
 Generated state vectors at each iteration will be archived in the ``<imi-run-dir>/archive_sv`` directory.
-For more information on clustering, see the 
-`Clustering options page <../advanced/using-clustering-options>`__.
+For more information on clustering, see the :doc:`Clustering options page <../advanced/using-clustering-options>`.
 
 Visualizing the results of the Kalman Filter
 --------------------------------------------

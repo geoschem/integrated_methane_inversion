@@ -9,12 +9,15 @@ accidental initiation of low-quality but potentially expensive inversions. For m
 the preview (default) configuration, see the 
 `Common configurations page <../other/common-configurations.html#default-preview-configuration>`__.
 
-To run the preview after selecting a region and time period of interest in the :doc:`configuration file <imi-config-file>` 
-(and modifying any other configurable settings), simply `run the IMI <quick-start.html#run-the-imi>`__ with the ``DoPreview``
+To run the preview after selecting a region and time period of interest in the :doc:`configuration file <config-file>` 
+(and modifying any other configurable settings), simply `run the IMI <../getting-started/quick-start.html#run-the-imi>`_ with the ``DoPreview``
 configuration option set to ``true``.
 
-The IMI preview provides the following information for users to assess their proposed inversion (as it is 
-described in the configuration file):
+.. figure:: img/imi_preview.png
+  :width: 600 px
+  :align: center
+
+The IMI preview provides the following information for users to assess their proposed inversion:
 
   - Map of mean TROPOMI observations for the region and period of interest
   - Map of prior emission estimates to be used in the inversion
@@ -27,7 +30,7 @@ described in the configuration file):
 This information is generated as a ``.txt`` file and collection of ``.png`` files in the preview directory, 
 which is located at::
 
-    /home/ubuntu/imi_output_dir/{YourRunName}/preview/
+    {OutputDir}/{YourRunName}/preview/
 
 The ``.txt`` file can be viewed directly in the terminal. To view the ``.png`` files, first download them from
 EC2 to your local computer using::

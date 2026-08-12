@@ -72,9 +72,12 @@ def get_satellite_data(
                       "time" : []}
     
     # Load the satellite data
-    satellite, sat_ind = read_and_filter_satellite(
+    result = read_and_filter_satellite(
         file_path, satellite_str, startdate_np64, enddate_np64, xlim, ylim,
         use_water_obs)
+    if result is None:
+        return None
+    satellite, sat_ind = result
 
     # Loop over observations and archive
     num_obs = len(sat_ind[0])
@@ -110,9 +113,10 @@ def imi_preview(
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
-    last_ROI_element = int(
-        np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
-    )
+    last_ROI_element = int(state_vector_labels.isel(
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
+    ).max())
 
     if config['UseGCHP']:
         basedir = os.path.expandvars(
@@ -125,8 +129,11 @@ def imi_preview(
         
     # Set latitude/longitude bounds for plots
     if not config['UseGCHP']:
-        # Trim 1-2.5 degrees to remove GEOS-Chem buffer zone
-        if config["Res"] == "0.25x0.3125":
+        # Trim 0.5-2.5 degrees to remove GEOS-Chem buffer zone
+        if config["Res"] == "0.125x0.15625":
+            degx = 4 * 0.15625
+            degy = 4 * 0.125
+        elif config["Res"] == "0.25x0.3125":
             degx = 4 * 0.3125
             degy = 4 * 0.25
         elif config["Res"] == "0.5x0.625":
@@ -658,9 +665,10 @@ def estimate_averaging_kernel(
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
-    last_ROI_element = int(
-        np.nanmax(state_vector_labels.values) - config["nBufferClusters"]
-    )
+    last_ROI_element = int(state_vector_labels.isel(
+        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
+        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
+    ).max())
 
     # Whether to use observations over water?
     use_water_obs = config["UseWaterObs"] if "UseWaterObs" in config.keys() else False
@@ -691,7 +699,7 @@ def estimate_averaging_kernel(
         # use the nudged (prior) emissions for generating averaging kernel estimate
         sf = xr.load_dataset(f"{rundir_path}archive_sf/prior_sf_period{kf_index}.nc")
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
-        prior_ds = get_posterior_emissions(prior_ds, sf, config["OptimizeSoil"])
+        prior_ds = get_posterior_emissions(prior_ds, sf, config["Species"], config["OptimizeSoil"])
     else:
         prior_ds = get_mean_emissions(startday, endday, prior_cache)
 

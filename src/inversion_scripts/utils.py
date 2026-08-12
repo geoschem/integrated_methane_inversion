@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import pickle
@@ -93,6 +95,163 @@ def sum_total_emissions(emissions, areas, mask):
     emissions_in_kg_per_s = emissions * areas * mask
     total = emissions_in_kg_per_s.sum() * s_per_d * d_per_y * tg_per_kg
     return float(total)
+
+
+def get_default_sector_groups(ds, species="CH4", include_soil=False):
+    """
+    Return a simple default sector grouping for emissions variables.
+
+    Wastewater and landfills are grouped as Waste; oil and gas are grouped as
+    Oil/Gas. Other sector variables are returned individually.
+    """
+
+    prefix = f"Emis{species}_"
+    grouped_suffixes = {
+        "Wetlands": ["Wetlands"],
+        "Livestock": ["Livestock"],
+        "Waste": ["Landfills", "Wastewater"],
+        "Oil/Gas": ["Oil", "Gas"],
+        "Coal": ["Coal"],
+        "Reservoirs": ["Reservoirs"],
+        "Rice": ["Rice"],
+        "Other": ["OtherAnth"],
+    }
+
+    emis_vars = [
+        var
+        for var in ds.data_vars
+        if var.startswith(prefix)
+        and "Total" not in var
+        and "Excl" not in var
+        and (include_soil or "Soil" not in var)
+    ]
+
+    sector_groups = {}
+    used_vars = set()
+    for sector, suffixes in grouped_suffixes.items():
+        sector_vars = [
+            f"{prefix}{suffix}"
+            for suffix in suffixes
+            if f"{prefix}{suffix}" in emis_vars
+        ]
+        if sector_vars:
+            sector_groups[sector] = sector_vars
+            used_vars.update(sector_vars)
+
+    for var in sorted(emis_vars):
+        if var not in used_vars:
+            sector_groups[var.replace(prefix, "")] = [var]
+
+    return sector_groups
+
+
+def aggregate_state_vector_field(field, state_vector_labels, last_ROI_element):
+    """
+    Sum a gridded field over each ROI state-vector element.
+    """
+
+    labels = np.asarray(state_vector_labels).ravel()
+    values = np.asarray(field).ravel()
+    valid = (
+        np.isfinite(labels)
+        & np.isfinite(values)
+        & (labels >= 1)
+        & (labels <= last_ROI_element)
+    )
+    labels = labels[valid].astype(int)
+    values = values[valid]
+    sums = np.bincount(labels, weights=values, minlength=last_ROI_element + 1)
+    return sums[1 : last_ROI_element + 1]
+
+
+def build_sector_weight_matrix(
+    prior_ds,
+    state_vector_labels,
+    last_ROI_element,
+    sector_groups=None,
+    areas=None,
+    species="CH4",
+    include_soil=False,
+):
+    """
+    Build normalized sector weights over ROI state-vector elements.
+
+    Rows are sectors and columns are state-vector elements from 1 through
+    ``last_ROI_element``. Each nonzero sector row sums to one, so multiplying
+    the matrix by ROI state-vector scale factors gives sector-level scale
+    factors.
+    """
+
+    if sector_groups is None:
+        sector_groups = get_default_sector_groups(
+            prior_ds, species=species, include_soil=include_soil
+        )
+    if areas is None:
+        areas = prior_ds["AREA"]
+
+    weights = {}
+    for sector, variables in sector_groups.items():
+        field = sum((prior_ds[var] for var in variables if var in prior_ds), 0)
+        if not hasattr(field, "dims"):
+            continue
+        sector_emissions = aggregate_state_vector_field(
+            field * areas, state_vector_labels, last_ROI_element
+        )
+        total = np.sum(sector_emissions)
+        if total > 0:
+            weights[sector] = sector_emissions / total
+
+    if len(weights) == 0:
+        raise ValueError("No nonzero sector emissions were found in the ROI.")
+
+    return pd.DataFrame(
+        weights,
+        index=np.arange(1, last_ROI_element + 1),
+    ).T
+
+
+def reduce_matrix_by_sector(matrix, sector_weights, use_pseudoinverse=False):
+    """
+    Reduce a state-vector matrix to sector space.
+
+    Use ``use_pseudoinverse=True`` for averaging kernels (W A W*). Use the
+    default for covariance-like matrices (W S W.T).
+    """
+
+    W = sector_weights.to_numpy(dtype=float)
+    matrix = np.asarray(matrix, dtype=float)
+    if matrix.ndim != 2:
+        raise ValueError("Expected a two-dimensional state-vector matrix.")
+    n_roi = W.shape[1]
+    if matrix.shape[0] < n_roi or matrix.shape[1] < n_roi:
+        raise ValueError(
+            "Matrix dimensions are smaller than the number of ROI state-vector "
+            "elements in sector_weights."
+        )
+    matrix = matrix[:n_roi, :n_roi]
+
+    if use_pseudoinverse:
+        W_star = W.T @ np.linalg.pinv(W @ W.T)
+        reduced = W @ matrix @ W_star
+    else:
+        reduced = W @ matrix @ W.T
+
+    return pd.DataFrame(
+        reduced,
+        index=sector_weights.index,
+        columns=sector_weights.index,
+    )
+
+
+def covariance_to_correlation(covariance):
+    """Convert a covariance matrix to a correlation matrix."""
+
+    covariance = np.asarray(covariance, dtype=float)
+    std = np.sqrt(np.diag(covariance))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        correlation = covariance / np.outer(std, std)
+    correlation[~np.isfinite(correlation)] = np.nan
+    return correlation
 
 
 def filter_obs_with_mask(mask, df, UseGCHP=False):
@@ -986,7 +1145,15 @@ def read_blended(filename):
 
 def read_and_filter_satellite(
     filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
-):
+) -> tuple[dict, np.ndarray] | None:
+    """
+    Reads the satellite data from the given file and filters it by lat/lon bounds and date range.
+
+    Returns:
+        tuple[dict, np.ndarray] | None: dictionary of satellite data and 2d array of "valid" lat/lon indices, 
+            or None if error reading the satellite data
+    
+    """
 
     # Read TROPOMI data
     if satellite_str == "BlendedTROPOMI":
@@ -1181,6 +1348,7 @@ def compute_min_max_ensemble_sectors(
     areas: xr.DataArray,
     mask: xr.DataArray,
     num_ensemble_members: int,
+    species: str,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """
     Compute the minimum and maximum posterior emissions for each sector across the ensemble.
@@ -1192,11 +1360,12 @@ def compute_min_max_ensemble_sectors(
     sector_maxes : dict
         Maximum posterior emissions for each sector.
     """
-    # Identify sectors (EmisCH4 variables, excluding totals/exclusions)
+    # Identify sectors (Emis<species> variables, excluding totals/exclusions)
+    emis_prefix = f"Emis{species}"
     sectors = [
         var
         for var in list(ens_posterior_ds.keys())
-        if "EmisCH4" in var and not ("Total" in var or "Excl" in var)
+        if emis_prefix in var and not ("Total" in var or "Excl" in var)
     ]
 
     sector_mins = {sector: float("inf") for sector in sectors}
@@ -1204,7 +1373,7 @@ def compute_min_max_ensemble_sectors(
 
     for member in range(num_ensemble_members):
         active_ds = get_posterior_emissions(
-            prior_ds, ens_scale_ds.isel(ensemble=member)
+            prior_ds, ens_scale_ds.isel(ensemble=member), species
         )
 
         for sector in sectors:
@@ -1216,12 +1385,12 @@ def compute_min_max_ensemble_sectors(
 
     # Remove sectors with inf or -inf values from the results
     sector_mins = {
-        f"{k.replace('EmisCH4_', '')}_ensMin": v
+        f"{k.replace(emis_prefix + '_', '')}_ensMin": v
         for k, v in sector_mins.items()
         if np.isfinite(v)
     }
     sector_maxes = {
-        f"{k.replace('EmisCH4_', '')}_ensMax": v
+        f"{k.replace(emis_prefix + '_', '')}_ensMax": v
         for k, v in sector_maxes.items()
         if np.isfinite(v)
     }
@@ -1232,6 +1401,7 @@ def compute_min_max_ensemble_sectors(
 def export_visualization_outputs(
     *,
     plot_save_path: str,
+    species: str,
     start_date,
     end_date,
     total_prior_emissions: float,
@@ -1371,11 +1541,12 @@ def export_visualization_outputs(
 
         sector_mins, sector_maxes = compute_min_max_ensemble_sectors(
             prior_ds,
-            get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0)),
+            get_posterior_emissions(prior_ds, ens_scale_ds.isel(ensemble=0), species),
             ens_scale_ds,
             areas,
             mask,
             num_ensemble_members,
+            species,
         )
 
         statistics.update(sector_mins)
@@ -1519,6 +1690,7 @@ def map_files_to_reference(
             orbit = get_orbit_num(target_file)
             mapping[target_file] = ref_index[orbit]
         except KeyError:
+            mapping[target_file] = None
             print(f"No reference file found for orbit {orbit} in {target_file}")
         except ValueError as e:
             print(e)

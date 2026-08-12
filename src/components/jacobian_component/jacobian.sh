@@ -92,17 +92,13 @@ setup_jacobian() {
         sed -i -e "s:{JOBS}::g" jacobian_runs/submit_jacobian_simulations_array.sh
     fi
 
-    if "$KalmanMode"; then
-        jacobian_period=${period_i}
-    else
+    if ! "$KalmanMode"; then
         jacobian_period=1
+        # generate gridded perturbation values for all state vector elements
+        printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+        printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
     fi
-
-    set -e
-    # generate gridded perturbation values for all state vector elements
-    printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
-    python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
-    printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
 
     # Initialize (x=0 is base run, i.e. no perturbation; x=1 is state vector element=1; etc.)
     x=0
@@ -364,10 +360,14 @@ create_simulation_dir() {
                 -e "/)))MeMo_SOIL_ABSORPTION/a (((.not.UseTotalPriorEmis" HEMCO_Config.rc
         fi
 
-        # create a break in EMISSIONS logic block for MeMo in background simulation
-        if [[ "$x" = "background" ]]; then
-            sed -i -e "/(((MeMo_SOIL_ABSORPTION/i )))EMISSIONS" HEMCO_Config.rc
-            sed -i -e "/)))MeMo_SOIL_ABSORPTION/a (((EMISSIONS" HEMCO_Config.rc
+        # create a break in EMISSIONS and USE_CH4_DATA logic block for MeMo in background simulation
+        if [[ "$x" == "background" && "$OptimizeSoil" != true ]]; then
+            sed -i \
+                -e "/(((MeMo_SOIL_ABSORPTION/i )))USE_CH4_DATA" \
+                -e "/(((MeMo_SOIL_ABSORPTION/i )))EMISSIONS" HEMCO_Config.rc
+            sed -i \
+                -e "/)))MeMo_SOIL_ABSORPTION/a (((EMISSIONS" \
+                -e "/)))MeMo_SOIL_ABSORPTION/a (((USE_CH4_DATA" HEMCO_Config.rc
         fi
 
         if "$KalmanMode"; then
@@ -511,6 +511,19 @@ add_new_tracer() {
 # Usage:
 #   run_jacobian
 run_jacobian() {
+    if "$KalmanMode"; then
+        jacobian_period=${period_i}
+        # generate gridded perturbation values for all state vector elements
+        printf "\n=== GENERATE GRIDDED PERTURBATION SFs ===\n"
+        python ${InversionPath}/src/components/jacobian_component/make_perturbation_sf.py $ConfigPath $jacobian_period $PerturbValue
+        printf "\n=== DONE GENERATE GRIDDED PERTURBATION SFs ===\n"
+    else
+        jacobian_period=1
+    fi
+    set -e
+    # Copy the relevant gridded perturbation scale factor file to a generic name the Jacobian runs will look for
+    cp ${RunDirs}/archive_perturbation_sfs/gridded_pert_scale_${jacobian_period}.nc ${RunDirs}/gridded_perturbation_sf.nc
+    set +e
 
     pushd ${RunDirs}
 
@@ -533,12 +546,6 @@ cd \${RUNDIR}" jacobian_runs/run_jacobian_simulations.sh
     fi
 
     popd
-
-    if "$KalmanMode"; then
-        jacobian_period=${period_i}
-    else
-        jacobian_period=1
-    fi
 
     if ! "$PrecomputedJacobian"; then
 

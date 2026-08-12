@@ -121,9 +121,9 @@ run_period() {
     fi
 
     # Set dates in geoschem_config.yml for prior, perturbation, and posterior runs
-    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $UseGCHP $JacobianRunsDir
+    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $JacobianRunsDir
     wait
-    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $UseGCHP $PosteriorRunDir
+    python ${InversionPath}/src/components/kalman_component/change_dates.py $ConfigPath $StartDate_i $EndDate_i $RunDuration_i $PosteriorRunDir
     wait
     if ! "$UseGCHP"; then
         echo "Edited Start/End dates in geoschem_config.yml for prior/perturbed/posterior simulations: $StartDate_i to $EndDate_i"
@@ -144,6 +144,27 @@ run_period() {
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
 
+    # Refresh the per-task ReDoJacobian skip check to use this period's EndDate. 
+    sed -i -E "s/^yyyymmdd=[0-9]{8}/yyyymmdd=${EndDate_i}/" "${JacobianRunsDir}/run_jacobian_simulations.sh"
+
+    # Refresh nElements in this period's run_inversion.sh based on the
+    # actual number of elements - can be less than NumberOfElements
+    # if native cells run out before all requested cluster slots are filled.
+
+    nElements_p=$(ncmax StateVector ${RunDirs}/StateVector.nc)
+    if "$OptimizeBCs"; then
+        nElements_p=$((nElements_p + 4)) # OptimizeBC adds 4 elements
+    fi
+    if "$OptimizeOH"; then # OptimizeOH adds 1 element if regional and 2 if global
+        if "$isRegional"; then
+            nElements_p=$((nElements_p + 1)) 
+        else
+            nElements_p=$((nElements_p + 2))
+        fi
+    fi
+    sed -i -E "s|^nElements=.*|nElements=${nElements_p}|" "${RunDirs}/kf_inversions/period${period_i}/run_inversion.sh"
+    echo "Period ${period_i}: refreshed nElements to ${nElements_p} in run_inversion.sh"
+
     # run jacobian simulation for the given period
     run_jacobian
 
@@ -152,7 +173,7 @@ run_period() {
 
     # Update ScaleFactor.nc with the new posterior scale factors before running the posterior simulation
     # NOTE: This also creates the posterior_sf_period{i}.nc file in archive_sf/
-    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $period_i ${RunDirs} $LognormalErrors
+    python ${InversionPath}/src/components/kalman_component/multiply_posteriors.py $ConfigPath $period_i ${RunDirs} $LognormalErrors
     wait
     echo "Multiplied posterior scale factors over record"
 
@@ -163,13 +184,13 @@ run_period() {
     run_posterior
 
     # Make link to restart file from posterior run directory in prior, OH, and background simulation
-    # and link to 1ppb restart file for perturbations
+    # and link to lowbg restart file for perturbations.
     if "$UseGCHP"; then
         org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
     else
         org_restart=${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
     fi
-    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $org_restart ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts $EndDate_i $Species
+    python ${InversionPath}/src/components/jacobian_component/make_jacobian_icbc.py $ConfigPath $org_restart ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts $EndDate_i $Species
     rundir_num=$(get_last_rundir_suffix $JacobianRunsDir)
     for ((idx = 0; idx <= rundir_num; idx++)); do
         # Add zeros to string name
@@ -193,17 +214,18 @@ run_period() {
         # Extract the filename from the target path
         filename=$(basename "$target")
 
-        # Check if the filename contains "1ppb". If so, use the 1ppb restart file
-        # Otherwise use the posterior simulation as the restart file
+        # Check if the filename contains "lowbg". If so, use the lowbg restart file.
+        # Otherwise use the posterior simulation as the restart file.
+
         if "$UseGCHP"; then
-            if [[ "$filename" == *1ppb* ]]; then
-                ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
+            if [[ "$filename" == *lowbg* ]]; then
+                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4
             else
                 ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.c${CS_RES}.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
             fi
         else
-            if [[ "$filename" == *1ppb* ]]; then
-                ln -sf ${RunDirs}/jacobian_1ppb_ics_bcs/Restarts/GEOSChem.Restart.1ppb.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
+            if [[ "$filename" == *lowbg* ]]; then
+                ln -sf ${RunDirs}/jacobian_lowbg_ics_bcs/Restarts/GEOSChem.Restart.lowbg.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4
             else
                 ln -sf ${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4 ${JacobianRunsDir}/${RunName}_${idxstr}/Restarts/.
             fi
@@ -225,6 +247,27 @@ run_period() {
 
     # Delete unneeded daily restart files from Jacobian and posterior directories
     python ${InversionPath}/src/components/kalman_component/cull_restarts.py $JacobianRunsDir $PosteriorRunDir $StartDate_i $EndDate_i
+
+    # Persist period progress by advancing FirstPeriod in the active config, so a
+    # subsequent re-launch of run_imi.sh skips already-completed periods.
+
+    if [[ "${AutoAdvanceFirstPeriod:-false}" == "true" ]]; then
+        # Check for marker files that indicate completion to ensure no advancing
+        # on an incomplete run.
+        sf_marker="${RunDirs}/archive_sf/posterior_sf_period${period_i}.nc"
+        restart_marker="${PosteriorRunDir}/Restarts/GEOSChem.Restart.${EndDate_i}_0000z.nc4"
+        if [[ -f "$sf_marker" && -e "$restart_marker" ]]; then
+            next_period=$((period_i + 1))
+            if grep -q "^FirstPeriod:" "$ConfigPath"; then
+                sed -i "s/^FirstPeriod:.*/FirstPeriod: ${next_period}/" "$ConfigPath"
+            else
+                printf "\nFirstPeriod: %s\n" "${next_period}" >> "$ConfigPath"
+            fi
+            echo "Period ${period_i} complete; advanced FirstPeriod to ${next_period} in ${ConfigPath}"
+        else
+            echo "WARNING: period ${period_i} finished but did not produce expected files; FirstPeriod *not* advanced"
+        fi
+    fi
 
     # Move to next time step
     print_stats
