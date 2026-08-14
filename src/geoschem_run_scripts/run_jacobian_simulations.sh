@@ -57,7 +57,7 @@ if {ReDoJacobian}; then
     # check for last conc file
     # it has 24 timestep
     # check if it is valid and has 24 entries of time
-    yyyymmdd={EndDate}
+    yyyymmdd=$(grep " end_date" geoschem_config.yml | grep -oE "[0-9]{8}" | head -1)
     startdate=$(grep " start_date" geoschem_config.yml | grep -oE "[0-9]{8}")
     all_valid=true
     d="$startdate"
