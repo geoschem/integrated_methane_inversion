@@ -4,6 +4,7 @@ import os
 import sys
 import pickle
 from datetime import datetime, timedelta
+from GOOPy.parsers import read_MSAT
 import numpy as np
 import xarray as xr
 import cartopy
@@ -895,6 +896,35 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
         return np.where(valid_idx & (blended_data["surface_classification"] != 1))
 
 
+# TODO: rn use_water_obs doesn't have any effect on this function
+def filter_MSAT(data, xlim, ylim, startdate, enddate, use_water_obs=False):
+    """
+    Description:
+        Filter out any data that does not meet the following
+        criteria: We only consider data within lat/lon/time bounds,
+        that don't cross the antimeridian
+        Also, we filter out pixels south of 60S and (optionally) over water.
+    Returns:
+        numpy array with satellite indices for filtered tropomi data.
+    """
+    valid_idx = (
+        (data["longitude"] > xlim[0])
+        & (data["longitude"] < xlim[1])
+        & (data["latitude"] > ylim[0])
+        & (data["latitude"] < ylim[1])
+        & (data["time"] >= startdate)
+        & (data["time"] <= enddate)
+        & (data["longitude_bounds"].ptp(axis=2) < 100)
+        & (data["latitude"] > -60)
+    )
+
+    return np.where(valid_idx)
+    # if use_water_obs:
+    #     return np.where(valid_idx)
+    # else:
+    #     return np.where(valid_idx & (blended_data["surface_classification"] != 1))
+
+
 def calculate_area_in_km(coordinate_list):
     """
     Description:
@@ -1155,11 +1185,13 @@ def read_and_filter_satellite(
     
     """
 
-    # Read TROPOMI data
+    # Read satellite data
     if satellite_str == "BlendedTROPOMI":
         satellite = read_blended(filename)
     elif satellite_str == "TROPOMI":
         satellite = read_tropomi(filename)
+    elif satellite_str == "MSAT":
+        satellite = read_MSAT(filename)
     else:
         print("Other data source is not currently supported")
         sys.exit(1)
@@ -1178,6 +1210,10 @@ def read_and_filter_satellite(
     elif satellite_str == "TROPOMI":
         # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
         sat_ind = filter_tropomi(
+            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
+        )
+    elif satellite_str == "MSAT":
+        sat_ind = filter_MSAT(
             satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
         )
 

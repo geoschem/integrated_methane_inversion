@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 import importlib.util
+import netCDF4 as nc
 import numpy as np
 import xarray as xr
+from scipy.stats import binned_statistic_2d
 import pandas as pd
 import datetime
 import pygeohash as pgh
@@ -1013,6 +1015,8 @@ def apply_satellite_operator(
     return output
 
 
+# TODO: rn it's not clear what keys need to be present in satellite (the keys are probably named differently for MSAT)
+# I should define a dictionary "interface" that lists what fields are required and standardizes the names 
 def average_satellite_observations(
         satellite, species, gc_lat_lon, sat_ind, time_threshold
     ):

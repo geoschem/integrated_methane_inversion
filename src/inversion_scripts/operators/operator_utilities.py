@@ -104,6 +104,7 @@ def read_geoschem(date, gc_cache, config):
 
     return dat
 
+# TODO: this is also a little tropomi-specific
 def get_gridcell_list(lons, lats, species):
     """
     Create a 2d array of dictionaries, with each dictionary representing a GC gridcell.
@@ -141,6 +142,7 @@ def get_gridcell_list(lons, lats, species):
                     "lon_sat": [],
                     "observation_count": 0,
                     "observation_weights": [],
+                    # NOTE: this is the number of vertical levels in the GC grid
                     "layer": np.arange(12),
                 }
             )
