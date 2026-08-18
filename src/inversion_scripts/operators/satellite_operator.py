@@ -27,6 +27,12 @@ from src.inversion_scripts.operators.operator_utilities import (
     get_overlap_area_CSgrid,
 )
 import warnings
+from src.inversion_scripts.operators.superobservation import (
+    structured_superobservations_to_dataset,
+)
+from src.inversion_scripts.operators.msat_funcs import (
+    average_methanesat_observations,
+)
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
 def get_goopy_config_path():
@@ -45,7 +51,9 @@ def get_goopy_config_path():
         "or the repository root. Make sure the IMI repository root is on PYTHONPATH."
     )
 
-def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
+def obs_to_xarray_dataset(
+    obs_mapped_to_gc, species, filename, config, satellite_product="unknown"
+):
     """
     Convert superobservations from structured numpy array to xarray Dataset.
     
@@ -58,102 +66,12 @@ def obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config):
     Returns
         ds               [xr.Dataset]    : xarray Dataset with superobservations
     """
-    n_obs = len(obs_mapped_to_gc)
-    
-    # Get dimensions from the first observation
-    n_lev_p = len(obs_mapped_to_gc["p_sat"][0])
-    n_lev_layer = len(obs_mapped_to_gc["layer"][0])
-    
-    # Create dimensions and coordinates
-    coords = {
-        'nobs': np.arange(n_obs),
-        'layer': obs_mapped_to_gc["layer"][0],  # layer index from first observation
-        'corner': np.arange(4),
-    }
-    
-    # Map species name for netcdf variable name
-    if species.upper() == 'CH4':
-        satellite_column_name = 'methane_mixing_ratio_blended'
-        prior_name = 'methane_profile_apriori'
-    elif species.upper() == 'CO2':
-        satellite_column_name = 'xco2_mixing_ratio_blended'
-        prior_name = 'co2_profile_apriori'
-    else:
-        satellite_column_name = f'{species}_mixing_ratio_blended'
-        prior_name = f'{species}_profile_apriori'
-
-    time_utc = pd.to_datetime(
-        obs_mapped_to_gc['time'],
-        format='%Y%m%d_%H',
-    ).strftime('%Y-%m-%dT%H:%M:%S').to_numpy(dtype=str)
-
-    # IMI stores these layer-resolved fields surface-to-TOA. GOOPy's
-    # TROPOMI_blended parser constructs pressure edges in the native file order
-    # and then flips N_EDGES/N_CENTERS to get descending pressure. Write the
-    # center fields in that native order so GOOPy's flip restores IMI ordering.
-    avkern_for_goopy = np.array(
-        [obs_mapped_to_gc['avkern'][i] for i in range(n_obs)],
-        dtype=np.float32,
-    )[:, ::-1]
-    apriori_for_goopy = np.array(
-        [obs_mapped_to_gc['apriori'][i] for i in range(n_obs)],
-        dtype=np.float32,
-    )[:, ::-1]
-    dryair_for_goopy = np.array(
-        [obs_mapped_to_gc['dry_air_subcolumns'][i] for i in range(n_obs)],
-        dtype=np.float32,
-    )[:, ::-1]
-    
-    # Create data variables matching TROPOMI_blended format from GOOPy config.
-    # GOOPy uses latitude/longitude to choose the model grid cell. These
-    # superobservations have already been assigned to GEOS-Chem cells by IMI,
-    # so use the GC cell centers here rather than the weighted satellite
-    # footprint centers.
-    data_vars = {
-        'latitude': (['nobs'], obs_mapped_to_gc['lat'].astype(np.float32)),
-        'longitude': (['nobs'], obs_mapped_to_gc['lon'].astype(np.float32)),
-        'satellite_latitude': (['nobs'], obs_mapped_to_gc['lat_sat'].astype(np.float32)),
-        'satellite_longitude': (['nobs'], obs_mapped_to_gc['lon_sat'].astype(np.float32)),
-        'time_utc': (['nobs'], time_utc),
-        satellite_column_name: (['nobs'], obs_mapped_to_gc[species].astype(np.float32)),
-        'surface_pressure': (['nobs'], obs_mapped_to_gc['surface_pressure'].astype(np.float32)),
-        'surface_albedo_NIR': (['nobs'], obs_mapped_to_gc['nir_albedo'].astype(np.float32)),
-        'surface_albedo_SWIR': (['nobs'], obs_mapped_to_gc['swir_albedo'].astype(np.float32)),
-        'column_averaging_kernel': (
-            ['nobs', 'layer'],
-            avkern_for_goopy
-        ),
-        prior_name: (
-            ['nobs', 'layer'],
-            apriori_for_goopy
-        ),
-        'pressure_interval': (
-            ['nobs'],
-            (obs_mapped_to_gc['p_sat'][:, 0].astype(np.float32) - obs_mapped_to_gc['p_sat'][:, 1].astype(np.float32)) * 100.0
-            if n_lev_p > 1 else np.ones(n_obs, dtype=np.float32)
-        ), # NOTE: we multiply by 100 to convert from hPa to Pa, which is the unit expected by GOOPy and the TROPOMI_blended format
-        'dry_air_subcolumns': (
-            ['nobs', 'layer'],
-            dryair_for_goopy
-        ),
-        'observation_count': (['nobs'], obs_mapped_to_gc['observation_count'].astype(np.float32)),
-        'qa_value': (['nobs'], np.ones(n_obs, dtype=np.float32)),  # Set to 1.0 for all valid observations
-        'gc_cell_lat': (['nobs'], obs_mapped_to_gc['lat'].astype(np.float32)),
-        'gc_cell_lon': (['nobs'], obs_mapped_to_gc['lon'].astype(np.float32)),
-        'gc_cell_index_lat': (['nobs'], obs_mapped_to_gc['jGC'].astype(np.int32)),
-        'gc_cell_index_lon': (['nobs'], obs_mapped_to_gc['iGC'].astype(np.int32)),
-    }
-    
-    # Create the xarray Dataset
-    ds = xr.Dataset(data_vars, coords=coords)
-    
-    # Add attributes for metadata
-    ds.attrs['title'] = 'Superobservations: satellite observations averaged to GEOS-Chem grid cells'
-    ds.attrs['source_file'] = os.path.basename(filename)
-    ds.attrs['species'] = species
-    ds.attrs['history'] = f'Created by satellite_operator.py at {pd.Timestamp.now().isoformat()}'
-    
-    return ds
+    return structured_superobservations_to_dataset(
+        obs_mapped_to_gc,
+        species,
+        os.path.basename(filename),
+        satellite_product,
+    )
 
 
 def superobs_file_path(filename: str, output_dir: str) -> str:
@@ -298,52 +216,78 @@ def superobservations(
     """
     Compute superobservations for the given satellite file by averaging observations within each grid cell. 
     """
-    # Read satellite data
-    result = read_and_filter_satellite(
-        filename, satellite_product, gc_startdate, gc_enddate,
-        xlim, ylim, use_water_obs)
-    if result is None:
-        return None
-    satellite, sat_ind = result
-
-    # Number of satellite observations
-    n_obs = len(sat_ind[0])
-    if n_obs == 0:
-        print(f"No satellite observations found in {filename}. Skipping.")
-        return None
-    print("Found", n_obs, "satellite observations.")
-
     # Define time threshold (hour 00 after the inversion period)
     date_after_inversion = str(gc_enddate + np.timedelta64(1, "D"))[:10].replace(
         "-", ""
     )
     time_threshold = f"{date_after_inversion}_00"
 
-    # map satellite obs into gridcells and average the observations
-    # into each gridcell. Only returns gridcells containing observations
-    if config["UseGCHP"]:
-        if config['STRETCH_GRID']:
-            sf_formatted = f"{config['STRETCH_FACTOR']:.2f}".replace(".", "d")
-            target_geohash = pgh.encode(config['TARGET_LAT'], config['TARGET_LON'])
-            gridspec_path = f"c{config['CS_RES']}_s{sf_formatted}_t{target_geohash}_gridspec.nc"
-        else:
-            gridspec_path = f"c{config['CS_RES']}_gridspec.nc"
-        GC_shape = (6, config['CS_RES'], config['CS_RES'])
-        CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
-
-        obs_mapped_to_gc = average_satellite_observations_to_CSgrid(
-            satellite, species, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
+    # MethaneSAT has a product-specific gridding implementation. It reads the
+    # raw file directly and returns the same in-memory contract as the generic
+    # averager, which is subsequently written in the canonical format.
+    if satellite_product == "MSAT":
+        if config["UseGCHP"]:
+            raise NotImplementedError(
+                "MethaneSAT superobservations currently require a rectilinear grid"
+            )
+        state_vector_path = os.path.join(
+            os.path.expandvars(config["OutputPath"]),
+            config["RunName"],
+            "StateVector.nc",
         )
-    else:
-        # get the lat/lons of gc gridcells
+        obs_mapped_to_gc = average_methanesat_observations(
+            filename,
+            state_vector_path,
+            species=species,
+            time_threshold=time_threshold,
+            gc_startdate=gc_startdate,
+            gc_enddate=gc_enddate,
+        )
         gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
-        obs_mapped_to_gc = average_satellite_observations(
-            satellite, species, gc_lat_lon, sat_ind, time_threshold
-        )
-        GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
+        GC_shape = (len(gc_lat_lon["lat"]), len(gc_lat_lon["lon"]))
+    else:
+        result = read_and_filter_satellite(
+            filename, satellite_product, gc_startdate, gc_enddate,
+            xlim, ylim, use_water_obs)
+        if result is None:
+            return None
+        satellite, sat_ind = result
+
+        n_obs = len(sat_ind[0])
+        if n_obs == 0:
+            print(f"No satellite observations found in {filename}. Skipping.")
+            return None
+        print("Found", n_obs, "satellite observations.")
+
+        # Map satellite observations into grid cells and average them.
+        if config["UseGCHP"]:
+            if config['STRETCH_GRID']:
+                sf_formatted = f"{config['STRETCH_FACTOR']:.2f}".replace(".", "d")
+                target_geohash = pgh.encode(config['TARGET_LAT'], config['TARGET_LON'])
+                gridspec_path = f"c{config['CS_RES']}_s{sf_formatted}_t{target_geohash}_gridspec.nc"
+            else:
+                gridspec_path = f"c{config['CS_RES']}_gridspec.nc"
+            GC_shape = (6, config['CS_RES'], config['CS_RES'])
+            CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
+
+            obs_mapped_to_gc = average_satellite_observations_to_CSgrid(
+                satellite, species, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
+            )
+        else:
+            gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
+            obs_mapped_to_gc = average_satellite_observations(
+                satellite, species, gc_lat_lon, sat_ind, time_threshold
+            )
+            GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
+
+    if len(obs_mapped_to_gc) == 0:
+        print(f"No superobservations produced for {filename}. Skipping.")
+        return None
     
     # Create xarray dataset from obs_mapped_to_gc
-    ds = obs_to_xarray_dataset(obs_mapped_to_gc, species, filename, config)
+    ds = obs_to_xarray_dataset(
+        obs_mapped_to_gc, species, filename, config, satellite_product
+    )
     
     # Save all superobservation files in a common directory for this run.
     output_dir = os.path.join(
@@ -402,12 +346,18 @@ def goopy_apply_operator(
         raise ValueError(f"Error: invalid operator selected: {operator}")
 
 
-    # TODO: we should update the IMI satellite products and GOOPy satellite names to be the same, workaround for now
-    satellite_product_to_goopy_name_map = {
-        'BlendedTROPOMI': 'TROPOMI_blended',
-        'TROPOMI': 'TROPOMI',
-    }
-    goopy_satellite_name = satellite_product_to_goopy_name_map.get(satellite_product, satellite_product)
+    if operator == "satellite_average":
+        # All averaged products are persisted using the same product-neutral
+        # schema, irrespective of the source retrieval product.
+        goopy_satellite_name = "IMI_superobservation"
+    else:
+        satellite_product_to_goopy_name_map = {
+            'BlendedTROPOMI': 'TROPOMI_blended',
+            'TROPOMI': 'TROPOMI',
+        }
+        goopy_satellite_name = satellite_product_to_goopy_name_map.get(
+            satellite_product, satellite_product
+        )
 
     goopy_config['LOCAL_SETTINGS'].update({
         'SAVE_INTERPOLATION': 'False',
@@ -427,7 +377,10 @@ def goopy_apply_operator(
     temp_config.close()
     
     # Set the config file path for GOOPy and import
-    sys.argv[1] = temp_config.name
+    if len(sys.argv) > 1:
+        sys.argv[1] = temp_config.name
+    else:
+        sys.argv.append(temp_config.name)
     for import_path in (goopy_repo_path, goopy_package_path):
         import_path = str(import_path)
         if import_path not in sys.path:
