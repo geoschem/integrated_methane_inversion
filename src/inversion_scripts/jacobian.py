@@ -19,6 +19,7 @@ from src.inversion_scripts.operators.satellite_operator import (
 from src.inversion_scripts.utils import (
     check_is_OH_element,
     check_is_BC_element,
+    extract_observation_date,
 )
 from joblib import Parallel, delayed
 
@@ -202,10 +203,7 @@ if __name__ == "__main__":
     sat_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        shortname = re.split(r"\/", filename)[-1]
-        shortname = re.split(r"\.", shortname)[0]
-        strdate = re.split(r"\.|_+|T", shortname)[4]
-        strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
+        strdate = extract_observation_date(filename)
         if (strdate >= gc_startdate) and (strdate <= gc_enddate):
             sat_files.append(filename)
     sat_files.sort()

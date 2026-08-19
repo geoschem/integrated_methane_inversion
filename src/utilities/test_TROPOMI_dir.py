@@ -1,35 +1,68 @@
+"""Validate an IMI observation directory for the selected product."""
+
 import re
-import glob
 import sys
+from pathlib import Path
+
+import netCDF4 as nc
+
+from src.inversion_scripts.utils import extract_observation_date
 
 
-def check_for_duplicate_orbit_numbers(Sat_datadir):
-    """
-    Function that checks for duplicate TROPOMI filenames in your directory (either on your cluster or after download to AWS)
-    Takes advatnage of the fact that there should be the same number of unique orbit numbers as there are files
-    """
+def check_for_duplicate_orbit_numbers(observation_dir):
+    """Retain the processor-version/orbit check used by TROPOMI products."""
+    files = sorted(Path(observation_dir).glob("*.nc"))
+    orbit_numbers = []
+    for path in files:
+        matches = re.findall(r"_(\d{5})_", path.name)
+        if len(matches) != 1:
+            raise ValueError(
+                "Please check the TROPOMI filename format: " f"{path}"
+            )
+        orbit_numbers.append(matches[0])
+    if len(set(orbit_numbers)) != len(files):
+        raise ValueError(
+            "Duplicate TROPOMI orbit numbers found; retain only one processor "
+            "version per orbit"
+        )
 
-    files = sorted(glob.glob(Sat_datadir + "/*.nc"))
 
-    all_orbit_numbers = []
-    for filename in files:
-        filestem = filename.split("/")[-1]
-        matches = re.findall(r"_(\d{5})_", filestem)  # find orbit number
-        assert (
-            len(matches) == 1
-        ), f"Please check the TROPOMI filenames, as they are not formatted in the way that the IMI expects. (e.g., {filename})"
-        all_orbit_numbers.append(matches[0])
+def check_methanesat_files(observation_dir):
+    """Check filenames and the minimal L3 variables used by the MSAT averager."""
+    files = sorted(Path(observation_dir).glob("*.nc"))
+    acquisition_keys = []
+    for path in files:
+        date = extract_observation_date(path).strftime("%Y%m%d")
+        time_match = re.search(r"_(\d{8}T\d{6}Z_\d{6}Z)", path.name)
+        acquisition_keys.append(time_match.group(1) if time_match else path.name)
+        with nc.Dataset(path) as dataset:
+            missing = {"lat", "lon", "time", "xch4"}.difference(dataset.variables)
+            if missing:
+                raise ValueError(f"{path} is missing MSAT variables: {sorted(missing)}")
+            apriori = dataset.groups.get("apriori_data")
+            if apriori is None or "surface_pressure" not in apriori.variables:
+                raise ValueError(f"{path} is missing apriori_data/surface_pressure")
+        print(f"Validated MSAT observation file for {date}: {path.name}")
+    if len(set(acquisition_keys)) != len(files):
+        raise ValueError("Duplicate MethaneSAT acquisition files found")
 
-    number_of_unique_orbit_numbers = len(
-        set(all_orbit_numbers)
-    )  # forming a set drops the duplicates
-    number_of_files_in_Sat_datadir = len(files)
 
-    assert (
-        number_of_unique_orbit_numbers == number_of_files_in_Sat_datadir
-    ), "Duplicate orbit numbers found in TROPOMI datafiles. Remove duplicate files from system before continuing."
+def validate_observation_directory(observation_dir, satellite_product):
+    files = list(Path(observation_dir).glob("*.nc"))
+    if not files:
+        raise ValueError(f"No NetCDF observation files found in {observation_dir}")
+    if satellite_product in {"TROPOMI", "BlendedTROPOMI"}:
+        check_for_duplicate_orbit_numbers(observation_dir)
+    elif satellite_product == "MSAT":
+        check_methanesat_files(observation_dir)
+    else:
+        for path in files:
+            extract_observation_date(path)
 
 
 if __name__ == "__main__":
-    Sat_datadir = sys.argv[1]
-    check_for_duplicate_orbit_numbers(Sat_datadir)
+    if len(sys.argv) != 3:
+        raise SystemExit(
+            "Usage: test_TROPOMI_dir.py OBSERVATION_DIR SATELLITE_PRODUCT"
+        )
+    validate_observation_directory(sys.argv[1], sys.argv[2])
