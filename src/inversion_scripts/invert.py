@@ -15,6 +15,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
     map_files_to_reference,
+    extract_observation_date,
 )
 from src.utilities.config_utils import load_config
 
@@ -766,10 +767,7 @@ if __name__ == "__main__":
     jacobian_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        shortname = re.split(r"\/", filename)[-1]
-        shortname = re.split(r"\.", shortname)[0]
-        strdate = re.split(r"\.|_+|T", shortname)[4]
-        strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
+        strdate = extract_observation_date(filename)
         if (strdate >= gc_startdate) and (strdate < gc_enddate):
             jacobian_files.append(filename)
     jacobian_files.sort()

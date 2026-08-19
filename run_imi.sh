@@ -202,7 +202,8 @@ if [[ -z "$DataPathObs" ]]; then
     elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
         downloadScript=src/utilities/download_TROPOMI.py
     else
-        printf "$SatelliteProduct is not currently supported for download"
+        printf "%s must be supplied with DataPathObs; automatic download is not supported.\n" "$SatelliteProduct"
+        exit 1
     fi
     submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition $downloadScript $StartDate $EndDate $satelliteCache
 else
@@ -212,8 +213,8 @@ else
     fi
 fi
 
-# Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
-python src/utilities/test_TROPOMI_dir.py $satelliteCache
+# Validate files using rules appropriate to the configured observation product.
+python src/utilities/test_TROPOMI_dir.py "$satelliteCache" "$SatelliteProduct"
 
 ##=======================================================================
 ##  Run the setup script

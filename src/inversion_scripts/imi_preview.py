@@ -28,8 +28,12 @@ from src.inversion_scripts.utils import (
     mixing_ratio_conv_factor,
     get_mean_emissions,
     get_posterior_emissions,
+    extract_observation_date,
 )
 from src.utilities.config_utils import load_config
+from src.inversion_scripts.operators.msat_funcs import (
+    average_methanesat_observations,
+)
 
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
     latlon_to_cartesian,
@@ -42,7 +46,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 def get_satellite_data(
     file_path, satellite_str, species, xlim, ylim, startdate_np64, enddate_np64,
-    use_water_obs
+    use_water_obs, state_vector_path=None
 ):
     """
     Returns a dict with the lat, lon, xspecies, and albedo_swir observations
@@ -69,7 +73,27 @@ def get_satellite_data(
     """
     # satellite data dictionary
     satellite_data = {"lat": [], "lon": [], species: [], "swir_albedo": [],
-                      "time" : []}
+                      "time": [], "observation_count": []}
+
+    if satellite_str == "MSAT":
+        if state_vector_path is None:
+            raise ValueError("MSAT preview requires the state-vector path")
+        observations = average_methanesat_observations(
+            file_path,
+            state_vector_path,
+            species=species,
+            gc_startdate=startdate_np64,
+            gc_enddate=enddate_np64,
+        )
+        satellite_data["lat"] = observations["lat_sat"].tolist()
+        satellite_data["lon"] = observations["lon_sat"].tolist()
+        satellite_data[species] = observations[species].tolist()
+        satellite_data["swir_albedo"] = [np.nan] * len(observations)
+        satellite_data["time"] = observations["time"].tolist()
+        satellite_data["observation_count"] = observations[
+            "observation_count"
+        ].tolist()
+        return satellite_data
     
     # Load the satellite data
     result = read_and_filter_satellite(
@@ -89,6 +113,7 @@ def get_satellite_data(
         satellite_data[species].append(satellite[species][lat_idx, lon_idx])
         satellite_data["swir_albedo"].append(satellite["swir_albedo"][lat_idx, lon_idx])
         satellite_data["time"].append(satellite["time"][lat_idx, lon_idx])
+        satellite_data["observation_count"].append(1.0)
 
     return satellite_data
 
@@ -752,10 +777,9 @@ def estimate_averaging_kernel(
 
     # Only consider satellite files within date range (in case more are present)
     satellite_paths = [
-        p
-        for p in satellite_paths
-        if int(p.split("____")[1][0:8]) >= int(startday)
-        and int(p.split("____")[1][0:8]) < int(endday)
+        p for p in satellite_paths
+        if int(extract_observation_date(p).strftime("%Y%m%d")) >= int(startday)
+        and int(extract_observation_date(p).strftime("%Y%m%d")) < int(endday)
     ]
     satellite_paths.sort()
 
@@ -768,6 +792,7 @@ def estimate_averaging_kernel(
     xspecies = []
     albedo = []
     trtime = []
+    observation_count = []
 
     # Read in and filter satellite observations (uses parallel processing)
     observation_dicts = Parallel(n_jobs=-1)(
@@ -779,7 +804,8 @@ def estimate_averaging_kernel(
             ylim, 
             startdate_np64, 
             enddate_np64,
-            use_water_obs
+            use_water_obs,
+            state_vector_path,
         )
         for file_path in satellite_paths
     )
@@ -792,12 +818,13 @@ def estimate_averaging_kernel(
         xspecies.extend(dict[species])
         albedo.extend(dict["swir_albedo"])
         trtime.extend(dict["time"])
+        observation_count.extend(dict["observation_count"])
 
     # Assemble in dataframe
     df = pd.DataFrame()
     df["lat"] = lat
     df["lon"] = lon
-    df["obs_count"] = np.ones(len(lat))
+    df["obs_count"] = observation_count
     df["swir_albedo"] = albedo
     df[species] = xspecies
     df["time"] = trtime
