@@ -271,26 +271,32 @@ if __name__ == "__main__":
                 )
                 output['K'] = jacobian
 
-            # we also save out the unaveraged satellite operator for visualization purposes
-            viz_output = apply_operator(
-                "satellite",
-                {
-                    "filename": filename,
-                    "species" : species,
-                    "satellite_product": satellite_product,
-                    "satellite_cache": satellite_cache,
-                    "n_elements": n_elements,
-                    "gc_startdate": gc_startdate,
-                    "gc_enddate": gc_enddate,
-                    "xlim": xlim,
-                    "ylim": ylim,
-                    "gc_cache": gc_cache,
-                    "period_i": period_i,
-                    "use_water_obs": use_water_obs,
-                },
-                obs_mapped_to_gc,
-                config,
-            )
+            # The MSAT L3 grid can contain tens of millions of source pixels.
+            # Running a second, unaveraged operator solely for visualization is
+            # prohibitively expensive; visualize the canonical superobservations
+            # instead. Other products retain the legacy unaveraged output.
+            if satellite_product == "MSAT":
+                viz_output = output
+            else:
+                viz_output = apply_operator(
+                    "satellite",
+                    {
+                        "filename": filename,
+                        "species" : species,
+                        "satellite_product": satellite_product,
+                        "satellite_cache": satellite_cache,
+                        "n_elements": n_elements,
+                        "gc_startdate": gc_startdate,
+                        "gc_enddate": gc_enddate,
+                        "xlim": xlim,
+                        "ylim": ylim,
+                        "gc_cache": gc_cache,
+                        "period_i": period_i,
+                        "use_water_obs": use_water_obs,
+                    },
+                    obs_mapped_to_gc,
+                    config,
+                )
 
             if output is None:
                 return 0

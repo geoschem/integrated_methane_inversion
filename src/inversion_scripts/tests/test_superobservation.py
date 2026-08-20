@@ -12,6 +12,7 @@ from src.inversion_scripts.operators.superobservation import (
 from src.inversion_scripts.operators.msat_funcs import (
     average_methanesat_observations,
 )
+from GOOPy.parsers import read_MSAT as read_goopy_msat
 
 
 def _observations():
@@ -92,6 +93,7 @@ def test_methanesat_averager_chunks_and_uses_joint_mask(tmp_path):
         dataset.createVariable("lon", "f8", ("lon",))[:] = [.25, .75, 1.25, 1.75]
         xch4 = dataset.createVariable("xch4", "f4", ("lat", "lon"), fill_value=1e36)
         time = dataset.createVariable("time", "f8", ("lat", "lon"), fill_value=0.0)
+        time.units = "seconds since 1970-1-1 0:0:0, in UTC"
         xch4[:] = np.arange(16, dtype=np.float32).reshape(4, 4) + 1800
         time[:] = base_time
         apriori = dataset.createGroup("apriori_data")
@@ -119,3 +121,15 @@ def test_methanesat_averager_chunks_and_uses_joint_mask(tmp_path):
     np.testing.assert_allclose(first["CH4"], 1805.0)
     np.testing.assert_allclose(first["surface_pressure"], 1000.0)
     assert np.all(np.diff(first["p_sat"]) < 0)
+
+    parsed = read_goopy_msat(
+        msat_path,
+        {
+            "N_OBS": "none", "N_EDGES": "none", "N_CENTERS": "none",
+            "PRESSURE_EDGES": "none", "PRESSURE_WEIGHT": "none",
+            "LATITUDE": "lat", "LONGITUDE": "lon", "TIME": "time",
+            "AVERAGING_KERNEL": "none", "PRIOR_PROFILE": "none",
+            "SATELLITE_COLUMN": "xch4", "QUALITY_FLAG": "none",
+        },
+    )
+    assert np.issubdtype(parsed["TIME"].dtype, np.datetime64)
