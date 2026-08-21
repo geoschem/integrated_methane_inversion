@@ -30,11 +30,12 @@ def check_for_duplicate_orbit_numbers(observation_dir):
 def check_methanesat_files(observation_dir):
     """Check filenames and the minimal L3 variables used by the MSAT averager."""
     files = sorted(Path(observation_dir).glob("*.nc"))
-    acquisition_keys = []
+    filenames = [path.name for path in files]
+    if len(set(filenames)) != len(filenames):
+        raise ValueError("Duplicate MethaneSAT filenames found")
+
     for path in files:
         date = extract_observation_date(path).strftime("%Y%m%d")
-        time_match = re.search(r"_(\d{8}T\d{6}Z_\d{6}Z)", path.name)
-        acquisition_keys.append(time_match.group(1) if time_match else path.name)
         with nc.Dataset(path) as dataset:
             missing = {"lat", "lon", "time", "xch4"}.difference(dataset.variables)
             if missing:
@@ -42,9 +43,6 @@ def check_methanesat_files(observation_dir):
             apriori = dataset.groups.get("apriori_data")
             if apriori is None or "surface_pressure" not in apriori.variables:
                 raise ValueError(f"{path} is missing apriori_data/surface_pressure")
-        print(f"Validated MSAT observation file for {date}: {path.name}")
-    if len(set(acquisition_keys)) != len(files):
-        raise ValueError("Duplicate MethaneSAT acquisition files found")
 
 
 def validate_observation_directory(observation_dir, satellite_product):
