@@ -5,6 +5,48 @@ import xarray as xr
 from src.inversion_scripts.utils import get_strdate
 
 
+def coordinate_edges(centers: np.ndarray) -> np.ndarray:
+    """Infer cell edges from increasing, possibly nonuniform cell centers.
+
+    Interior edges are the midpoint of each adjacent center pair. The two
+    exterior edges are extrapolated using only their nearest center spacing,
+    so no globally uniform resolution is assumed.
+
+    Example: coordinate_edges([0, 1, 3, 6]) -> [-0.5, 0.5, 2, 4.5, 7.5]
+    """
+    centers = np.asarray(centers, dtype=np.float64)
+    if centers.ndim != 1 or len(centers) < 2:
+        raise ValueError("Coordinates must be a 1-D array with at least two cells")
+    differences = np.diff(centers)
+    if not np.all(differences > 0):
+        raise ValueError("Coordinates must be strictly increasing")
+
+    edges = np.empty(len(centers) + 1, dtype=np.float64)
+    edges[1:-1] = centers[:-1] + differences / 2
+    edges[0] = centers[0] - differences[0] / 2
+    edges[-1] = centers[-1] + differences[-1] / 2
+    return edges    
+
+
+def values_with_nan(
+    variable: nc.Variable,
+    key: tuple[slice, slice],
+) -> np.ndarray:
+    """Read a 2-D NetCDF slice as float64 with masked values set to NaN.
+
+    Args:
+        variable: NetCDF variable containing a two-dimensional MSAT field.
+        key: Latitude and longitude slices used to read the current chunk.
+
+    Returns:
+        A float64 NumPy array in which NetCDF masked/fill values are NaN.
+    """
+    values = variable[key]
+    if np.ma.isMaskedArray(values):
+        values = values.filled(np.nan)
+    return np.asarray(values, dtype=np.float64)
+
+
 def average_methanesat_observations(
     data_path: str,
     state_vector: str,
@@ -32,16 +74,6 @@ def average_methanesat_observations(
     if len(gc_lats) < 2 or len(gc_lons) < 2:
         raise ValueError("State-vector lat/lon must each contain at least two cells")
 
-    def coordinate_edges(centers):
-        differences = np.diff(centers)
-        if not np.all(differences > 0):
-            raise ValueError("State-vector coordinates must be strictly increasing")
-        edges = np.empty(len(centers) + 1, dtype=np.float64)
-        edges[1:-1] = 0.5 * (centers[:-1] + centers[1:])
-        edges[0] = centers[0] - differences[0] / 2
-        edges[-1] = centers[-1] + differences[-1] / 2
-        return edges
-
     lat_edges = coordinate_edges(gc_lats)
     lon_edges = coordinate_edges(gc_lons)
     n_lat = len(gc_lats)
@@ -68,11 +100,7 @@ def average_methanesat_observations(
     sums_longitude = np.zeros(n_cells, dtype=np.float64)
     counts = np.zeros(n_cells, dtype=np.int64)
 
-    def values_with_nan(variable, key):
-        values = variable[key]
-        if np.ma.isMaskedArray(values):
-            values = values.filled(np.nan)
-        return np.asarray(values, dtype=np.float64)
+
 
     with nc.Dataset(data_path, "r") as ncfile:
         required_root = {"lat", "lon", "time", "xch4"}

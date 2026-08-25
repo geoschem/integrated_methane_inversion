@@ -11,6 +11,7 @@ from src.inversion_scripts.operators.superobservation import (
 )
 from src.inversion_scripts.operators.msat_funcs import (
     average_methanesat_observations,
+    coordinate_edges,
 )
 from GOOPy.parsers import read_MSAT as read_goopy_msat
 
@@ -57,6 +58,13 @@ def test_canonical_dataset_normalizes_units_and_vertical_fields():
     np.testing.assert_allclose(dataset["pressure_edges"], [[100000, 50000, 10]])
     np.testing.assert_allclose(dataset["pressure_weight"], [[2 / 3, 1 / 3]])
     np.testing.assert_allclose(dataset["prior_profile"], [[2e-6, 2e-6]])
+
+
+def test_coordinate_edges_support_nonuniform_centers():
+    np.testing.assert_allclose(
+        coordinate_edges([0.0, 1.0, 3.0, 6.0]),
+        [-0.5, 0.5, 2.0, 4.5, 7.5],
+    )
 
 
 def test_goopy_parser_reads_canonical_dataset(tmp_path):
