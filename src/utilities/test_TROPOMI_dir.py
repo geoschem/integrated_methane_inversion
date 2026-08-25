@@ -6,7 +6,7 @@ from pathlib import Path
 
 import netCDF4 as nc
 
-from src.inversion_scripts.utils import extract_observation_date
+from src.inversion_scripts.utils import extract_observation_date, is_msat_satellite_product, is_tropomi_family_satellite_product
 
 
 def check_for_duplicate_orbit_numbers(observation_dir):
@@ -30,9 +30,6 @@ def check_for_duplicate_orbit_numbers(observation_dir):
 def check_methanesat_files(observation_dir):
     """Check filenames and the minimal L3 variables used by the MSAT averager."""
     files = sorted(Path(observation_dir).glob("*.nc"))
-    filenames = [path.name for path in files]
-    if len(set(filenames)) != len(filenames):
-        raise ValueError("Duplicate MethaneSAT filenames found")
 
     for path in files:
         date = extract_observation_date(path).strftime("%Y%m%d")
@@ -49,13 +46,12 @@ def validate_observation_directory(observation_dir, satellite_product):
     files = list(Path(observation_dir).glob("*.nc"))
     if not files:
         raise ValueError(f"No NetCDF observation files found in {observation_dir}")
-    if satellite_product in {"TROPOMI", "BlendedTROPOMI"}:
+    if is_tropomi_family_satellite_product(satellite_product):
         check_for_duplicate_orbit_numbers(observation_dir)
-    elif satellite_product == "MSAT":
+    elif is_msat_satellite_product(satellite_product):
         check_methanesat_files(observation_dir)
     else:
-        for path in files:
-            extract_observation_date(path)
+        raise ValueError(f"Unsupported satellite product: {satellite_product}")
 
 
 if __name__ == "__main__":

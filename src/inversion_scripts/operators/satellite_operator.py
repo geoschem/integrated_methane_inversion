@@ -52,28 +52,6 @@ def get_goopy_config_path():
         "or the repository root. Make sure the IMI repository root is on PYTHONPATH."
     )
 
-def obs_to_xarray_dataset(
-    obs_mapped_to_gc, species, filename, config, satellite_product="unknown"
-):
-    """
-    Convert superobservations from structured numpy array to xarray Dataset.
-    
-    Arguments
-        obs_mapped_to_gc [numpy.ndarray] : Structured array of superobservations
-        species          [str]           : Species name (CH4 or CO2)
-        filename         [str]           : Original satellite filename (for metadata)
-        config           [dict]          : Configuration dictionary
-    
-    Returns
-        ds               [xr.Dataset]    : xarray Dataset with superobservations
-    """
-    return structured_superobservations_to_dataset(
-        obs_mapped_to_gc,
-        species,
-        os.path.basename(filename),
-        satellite_product,
-    )
-
 
 def superobs_file_path(filename: str, output_dir: str) -> str:
     """Construct the path for a superobservations file based on the input filename and output directory."""
@@ -84,7 +62,7 @@ def superobs_file_path(filename: str, output_dir: str) -> str:
     )
 
 
-def save_superobservations(ds, filename, output_dir) -> str:
+def save_superobservations(ds: xr.Dataset, filename: str, output_dir: str) -> str:
     """
     Save superobservations xarray Dataset to netcdf file.
     
@@ -286,8 +264,11 @@ def superobservations(
         return None
     
     # Create xarray dataset from obs_mapped_to_gc
-    ds = obs_to_xarray_dataset(
-        obs_mapped_to_gc, species, filename, config, satellite_product
+    ds = structured_superobservations_to_dataset(
+        obs_mapped_to_gc,
+        species,
+        os.path.basename(filename),
+        satellite_product,
     )
     
     # Save all superobservation files in a common directory for this run.
