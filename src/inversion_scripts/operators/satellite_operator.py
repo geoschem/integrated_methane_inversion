@@ -28,6 +28,7 @@ from src.inversion_scripts.operators.operator_utilities import (
 )
 import warnings
 from src.inversion_scripts.operators.superobservation import (
+    imi_superobservation_dtype,
     structured_superobservations_to_dataset,
 )
 from src.inversion_scripts.operators.msat_funcs import (
@@ -1178,21 +1179,12 @@ def average_satellite_observations(
 
     if not gridcell_dicts:
         # nothing to return
-        return np.zeros(0, dtype=[
-            ("iGC","i4"), ("jGC","i4"),
-            ("lat_sat","f4"), ("lon_sat","f4"),
-            (species,"f4"), ("time","U13"),
-            ("p_sat","f4",(0,)),
-            ("surface_pressure","f4"),
-            ("nir_albedo","f4"),
-            ("swir_albedo","f4"),
-            ("dry_air_subcolumns","f4",(0,)),
-            ("apriori","f4",(0,)),
-            ("avkern","f4",(0,)),
-            ("layer","f4",(0,)),
-            ("observation_count","f4"),
-            ("lat","f4"), ("lon","f4"),
-        ])
+        return np.zeros(
+            0,
+            dtype=imi_superobservation_dtype(
+                species, n_pressure_edges=0, n_layers=0
+            ),
+        )
 
     # infer vertical sizes from the first item
     n_lev_p       = len(gridcell_dicts[0]["p_sat"])
@@ -1201,21 +1193,16 @@ def average_satellite_observations(
     n_lev_avkern  = len(gridcell_dicts[0]["avkern"])
     n_layers  = len(gridcell_dicts[0]["layer"])
 
-    dtype_latlon = [
-        ("iGC","i4"), ("jGC","i4"),
-        ("lat_sat","f4"), ("lon_sat","f4"),
-        (species,"f4"), ("time","U13"),
-        ("p_sat","f4",(n_lev_p,)),
-        ("surface_pressure","f4"),
-        ("nir_albedo","f4"),
-        ("swir_albedo","f4"),
-        ("dry_air_subcolumns","f4",(n_lev_dryair,)),
-        ("apriori","f4",(n_lev_apriori,)),
-        ("avkern","f4",(n_lev_avkern,)),
-        ("layer","f4",(n_layers,)),
-        ("observation_count","f4"),
-        ("lat","f4"), ("lon","f4"),
-    ]
+    if len({n_lev_dryair, n_lev_apriori, n_lev_avkern, n_layers}) != 1:
+        raise ValueError(
+            "Superobservation dry-air, prior, averaging-kernel, and layer "
+            "dimensions must match"
+        )
+    dtype_latlon = imi_superobservation_dtype(
+        species,
+        n_pressure_edges=n_lev_p,
+        n_layers=n_layers,
+    )
 
     arr = np.zeros(len(gridcell_dicts), dtype=dtype_latlon)
 

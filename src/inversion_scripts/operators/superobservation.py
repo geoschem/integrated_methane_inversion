@@ -9,6 +9,40 @@ FORMAT_NAME = "IMI_superobservation"
 FORMAT_VERSION = "1.0"
 
 
+def imi_superobservation_dtype(
+    species: str,
+    n_pressure_edges: int,
+    n_layers: int,
+) -> np.dtype:
+    """Return the canonical IMI rectilinear superobservation NumPy dtype.
+
+    Args:
+        species: Name used for the retrieved column field, such as ``CH4``.
+        n_pressure_edges: Number of vertical pressure edges per observation.
+        n_layers: Number of layer-resolved values per observation.
+
+    Returns:
+        Structured NumPy dtype shared by satellite-specific rectilinear
+        averagers and the canonical NetCDF writer.
+    """
+    if n_pressure_edges < 0 or n_layers < 0:
+        raise ValueError("Superobservation vertical dimensions cannot be negative")
+    return np.dtype([
+        ("iGC", "i4"), ("jGC", "i4"),
+        ("lat_sat", "f4"), ("lon_sat", "f4"),
+        (species, "f4"), ("time", "U13"),
+        ("p_sat", "f4", (n_pressure_edges,)),
+        ("surface_pressure", "f4"),
+        ("nir_albedo", "f4"), ("swir_albedo", "f4"),
+        ("dry_air_subcolumns", "f4", (n_layers,)),
+        ("apriori", "f4", (n_layers,)),
+        ("avkern", "f4", (n_layers,)),
+        ("layer", "f4", (n_layers,)),
+        ("observation_count", "f4"),
+        ("lat", "f4"), ("lon", "f4"),
+    ])
+
+
 def structured_superobservations_to_dataset(
     observations, species, source_file, source_product="unknown"
 ):
