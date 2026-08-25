@@ -27,6 +27,6 @@ def validate_observation_directory(observation_dir, satellite_product):
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         raise SystemExit(
-            "Usage: test_TROPOMI_dir.py OBSERVATION_DIR SATELLITE_PRODUCT"
+            "Usage: validate_observation_directory.py OBSERVATION_DIR SATELLITE_PRODUCT"
         )
     validate_observation_directory(sys.argv[1], sys.argv[2])
