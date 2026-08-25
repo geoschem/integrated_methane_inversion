@@ -81,7 +81,11 @@ def get_satellite_data(
         use_water_observations=use_water_obs,
         state_vector_path=state_vector_path,
     )
-    return get_satellite_product(satellite_str).preview(request)
+    preview = get_satellite_product(satellite_str).preview(request)
+    if preview is not None:
+        # Enforce the product-neutral preview contract at the shared boundary.
+        preview["time"] = pd.to_datetime(preview["time"]).to_list()
+    return preview
 
 
 def imi_preview(

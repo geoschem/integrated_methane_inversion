@@ -1,10 +1,8 @@
 import os
 from pathlib import Path
 import importlib.util
-import netCDF4 as nc
 import numpy as np
 import xarray as xr
-from scipy.stats import binned_statistic_2d
 import pandas as pd
 import datetime
 import pygeohash as pgh
