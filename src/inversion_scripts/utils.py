@@ -4,7 +4,6 @@ import os
 import sys
 import pickle
 from datetime import datetime, timedelta
-from GOOPy.parsers import read_MSAT
 import numpy as np
 import xarray as xr
 import cartopy
@@ -23,12 +22,6 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
 )
 from pathlib import Path
 
-
-def is_tropomi_family_satellite_product(satellite_product: str) -> bool:
-    return satellite_product in {"TROPOMI", "BlendedTROPOMI"}
-
-def is_msat_satellite_product(satellite_product: str) -> bool:
-    return satellite_product == "MSAT"
 
 def extract_observation_date(filename: str | Path) -> datetime:
     """Extract an acquisition date from a supported observation/output name."""
@@ -1194,7 +1187,14 @@ def read_blended(filename):
 
 
 def read_and_filter_satellite(
-    filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
+    filename,
+    satellite_str,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    use_water_obs,
+    species="CH4",
 ) -> tuple[dict, np.ndarray] | None:
     """
     Reads the satellite data from the given file and filters it by lat/lon bounds and date range.
@@ -1205,43 +1205,21 @@ def read_and_filter_satellite(
     
     """
 
-    # Read satellite data
-    if satellite_str == "BlendedTROPOMI":
-        satellite = read_blended(filename)
-    elif satellite_str == "TROPOMI":
-        satellite = read_tropomi(filename)
-    elif satellite_str == "MSAT":
-        satellite = read_MSAT(filename)
-    else:
-        print("Other data source is not currently supported")
-        sys.exit(1)
+    from src.inversion_scripts.satellite_products import (
+        ObservationRequest,
+        get_satellite_product,
+    )
 
-    # If empty, skip this file
-    if satellite is None:
-        print(f"Skipping {filename} due to file processing issue.")
-        return satellite
-
-    # Filter the data
-    if satellite_str == "BlendedTROPOMI":
-        # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(
-            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
-        )
-    elif satellite_str == "TROPOMI":
-        # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(
-            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
-        )
-    elif satellite_str == "MSAT":
-        sat_ind = filter_MSAT(
-            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
-        )
-
-    else:
-        print("Other data source filtering is not currently supported --HON")
-        sys.exit(1)
-
-    return satellite, sat_ind
+    request = ObservationRequest(
+        filename=filename,
+        species=species,
+        start_date=gc_startdate,
+        end_date=gc_enddate,
+        xlim=xlim,
+        ylim=ylim,
+        use_water_observations=use_water_obs,
+    )
+    return get_satellite_product(satellite_str).read_and_filter(request)
 
 
 def get_posterior_emissions(prior, scale, species, OptimizeSoil=False):

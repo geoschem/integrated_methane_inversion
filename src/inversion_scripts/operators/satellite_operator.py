@@ -31,8 +31,9 @@ from src.inversion_scripts.operators.superobservation import (
     imi_superobservation_dtype,
     structured_superobservations_to_dataset,
 )
-from src.inversion_scripts.operators.msat_funcs import (
-    average_methanesat_observations,
+from src.inversion_scripts.satellite_products import (
+    ObservationRequest,
+    get_satellite_product,
 )
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
@@ -201,63 +202,30 @@ def superobservations(
     )
     time_threshold = f"{date_after_inversion}_00"
 
-    # MethaneSAT has a product-specific gridding implementation. It reads the
-    # raw file directly and returns the same in-memory contract as the generic
-    # averager, which is subsequently written in the canonical format.
-    if satellite_product == "MSAT":
-        if config["UseGCHP"]:
-            raise NotImplementedError(
-                "MethaneSAT superobservations currently require a rectilinear grid"
-            )
-        state_vector_path = os.path.join(
-            os.path.expandvars(config["OutputPath"]),
-            config["RunName"],
-            "StateVector.nc",
-        )
-        obs_mapped_to_gc = average_methanesat_observations(
-            filename,
-            state_vector_path,
-            species=species,
-            time_threshold=time_threshold,
-            gc_startdate=gc_startdate,
-            gc_enddate=gc_enddate,
-        )
-        gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
-        GC_shape = (len(gc_lat_lon["lat"]), len(gc_lat_lon["lon"]))
-    else:
-        result = read_and_filter_satellite(
-            filename, satellite_product, gc_startdate, gc_enddate,
-            xlim, ylim, use_water_obs)
-        if result is None:
-            return None
-        satellite, sat_ind = result
-
-        n_obs = len(sat_ind[0])
-        if n_obs == 0:
-            print(f"No satellite observations found in {filename}. Skipping.")
-            return None
-        print("Found", n_obs, "satellite observations.")
-
-        # Map satellite observations into grid cells and average them.
-        if config["UseGCHP"]:
-            if config['STRETCH_GRID']:
-                sf_formatted = f"{config['STRETCH_FACTOR']:.2f}".replace(".", "d")
-                target_geohash = pgh.encode(config['TARGET_LAT'], config['TARGET_LON'])
-                gridspec_path = f"c{config['CS_RES']}_s{sf_formatted}_t{target_geohash}_gridspec.nc"
-            else:
-                gridspec_path = f"c{config['CS_RES']}_gridspec.nc"
-            GC_shape = (6, config['CS_RES'], config['CS_RES'])
-            CSgridDir = f"{os.path.expandvars(config['OutputPath']) }/{config['RunName']}/CS_grids"
-
-            obs_mapped_to_gc = average_satellite_observations_to_CSgrid(
-                satellite, species, filename, sat_ind, time_threshold, CSgridDir, gridspec_path, GC_shape
-            )
-        else:
-            gc_lat_lon = get_gc_lat_lon(gc_cache, gc_startdate)
-            obs_mapped_to_gc = average_satellite_observations(
-                satellite, species, gc_lat_lon, sat_ind, time_threshold
-            )
-            GC_shape = (len(gc_lat_lon['lat']), len(gc_lat_lon['lon']))
+    state_vector_path = os.path.join(
+        os.path.expandvars(config["OutputPath"]),
+        config["RunName"],
+        "StateVector.nc",
+    )
+    request = ObservationRequest(
+        filename=filename,
+        species=species,
+        start_date=gc_startdate,
+        end_date=gc_enddate,
+        xlim=xlim,
+        ylim=ylim,
+        use_water_observations=use_water_obs,
+        state_vector_path=state_vector_path,
+        gc_cache=gc_cache,
+        time_threshold=time_threshold,
+        config=config,
+    )
+    result = get_satellite_product(
+        satellite_product
+    ).create_superobservations(request)
+    if result is None:
+        return None
+    obs_mapped_to_gc = result.observations
 
     if len(obs_mapped_to_gc) == 0:
         print(f"No superobservations produced for {filename}. Skipping.")
@@ -280,6 +248,7 @@ def superobservations(
     save_superobservations(ds, filename, output_dir)
 
     return obs_mapped_to_gc, output_dir
+
 
 def goopy_apply_operator(
     operator,
@@ -333,13 +302,9 @@ def goopy_apply_operator(
         # schema, irrespective of the source retrieval product.
         goopy_satellite_name = "IMI_superobservation"
     else:
-        satellite_product_to_goopy_name_map = {
-            'BlendedTROPOMI': 'TROPOMI_blended',
-            'TROPOMI': 'TROPOMI',
-        }
-        goopy_satellite_name = satellite_product_to_goopy_name_map.get(
-            satellite_product, satellite_product
-        )
+        goopy_satellite_name = get_satellite_product(
+            satellite_product
+        ).goopy_raw_product_name
 
     goopy_config['LOCAL_SETTINGS'].update({
         'SAVE_INTERPOLATION': 'False',
@@ -533,7 +498,7 @@ def format_goopy_satellite_output(
     """
     satellite, sat_ind = read_and_filter_satellite(
         filename, satellite_product, gc_startdate, gc_enddate,
-        xlim, ylim, use_water_obs
+        xlim, ylim, use_water_obs, species
     )
 
     n_obs = len(sat_ind[0])
@@ -733,7 +698,7 @@ def apply_satellite_operator(
     # Read satellite data
     result = read_and_filter_satellite(
         filename, satellite_product, gc_startdate, gc_enddate,
-        xlim, ylim, use_water_obs)
+        xlim, ylim, use_water_obs, species)
     if result is None:
         return None
     satellite, sat_ind = result
@@ -950,8 +915,6 @@ def apply_satellite_operator(
     return output
 
 
-# TODO: rn it's not clear what keys need to be present in satellite (the keys are probably named differently for MSAT)
-# I should define a dictionary "interface" that lists what fields are required and standardizes the names 
 def average_satellite_observations(
         satellite, species, gc_lat_lon, sat_ind, time_threshold
     ):

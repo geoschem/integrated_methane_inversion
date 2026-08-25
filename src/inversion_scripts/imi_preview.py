@@ -21,7 +21,6 @@ from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.utils import (
     sum_total_emissions,
     plot_field,
-    read_and_filter_satellite,
     plot_field_gchp, # note we need to set vmin and vmax to make it proper for all cubic faces
     calculate_superobservation_error,
     species_molar_mass,
@@ -31,8 +30,9 @@ from src.inversion_scripts.utils import (
     extract_observation_date,
 )
 from src.utilities.config_utils import load_config
-from src.inversion_scripts.operators.msat_funcs import (
-    average_methanesat_observations,
+from src.inversion_scripts.satellite_products import (
+    ObservationRequest,
+    get_satellite_product,
 )
 
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import (
@@ -71,51 +71,17 @@ def get_satellite_data(
          satellite_data: dict
             dictionary of the extracted values
     """
-    # satellite data dictionary
-    satellite_data = {"lat": [], "lon": [], species: [], "swir_albedo": [],
-                      "time": [], "observation_count": []}
-
-    if satellite_str == "MSAT":
-        if state_vector_path is None:
-            raise ValueError("MSAT preview requires the state-vector path")
-        observations = average_methanesat_observations(
-            file_path,
-            state_vector_path,
-            species=species,
-            gc_startdate=startdate_np64,
-            gc_enddate=enddate_np64,
-        )
-        satellite_data["lat"] = observations["lat_sat"].tolist()
-        satellite_data["lon"] = observations["lon_sat"].tolist()
-        satellite_data[species] = observations[species].tolist()
-        satellite_data["swir_albedo"] = [np.nan] * len(observations)
-        satellite_data["time"] = observations["time"].tolist()
-        satellite_data["observation_count"] = observations[
-            "observation_count"
-        ].tolist()
-        return satellite_data
-    
-    # Load the satellite data
-    result = read_and_filter_satellite(
-        file_path, satellite_str, startdate_np64, enddate_np64, xlim, ylim,
-        use_water_obs)
-    if result is None:
-        return None
-    satellite, sat_ind = result
-
-    # Loop over observations and archive
-    num_obs = len(sat_ind[0])
-    for k in range(num_obs):
-        lat_idx = sat_ind[0][k]
-        lon_idx = sat_ind[1][k]
-        satellite_data["lat"].append(satellite["latitude"][lat_idx, lon_idx])
-        satellite_data["lon"].append(satellite["longitude"][lat_idx, lon_idx])
-        satellite_data[species].append(satellite[species][lat_idx, lon_idx])
-        satellite_data["swir_albedo"].append(satellite["swir_albedo"][lat_idx, lon_idx])
-        satellite_data["time"].append(satellite["time"][lat_idx, lon_idx])
-        satellite_data["observation_count"].append(1.0)
-
-    return satellite_data
+    request = ObservationRequest(
+        filename=file_path,
+        species=species,
+        start_date=startdate_np64,
+        end_date=enddate_np64,
+        xlim=xlim,
+        ylim=ylim,
+        use_water_observations=use_water_obs,
+        state_vector_path=state_vector_path,
+    )
+    return get_satellite_product(satellite_str).preview(request)
 
 
 def imi_preview(
