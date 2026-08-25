@@ -16,6 +16,7 @@ from pyproj import Geod
 import pandas as pd
 import re
 import warnings
+from collections.abc import Mapping, Sequence
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
     latlon_to_cartesian,
     build_kdtree,
@@ -909,16 +910,40 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
         return np.where(valid_idx & (blended_data["surface_classification"] != 1))
 
 
-# TODO: rn use_water_obs doesn't have any effect on this function
-def filter_MSAT(data, xlim, ylim, startdate, enddate, use_water_obs=False):
-    """
-    Description:
-        Filter out any data that does not meet the following
-        criteria: We only consider data within lat/lon/time bounds,
-        that don't cross the antimeridian
-        Also, we filter out pixels south of 60S and (optionally) over water.
+def filter_MSAT(
+    data: Mapping[str, np.ndarray | xr.DataArray],
+    xlim: Sequence[float],
+    ylim: Sequence[float],
+    startdate: np.datetime64 | datetime,
+    enddate: np.datetime64 | datetime,
+    use_water_obs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return indices of MethaneSAT observations accepted by the IMI.
+
+    An observation is retained when its center lies strictly inside ``xlim``
+    and ``ylim``, its time lies within the inclusive date interval, its
+    longitude bounds do not span the antimeridian, and its latitude is north
+    of 60 degrees south. The fields are expected to be two-dimensional, with
+    ``longitude_bounds`` carrying a third corner dimension.
+
+    MethaneSAT data currently passed to this function do not include a surface
+    classification field. Consequently, ``use_water_obs`` is accepted for
+    compatibility with the common satellite-product interface but does not
+    alter the result.
+
+    Args:
+        data: Mapping containing ``longitude``, ``latitude``, ``time``, and
+            ``longitude_bounds`` arrays.
+        xlim: Exclusive minimum and maximum longitude in degrees east.
+        ylim: Exclusive minimum and maximum latitude in degrees north.
+        startdate: Inclusive beginning of the observation period.
+        enddate: Inclusive end of the observation period.
+        use_water_obs: Unused compatibility argument; water observations
+            cannot currently be distinguished in the supplied MSAT fields.
+
     Returns:
-        numpy array with satellite indices for filtered tropomi data.
+        Row and column index arrays, as returned by ``numpy.where``, selecting
+        valid observations from the two-dimensional MSAT grid.
     """
     valid_idx = (
         (data["longitude"] > xlim[0])
@@ -932,10 +957,6 @@ def filter_MSAT(data, xlim, ylim, startdate, enddate, use_water_obs=False):
     )
 
     return np.where(valid_idx)
-    # if use_water_obs:
-    #     return np.where(valid_idx)
-    # else:
-    #     return np.where(valid_idx & (blended_data["surface_classification"] != 1))
 
 
 def calculate_area_in_km(coordinate_list):

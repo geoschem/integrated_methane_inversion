@@ -60,7 +60,11 @@ class SatelliteProduct(ABC):
 
     @abstractmethod
     def preview(self, request: ObservationRequest) -> dict | None:
-        """Return product-neutral fields used by the IMI preview."""
+        """Return product-neutral fields used by the IMI preview.
+
+        The returned ``time`` field must contain datetime-like values rather
+        than product-specific timestamp strings.
+        """
 
     def download(self, start_date: str, end_date: str, destination: Path) -> None:
         """Download observations, or report that this product needs user data."""

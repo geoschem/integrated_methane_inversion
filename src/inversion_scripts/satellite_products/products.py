@@ -257,11 +257,15 @@ class MethaneSatProduct(SatelliteProduct):
             gc_enddate=request.end_date,
         )
         count = len(observations)
+        times = [
+            datetime.datetime.strptime(value, "%Y%m%d_%H")
+            for value in observations["time"]
+        ]
         return {
             "lat": observations["lat_sat"].tolist(),
             "lon": observations["lon_sat"].tolist(),
             request.species: observations[request.species].tolist(),
             "swir_albedo": [np.nan] * count,
-            "time": observations["time"].tolist(),
+            "time": times,
             "observation_count": observations["observation_count"].tolist(),
         }
