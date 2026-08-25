@@ -210,7 +210,7 @@ else
 fi
 
 # Validate files using rules appropriate to the configured observation product.
-python -m src.utilities.test_TROPOMI_dir "$satelliteCache" "$SatelliteProduct"
+python -m src.utilities.validate_observation_directory "$satelliteCache" "$SatelliteProduct"
 
 ##=======================================================================
 ##  Run the setup script
