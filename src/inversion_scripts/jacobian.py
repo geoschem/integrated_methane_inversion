@@ -21,6 +21,7 @@ from src.inversion_scripts.utils import (
     check_is_BC_element,
     extract_observation_date,
 )
+from src.inversion_scripts.satellite_products import get_satellite_product
 from joblib import Parallel, delayed
 
 
@@ -275,7 +276,8 @@ if __name__ == "__main__":
             # Running a second, unaveraged operator solely for visualization is
             # prohibitively expensive; visualize the canonical superobservations
             # instead. Other products retain the legacy unaveraged output.
-            if satellite_product == "MSAT":
+            product = get_satellite_product(satellite_product)
+            if product.visualization_source == "superobservation":
                 viz_output = output
             else:
                 viz_output = apply_operator(
