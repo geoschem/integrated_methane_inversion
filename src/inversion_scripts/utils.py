@@ -24,6 +24,12 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
 from pathlib import Path
 
 
+def is_tropomi_family_satellite_product(satellite_product: str) -> bool:
+    return satellite_product in {"TROPOMI", "BlendedTROPOMI"}
+
+def is_msat_satellite_product(satellite_product: str) -> bool:
+    return satellite_product == "MSAT"
+
 def extract_observation_date(filename: str | Path) -> datetime:
     """Extract an acquisition date from a supported observation/output name."""
     name = Path(filename).name

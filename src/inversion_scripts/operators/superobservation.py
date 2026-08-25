@@ -45,7 +45,7 @@ def imi_superobservation_dtype(
 
 def structured_superobservations_to_dataset(
     observations, species, source_file, source_product="unknown"
-):
+) -> xr.Dataset:
     """Convert the IMI in-memory representation to the canonical NetCDF schema."""
     if len(observations) == 0:
         raise ValueError("Cannot create a superobservation file with no observations")
