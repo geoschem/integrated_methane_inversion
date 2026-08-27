@@ -382,6 +382,29 @@ def goopy_apply_operator(
         raise ValueError(f"Error: invalid operator selected: {operator}")
 
 
+def _ravel_rectilinear_grid_indices(
+    j_gc: np.ndarray,
+    i_gc: np.ndarray,
+    gc_shape: tuple[int, int],
+) -> np.ndarray:
+    """Validate and flatten rectilinear GEOS-Chem grid indices."""
+    invalid = (
+        (j_gc < 0)
+        | (j_gc >= gc_shape[0])
+        | (i_gc < 0)
+        | (i_gc >= gc_shape[1])
+    )
+    if np.any(invalid):
+        raise ValueError(
+            "Superobservation indices do not fit the GEOS-Chem grid: "
+            f"jGC=[{j_gc.min()}, {j_gc.max()}], "
+            f"iGC=[{i_gc.min()}, {i_gc.max()}], "
+            f"GEOS-Chem shape={gc_shape}, "
+            f"invalid observations={np.count_nonzero(invalid)}"
+        )
+    return np.ravel_multi_index((j_gc, i_gc), gc_shape)
+
+
 def format_goopy_average_satellite_output(
     species,
     gc_cache,
@@ -412,9 +435,9 @@ def format_goopy_average_satellite_output(
                                          obs_mapped_to_gc["Ydimi"],
                                          obs_mapped_to_gc["Xdimi"]), GC_shape)
     else:
-        GC_index = np.ravel_multi_index((obs_mapped_to_gc["jGC"], #lat
-                                         obs_mapped_to_gc["iGC"] # lon
-                                         ), GC_shape)
+        j_gc = obs_mapped_to_gc["jGC"]
+        i_gc = obs_mapped_to_gc["iGC"]
+        GC_index = _ravel_rectilinear_grid_indices(j_gc, i_gc, GC_shape)
 
     all_strdate = [gridcell["time"] for gridcell in obs_mapped_to_gc]
     all_strdate = list(set(all_strdate))

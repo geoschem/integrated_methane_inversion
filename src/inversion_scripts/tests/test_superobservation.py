@@ -13,6 +13,9 @@ from src.inversion_scripts.operators.msat_funcs import (
     average_methanesat_observations,
     coordinate_edges,
 )
+from src.inversion_scripts.operators.satellite_operator import (
+    _ravel_rectilinear_grid_indices,
+)
 from GOOPy.parsers import read_MSAT as read_goopy_msat
 
 
@@ -130,6 +133,17 @@ def test_methanesat_averager_chunks_and_uses_joint_mask(tmp_path):
     np.testing.assert_allclose(first["surface_pressure"], 1000.0)
     assert np.all(np.diff(first["p_sat"]) < 0)
 
+    target_observations = average_methanesat_observations(
+        msat_path,
+        state_vector_path,
+        gc_startdate="2024-10-26",
+        gc_enddate="2024-10-27",
+        target_lats=np.array([0.5, 1.5]),
+        target_lons=np.array([0.5, 1.0]),
+    )
+    assert target_observations["iGC"].max() < 2
+    assert set(target_observations["lon"]) <= {0.5, 1.0}
+
     parsed = read_goopy_msat(
         msat_path,
         {
@@ -141,3 +155,15 @@ def test_methanesat_averager_chunks_and_uses_joint_mask(tmp_path):
         },
     )
     assert np.issubdtype(parsed["TIME"].dtype, np.datetime64)
+
+
+def test_rectilinear_grid_index_validation_reports_mismatch():
+    with np.testing.assert_raises_regex(
+        ValueError,
+        r"iGC=\[6, 26\].*GEOS-Chem shape=\(31, 26\).*invalid observations=1",
+    ):
+        _ravel_rectilinear_grid_indices(
+            np.array([2, 15]),
+            np.array([6, 26]),
+            (31, 26),
+        )

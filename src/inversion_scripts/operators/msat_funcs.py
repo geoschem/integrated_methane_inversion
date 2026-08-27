@@ -79,6 +79,30 @@ def _read_state_vector_grid(
     return gc_lats, gc_lons, coordinate_edges(gc_lats), coordinate_edges(gc_lons)
 
 
+def _prepare_target_grid(
+    state_vector: str | None,
+    target_lats: np.ndarray | None,
+    target_lons: np.ndarray | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Validate target centers and derive edges for MethaneSAT binning."""
+    if target_lats is None and target_lons is None:
+        if state_vector is None:
+            raise ValueError(
+                "MethaneSAT averaging requires a state vector or target coordinates"
+            )
+        return _read_state_vector_grid(state_vector)
+    if target_lats is None or target_lons is None:
+        raise ValueError("Both target_lats and target_lons must be provided")
+
+    lats = np.asarray(target_lats, dtype=np.float64)
+    lons = np.asarray(target_lons, dtype=np.float64)
+    if lats.ndim != 1 or lons.ndim != 1:
+        raise ValueError("MethaneSAT averaging requires 1-D target lat/lon")
+    if len(lats) < 2 or len(lons) < 2:
+        raise ValueError("Target lat/lon must each contain at least two cells")
+    return lats, lons, coordinate_edges(lats), coordinate_edges(lons)
+
+
 def _methanesat_time_bounds(
     gc_startdate: str | None,
     gc_enddate: str | None,
@@ -265,24 +289,29 @@ def _format_methanesat_observations(
 
 def average_methanesat_observations(
     data_path: str,
-    state_vector: str,
+    state_vector: str | None,
     species: str = "CH4",
     time_threshold: str = None,
     gc_startdate: str = None,
     gc_enddate: str = None,
     row_chunk_size: int = 256,
+    target_lats: np.ndarray | None = None,
+    target_lons: np.ndarray | None = None,
 ):
-    """Average a rectilinear MethaneSAT L3 file onto the state-vector grid.
+    """Average a rectilinear MethaneSAT L3 file onto a rectilinear target grid.
 
     The input can be much larger than memory. Only coordinate rows intersecting
-    the state-vector domain are read, and the two-dimensional retrieval fields
+    the target-grid domain are read, and the two-dimensional retrieval fields
     are accumulated in row chunks. A single joint validity mask is applied to
     XCH4, time, and surface pressure so all averaged fields and counts describe
-    the same contributing pixels.
+    the same contributing pixels. If ``target_lats`` and ``target_lons`` are
+    supplied, they define the output grid; otherwise the state-vector
+    coordinates are retained as a compatibility fallback for preview workflows
+    that run before GEOS-Chem output exists.
     """
 
-    gc_lats, gc_lons, lat_edges, lon_edges = _read_state_vector_grid(
-        state_vector
+    gc_lats, gc_lons, lat_edges, lon_edges = _prepare_target_grid(
+        state_vector, target_lats, target_lons
     )
     start_seconds, end_seconds, end_is_date = _methanesat_time_bounds(
         gc_startdate, gc_enddate

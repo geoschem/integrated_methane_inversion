@@ -234,6 +234,7 @@ class MethaneSatProduct(SatelliteProduct):
             raise ValueError("MSAT superobservations require the state-vector path")
         if request.gc_cache is None:
             raise ValueError("MSAT superobservations require gc_cache")
+        gc_lat_lon = get_gc_lat_lon(request.gc_cache, request.start_date)
         observations = average_methanesat_observations(
             request.filename,
             request.state_vector_path,
@@ -241,8 +242,9 @@ class MethaneSatProduct(SatelliteProduct):
             time_threshold=request.time_threshold,
             gc_startdate=request.start_date,
             gc_enddate=request.end_date,
+            target_lats=gc_lat_lon["lat"],
+            target_lons=gc_lat_lon["lon"],
         )
-        gc_lat_lon = get_gc_lat_lon(request.gc_cache, request.start_date)
         grid_shape = (len(gc_lat_lon["lat"]), len(gc_lat_lon["lon"]))
         return SuperobservationResult(observations, grid_shape)
 
