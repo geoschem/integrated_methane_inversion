@@ -28,6 +28,7 @@ import warnings
 from src.inversion_scripts.operators.superobservation import (
     imi_superobservation_dtype,
     structured_superobservations_to_dataset,
+    validate_superobservation_dataset,
 )
 from src.inversion_scripts.satellite_products import (
     ObservationRequest,
@@ -73,6 +74,8 @@ def save_superobservations(ds: xr.Dataset, filename: str, output_dir: str) -> st
     Returns
         output_file [str]        : Path to the saved netcdf file
     """
+    validate_superobservation_dataset(ds)
+
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     

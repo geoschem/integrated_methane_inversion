@@ -297,7 +297,7 @@ def average_methanesat_observations(
     row_chunk_size: int = 256,
     target_lats: np.ndarray | None = None,
     target_lons: np.ndarray | None = None,
-):
+) -> np.ndarray:
     """Average a rectilinear MethaneSAT L3 file onto a rectilinear target grid.
 
     The input can be much larger than memory. Only coordinate rows intersecting
@@ -334,7 +334,7 @@ def average_methanesat_observations(
     )
 
 
-def _empty_methanesat_observations(species, size=0):
+def _empty_methanesat_observations(species: str, size: int =0) -> np.ndarray:
     """Allocate the standard IMI representation for 19-layer MSAT data."""
     return np.zeros(
         size,

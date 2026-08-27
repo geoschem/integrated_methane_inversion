@@ -60,17 +60,15 @@ def structured_superobservations_to_dataset(
         )
 
     dry_air = np.asarray(observations["dry_air_subcolumns"], dtype=np.float64)
+    if np.any(~np.isfinite(dry_air)) or np.any(dry_air <= 0):
+        raise ValueError(
+            "Every dry-air subcolumn must be finite and strictly positive"
+        )
     dry_air_total = dry_air.sum(axis=1, keepdims=True)
-    if np.any(~np.isfinite(dry_air_total)) or np.any(dry_air_total <= 0):
-        raise ValueError("Every superobservation must have a positive dry-air column")
 
     # The legacy IMI structure stores the prior as a partial column (mol m-2).
-    prior_profile = np.divide(
-        np.asarray(observations["apriori"], dtype=np.float64),
-        dry_air,
-        out=np.full_like(dry_air, np.nan),
-        where=dry_air > 0,
-    )
+    prior_partial_column = np.asarray(observations["apriori"], dtype=np.float64)
+    prior_profile = prior_partial_column / dry_air
     pressure_weight = dry_air / dry_air_total
 
     times = pd.to_datetime(
@@ -162,11 +160,10 @@ def structured_superobservations_to_dataset(
     for variable, unit in units.items():
         dataset[variable].attrs["units"] = unit
 
-    validate_superobservation_dataset(dataset)
     return dataset
 
 
-def validate_superobservation_dataset(dataset):
+def validate_superobservation_dataset(dataset: xr.Dataset) -> None:
     """Validate the canonical fields used by the GOOPy observation operator."""
     required = {
         "latitude", "longitude", "time", "column", "pressure_edges",

@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import netCDF4 as nc
+import pytest
 import xarray as xr
 
 from src.inversion_scripts.operators.superobservation import (
@@ -16,24 +17,12 @@ from src.inversion_scripts.operators.msat_funcs import (
 from src.inversion_scripts.operators.satellite_operator import (
     _ravel_rectilinear_grid_indices,
 )
+from src.inversion_scripts.operators.superobservation import imi_superobservation_dtype
 from GOOPy.parsers import read_MSAT as read_goopy_msat
 
 
 def _observations():
-    dtype = [
-        ("iGC", "i4"), ("jGC", "i4"),
-        ("lat_sat", "f4"), ("lon_sat", "f4"),
-        ("CH4", "f4"), ("time", "U13"),
-        ("p_sat", "f4", (3,)),
-        ("surface_pressure", "f4"),
-        ("nir_albedo", "f4"), ("swir_albedo", "f4"),
-        ("dry_air_subcolumns", "f4", (2,)),
-        ("apriori", "f4", (2,)),
-        ("avkern", "f4", (2,)),
-        ("layer", "f4", (2,)),
-        ("observation_count", "f4"),
-        ("lat", "f4"), ("lon", "f4"),
-    ]
+    dtype = imi_superobservation_dtype(species="CH4", n_pressure_edges=3, n_layers=2)
     observations = np.zeros(1, dtype=dtype)
     observations["iGC"] = 2
     observations["jGC"] = 3
@@ -61,6 +50,19 @@ def test_canonical_dataset_normalizes_units_and_vertical_fields():
     np.testing.assert_allclose(dataset["pressure_edges"], [[100000, 50000, 10]])
     np.testing.assert_allclose(dataset["pressure_weight"], [[2 / 3, 1 / 3]])
     np.testing.assert_allclose(dataset["prior_profile"], [[2e-6, 2e-6]])
+
+
+@pytest.mark.parametrize("invalid_value", [0.0, -1.0, np.nan, np.inf])
+def test_canonical_dataset_rejects_invalid_dry_air_subcolumns(invalid_value):
+    observations = _observations()
+    observations["dry_air_subcolumns"][0, 0] = invalid_value
+
+    with pytest.raises(
+        ValueError, match="dry-air subcolumn must be finite and strictly positive"
+    ):
+        structured_superobservations_to_dataset(
+            observations, "CH4", "input.nc"
+        )
 
 
 def test_coordinate_edges_support_nonuniform_centers():
