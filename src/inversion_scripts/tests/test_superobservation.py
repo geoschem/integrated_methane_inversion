@@ -8,7 +8,9 @@ import pytest
 import xarray as xr
 
 from src.inversion_scripts.operators.superobservation import (
+    OPTIONAL_SUPEROBSERVATION_VARIABLES,
     structured_superobservations_to_dataset,
+    validate_superobservation_dataset,
 )
 from src.inversion_scripts.operators.msat_funcs import (
     average_methanesat_observations,
@@ -63,6 +65,33 @@ def test_canonical_dataset_rejects_invalid_dry_air_subcolumns(invalid_value):
         structured_superobservations_to_dataset(
             observations, "CH4", "input.nc"
         )
+
+
+def test_canonical_validator_accepts_dataset_without_optional_provenance():
+    dataset = structured_superobservations_to_dataset(
+        _observations(), "CH4", "input.nc"
+    )
+    optional_fields = OPTIONAL_SUPEROBSERVATION_VARIABLES.intersection(
+        dataset.variables
+    )
+
+    validate_superobservation_dataset(dataset.drop_vars(optional_fields))
+
+
+def test_converter_accepts_observations_without_optional_coordinates_or_indices():
+    observations = _observations()
+    retained_fields = [
+        name for name in observations.dtype.names
+        if name not in {"lat_sat", "lon_sat", "iGC", "jGC"}
+    ]
+
+    dataset = structured_superobservations_to_dataset(
+        observations[retained_fields], "CH4", "input.nc"
+    )
+
+    validate_superobservation_dataset(dataset)
+    assert "satellite_latitude" not in dataset
+    assert "model_i" not in dataset
 
 
 def test_coordinate_edges_support_nonuniform_centers():
