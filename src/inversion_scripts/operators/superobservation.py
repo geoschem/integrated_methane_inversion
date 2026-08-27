@@ -8,6 +8,22 @@ import xarray as xr
 FORMAT_NAME = "IMI_superobservation"
 FORMAT_VERSION = "1.0"
 
+# Fields required by the GOOPy observation operator. Product adapters must
+# provide these canonical concepts even when their native files use different
+# names or representations.
+REQUIRED_SUPEROBSERVATION_VARIABLES = frozenset({
+    "latitude", "longitude", "time", "column", "pressure_edges",
+    "pressure_weight", "averaging_kernel", "prior_profile",
+    "observation_count",
+})
+
+# Provenance fields may be included when the source product provides them, but
+# readers must not depend on their presence.
+OPTIONAL_SUPEROBSERVATION_VARIABLES = frozenset({
+    "satellite_latitude", "satellite_longitude", "dry_air_subcolumn",
+    "model_i", "model_j", "model_face", "model_y", "model_x",
+})
+
 
 def imi_superobservation_dtype(
     species: str,
@@ -76,17 +92,19 @@ def structured_superobservations_to_dataset(
     ).to_numpy(dtype="datetime64[ns]")
 
     field_names = set(observations.dtype.names)
-    latitude = observations["lat"] if "lat" in field_names else observations["lat_sat"]
-    longitude = observations["lon"] if "lon" in field_names else observations["lon_sat"]
+    if {"lat", "lon"}.issubset(field_names):
+        latitude = observations["lat"]
+        longitude = observations["lon"]
+    elif {"lat_sat", "lon_sat"}.issubset(field_names):
+        latitude = observations["lat_sat"]
+        longitude = observations["lon_sat"]
+    else:
+        raise ValueError(
+            "Superobservations must provide either lat/lon or lat_sat/lon_sat"
+        )
     data_vars = {
             "latitude": ("observation", latitude.astype(np.float64)),
             "longitude": ("observation", longitude.astype(np.float64)),
-            "satellite_latitude": (
-                "observation", observations["lat_sat"].astype(np.float64)
-            ),
-            "satellite_longitude": (
-                "observation", observations["lon_sat"].astype(np.float64)
-            ),
             "time": ("observation", times),
             "column": (
                 "observation", observations[species].astype(np.float64) * 1e-9
@@ -113,6 +131,15 @@ def structured_superobservations_to_dataset(
                 "observation", observations["observation_count"].astype(np.float64)
             ),
         }
+    if {"lat_sat", "lon_sat"}.issubset(field_names):
+        data_vars.update({
+            "satellite_latitude": (
+                "observation", observations["lat_sat"].astype(np.float64)
+            ),
+            "satellite_longitude": (
+                "observation", observations["lon_sat"].astype(np.float64)
+            ),
+        })
     if {"iGC", "jGC"}.issubset(field_names):
         data_vars.update({
             "model_i": ("observation", observations["iGC"].astype(np.int32)),
@@ -124,8 +151,6 @@ def structured_superobservations_to_dataset(
             "model_y": ("observation", observations["Ydimi"].astype(np.int32)),
             "model_x": ("observation", observations["Xdimi"].astype(np.int32)),
         })
-    else:
-        raise ValueError("Superobservations lack model grid indices")
 
     dataset = xr.Dataset(
         data_vars=data_vars,
@@ -158,19 +183,15 @@ def structured_superobservations_to_dataset(
         "observation_count": "1",
     }
     for variable, unit in units.items():
-        dataset[variable].attrs["units"] = unit
+        if variable in dataset:
+            dataset[variable].attrs["units"] = unit
 
     return dataset
 
 
 def validate_superobservation_dataset(dataset: xr.Dataset) -> None:
-    """Validate the canonical fields used by the GOOPy observation operator."""
-    required = {
-        "latitude", "longitude", "time", "column", "pressure_edges",
-        "pressure_weight", "averaging_kernel", "prior_profile",
-        "observation_count",
-    }
-    missing = required.difference(dataset.variables)
+    """Validate required operator fields; provenance fields are optional."""
+    missing = REQUIRED_SUPEROBSERVATION_VARIABLES.difference(dataset.variables)
     if missing:
         raise ValueError(f"Missing canonical superobservation fields: {sorted(missing)}")
     if dataset.attrs.get("format_name") != FORMAT_NAME:
