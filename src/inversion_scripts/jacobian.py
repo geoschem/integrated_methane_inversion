@@ -272,10 +272,10 @@ if __name__ == "__main__":
                 )
                 output['K'] = jacobian
 
-            # The MSAT L3 grid can contain tens of millions of source pixels.
+            # Some satellite files can contain tens of millions of source pixels.
             # Running a second, unaveraged operator solely for visualization is
             # prohibitively expensive; visualize the canonical superobservations
-            # instead. Other products retain the legacy unaveraged output.
+            # instead for these. Other products retain the legacy unaveraged output.
             if product.visualization_source == "superobservation":
                 viz_output = output
             else:
