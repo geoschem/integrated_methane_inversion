@@ -24,20 +24,6 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
 from pathlib import Path
 
 
-def extract_observation_date(filename: str | Path) -> datetime:
-    """Extract an acquisition date from a supported observation/output name."""
-    name = Path(filename).name
-    matches = re.findall(r"(?<!\d)(\d{8})(?=T\d{6})", name)
-    if not matches:
-        matches = re.findall(r"(?<!\d)(\d{8})(?!\d)", name)
-    if not matches:
-        raise ValueError(f"No YYYYMMDD acquisition date found in {name!r}")
-    try:
-        return datetime.strptime(matches[0], "%Y%m%d")
-    except ValueError as exc:
-        raise ValueError(f"Invalid acquisition date in {name!r}: {matches[0]}") from exc
-
-
 def save_obj(obj, name):
     """Save something with Pickle."""
 

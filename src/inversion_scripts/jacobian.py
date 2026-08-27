@@ -19,7 +19,6 @@ from src.inversion_scripts.operators.satellite_operator import (
 from src.inversion_scripts.utils import (
     check_is_OH_element,
     check_is_BC_element,
-    extract_observation_date,
 )
 from src.inversion_scripts.satellite_products import get_satellite_product
 from joblib import Parallel, delayed
@@ -200,11 +199,12 @@ if __name__ == "__main__":
     print("End:", gc_enddate)
 
     # Get satellite data filenames for the desired date range
+    product = get_satellite_product(satellite_product)
     allfiles = glob.glob(f"{satellite_cache}/*.nc")
     sat_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        strdate = extract_observation_date(filename)
+        strdate = product.observation_date(filename)
         if (strdate >= gc_startdate) and (strdate <= gc_enddate):
             sat_files.append(filename)
     sat_files.sort()
@@ -276,7 +276,6 @@ if __name__ == "__main__":
             # Running a second, unaveraged operator solely for visualization is
             # prohibitively expensive; visualize the canonical superobservations
             # instead. Other products retain the legacy unaveraged output.
-            product = get_satellite_product(satellite_product)
             if product.visualization_source == "superobservation":
                 viz_output = output
             else:

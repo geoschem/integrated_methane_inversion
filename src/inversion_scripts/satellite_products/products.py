@@ -20,7 +20,6 @@ from src.inversion_scripts.satellite_products.base import (
     SuperobservationResult,
 )
 from src.inversion_scripts.utils import (
-    extract_observation_date,
     filter_MSAT,
     filter_blended,
     filter_tropomi,
@@ -58,11 +57,31 @@ class TropomiFamilyProduct(SatelliteProduct):
 
     reader = staticmethod(read_tropomi)
     observation_filter = staticmethod(filter_tropomi)
+    processing_modes: tuple[str, ...] = ()
+
+    def observation_date(self, path: str | Path) -> datetime.datetime:
+        """Extract the start of the TROPOMI acquisition window."""
+        name = Path(path).name
+        modes = "|".join(re.escape(mode) for mode in self.processing_modes)
+        match = re.match(
+            rf"^S5P_(?:{modes})_L2__CH4____(\d{{8}})T\d{{6}}", name
+        )
+        if match is None:
+            raise ValueError(
+                f"Filename does not match the {self.name} naming convention: {name!r}"
+            )
+        try:
+            return datetime.datetime.strptime(match.group(1), "%Y%m%d")
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid {self.name} acquisition date in {name!r}: {match.group(1)}"
+            ) from exc
 
     def validate_directory(self, directory: Path) -> None:
         files = sorted(directory.glob("*.nc"))
         orbit_numbers = []
         for path in files:
+            self.observation_date(path)
             matches = re.findall(r"_(\d{5})_", path.name)
             if len(matches) != 1:
                 raise ValueError(f"Please check the TROPOMI filename format: {path}")
@@ -161,6 +180,7 @@ class TropomiFamilyProduct(SatelliteProduct):
 class TropomiProduct(TropomiFamilyProduct):
     name = "TROPOMI"
     goopy_raw_product_name = "TROPOMI"
+    processing_modes = ("OFFL", "RPRO", "NRTI")
 
     def download(self, start_date: str, end_date: str, destination: Path) -> None:
         from src.utilities.download_TROPOMI import download_operational_TROPOMI
@@ -173,6 +193,7 @@ class TropomiProduct(TropomiFamilyProduct):
 class BlendedTropomiProduct(TropomiFamilyProduct):
     name = "BlendedTROPOMI"
     goopy_raw_product_name = "TROPOMI_blended"
+    processing_modes = ("BLND",)
     reader = staticmethod(read_blended)
     observation_filter = staticmethod(filter_blended)
 
@@ -189,9 +210,24 @@ class MethaneSatProduct(SatelliteProduct):
     goopy_raw_product_name = "MSAT"
     visualization_source = "superobservation"
 
+    def observation_date(self, path: str | Path) -> datetime.datetime:
+        """Extract the acquisition date from a MethaneSAT L3 filename."""
+        name = Path(path).name
+        match = re.search(r"(?:^|_)MSAT_L3_.*?_(\d{8})T\d{6}Z", name)
+        if match is None:
+            raise ValueError(
+                f"Filename does not match the MSAT naming convention: {name!r}"
+            )
+        try:
+            return datetime.datetime.strptime(match.group(1), "%Y%m%d")
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid MSAT acquisition date in {name!r}: {match.group(1)}"
+            ) from exc
+
     def validate_directory(self, directory: Path) -> None:
         for path in sorted(directory.glob("*.nc")):
-            extract_observation_date(path)
+            self.observation_date(path)
             with nc.Dataset(path) as dataset:
                 missing = {"lat", "lon", "time", "xch4"}.difference(
                     dataset.variables

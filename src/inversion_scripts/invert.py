@@ -15,9 +15,9 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
     map_files_to_reference,
-    extract_observation_date,
 )
 from src.utilities.config_utils import load_config
+from src.inversion_scripts.satellite_products import get_satellite_product
 
 
 def align_obs_rows_with_reference(obs_GC, obs_GC_ref):
@@ -764,10 +764,11 @@ if __name__ == "__main__":
     gc_startdate = np.datetime64(datetime.datetime.strptime(str(config['StartDate']), "%Y%m%d"))
     gc_enddate = np.datetime64(datetime.datetime.strptime(str(config['EndDate']), "%Y%m%d"))
     allfiles = glob.glob(f"{jacobian_dir}/*.pkl")
+    satellite_product = get_satellite_product(config["SatelliteProduct"])
     jacobian_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        strdate = extract_observation_date(filename)
+        strdate = satellite_product.observation_date(filename)
         if (strdate >= gc_startdate) and (strdate < gc_enddate):
             jacobian_files.append(filename)
     jacobian_files.sort()
