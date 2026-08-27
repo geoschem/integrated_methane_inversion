@@ -27,7 +27,6 @@ from src.inversion_scripts.utils import (
     mixing_ratio_conv_factor,
     get_mean_emissions,
     get_posterior_emissions,
-    extract_observation_date,
 )
 from src.utilities.config_utils import load_config
 from src.inversion_scripts.satellite_products import (
@@ -745,16 +744,22 @@ def estimate_averaging_kernel(
         - datetime.timedelta(days=1)
     )
 
-    # Only consider satellite files within date range (in case more are present)
-    satellite_paths = [
-        p for p in satellite_paths
-        if int(extract_observation_date(p).strftime("%Y%m%d")) >= int(startday)
-        and int(extract_observation_date(p).strftime("%Y%m%d")) < int(endday)
-    ]
-    satellite_paths.sort()
-
     # What satellite data product to use?
     satellite_str = config["SatelliteProduct"]
+    satellite_product = get_satellite_product(satellite_str)
+
+    # Only consider satellite files within date range (in case more are present).
+    # Parse each filename once using the selected product's naming convention.
+    dated_satellite_paths = (
+        (satellite_product.observation_date(path), path)
+        for path in satellite_paths
+    )
+    satellite_paths = sorted(
+        path
+        for observation_date, path in dated_satellite_paths
+        if int(observation_date.strftime("%Y%m%d")) >= int(startday)
+        and int(observation_date.strftime("%Y%m%d")) < int(endday)
+    )
 
     # Open satellite files and filter data
     lat = []

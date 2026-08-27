@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,10 @@ class SatelliteProduct(ABC):
     name: str
     goopy_raw_product_name: str
     visualization_source: str = "raw"
+
+    @abstractmethod
+    def observation_date(self, path: str | Path) -> datetime:
+        """Return the acquisition date encoded in a raw or derived filename."""
 
     @abstractmethod
     def validate_directory(self, directory: Path) -> None:
