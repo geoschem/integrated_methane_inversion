@@ -526,7 +526,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     ).max())
     nBufferClusters = nStateOrig - last_ROI_element
-    desired_num_labels = config["NumberOfElements"] - nBufferClusters
+    desired_num_labels = int(config["NumberOfElements"] - nBufferClusters)
 
     # Used to track if something has changed since we set the threshold
     labels_assigned_since_last_threshold = False
@@ -626,7 +626,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
             agg_level = max(1, int(elements_left / n_clusters_fill))
             print("Filling grid with remaining clusters.")
             out_labels = cluster_data_kmeans(
-                sensi.where(labels == 0),
+                sensi["Sensitivities"].where(labels == 0),
                 n_clusters_fill,
                 mini_batch,
                 cluster_by_country,
@@ -644,7 +644,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
             # generate clusters that are approximately agg_level in size
             out_labels = cluster_data_kmeans(
-                sensi.where(labels == 0),
+                sensi["Sensitivities"].where(labels == 0),
                 n_clusters,
                 mini_batch,
                 cluster_by_country,
@@ -657,7 +657,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
         # get the n_highes labels with sensitivities above the
         # threshold and how many elements these labels contain
         n_max_labels, n_highest, num_elements, _ = get_highest_labels_threshold(
-            out_labels, sensi, filter_threshold
+            out_labels, sensi["Sensitivities"], filter_threshold
         )
 
         # if too many labels to assign, then we need to assign
@@ -747,7 +747,7 @@ if __name__ == "__main__":
         preview_dir = sys.argv[3]
         satellite_cache = sys.argv[4]
         kf_index = int(sys.argv[5]) if len(sys.argv) > 5 else None
-        config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+        config = load_config(config_path)
 
         original_clusters = xr.open_dataset(state_vector_path).squeeze()
         sensitivity_args = [
