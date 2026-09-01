@@ -296,6 +296,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # Averaging kernel (uses unweighted Sa)
         G = lns @ K_primeT_so
         ak = G @ K_prime
+        DOFS = ak.trace()
 
         # Calculate posterior mean xhat
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
@@ -314,6 +315,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             @ invlnsa[:-num_normal_elems, :-num_normal_elems]
             @ (lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
         )
+        Ja_normalized = Ja.item() / DOFS
 
         print(
             f"Diagnostics:\n  (Ja: {Ja}, gamma: {gamma}, "
@@ -327,14 +329,14 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         results_dict["lnxn"].append(lnxn.flatten()),
         results_dict["S_post"].append(lns),
         results_dict["A"].append(ak),
-        results_dict["Ja_normalized"].append(Ja.item() / num_sv_elems),
+        results_dict["Ja_normalized"].append(Ja_normalized),
         for k, v in params.items():
             results_dict[k].append(v)
 
     # Define the default data variables as those with normalized Ja closest to 1
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
     print(
-        f"J_A/n closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]}"
+        f"J_A/DOFS closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]}"
     )
 
     # Filter ensemble members to only members with Ja between 0.5 and 2
@@ -350,14 +352,14 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         idx_default_Ja = include_ens_members.index(idx_default_Ja)
     elif len(include_ens_members) == 0:
         print(
-            "Warning: No ensemble members with 0.5 <= J_A/n <= 2.0, "
+            "Warning: No ensemble members with 0.5 <= J_A/DOFS <= 2.0, "
             + "Returning all members in ensemble. This may lead to suboptimal results."
             + " Consider adding additional ensemble members with different hyperparameters."
         )
     else:
         print(
             "Warning: Returning all members in ensemble without filtering "
-            + "Ja/n thresholds [0.5, 2.0]. This may lead to suboptimal results."
+            + "Ja/DOFS thresholds [0.5, 2.0]. This may lead to suboptimal results."
             + " Consider adding ensemble filters."
         )
 
@@ -384,7 +386,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     dataset.S_post.attrs["units"] = "1"
     dataset.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset.A.attrs["units"] = "1"
-    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/DOFS"
     dataset.Ja_normalized.attrs["units"] = "1"
     dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
     dataset.prior_err.attrs["units"] = "1"
@@ -411,7 +413,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     dataset_mean.S_post.attrs["units"] = "1"
     dataset_mean.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset_mean.A.attrs["units"] = "1"
-    dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/DOFS"
     dataset_mean.Ja_normalized.attrs["units"] = "1"
     dataset_mean.prior_err.attrs["long_name"] = "Prior error (Sa)"
     dataset_mean.prior_err.attrs["units"] = "1"
