@@ -508,11 +508,14 @@ def do_inversion(
     # Averaging kernel matrix (use unweighted Sa)
     A = np.identity(n_elements) - S_post @ inv_Sa
 
+    # Degrees of freedom for signal
+    DOFS = A.trace()
+
     # Calculate J_A, where delta_optimized = xhat - xA
     # J_A = (xhat - xA)^T * inv_Sa * (xhat - xA)
     delta_optimizedT = delta_optimized.transpose()
     J_A = delta_optimizedT @ inv_Sa @ delta_optimized
-    Ja_normalized = J_A / n_elements
+    Ja_normalized = J_A / DOFS
 
     # Print some statistics
     print(
@@ -618,7 +621,7 @@ def do_inversion_ensemble(
     # Find the ensemble member that is closest to 1 following Lu et al. (2021)
     idx_default_Ja = np.argmin(np.abs(np.array(results_dict["Ja_normalized"]) - 1))
     print(
-        f"J_A/n closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]} with"
+        f"J_A/DOFS closest to 1: {results_dict['Ja_normalized'][idx_default_Ja]} with"
         + f" (prior_err, obs_err, gamma, prior_err_bc, prior_err_oh) = {hyperparam_ensemble[idx_default_Ja]}"
     )
 
@@ -634,14 +637,14 @@ def do_inversion_ensemble(
         idx_default_Ja = include_ens_members.index(idx_default_Ja)
     elif len(include_ens_members) == 0:
         print(
-            "Warning: No ensemble members with 0.5 <= J_A/n <= 2.0, "
+            "Warning: No ensemble members with 0.5 <= J_A/DOFS <= 2.0, "
             + "Returning all members in ensemble. This may lead to suboptimal results."
             + " Consider adding additional ensemble members with different hyperparameters."
         )
     else:
         print(
             "Warning: Returning all members in ensemble without filtering "
-            + "Ja/n thresholds [0.5, 2.0]. This may lead to suboptimal results."
+            + "Ja/DOFS thresholds [0.5, 2.0]. This may lead to suboptimal results."
             + " Consider adding ensemble filters."
         )
 
@@ -662,7 +665,7 @@ def do_inversion_ensemble(
     dataset.S_post.attrs["units"] = "1"
     dataset.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset.A.attrs["units"] = "1"
-    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/DOFS"
     dataset.Ja_normalized.attrs["units"] = "1"
     dataset.prior_err.attrs["long_name"] = "Prior error (Sa)"
     dataset.prior_err.attrs["units"] = "1"
@@ -690,7 +693,7 @@ def do_inversion_ensemble(
     dataset_mean.S_post.attrs["units"] = "1"
     dataset_mean.A.attrs["long_name"] = "Averaging kernel matrix"
     dataset_mean.A.attrs["units"] = "1"
-    dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/n"
+    dataset_mean.Ja_normalized.attrs["long_name"] = "Normalized cost function Ja/DOFS"
     dataset_mean.Ja_normalized.attrs["units"] = "1"
     dataset_mean.prior_err.attrs["long_name"] = "Prior error (Sa)"
     dataset_mean.prior_err.attrs["units"] = "1"
