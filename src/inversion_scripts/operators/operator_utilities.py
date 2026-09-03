@@ -13,6 +13,9 @@ from scipy.sparse import csr_matrix
 
 warnings.filterwarnings("ignore", category=UserWarning, module="xarray")
 
+# TROPOMI's 13 retrieval pressure edges bound 12 vertical layers.
+TROPOMI_N_LAYERS = 12
+
 # common utilities for using different operators
 def read_all_geoschem(all_strdate, gc_cache, config):
     """
@@ -141,7 +144,7 @@ def get_gridcell_list(lons, lats, species):
                     "lon_sat": [],
                     "observation_count": 0,
                     "observation_weights": [],
-                    "layer": np.arange(12),
+                    "layer": np.arange(TROPOMI_N_LAYERS),
                 }
             )
     gridcells = np.array(gridcells).reshape(len(lons), len(lats))
@@ -270,7 +273,7 @@ def remap(gc_species, data_type, p_merge, edge_index, first_gc_edge):
 
     # Calculate the pressure-weighted mean methane for each TROPOMI layer
     delta_p = p_merge[:-1] - p_merge[1:]
-    sat_species = np.zeros(12)
+    sat_species = np.zeros(TROPOMI_N_LAYERS)
     sat_species.fill(np.nan)
     for i in range(len(edge_index) - 1):
         start = edge_index[i]

@@ -197,14 +197,11 @@ satelliteCache=${RunDirs}/satellite_data
 if [[ -z "$DataPathObs" ]]; then
     mkdir -p -v $satelliteCache
 
-    if [[ "$SatelliteProduct" == "BlendedTROPOMI" ]]; then
-        downloadScript=src/utilities/download_blended_TROPOMI.py
-    elif [[ "$SatelliteProduct" == "TROPOMI" ]]; then
-        downloadScript=src/utilities/download_TROPOMI.py
-    else
-        printf "$SatelliteProduct is not currently supported for download"
-    fi
-    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition $downloadScript $StartDate $EndDate $satelliteCache
+    downloadCommand=(
+        python -m src.utilities.manage_observations download
+        "$SatelliteProduct" "$StartDate" "$EndDate" "$satelliteCache"
+    )
+    submit_job $SchedulerType true $RequestedMemory $RequestedCPUs $RequestedTime $SchedulerPartition "${downloadCommand[@]}"
 else
     # use existing tropomi data and create a symlink to it
     if [[ ! -L $satelliteCache ]]; then
@@ -212,8 +209,8 @@ else
     fi
 fi
 
-# Check to make sure there are no duplicate TROPOMI files (e.g., two files with the same orbit number but a different processor version)
-python src/utilities/test_TROPOMI_dir.py $satelliteCache
+# Validate files using rules appropriate to the configured observation product.
+python -m src.utilities.validate_observation_directory "$satelliteCache" "$SatelliteProduct"
 
 ##=======================================================================
 ##  Run the setup script

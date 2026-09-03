@@ -16,6 +16,7 @@ from pyproj import Geod
 import pandas as pd
 import re
 import warnings
+from collections.abc import Mapping, Sequence
 from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
     latlon_to_cartesian,
     build_kdtree,
@@ -895,6 +896,55 @@ def filter_blended(blended_data, xlim, ylim, startdate, enddate, use_water_obs=F
         return np.where(valid_idx & (blended_data["surface_classification"] != 1))
 
 
+def filter_MSAT(
+    data: Mapping[str, np.ndarray | xr.DataArray],
+    xlim: Sequence[float],
+    ylim: Sequence[float],
+    startdate: np.datetime64 | datetime,
+    enddate: np.datetime64 | datetime,
+    use_water_obs: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return indices of MethaneSAT observations accepted by the IMI.
+
+    An observation is retained when its center lies strictly inside ``xlim``
+    and ``ylim``, its time lies within the inclusive date interval, its
+    longitude bounds do not span the antimeridian, and its latitude is north
+    of 60 degrees south. The fields are expected to be two-dimensional, with
+    ``longitude_bounds`` carrying a third corner dimension.
+
+    MethaneSAT data currently passed to this function do not include a surface
+    classification field. Consequently, ``use_water_obs`` is accepted for
+    compatibility with the common satellite-product interface but does not
+    alter the result.
+
+    Args:
+        data: Mapping containing ``longitude``, ``latitude``, ``time``, and
+            ``longitude_bounds`` arrays.
+        xlim: Exclusive minimum and maximum longitude in degrees east.
+        ylim: Exclusive minimum and maximum latitude in degrees north.
+        startdate: Inclusive beginning of the observation period.
+        enddate: Inclusive end of the observation period.
+        use_water_obs: Unused compatibility argument; water observations
+            cannot currently be distinguished in the supplied MSAT fields.
+
+    Returns:
+        Row and column index arrays, as returned by ``numpy.where``, selecting
+        valid observations from the two-dimensional MSAT grid.
+    """
+    valid_idx = (
+        (data["longitude"] > xlim[0])
+        & (data["longitude"] < xlim[1])
+        & (data["latitude"] > ylim[0])
+        & (data["latitude"] < ylim[1])
+        & (data["time"] >= startdate)
+        & (data["time"] <= enddate)
+        & (data["longitude_bounds"].ptp(axis=2) < 100)
+        & (data["latitude"] > -60)
+    )
+
+    return np.where(valid_idx)
+
+
 def calculate_area_in_km(coordinate_list):
     """
     Description:
@@ -1144,7 +1194,14 @@ def read_blended(filename):
 
 
 def read_and_filter_satellite(
-    filename, satellite_str, gc_startdate, gc_enddate, xlim, ylim, use_water_obs
+    filename,
+    satellite_str,
+    gc_startdate,
+    gc_enddate,
+    xlim,
+    ylim,
+    use_water_obs,
+    species="CH4",
 ) -> tuple[dict, np.ndarray] | None:
     """
     Reads the satellite data from the given file and filters it by lat/lon bounds and date range.
@@ -1155,37 +1212,21 @@ def read_and_filter_satellite(
     
     """
 
-    # Read TROPOMI data
-    if satellite_str == "BlendedTROPOMI":
-        satellite = read_blended(filename)
-    elif satellite_str == "TROPOMI":
-        satellite = read_tropomi(filename)
-    else:
-        print("Other data source is not currently supported")
-        sys.exit(1)
+    from src.inversion_scripts.satellite_products import (
+        ObservationRequest,
+        get_satellite_product,
+    )
 
-    # If empty, skip this file
-    if satellite is None:
-        print(f"Skipping {filename} due to file processing issue.")
-        return satellite
-
-    # Filter the data
-    if satellite_str == "BlendedTROPOMI":
-        # Only going to consider blended data within lat/lon/time bounds and wihtout problematic coastal pixels
-        sat_ind = filter_blended(
-            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
-        )
-    elif satellite_str == "TROPOMI":
-        # Only going to consider TROPOMI data within lat/lon/time bounds and with QA > 0.5
-        sat_ind = filter_tropomi(
-            satellite, xlim, ylim, gc_startdate, gc_enddate, use_water_obs
-        )
-
-    else:
-        print("Other data source filtering is not currently supported --HON")
-        sys.exit(1)
-
-    return satellite, sat_ind
+    request = ObservationRequest(
+        filename=filename,
+        species=species,
+        start_date=gc_startdate,
+        end_date=gc_enddate,
+        xlim=xlim,
+        ylim=ylim,
+        use_water_observations=use_water_obs,
+    )
+    return get_satellite_product(satellite_str).read_and_filter(request)
 
 
 def get_posterior_emissions(prior, scale, species, OptimizeSoil=False):

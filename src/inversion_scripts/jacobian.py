@@ -20,6 +20,7 @@ from src.inversion_scripts.utils import (
     check_is_OH_element,
     check_is_BC_element,
 )
+from src.inversion_scripts.satellite_products import get_satellite_product
 from joblib import Parallel, delayed
 
 
@@ -196,14 +197,12 @@ if __name__ == "__main__":
     print("End:", gc_enddate)
 
     # Get satellite data filenames for the desired date range
+    product = get_satellite_product(satellite_product)
     allfiles = glob.glob(f"{satellite_cache}/*.nc")
     sat_files = []
     for index in range(len(allfiles)):
         filename = allfiles[index]
-        shortname = re.split(r"\/", filename)[-1]
-        shortname = re.split(r"\.", shortname)[0]
-        strdate = re.split(r"\.|_+|T", shortname)[4]
-        strdate = datetime.datetime.strptime(strdate, "%Y%m%d")
+        strdate = product.observation_date(filename)
         if (strdate >= gc_startdate) and (strdate <= gc_enddate):
             sat_files.append(filename)
     sat_files.sort()
@@ -271,26 +270,32 @@ if __name__ == "__main__":
                 )
                 output['K'] = jacobian
 
-            # we also save out the unaveraged satellite operator for visualization purposes
-            viz_output = apply_operator(
-                "satellite",
-                {
-                    "filename": filename,
-                    "species" : species,
-                    "satellite_product": satellite_product,
-                    "satellite_cache": satellite_cache,
-                    "n_elements": n_elements,
-                    "gc_startdate": gc_startdate,
-                    "gc_enddate": gc_enddate,
-                    "xlim": xlim,
-                    "ylim": ylim,
-                    "gc_cache": gc_cache,
-                    "period_i": period_i,
-                    "use_water_obs": use_water_obs,
-                },
-                obs_mapped_to_gc,
-                config,
-            )
+            # Some satellite files can contain tens of millions of source pixels.
+            # Running a second, unaveraged operator solely for visualization is
+            # prohibitively expensive; visualize the canonical superobservations
+            # instead for these. Other products retain the legacy unaveraged output.
+            if product.visualization_source == "superobservation":
+                viz_output = output
+            else:
+                viz_output = apply_operator(
+                    "satellite",
+                    {
+                        "filename": filename,
+                        "species" : species,
+                        "satellite_product": satellite_product,
+                        "satellite_cache": satellite_cache,
+                        "n_elements": n_elements,
+                        "gc_startdate": gc_startdate,
+                        "gc_enddate": gc_enddate,
+                        "xlim": xlim,
+                        "ylim": ylim,
+                        "gc_cache": gc_cache,
+                        "period_i": period_i,
+                        "use_water_obs": use_water_obs,
+                    },
+                    obs_mapped_to_gc,
+                    config,
+                )
 
             if output is None:
                 return 0
