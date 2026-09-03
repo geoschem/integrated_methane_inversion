@@ -1,3 +1,4 @@
+from GOOPy.parsers import FIXED_MSAT_AVERAGING_KERNEL, FIXED_MSAT_PRIOR_PROFILE
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
@@ -6,20 +7,6 @@ from src.inversion_scripts.utils import get_strdate
 from src.inversion_scripts.operators.superobservation import (
     imi_superobservation_dtype,
 )
-
-FIXED_MSAT_AVERAGING_KERNEL = np.array([
-    0.54948103, 0.5463017, 0.5425764, 0.5630824, 0.586732,
-    0.61969376, 0.6751325, 0.7441332, 0.7991072, 0.8353182,
-    0.87577033, 0.92045873, 0.9373637, 0.97244173, 0.99397856,
-    1.0006262, 1.0219611, 1.0428349, 1.0573764,
-], dtype=np.float64)[::-1]
-
-FIXED_MSAT_PRIOR_PROFILE = np.array([
-    224.05298, 685.95667, 1449.2792, 1765.1627, 1894.5641,
-    1929.3362, 1993.0267, 2023.5267, 2023.5922, 2023.6508,
-    2024.5969, 2024.6519, 2024.6962, 2024.9379, 2024.9979,
-    2025.0558, 2038.752, 2040.5107, 2040.6727,
-], dtype=np.float64)[::-1]
 
 
 def coordinate_edges(centers: np.ndarray) -> np.ndarray:
