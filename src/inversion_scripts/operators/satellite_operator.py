@@ -267,7 +267,7 @@ def goopy_apply_operator(
     obs_mapped_to_gc,
     config,
     use_water_obs=False
-):
+) -> dict | None:
     import sys
     import yaml
     import tempfile
@@ -416,7 +416,7 @@ def format_goopy_average_satellite_output(
     obs_mapped_to_gc,
     virtual_satellite,
     config,
-):
+) -> dict:
     """
     Format GOOPy output for the grid-cell-averaged satellite operator path.
 
@@ -512,7 +512,7 @@ def format_goopy_satellite_output(
     virtual_satellite,
     config,
     use_water_obs=False,
-):
+) -> dict | None:
     """
     Format GOOPy output for the unaveraged satellite visualization path.
 
@@ -520,10 +520,13 @@ def format_goopy_satellite_output(
     same spatial/quality-filtered pixels as the native satellite operator. If
     GOOPy returned full-file output, subset it to those filtered pixels.
     """
-    satellite, sat_ind = read_and_filter_satellite(
+    result = read_and_filter_satellite(
         filename, satellite_product, gc_startdate, gc_enddate,
         xlim, ylim, use_water_obs, species
     )
+    if result is None:
+        return None
+    satellite, sat_ind = result
 
     n_obs = len(sat_ind[0])
     if n_obs == 0:
