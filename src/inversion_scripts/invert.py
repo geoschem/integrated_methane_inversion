@@ -482,8 +482,9 @@ def do_inversion(
     )
 
     # Solve for posterior scale factors xhat using the weighted constraint matrix
-    delta_optimized = np.linalg.inv(gamma * KTinvSoK + inv_Sa_constraint) @ (
-        gamma * KTinvSoyKxA
+    delta_optimized = np.linalg.solve(
+        gamma * KTinvSoK + inv_Sa_constraint,
+        gamma * KTinvSoyKxA,
     )
 
     # Update scale factors by 1 to match what GEOS-Chem expects
