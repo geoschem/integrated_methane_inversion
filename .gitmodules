@@ -1,3 +1,4 @@
 [submodule "GOOPy"]
 	path = GOOPy
 	url = https://github.com/pennelise/GOOPy.git
+	branch = main
