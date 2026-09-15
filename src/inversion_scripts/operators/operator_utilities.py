@@ -129,6 +129,9 @@ def get_gridcell_list(lons, lats, species):
                     "jGC": j,
                     species: [],
                     "p_sat": [],
+                    "surface_pressure": [],
+                    "nir_albedo": [],
+                    "swir_albedo": [],
                     "dry_air_subcolumns": [],
                     "apriori": [],
                     "avkern": [],
@@ -138,6 +141,7 @@ def get_gridcell_list(lons, lats, species):
                     "lon_sat": [],
                     "observation_count": 0,
                     "observation_weights": [],
+                    "layer": np.arange(12),
                 }
             )
     gridcells = np.array(gridcells).reshape(len(lons), len(lats))
