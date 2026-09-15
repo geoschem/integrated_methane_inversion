@@ -184,16 +184,15 @@ def save_superobservations(ds, filename, output_path):
     return output_file
 
 
-def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
+def apply_operator(operator, params, obs_mapped_to_gc, config):
     """
-    Run the satellite observation operator. By default, GOOPy is used but the original IMI operator can be used by setting use_goopy=False.
+    Run the satellite observation operator. By default, GOOPy is used but the original IMI operator can be used by setting UseGOOPy to False in the config file
 
     Arguments
         operator [str]    : Data conversion operator to use
         params   [dict]   : parameters to run the given operator
         obs_mapped_to_gc [dict] : Mapped satellite observations
         config   [dict]   : Configuration parameters
-        use_goopy [bool]  : Whether to use GOOPy (default: True)
     Returns
         output   [dict]   : Dictionary with:
                             - obs_GC : GEOS-Chem and satellite column data
@@ -202,6 +201,7 @@ def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
                             - satellite lat, lon
                             - satellite lat index, lon index
     """
+    use_goopy = config["UseGOOPy"]
     if use_goopy:
         return goopy_apply_operator(
             operator,
@@ -221,10 +221,10 @@ def apply_operator(operator, params, obs_mapped_to_gc, config, use_goopy=True):
             params["use_water_obs"],
         )
     else:
-        return apply_original_imi_operator(operator, params, config)
+        return apply_original_imi_operator(operator, params, config, obs_mapped_to_gc)
 
 
-def apply_original_imi_operator(operator, params, config):
+def apply_original_imi_operator(operator, params, config, obs_mapped_to_gc):
     """
     Run the chosen operator based on selected instrument
 
@@ -246,22 +246,24 @@ def apply_original_imi_operator(operator, params, config):
             params["filename"],
             params["species"],
             params["satellite_product"],
+            params["satellite_cache"],
             params["n_elements"],
             params["gc_startdate"],
             params["gc_enddate"],
             params["xlim"],
             params["ylim"],
             params["gc_cache"],
-            params["build_jacobian"],
             params["period_i"],
-            config,
-            params["use_water_obs"],
+            obs_mapped_to_gc=obs_mapped_to_gc,
+            config=config,
+            use_water_obs=params["use_water_obs"],
         )
     elif operator == "satellite":
         return apply_satellite_operator(
             params["filename"],
             params["species"],
             params["satellite_product"],
+            params["satellite_cache"],
             params["n_elements"],
             params["gc_startdate"],
             params["gc_enddate"],
@@ -269,8 +271,8 @@ def apply_original_imi_operator(operator, params, config):
             params["ylim"],
             params["gc_cache"],
             params["period_i"],
-            config,
-            params["use_water_obs"],
+            config=config,
+            use_water_obs=params["use_water_obs"],
         )
     else:
         raise ValueError("Error: invalid operator selected.")
@@ -787,8 +789,6 @@ def apply_satellite_operator(
                                                     - GEOS-Chem species
                                                     - satellite lat, lon
                                                     - satellite lat index, lon index
-                                                      If build_jacobian=True, also include:
-                                                        - K      : Jacobian matrix
     """
 
     # Read satellite data
@@ -1524,10 +1524,7 @@ def get_virtual_satellite(
 
     Returns
     -------
-    If build_jacobian=False:
-        ndarray (N,) of virtual satellite columns.
-    If build_jacobian=True:
-        (perturbation columns, base columns, final columns).
+    ndarray (N,) of virtual satellite columns.
     """
 
     species, PEDGE = virtual_satellite_species_and_pedge(date, gc_cache, gridcell_dict, n_elements, config)
