@@ -413,7 +413,21 @@ create_simulation_dir() {
     GcPrevLine='- CH4'
     HcoPrevLine1='EFYO xyz 1 CH4 - 1 '
     HcoPrevLine2='1 500'
-    HcoPrevLine3="#300N SCALE_ELEM_000N ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 N"
+    # Match the stable scale-factor placeholder fields rather than its complete
+    # path-dependent text. The template may contain a configured, copied, or
+    # otherwise normalized state-vector path.
+    HcoScalePlaceholder='^[[:space:]]*#300N[[:space:]]+SCALE_ELEM_000N[[:space:]]'
+    JacobianStateVectorFile="${RunDirs}/StateVector.nc"
+    if [[ ! -f "$JacobianStateVectorFile" ]]; then
+        printf "\nERROR: Jacobian state vector does not exist: %s\n" \
+            "$JacobianStateVectorFile"
+        exit 1
+    fi
+    if ! grep -Eq "$HcoScalePlaceholder" HEMCO_Config.rc; then
+        printf "\nERROR: Cannot find the SCALE_ELEM_000N placeholder in %s/HEMCO_Config.rc\n" \
+            "$PWD"
+        exit 1
+    fi
     HcoPrevLine4='\* BC_CH4'
     ExtPrevLine1="#SCALE_ELEM_000N  1 N Y 2000-01-01T00:00:00 none none StateVector ./RunDirs/StateVector.nc"
     HisPrevLine1="'SpeciesConcVV_CH4    ', 'GCHPchem',"
@@ -480,9 +494,21 @@ add_new_tracer() {
     sed -i -e "\|$HcoPrevLine2|a $HcoNewLine2" HEMCO_Config.rc
     HcoPrevLine2=$HcoNewLine2
 
-    HcoNewLine3="$SFnum SCALE_ELEM_$istr ${RunDirs}/StateVector.nc StateVector 2000/1/1/0 C xy 1 1 $i"
-    sed -i -e "\|$HcoPrevLine3|a $HcoNewLine3" HEMCO_Config.rc
-    HcoPrevLine3=$HcoNewLine3
+    HcoNewLine3="$SFnum SCALE_ELEM_$istr $JacobianStateVectorFile StateVector 2000/1/1/0 C xy 1 1 $i"
+    sed -i -E "\|${HcoScalePlaceholder}|a\\
+${HcoNewLine3}
+" HEMCO_Config.rc
+
+    # GNU sed exits successfully when an address matches no lines. Verify the
+    # expected definition explicitly so setup cannot create a broken run that
+    # only fails later during HEMCO initialization.
+    if ! grep -Eq \
+        "^[[:space:]]*${SFnum}[[:space:]]+SCALE_ELEM_${istr}[[:space:]]" \
+        HEMCO_Config.rc; then
+        printf "\nERROR: Failed to add HEMCO scale factor %s for state-vector element %s in %s/HEMCO_Config.rc\n" \
+            "$SFnum" "$i" "$PWD"
+        exit 1
+    fi
 
     if ! "$UseGCHP"; then
         # Add lines for restarts of new tracers to HEMCO_Config.rc
