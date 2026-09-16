@@ -37,13 +37,16 @@ def download_landcover_files(config):
         gridDir= "0.125x0.15625"
         gridFile= "0125x015625"
 
-    # determine the path to the landcover file
-    if len(config["RegionID"]) == 2:
-        s3_lc_path = f"GEOS_{gridDir}_{config['RegionID']}/{metDir}/{constYr}/01/{config['Met']}.{constYr}0101.CN.{gridFile}.{config['RegionID']}.{LandCoverFileExtension}"
+    if config["Res"] == "0.125x0.15625":
+        LandCoverFile="/n/holylfs06/LABS/jacob_lab/Everyone/GEOS-CHEM/gcgrid/gcdata/ExtData/HEMCO/CH4/v2025-03/landcover/IMERG_land_sea_mask_0125x015625.nc"
     else:
-        s3_lc_path = f"GEOS_{gridDir}/{metDir}/{constYr}/01/{config['Met']}.{constYr}0101.CN.{gridFile}.{LandCoverFileExtension}"
-    LandCoverFile = os.path.join(config["DataPath"], s3_lc_path)
-    target_dir = os.path.dirname(LandCoverFile)
+        # determine the path to the landcover file
+        if len(config["RegionID"]) == 2:
+            s3_lc_path = f"GEOS_{gridDir}_{config['RegionID']}/{metDir}/{constYr}/01/{config['Met']}.{constYr}0101.CN.{gridFile}.{config['RegionID']}.{LandCoverFileExtension}"
+        else:
+            s3_lc_path = f"GEOS_{gridDir}/{metDir}/{constYr}/01/{config['Met']}.{constYr}0101.CN.{gridFile}.{LandCoverFileExtension}"
+        LandCoverFile = os.path.join(config["DataPath"], s3_lc_path)
+        target_dir = os.path.dirname(LandCoverFile)
 
     # Check if the file already exists locally
     if not os.path.exists(LandCoverFile):
@@ -71,6 +74,8 @@ def download_hemcodiags_files(config):
         gridFile = "05x0625"
     elif config["Res"] == "0.25x0.3125":
         gridFile = "025x03125"
+    elif config["Res"] == "0.125x0.15625":
+        gridFile= "0125x015625"
 
     s3_hd_path = (
         f"HEMCO/CH4/v2025-07/HEMCO_SA_Output/HEMCO_sa_diagnostics.{gridFile}.2023.nc"

@@ -145,11 +145,11 @@ else
     jacobian_sf=${InvDir}/jacobian_scale_factors.npy
 fi
 
-python -u ${InvDir}/jacobian.py ${InvDir} ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i $buildJacobian False; wait
+python -u ${InvDir}/jacobian.py ${InvDir} ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $satelliteCache $isPost $period_i $buildJacobian False; wait
 if "$LognormalErrors"; then
     # for lognormal error visualization of the prior we sample the prior run
     # without constructing the jacobian matrix
-    python ${InvDir}/jacobian.py ${InvDir} ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $Species $satelliteCache $SatelliteProduct $UseWaterObs $isPost $period_i False True; wait
+    python ${InvDir}/jacobian.py ${InvDir} ${invPath}/${configFile} $StartDate $EndDate $LonMinInvDomain $LonMaxInvDomain $LatMinInvDomain $LatMaxInvDomain $nElements $satelliteCache $isPost $period_i False True; wait
 fi
 printf " DONE -- jacobian.py\n\n"
 
