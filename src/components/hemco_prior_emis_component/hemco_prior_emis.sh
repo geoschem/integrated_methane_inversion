@@ -237,7 +237,7 @@ emis.to_netcdf(sys.argv[2])
 ' "$1" "$2"
 }
 
-# Description: Setup Spinup Directory
+# Description: Setup HEMCO prior directory for GCHP
 # Usage:
 #   setup_prior_gchp
 setup_prior_gchp() {
@@ -348,6 +348,7 @@ run_prior_gchp() {
         -t $RequestedTime \
         -p $SchedulerPartition \
         -W ${RunName}_HEMCO_Prior_Emis.run
+    printf "Waiting for job to complete..."
     wait
 
     # check if exited with non-zero exit code
