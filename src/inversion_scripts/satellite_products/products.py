@@ -300,8 +300,8 @@ class MethaneSatProduct(SatelliteProduct):
             for value in observations["time"]
         ]
         return {
-            "lat": observations["lat_sat"].tolist(),
-            "lon": observations["lon_sat"].tolist(),
+            "lat": observations["lat"].tolist(),
+            "lon": observations["lon"].tolist(),
             request.species: observations[request.species].tolist(),
             "swir_albedo": [np.nan] * count,
             "time": times,
