@@ -137,6 +137,7 @@ Gamma: [1.0]
 PrecomputedJacobian: false
 OffDiagonalPriorCov: false
 LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true
+UseGOOPy: true ## only turn off GOOPy if it's not yet compatible with your IMI configuration; this should be rare for most users
 
 ## Setup modules
 ##   Turn on/off different steps in setting up the inversion
