@@ -111,7 +111,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor, species
             )  # TODO nudge_factor is currently inverse of what's in the paper, i.e. 0.1 instead of 0.9
 
             # Sum emissions
-            current_total = sum_total_emissions(current_posterior_emis, areas, mask)
+            current_total = sum_total_emissions(current_positive_posterior_emis, areas, mask)
             nudged_total = sum_total_emissions(nudged_posterior_emis, areas, mask)
 
             # Get the final posterior emissions
