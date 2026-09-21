@@ -263,6 +263,8 @@ Inversion
      - Spatial length scale in km used when building the off-diagonal prior covariance matrix. Only used if ``OffDiagonalPriorCov`` is ``true``. Default value is ``25``.
    * - ``ReferenceRunDir``
      - Path to the reference run directory containing previously generated Jacobian. Only used if ``PrecomputedJacobian`` is ``true``.
+   * - ``UseGOOPy``
+     - Boolean for whether to use the GOOPy package for the inversion. Default value is ``true``. Only turn off GOOPy if it's not yet compatible with your IMI configuration; this should not be necessary for most users.
 
 Setup modules
 ~~~~~~~~~~~~~

@@ -13,7 +13,7 @@ import pygeohash as pgh
 
 from GOOPy.parsers import read_MSAT
 from src.inversion_scripts.operators.msat_funcs import average_methanesat_observations
-from src.inversion_scripts.operators.operator_utilities import get_gc_lat_lon
+from src.inversion_scripts.operators.tropomi_utilities import get_gc_lat_lon
 from src.inversion_scripts.satellite_products.base import (
     ObservationRequest,
     SatelliteProduct,
@@ -300,8 +300,8 @@ class MethaneSatProduct(SatelliteProduct):
             for value in observations["time"]
         ]
         return {
-            "lat": observations["lat_sat"].tolist(),
-            "lon": observations["lon_sat"].tolist(),
+            "lat": observations["lat"].tolist(),
+            "lon": observations["lon"].tolist(),
             request.species: observations[request.species].tolist(),
             "swir_albedo": [np.nan] * count,
             "time": times,

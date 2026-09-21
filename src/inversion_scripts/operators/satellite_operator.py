@@ -14,7 +14,7 @@ from src.inversion_scripts.utils import (
     check_is_OH_element,
     check_is_BC_element,
 )
-from src.inversion_scripts.operators.operator_utilities import (
+from src.inversion_scripts.operators.tropomi_utilities import (
     get_gc_lat_lon,
     read_all_geoschem,
     merge_pressure_grids,
