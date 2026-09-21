@@ -15,7 +15,7 @@ with open("config_boundary_conditions.yml", "r") as f:
     config = yaml.safe_load(f)
 
 sys.path.insert(0, "../../")
-from src.inversion_scripts.operators.operator_utilities import nearest_loc
+from src.inversion_scripts.operators.tropomi_utilities import nearest_loc
 from src.inversion_scripts.operators.satellite_operator import apply_satellite_operator
 from src.inversion_scripts.utils import mixing_ratio_conv_factor
 
