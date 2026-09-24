@@ -254,7 +254,7 @@ setup_template() {
     cd ${build_dir}
     # first build a default exexutable without Jacobian tracers
     if [ -f "bin/${execname}.default" ]; then
-        echo "Executable bin/${execname}.default already exists — skipping rebuild."
+       echo "Executable bin/${execname}.default already exists — skipping rebuild."
     else
         echo "Building ${execname}.default ..."
 
@@ -308,7 +308,7 @@ setup_template() {
             echo "Building ${execname}.${n} ..."
 
             cd ${KPP_dir}/carbon
-            ${InversionPath}/src/utilities/expand_carbon_eqn.py \
+            ./util/expand_carbon_eqn.py \
                 carbon.eqn.default ${n} > carbon.eqn.${n}
             ln -nsf carbon.eqn.${n} carbon.eqn
             # generate KPP carbon mechanism
