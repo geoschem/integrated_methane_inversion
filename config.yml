@@ -138,6 +138,17 @@ Gamma: [1.0]
 PrecomputedJacobian: false
 OffDiagonalPriorCov: false
 LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true
+## Off-diagonal observation error covariance (So). When true, So gains a two-exponential spatial
+## correlation P(d) = A1 exp(-d/L1) + A2 exp(-d/L2) and an optional adjacent-day temporal correlation,
+## applied by a day-blocked block-Thomas solve (gathers all observations in memory). Diagonal So by
+## default; the parameters below are region-specific and should be re-fit per domain.
+OffDiagonalObsCov: false
+OffDiagonalObsCovA1: 0.385
+OffDiagonalObsCovL1: 26.0           ## km
+OffDiagonalObsCovA2: 0.459
+OffDiagonalObsCovL2: 398.0          ## km
+OffDiagonalObsCovTemporalRho: 0.0  ## adjacent-day (lag-1) correlation; 0 disables temporal coupling
+## OffDiagonalObsCovCutoffKm: 1194  ## spatial cutoff (km); default = 3 * L2
 UseGOOPy: true ## only turn off GOOPy if it's not yet compatible with your IMI configuration; this should not be necessary for most users
 
 ## Setup modules
