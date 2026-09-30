@@ -116,6 +116,7 @@ setup_template() {
         RunDuration=$(get_run_duration "$StartDate" "$EndDate")
         sed -i -e "s/^BEG_DATE:.*/BEG_DATE:     ${StartDate} 000000/" \
             -e "s/^END_DATE:.*/END_DATE:     ${EndDate} 000000/" CAP.rc
+
         echo "$StartDate 000000" > cap_restart
         sed -i -e "s/Run_Duration=\"[0-9]\{8\} 000000\"/Run_Duration=\"${RunDuration} 000000\"/" \
             -e "s/^CS_RES=.*/CS_RES=${CS_RES}/" \
@@ -124,11 +125,14 @@ setup_template() {
             -e "s/^NUM_CORES_PER_NODE=.*/NUM_CORES_PER_NODE=${NUM_CORES_PER_NODE}/" \
             -e 's/^AutoUpdate_Diagnostics=.*$/AutoUpdate_Diagnostics=OFF/' \
             setCommonRunSettings.sh
-        # turn on monthly checkpoint
+
+	# turn on monthly checkpoint
         sed -i -e 's/^Midrun_Checkpoint=OFF/Midrun_Checkpoint=ON/' \
             -e 's/^Checkpoint_Freq=.*/Checkpoint_Freq=monthly/' \
             setCommonRunSettings.sh
         sed -i -e "s/monthly:[[:space:]]*1/monthly:        0/g" HISTORY.rc
+
+	# Set stretched grid paramaters from IMI config
         if "$STRETCH_GRID"; then
             sed -i -e "s/^STRETCH_GRID=.*/STRETCH_GRID=ON/" \
                 -e "s/^STRETCH_FACTOR=.*/STRETCH_FACTOR=${STRETCH_FACTOR}/" \
@@ -263,48 +267,8 @@ setup_template() {
         cp ${InversionPath}/src/geoschem_run_scripts/run.template .
     fi
 
-    # Compile GEOS-Chem and store executable in GEOSChem_build directory
-    if [[ -f "../GEOSChem_build/gchp" || -f "../GEOSChem_build/gcclassic" ]]; then
-        printf "\nGEOS-Chem executable is already built and stored in GEOSChem_build\n"
-        rm -rf build
-    else
-        cd build
-        if "$UseGCHP"; then
-            printf "\nCompiling GCHP...\n"
-            cmake ${InversionPath}/GCHP >>build_geoschem.log 2>&1
-        else
-            printf "\nCompiling GEOS-Chem...\n"
-            cmake ${InversionPath}/GCClassic >>build_geoschem.log 2>&1
-        fi
-        cmake . -DRUNDIR=.. -DMECH=carbon >>build_geoschem.log 2>&1
-        make -j install >>build_geoschem.log 2>&1
-        cd ..
-        if "$UseGCHP"; then
-            if [[ -f gchp ]]; then
-                mkdir ../GEOSChem_build
-                mv -v gchp ../GEOSChem_build/
-                mv build/CMakeCache.txt ../GEOSChem_build
-                mv build/build_geoschem.log ../GEOSChem_build
-                rm -rf build
-            else
-                printf "\nGCHP build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
-                exit 999
-            fi
-        else
-            if [[ -f gcclassic ]]; then
-                mv build_info ../GEOSChem_build
-                mv -v gcclassic ../GEOSChem_build/
-                mv build/build_geoschem.log ../GEOSChem_build
-                rm -rf build
-            else
-                printf "\nGEOS-Chem build failed! \n\nSee ${RunDirs}/GEOSChem_build/build_geoschem.log for details\n"
-                exit 999
-            fi
-        fi
-        printf "\nDone compiling GEOS-Chem \n\nSee ${RunDirs}/GEOSChem_build for details\n\n"
-    fi
-    # Navigate back to top-level directory
-    cd ..
+    # Navigate back to working directory
+    cd ${RunDirs}
 
     printf "\n=== DONE CREATING TEMPLATE RUN DIRECTORY ===\n"
 }
