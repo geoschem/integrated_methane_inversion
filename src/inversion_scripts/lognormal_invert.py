@@ -148,11 +148,11 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # To account for this we convert xa to a median. This can be done by
         # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
         # Here, we calculate this scaling factor
-        prior_scale = 1 / np.exp((np.log(float(sa)) ** 2) / 2)
+        mean_to_median = 1 / np.exp((np.log(float(sa)) ** 2) / 2)
 
         # split K based on whether we are solving for lognormal or normal elements
         # K_ROI is the matrix for the lognormal elements (the region of interest)
-        # the lognormal part of K gets scaled by prior_scale to convert to median
+        # the lognormal part of K gets scaled by mean_to_median to convert to median
         K_ROI = K_temp[:, :-num_normal_elems]
         K_normal = K_temp[:, -num_normal_elems:]
         K_full = np.concatenate((K_ROI, K_normal), axis=1)
@@ -163,7 +163,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # Note: the resulting xa vector has lognormal elements until the
         # final Buffer, BCs, and OH elements
         xa = np.ones((n, 1)) * 1.0
-        lnxa = np.log(xa * prior_scale) # convert to median
+        lnxa = np.log(xa * mean_to_median) # convert to median
 
         # Create normal elements for buffer, BCs, and OH
         # BC elements are relative to 0 because they are in concentration space
@@ -249,7 +249,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # Initializing the mean of xn
         xnmean = np.concatenate(
-            (np.exp(lnxn[:-num_normal_elems]) / prior_scale, lnxn[-num_normal_elems:]),
+            (np.exp(lnxn[:-num_normal_elems]) / mean_to_median, lnxn[-num_normal_elems:]),
             axis=0,
         )   
     
@@ -299,11 +299,11 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             xn = np.concatenate(
                 (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]), axis=0
             )
-            # Hancock et al. 2025, Eq. 6
+            # Based on Hancock et al. 2025, Eq. 6, but without the median-mean scale for the prior
             xnmean = np.concatenate(
                 (
                     xn[:-num_normal_elems]
-                    * np.expand_dims(np.exp(dlns * (0.5)) * prior_scale, axis=1),
+                    * np.expand_dims(np.exp(dlns * (0.5)), axis=1),
                     xn[-num_normal_elems:],
                 )
             )
