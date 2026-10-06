@@ -10,7 +10,6 @@ from pathlib import Path
 from collections import defaultdict, deque
 from src.inversion_scripts.utils import (
     load_obj,
-    calculate_superobservation_error,
     ensure_float_list,
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
@@ -212,6 +211,7 @@ def do_inversion(
     StateVectorFile=None,
     verbose=False,
     prebuilt_prior_err_covariance=False,
+    bc_bias=0,
 ):
     """
     After running jacobian.py, use this script to perform the inversion and save out results.
@@ -370,34 +370,19 @@ def do_inversion(
                 continue
             obs_GC = obs_GC[obs_ind, :]
 
-        # weight obs_err based on the observation count to prevent overfitting
-        # Note: weighting function defined by Zichong Chen for his
-        # middle east inversions. May need to be tuned based on region.
-        # From Chen et al. 2023:
-        # "Satellite quantification of methane emissions and oil/gas methane
-        # intensities from individual countries in the Middle East and North
-        # Africa: implications for climate action"
-        s_superO_1 = calculate_superobservation_error(obs_err, 1)
-        s_superO_p = np.array(
-            [
-                calculate_superobservation_error(obs_err, p) if p >= 1 else s_superO_1
-                for p in obs_GC[:, 4]
-            ]
-        )
-        # Define observational errors (diagonal entries of S_o matrix)
-        obs_error = np.power(obs_err, 2)
-        gP = s_superO_p**2 / s_superO_1**2
-        # scale error variance by gP
-        obs_error = gP * obs_error
-
-        # check to make sure obs_err isn't negative, set 1 as default value
-        obs_error = [obs if obs > 0 else 1 for obs in obs_error]
+        satellite_product = get_satellite_product(config["SatelliteProduct"])
+        obs_error: np.ndarray = satellite_product.superobservation_error(obs_err, obs_GC)
 
         # Jacobian entries for observations within bounds [ppb]
         if jacobian_sf is None:
             K = 1e9 * dat["K"][ind, :]
         else:
             K = 1e9 * dat_ref["K"][ref_ind, :]
+
+        # correct the prior simulation's observation by the boundary condition enhancement
+        if optimize_bc:
+            bc_correction = np.array([bc_bias] * 4)
+            obs_GC[:,1] = obs_GC[:,1] + np.matmul(K[:,-4:], bc_correction)
 
         # Number of observations
         if verbose:
@@ -503,6 +488,10 @@ def do_inversion(
             xhat[-2:] += 1
             print(f"xhat[OH] = {xhat[-2:]}")
 
+    # update posterior BC "scale factors" with bias
+    if optimize_bc:
+        xhat[-4:] = xhat[-4:] + bc_bias
+
     # Posterior error covariance matrix (use unweighted Sa)
     S_post = np.linalg.inv(gamma * KTinvSoK + inv_Sa)
 
@@ -548,6 +537,7 @@ def do_inversion_ensemble(
     prior_errs_bc,
     prior_errs_oh,
     is_Regional,
+    bc_bias,
     OptimizeSoil=False,
     prior_ds=None,
     StateVectorFile=None,
@@ -604,6 +594,7 @@ def do_inversion_ensemble(
                 StateVectorFile,
                 verbose=False,
                 prebuilt_prior_err_covariance=prebuilt_prior_err_covariance,
+                bc_bias=bc_bias,
             )
         )
         results_dict["KTinvSoK"].append(KTinvSoK)
@@ -744,6 +735,7 @@ if __name__ == "__main__":
     prior_err_BC = ensure_float_list(prior_err_BC)
     prior_err_OH = ensure_float_list(prior_err_OH)
     prebuilt_prior_err_covariance = config["OffDiagonalPriorCov"]
+    bc_bias = config["BCBias"]
     
     OptimizeSoil = config["OptimizeSoil"]
     if OptimizeSoil:
@@ -789,6 +781,7 @@ if __name__ == "__main__":
         prior_err_BC,
         prior_err_OH,
         is_Regional,
+        bc_bias,
         OptimizeSoil,
         prior_ds,
         StateVectorFile,

@@ -22,7 +22,7 @@ from src.inversion_scripts.utils import (
     sum_total_emissions,
     plot_field,
     plot_field_gchp, # note we need to set vmin and vmax to make it proper for all cubic faces
-    calculate_superobservation_error,
+    calculate_tropomi_superobservation_error,
     species_molar_mass,
     mixing_ratio_conv_factor,
     get_mean_emissions,
@@ -991,18 +991,19 @@ def estimate_averaging_kernel(
     sA = sigmaA * emissions_kgs_per_m2
     sO = config["ObsError"][0] if isinstance(config["ObsError"], list) else config["ObsError"]
 
+    # TODO: should we update this to use the satellite product's superobservation error calculation instead of the TROPOMI-specific one?
     # Calculate superobservation error to use in averaging kernel sensitivity equation
     # from P observations per grid cell = number of observations per grid cell / number of super-observations
     # P is number of observations per grid cell (native state vector element)
     P = np.array(num_obs) / m_superi
     P = np.nan_to_num(P)  # replace nan with 0
-    s_superO_1 = calculate_superobservation_error(
+    s_superO_1 = calculate_tropomi_superobservation_error(
         sO, 1
     )  # for handling cells with 0 observations (avoid divide by 0)
 
     # list containing superobservation error per state vector element
     s_superO_p = [
-        calculate_superobservation_error(sO, element) if element >= 1.0 else s_superO_1
+        calculate_tropomi_superobservation_error(sO, element) if element >= 1.0 else s_superO_1
         for element in P
     ]
     s_superO = np.array(s_superO_p) / mixing_ratio_conv_factor(species) # convert to mixing ratio

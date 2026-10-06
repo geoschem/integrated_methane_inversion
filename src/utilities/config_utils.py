@@ -97,6 +97,7 @@ def normalize_config(config):
 
     # NOTE: we default to using GOOPy for all inversions, but users can turn it off if GOOPy doesn't work yet for their use case
     cfg.setdefault("UseGOOPy", True)
+    cfg.setdefault("BCBias", 0)
 
     return cfg
 
