@@ -137,7 +137,7 @@ PriorErrorBCs: [10.0]
 PriorErrorBufferElements: [0.5]
 ObsError: [15]
 Gamma: [1.0]
-BCBias: 0
+BCBias: 0 # in ppb
 PrecomputedJacobian: false
 OffDiagonalPriorCov: false
 LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true
