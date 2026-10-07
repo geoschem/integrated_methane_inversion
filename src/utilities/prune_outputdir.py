@@ -67,11 +67,20 @@ OUTPUTDIR_FILE_RE = re.compile(
     r"^GEOSChem\..+\.(\d{8})_0000z\.nc4$"
 )
 
-# gcchem_internal_checkpoint.YYYYMMDD_0000z.nc4 -- deliberately the same
-# pattern get_shared_end_date reads, so the set pruned here is exactly the set
+### gcchem_internal_checkpoint.YYYYMMDD_0000z.nc4 -- deliberately the same
+### pattern get_shared_end_date reads, so the set pruned here is exactly the set
+### S is derived from, and keeping the newest preserves S unchanged.
+##CHECKPOINT_FILE_RE = re.compile(
+##    r"^gcchem_internal_checkpoint\.(\d{8})_0000z\.nc4$"
+##)
+
+# Either gcchem_internal_checkpoint.YYYYMMDD_0000z.nc4 or
+# GEOSChem.Restart.YYYYMMDD_0000z.cN.nc4 -- deliberately the same
+# patterns get_shared_end_date reads, so the set pruned here is exactly the set
 # S is derived from, and keeping the newest preserves S unchanged.
 CHECKPOINT_FILE_RE = re.compile(
-    r"^gcchem_internal_checkpoint\.(\d{8})_0000z\.nc4$"
+    r"^(?:GEOSChem\.Restart|gcchem_internal_checkpoint)"
+    r"\.(\d{8})_0000z(?:\.c\d+)?\.nc4$"
 )
 
 # <stage>_complete.<StartDate>_S<shared_end_date>. The second field is the
@@ -333,12 +342,22 @@ def collect_stale_checkpoints(run_dirs, run_name, shared_end_date, keep):
         except (FileNotFoundError, NotADirectoryError, PermissionError):
             continue
 
+        #dated = []
+        #for name in entries:
+        #    match = CHECKPOINT_FILE_RE.match(name)
+        #    if match:
+        #        dated.append((match.group(1), name))
         dated = []
         for name in entries:
+            if os.path.islink(os.path.join(restarts_dir, name)):
+                # Never prune links. The initial restart GEOSChem.Restart.<StartDate>
+                # is a link to a shared file, needed to rerun from the start, and
+                # now matches the pattern.
+                continue
             match = CHECKPOINT_FILE_RE.match(name)
             if match:
                 dated.append((match.group(1), name))
-
+        
         # Filenames sort chronologically.
         dated.sort()
 

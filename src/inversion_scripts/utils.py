@@ -22,6 +22,14 @@ from src.inversion_scripts.classify_TROPOMI_obs_to_CSgrids import(
 )
 import tempfile
 
+# Two names are accepted for estart files written by the GCHP run scripts.
+#   (1) GEOSChem.Restart.YYYYMMDD_0000z.c<N>.nc4       : standard GCHP name
+#   (2) gcchem_internal_checkpoint.YYYYMMDD_0000z.nc4  : name used by older IMI run scripts
+CHECKPOINT_FILE_RE = re.compile(
+    r"^(?:GEOSChem\.Restart|gcchem_internal_checkpoint)"
+    r"\.(\d{8})_0000z(?:\.c\d+)?\.nc4$"
+)
+
 def get_shared_end_date(
     jacobian_root: str,
     run_name: str,
@@ -30,8 +38,8 @@ def get_shared_end_date(
     """
     Return the minimum of the latest checkpoint dates from all Jacobian runs.
 
-    A run without a valid checkpoint is assigned start_date. If the final
-    returned date is less than or equal to start_date, raise an error.
+    A run with no restart file later than start_date is considered start_date.
+    If the final returned date is less than or equal to start_date, an error is raised.
     """
     run_pattern = os.path.join(jacobian_root, f"{run_name}_*")
 
@@ -46,27 +54,33 @@ def get_shared_end_date(
             f"No Jacobian run directories found matching: {run_pattern}"
         )
 
-    filename_regex = re.compile(
-        r"^gcchem_internal_checkpoint\.(\d{8})_0000z\.nc4$"
-    )
-
-    latest_dates = []
+    # Comment this out since replacing with accepting either of two
+    # valid restart file formats
+    #filename_regex = re.compile(
+    #    r"^gcchem_internal_checkpoint\.(\d{8})_0000z\.nc4$"
+    #)
 
     for run_dir in run_dirs:
         restart_dir = os.path.join(run_dir, "Restarts")
         checkpoint_dates = []
-
+        latest_dates = []
         if os.path.isdir(restart_dir):
-            for file_path in glob.glob(
-                os.path.join(
-                    restart_dir,
-                    "gcchem_internal_checkpoint.????????_0000z.nc4",
-                )
-            ):
-                match = filename_regex.match(os.path.basename(file_path))
-
+            for name in os.listdir(restart_dir):
+                match = CHECKPOINT_FILE_RE.match(name)
                 if match:
                     checkpoint_dates.append(match.group(1))
+
+        #if os.path.isdir(restart_dir):
+        #    for file_path in glob.glob(
+        #        os.path.join(
+        #            restart_dir,
+        #            "gcchem_internal_checkpoint.????????_0000z.nc4",
+        #        )
+        #    ):
+        #        match = filename_regex.match(os.path.basename(file_path))
+        #
+        #        if match:
+        #            checkpoint_dates.append(match.group(1))
 
         latest_dates.append(
             max(checkpoint_dates) if checkpoint_dates else start_date
