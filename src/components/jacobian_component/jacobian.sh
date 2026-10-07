@@ -557,11 +557,16 @@ run_jacobian() {
     # need to re-copy since config vars are
     # hardcoded and redojacobian might have changed
     cp ${InversionPath}/src/geoschem_run_scripts/run_jacobian_simulations.sh jacobian_runs/
+    # Check completion against the current period when resuming a Kalman run.
+    local completion_end_date="$EndDate"
+    if "$KalmanMode"; then
+        completion_end_date="$EndDate_i"
+    fi
     sed -i -e "s:{RunName}:${RunName}:g" \
         -e "s:{InversionPath}:${InversionPath}:g" \
         -e "s:{KalmanMode}:${KalmanMode}:g" \
         -e "s:{StartDate}:${StartDate}:g" \
-        -e "s:{EndDate}:${EndDate}:g" \
+        -e "s:{EndDate}:${completion_end_date}:g" \
         -e "s:{UseGCHP}:${UseGCHP}:g" \
         -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
     if [[ "$SchedulerType" == "PBS" ]]; then
