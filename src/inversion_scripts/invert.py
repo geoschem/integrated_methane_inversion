@@ -92,6 +92,13 @@ def build_prior_covariance(
         with np.load(covariance_path) as prebuilt:
             Sa_prebuilt = prebuilt["covariance"]
             state_vector_ids_prebuilt = prebuilt["state_vector_ids"]
+            # Per-element prior-error amplitude written by the aggregate_preserving builder; the
+            # length-scale builder omits it (uniform PriorError), so default to None (no rescale).
+            sigma_scale_prebuilt = (
+                np.asarray(prebuilt["sigma_scale"], dtype=float)
+                if "sigma_scale" in prebuilt.files
+                else None
+            )
 
         expected_state_vector_ids = get_expected_state_vector_ids(StateVectorFile)
         state_vector_ids_prebuilt = np.asarray(state_vector_ids_prebuilt, dtype=np.int32)
@@ -125,6 +132,9 @@ def build_prior_covariance(
             prior_ds=prior_ds,
             StateVectorFile=StateVectorFile,
         )
+        # Apply the optional per-element sigma amplitude from the builder, if present.
+        if sigma_scale_prebuilt is not None:
+            sigma_prebuilt = sigma_prebuilt * sigma_scale_prebuilt[:Sa_prebuilt_elems]
         # The prebuilt matrix stores only the normalized covariance structure, so we
         # apply sigma_i * sigma_j here. This reduces to a scalar prior_err**2 factor
         # when all sigmas are the same, but supports element-wise prior_err_new values.

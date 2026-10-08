@@ -5,15 +5,46 @@
 #       path_to_state_vector_file: path to state vector netcdf file
 #       jacobian_sf: (optional) path to numpy array of scale factors for jacobian
 
+import os
 import sys
 from itertools import product
 import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
-#from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
 from src.utilities.config_utils import load_config
+
+
+def build_lognormal_prior_cov(config, sa, n):
+    """Log-space prior covariance (n, n) for the lognormal ROI elements, and the per-element mean->median
+    shift prior_scale = exp(-diag(lnSa) / 2). When OffDiagonalPriorCov is set, convert the aggregate_preserving
+    covariance (prior_norm_error_covariance.npz) to log space via Sigma_ln = ln(1 + Sa_rel), with
+    Sa_rel = diag(sigma) C diag(sigma) and sigma = PriorError * sigma_scale -- the relationship that makes a
+    lognormal scale factor reproduce the same arithmetic relative covariance -- then repair to nearest PSD.
+    Otherwise fall back to a uniform diagonal prior (PriorError as a geometric std)."""
+    use_btr = str(config.get("OffDiagonalPriorCov", False)).strip().lower() in ("true", "1", "yes")
+    if use_btr and os.path.exists("prior_norm_error_covariance.npz"):
+        with np.load("prior_norm_error_covariance.npz") as d:
+            C = np.asarray(d["covariance"], dtype=float)                 # unit-diagonal correlation
+            sigma_scale = (np.asarray(d["sigma_scale"], dtype=float)
+                           if "sigma_scale" in d.files else np.ones(C.shape[0], dtype=float))
+        if C.shape[0] < n or sigma_scale.shape[0] < n:
+            raise ValueError(
+                f"Prebuilt prior covariance ({C.shape[0]}) smaller than the lognormal ROI block ({n})."
+            )
+        C = C[:n, :n]                                                    # ROI (non-buffer) block, sorted-id order
+        sigma_rel = float(sa) * sigma_scale[:n]                          # per-element relative sigma
+        Sa_rel = (sigma_rel[:, None] * C) * sigma_rel[None, :]           # relative (scale-factor) covariance
+        lnSa = np.log1p(Sa_rel)                                          # Sigma_ln = ln(1 + Sa_rel)
+        lnSa = 0.5 * (lnSa + lnSa.T)                                     # symmetrise
+        w, V = np.linalg.eigh(lnSa)                                      # nearest-PSD repair in log space
+        lnSa = (V * np.clip(w, 1.0e-10, None)) @ V.T
+        print(f"  lognormal prior: converted aggregate_preserving Sa_rel -> log space via ln(1+Sa_rel) (n={n})")
+    else:
+        lnSa = (np.log(float(sa)) ** 2) * np.eye(n)                      # diagonal; PriorError as a geometric std
+    prior_scale = np.exp(-0.5 * np.diag(lnSa))                          # per-element mean->median shift
+    return lnSa, prior_scale
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -138,17 +169,18 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             "prior_err_oh": sa_oh,
             "prior_err_buffer": sa_buffer,
         }
-        # The levenberg-marquardt method assumes that the prior emissions is
-        # the median prior emissions, but typically priors are the mean emission.
-        # To account for this we convert xa to a median.
-        # Here, we calculate this scaling factor
-        mean_to_median = 1 / np.exp((np.log(float(sa)) ** 2) / 2)
-
         # m is obs dimension
         # N is state vector dimension
         # n is number of state vector elements minus normal elements
         m, N = K_full.shape
         n = N - num_normal_elems
+
+        # The levenberg-marquardt method assumes the prior is the median emission, but priors are typically
+        # the mean. We convert to the median with a per-element shift mean_to_median = exp(-diag(lnSa)/2),
+        # and take the log-space ROI prior lnSa_ROI (dense when OffDiagonalPriorCov is set) from the same
+        # source. Both reduce to the scalar 1/exp(ln(sa)^2/2) and a diagonal ln(sa)^2 prior otherwise.
+        lnSa_ROI, mean_to_median = build_lognormal_prior_cov(config, sa, n)
+        mean_to_median = mean_to_median.reshape(n, 1)
 
         # Create base xa and lnxa matrices
         # Note: the resulting xa vector has lognormal elements until the
@@ -172,11 +204,6 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # get the So matrix
         so = so_dict[so_key]
-
-        # Create lnSa matrix
-        # lnsa = lnsa_val**2 * np.ones((n, 1))
-        lnsa_val = np.log(sa)
-        lnsa = lnsa_val**2 * np.ones((n, 1))
 
         # For the buffer elems, BCs, and OH elements
         # we apply a different Sa value
@@ -205,15 +232,15 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             sa_normal = base_sa_normal.copy()
             sa_normal_constraint = base_sa_normal.copy()
 
-        # concatenate lognormal prior errors with normal prior errors
-        lnsa_arr = np.concatenate((lnsa, sa_normal), axis=0)
-        lnsa_arr_constraint = np.concatenate((lnsa, sa_normal_constraint), axis=0)
-
-        # Create two separate lnSa matrices
-        lnsa = np.zeros((n + num_normal_elems, n + num_normal_elems))
-        lnsa_constraint = lnsa.copy()
-        np.fill_diagonal(lnsa, lnsa_arr)  # unweighted
-        np.fill_diagonal(lnsa_constraint, lnsa_arr_constraint)  # weighted
+        # Assemble lnSa: the dense ROI block (lnSa_ROI) with the normal elements on the diagonal.
+        ntot = n + num_normal_elems
+        norm = np.arange(n, ntot)
+        lnsa = np.zeros((ntot, ntot))
+        lnsa_constraint = np.zeros((ntot, ntot))
+        lnsa[:n, :n] = lnSa_ROI
+        lnsa_constraint[:n, :n] = lnSa_ROI
+        lnsa[norm, norm] = sa_normal.flatten()  # unweighted
+        lnsa_constraint[norm, norm] = sa_normal_constraint.flatten()  # weighted
         invlnsa = np.linalg.inv(lnsa)
         invlnsa_constraint = np.linalg.inv(lnsa_constraint)
 
