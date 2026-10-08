@@ -136,8 +136,18 @@ PriorErrorBufferElements: [0.5]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
-OffDiagonalPriorCov: false
-LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true
+OffDiagonalPriorCov: false  ## use a correlated (off-diagonal) prior error covariance; construction set by PriorCovarianceMethod
+LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true with PriorCovarianceMethod: length_scale
+## PriorCovarianceMethod options (used when OffDiagonalPriorCov is true):
+##   aggregate_preserving (default)  holds each sector's regional aggregate uncertainty fixed across grid
+##                                   resolution: a fully-correlated term + a grid-scale term for anthropogenic
+##                                   sectors, and model-ensemble + Saunois-floor blocks for naturals
+##                                   (Hancock et al., in prep)
+##   length_scale                    spatial decay x emission-sector cosine similarity (Balasus et al. 2026)
+PriorCovarianceMethod: aggregate_preserving
+DefaultDomainPriorUncertainty: 0.3   ## aggregate_preserving: target prior error per sector (0.3 = 30%); per-country if RespectCountryBorders
+PriorErrorGridRatio: 2.5             ## aggregate_preserving: how much a single grid cell's error may exceed the sector aggregate
+RespectCountryBorders: false         ## aggregate_preserving: true -> correlate within each country separately (nearest country per cell)
 UseGOOPy: true ## only turn off GOOPy if it's not yet compatible with your IMI configuration; this should not be necessary for most users
 
 ## Setup modules

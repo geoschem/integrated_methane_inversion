@@ -124,11 +124,21 @@ if "$EnableOSSE"; then
 fi
 
 #=======================================================================
-# Optionally build prior error covariance matrix with off-diagonal 
-# elements based on specified length scale
+# Optionally build an off-diagonal prior error covariance matrix. The
+# PriorCovarianceMethod config key selects the construction:
+#   aggregate_preserving (default) - two-component anthropogenic blocks (domain-wide
+#                            30% by default; per-country with RespectCountryBorders)
+#                            + wetland model-ensemble + generic correlated naturals
+#   length_scale           - spatial decay x emission-sector cosine similarity
 #=======================================================================
 if "$OffDiagonalPriorCov"; then
-    python build_full_prior_covariance.py $StateVectorFile $PriorEmisDir $LengthScalePriorCov $StartDate $EndDate $nBufferClusters; wait
+    PriorCovConfig="${OutputPath}/${RunName}/config_${RunName}.yml"
+    PriorCovarianceMethod="${PriorCovarianceMethod:-aggregate_preserving}"
+    if [[ "$PriorCovarianceMethod" == "aggregate_preserving" ]]; then
+        python build_prior_covariance.py $StateVectorFile $PriorEmisDir $PriorCovConfig $StartDate $EndDate $nBufferClusters $invPath; wait
+    else
+        python build_full_prior_covariance.py $StateVectorFile $PriorEmisDir $LengthScalePriorCov $StartDate $EndDate $nBufferClusters; wait
+    fi
 fi
 
 #=======================================================================
