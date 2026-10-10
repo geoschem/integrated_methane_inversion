@@ -1,11 +1,21 @@
 #!/bin/bash
-echo "running {END} jacobian simulations" >> {InversionPath}/imi_output.log
+if ! jacobian_pending_ids=$(bash ./run_jacobian_simulations.sh --list-pending {START} {END}); then
+    echo "ERROR: Failed to inspect Jacobian outputs before submission." >&2
+    exit 1
+fi
 
 # remove error status file if present
 rm -f .error_status_file.txt
 
+if [[ -z $jacobian_pending_ids ]]; then
+    echo "All Jacobian simulations are complete; no array submitted." | tee -a {InversionPath}/imi_output.log
+    # This script is normally sourced by run_jacobian, but can also be executed.
+    return 0 2>/dev/null || exit 0
+fi
+echo "Submitting Jacobian simulations: $jacobian_pending_ids" | tee -a {InversionPath}/imi_output.log
+
 if [[ $SchedulerType = "slurm" || $SchedulerType = "tmux" ]]; then
-    if ! jacobian_submission=$(sbatch --parsable --array={START}-{END}{JOBS} --mem $RequestedMemory \
+    if ! jacobian_submission=$(sbatch --parsable --array="${jacobian_pending_ids}{JOBS}" --mem $RequestedMemory \
         -c $RequestedCPUs \
         -N 1 \
         -t $RequestedTime \
@@ -45,7 +55,7 @@ if [[ $SchedulerType = "slurm" || $SchedulerType = "tmux" ]]; then
         sleep 30
     done
 elif [[ $SchedulerType = "PBS" ]]; then
-    qsub -J {START}-{END}{JOBS} \
+    qsub -J "${jacobian_pending_ids}{JOBS}" \
         -lselect=1:ncpus=$RequestedCPUs:mem="$RequestedMemory":model=ivy \
         -l walltime=$RequestedTime \
         -l site=needed=$SitesNeeded \

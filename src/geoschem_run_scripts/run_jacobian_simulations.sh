@@ -3,7 +3,6 @@
 
 is_valid_nc() {
     local file="$1"
-    local yyyymmdd="$2"
 
     # Validate file structure
     if ! ncks -m "$file" > /dev/null 2>&1; then
@@ -23,6 +22,37 @@ is_valid_nc() {
 
     return 0
 }
+
+# Used both before submission and by workers. EndDate is exclusive and is
+# rendered for the current Kalman period when this script is copied.
+if {ReDoJacobian}; then
+    if ! last_date=$(date -d "{EndDate} -1 day" +%Y%m%d); then
+        echo "Cannot determine the last Jacobian output date." >&2
+        exit 1
+    fi
+    LastConcFile="GEOSChem.SpeciesConc.${last_date}_0000z.nc4"
+fi
+
+jacobian_is_complete() {
+    {ReDoJacobian} && is_valid_nc "$1/OutputDir/$LastConcFile"
+}
+
+# Print only the comma-separated array indices to stdout. No model runs or
+# error-marker changes occur in this mode. Keep original IDs (do not renumber).
+if [[ ${1:-} == --list-pending ]]; then
+    pending_ids=""
+    for ((candidate=$2; candidate<=$3; candidate++)); do
+        # this line does not print to stdout, rather it defines the candidate_name variable
+        printf -v candidate_name '{RunName}_%04d' "$candidate"
+        if jacobian_is_complete "$candidate_name"; then
+            echo "Not submitting completed Jacobian simulation: $candidate_name" >&2
+        else
+            pending_ids="${pending_ids:+${pending_ids},}${candidate}"
+        fi
+    done
+    printf '%s\n' "$pending_ids"
+    exit 0
+fi
 
 ### Run directory
 RUNDIR=$(pwd -P)
@@ -57,11 +87,7 @@ if {ReDoJacobian}; then
     # check for last conc file
     # it has 24 timestep
     # check if it is valid and has 24 entries of time
-    yyyymmdd={EndDate}
-    last_date=$(date -d "${yyyymmdd} -1 day" +%Y%m%d)
-    LastConcFile="GEOSChem.SpeciesConc.${last_date}_0000z.nc4"
-
-    if is_valid_nc "OutputDir/$LastConcFile"; then
+    if jacobian_is_complete .; then
         echo "Not re-running jacobian simulation: ${xstr}"
         exit 0
     else
