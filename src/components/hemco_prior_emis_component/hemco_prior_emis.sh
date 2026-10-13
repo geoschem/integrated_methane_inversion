@@ -177,11 +177,58 @@ run_hemco_sa() {
     # check if exited with non-zero exit code
     [ ! -f ".error_status_file.txt" ] || imi_failed $LINENO hemco_prior_emis.sh
 
-    # Remove soil absorption uptake from total emissions
+    # Remove soil absorption from total emissions: all daily files in one python process
+    # (xarray imported once), parallelized across cores. Per-file logic matches exclude_soil_sink.
     pushd OutputDir
-    for file in HEMCO_sa_diagnostics*.nc; do
-        exclude_soil_sink $file $file
-    done
+    python - <<'PY'
+import glob, os, warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+import xarray as xr
+
+
+def _exclude_soil_sink(f):
+    emis = xr.load_dataset(f, decode_times=False)
+    emis["EmisCH4_Total_ExclSoilAbs"] = emis["EmisCH4_Total"] - emis["EmisCH4_SoilAbsorb"]
+    emis["EmisCH4_Total_ExclSoilAbs"].attrs = emis["EmisCH4_Total"].attrs.copy()
+    emis["EmisCH4_Total_ExclSoilAbs"].encoding = emis["EmisCH4_Total"].encoding.copy()
+    if "time" in emis.coords:
+        original_units = emis["time"].attrs.get("units", "")
+        if "since " in original_units:
+            idx = original_units.index("since ") + len("since ")
+            date_part = original_units[idx:idx + 10]
+            unit_part = original_units.split(" since")[0]
+            emis["time"].attrs.clear()
+            emis["time"].attrs["standard_name"] = "time"
+            emis["time"].attrs["long_name"] = "Time"
+            emis["time"].attrs["units"] = f"{unit_part} since {date_part} 00:00:00"
+            emis["time"].attrs["calendar"] = "standard"
+            emis["time"].attrs["axis"] = "T"
+    keep_vars = [
+        v for v in emis.data_vars
+        if any(kw in v.lower() for kw in ["time", "lon", "lat", "area"]) or v.startswith("Emis")
+    ]
+    emis = emis[keep_vars]
+    for attr in ["stretch_factor", "target_lat", "target_lon"]:
+        if attr in emis.attrs:
+            emis.attrs[attr.upper()] = emis.attrs.pop(attr)
+    tmp = f + ".tmp_exclsoil"
+    emis.to_netcdf(tmp)
+    os.replace(tmp, f)
+
+
+if __name__ == "__main__":
+    files = sorted(glob.glob("HEMCO_sa_diagnostics*.nc"))
+    ncpu = int(os.environ.get("SLURM_CPUS_PER_TASK") or 0) or (os.cpu_count() or 1)
+    nproc = max(1, min(ncpu, len(files)))
+    if nproc > 1 and len(files) > 1:
+        from multiprocessing import Pool
+        with Pool(nproc) as pool:
+            pool.map(_exclude_soil_sink, files)
+    else:
+        for f in files:
+            _exclude_soil_sink(f)
+PY
     popd
     popd
     set +e
