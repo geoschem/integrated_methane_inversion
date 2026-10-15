@@ -217,9 +217,10 @@ echo "setup_gchp_imi_jacobian.sh: All GCHP executables found. Submitting the rem
 #--------------------------------------------------------------------------
 for ((i_face=start_face+1; i_face<=num_faces; i_face++)); do
     face_name=$(face_name_for ${i_face})
-    sbatch -p "${setup_partition}" -c "${face_cores}" \
-        --mem="${face_mem}" -t "${face_time}" \
-        -o "${test_dir}/logs/setup_${face_name}.log" \
-        setup_face.sh "${face_name}"
+    sbatch -p "${setup_partition}" \
+	   -c "${face_cores}" \
+           -t "${face_time}" \
+           -o "${test_dir}/logs/setup_${face_name}.log" \
+           setup_face.sh "${face_name}"
 done
 echo "setup_gchp_imi_jacobian.sh: Done. Check progress with: tail -n 1 ${test_dir}/*/setup_status"

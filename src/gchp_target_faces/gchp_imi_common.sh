@@ -21,7 +21,6 @@ max_num_tracers=200 # Do not change!
 # The IMI does not allow setting up again if the directory already exists.
 setup_partition=ondem4cpu # Put partition name here
 face_cores=4
-face_mem=15000M
 face_time=0-0:30
 
 # For Jacobian runs. These override the #SBATCH lines in

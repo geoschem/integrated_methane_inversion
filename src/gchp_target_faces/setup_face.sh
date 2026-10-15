@@ -23,7 +23,6 @@ set -e
 # directory it was submitted from.
 source "${SLURM_SUBMIT_DIR:-$(dirname "$0")}/gchp_imi_common.sh"
 
-
 face_name=$1
 face_dir="${test_dir}/${face_name}"
 config="${config_dir}/config_${face_name}.yml"   # relative to imi_dir

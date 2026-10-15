@@ -28,7 +28,7 @@ NUM_CORES_PER_NODE: 48
 ## (src/geoschem_run_scripts/gchp_ch4_run_spot.template). It uses standard
 ## GCHP restart names, restarts from the newest checkpoint after a spot
 ## interruption, and can also be submitted directly with sbatch.
-UseSpotRunScript: true
+UseSpotRunScript: false
 
 ## Period of interest
 StartDate: 20250101
@@ -206,7 +206,7 @@ DoPosterior: false
 ##
 ## Where the filesystem exports its own deletes (FSx with a DELETED autoexport
 ##  policy), this is all that is needed to shrink the archive too.
-PruneOutputDir: true
+PruneOutputDir: false
 
 ## IMI preview
 ##   NOTE: RunSetup must be true to run preview
