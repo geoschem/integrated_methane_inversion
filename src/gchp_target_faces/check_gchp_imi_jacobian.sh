@@ -1,159 +1,94 @@
 #!/bin/bash
 
-# Use this bash script to submit N number of Jacobian run slurm jobs for a
-# target end date. If end date is reached for all Jacobian run directories then
-# no more jobs are submitted. To control how many jobs are run at once, set up
-# the pcluster partition (queue) to specify max number of jobs.
+# Print the status of every Jacobian run directory for the target faces set
+# in gchp_imi_common.sh, then a summary. Usage:
+#   ./check_gchp_imi_jacobian.sh <end_date YYYYMMDD> <max_days>
+#
+# Status of each run (see run_status in gchp_imi_common.sh):
+#   DONE            cap_restart has reached the end date
+#   ACTIVE          a job for the run is pending or running in Slurm
+#   READY           can be submitted
+#   FAILED          the last job wrote FAILED to job_status. See the run log.
+#   NO_CAP_RESTART  cap_restart is missing. Investigate the run directory.
+#
+# Exits with an error if a READY run would need more than max_days to reach
+# the end date, since that usually means a typo in the arguments.
 
-#------------------------------------------------------------------
-# Assign arguments
-#-----------------------------------------------------------------
+set -e
+cd "$(dirname "$0")"
+source ./gchp_imi_common.sh
 
-if [ "$#" -ne 3 ]; then
-    echo -e "\nERROR: Exactly 3 arguments are required. You passed $#.\n"
-    echo "Usage: $0 <YYYYMMDD> <max_duration_days> <test_name>"
+#------------------------------------------------------
+# Check arguments
+#------------------------------------------------------
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <end_date YYYYMMDD> <max_days>"
     exit 1
 fi
-
 end_date=$1
-max_duration=$2
-test_name=$3  # e.g. Instance_tests_400tracer_2025_C36S10
+max_days=$2
 
-#-----------------------------------------
-# Set Directories
-#-----------------------------------------
-
-# Must be set up prior to running this script, using setup_gchp_imi_jacobian.sh
-main_dir=/home/ec2-user/fsx/${test_name}
-
-# Expected directory name prefix
-face_dir_prefix=Global_1yr_2025_C36S10
-
-#------------------------------------------------------
-# Do argument checks
-#------------------------------------------------------
-
-# Check that test directory exists
-if [ ! -d "$main_dir" ]; then
-    echo -e "\nERROR: Test directory $main_dir does not exist\n"
-elif [[ ! "${end_date}" =~ ^[0-9]{8}$ ]]; then
-    echo -e "\nERROR: First argument '${end_date}' must be an 8-digit integer (YYYYMMDD).\n" >&2
+if [[ ! -d "${test_dir}" ]]; then
+    echo "ERROR: Test directory ${test_dir} does not exist"
     exit 1
-elif ! date -d "${end_date}" >/dev/null 2>&1; then
-    echo -e "\nERROR: First argument '${end_date}' is not a valid calendar date.\n" >&2
+elif [[ ! "${end_date}" =~ ^[0-9]{8}$ ]] || ! date -d "${end_date}" >/dev/null 2>&1; then
+    echo "ERROR: End date '${end_date}' is not a valid date YYYYMMDD"
     exit 1
-elif [[ ! "${max_duration}" =~ ^-?[0-9]+$ ]]; then
-    echo -e "\nERROR: Second argument '${max_duration}' is not a valid integer.\n" >&2
+elif [[ ! "${max_days}" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: Maximum days '${max_days}' is not a valid integer"
     exit 1
 fi
 
-#-----------------------------------------------
-# Do individual run directory checks in loop
-#-----------------------------------------------
+#------------------------------------------------------
+# Loop over target faces and their Jacobian runs
+#------------------------------------------------------
+active=$(active_run_dirs)
+num_done=0; num_active=0; num_ready=0; num_failed=0; num_other=0; num_too_long=0
 
-# Initialize stats to track
-num_active_runs=0
-num_runs_ready_to_submit=0
-num_runs_already_done=0
-num_runs=0
-
-# Option to check only the first N runs
-N=957
-
-# Loop over target faces
-echo -e "\nChecking status of all jacobian run directories"
-cd ${main_dir}
-for face_dir in ${face_dir_prefix}_*; do
-    face_id="${face_dir##*_}"
-    cd ${main_dir}/${face_dir}/jacobian_runs
-
-    # Loop over jacobian runs for this target face
-    for jac_dir in ${face_dir_prefix}_*; do
-
-	# Break out if reached N runs (configured before loop)
-	((num_runs++))
-	if (( num_runs > N )); then
-            echo "Limit of $N runs reached. Exiting run directory loop."
-            break 2
-	fi
-	
-	run_id="${jac_dir##*_}"
-	cd ${main_dir}/$face_dir/jacobian_runs/${jac_dir}
-	echo "   ID ${face_id}_${run_id}: "
-
-        #--------------------------------------------------------------------------------
-        # If latest restart file date >= end date, increment num_runs_already_done
-	#--------------------------------------------------------------------------------
-	latest_file=$(ls -1 ./Restarts/GEOSChem.Restart.*_0000z.c36.nc4 2>/dev/null | tail -n 1)
-	if [ -n "$latest_file" ]; then
-	    filename=$(basename "$latest_file")
-	    file_date="${filename:17:8}"
-	    if [ "${file_date}" -ge "${end_date}" ]; then
-		echo "        Run not needed (latest restart file is $filename)"
-		((num_runs_already_done++))
-		cd ..
-		continue
-	    fi
-	fi
-
-	#--------------------------------------------------------------------------------
-        # If run is in progress, increment num_active_runs
-	#--------------------------------------------------------------------------------
-	job_running=false
-        if [ -f "job_status" ]; then
-	    last_line=$(tail -n 1 job_status)
-	    if [[ "${last_line}" == *"Submitted batch job"* ]]; then
-		echo "        Job currently in progress"
-		((num_active_runs++))
-		cd ..
-		continue
-	    fi
-        fi
-	
-	#------------------------------------------------------------------------------------
-	# Additional checks to determine if run is ready to submit
-	#------------------------------------------------------------------------------------
-
-	# Exit with error if cap_restart does not exist
-	if [ ! -f cap_restart ]; then
-	    echo -e "        ERROR: File cap_restart does not exist for ${face_id}_${run_id}. Investigate problem directory.\n"
-	    exit 1
-	fi
-
-	start_date=$(cut -c 1-8 cap_restart)
-	start_sec=$(date -d "${start_date}" +%s)
-	end_sec=$(date -d "${end_date}" +%s)
-
-	# Exit with error if start date is after end date
-	if [ "${start_sec}" -gt "${end_sec}" ]; then
-	    echo -e "        ERROR: Start date (${start_date}) cannot be after end date (${end_date}). Edit end date passed to script.\n"
-	    exit 1
-	fi
-
-	# If start is 0 to max duration days before end, increment num_runs_ready_to_submit
-	diff_days=$(( (end_sec - start_sec) / 86400 ))
-	if [ "$diff_days" -le "${max_duration}" ]; then
-	    echo "        Run can be submitted. Will start on ${start_date} and run for ${diff_days} days"
-	    ((num_runs_ready_to_submit++))
-	    cd ..
-	    continue
-	else
-	    # Exit with error if submitted run would exceed max duration
-	    echo -e "        ERROR: Run length (${diff_days} days) would exceed max allowed (${max_duration} days). Edit arguments passed to script.\n"
-	    exit 1
-	fi
-
+echo "Status of Jacobian runs in ${test_dir}, end date ${end_date}:"
+for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+    face_name=$(face_name_for ${i_face})
+    for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
+        [[ -d "${run_dir}" ]] || continue
+        status=$(run_status "${run_dir}" "${end_date}" "${active}")
+        details=""
+        case "${status}" in
+            DONE)   num_done=$((num_done + 1)) ;;
+            ACTIVE) num_active=$((num_active + 1)) ;;
+            READY)
+                num_ready=$((num_ready + 1))
+                start_date=$(cut -c 1-8 "${run_dir}/cap_restart")
+                days=$(( ( $(date -d "${end_date}" +%s) - $(date -d "${start_date}" +%s) ) / 86400 ))
+                details="starts ${start_date}, ${days} days"
+                if (( days > max_days )); then
+                    details="${details}, MORE THAN ${max_days} DAYS"
+                    num_too_long=$((num_too_long + 1))
+                fi
+                ;;
+            FAILED)
+                num_failed=$((num_failed + 1))
+                details=$(grep "^FAILED" "${run_dir}/job_status" | tail -n 1)
+                ;;
+            *)      num_other=$((num_other + 1)) ;;
+        esac
+        printf "  %-36s %-15s %s\n" "$(basename "${run_dir}")" "${status}" "${details}"
     done
 done
 
-#------------------------------------------------------------------------------------
+#------------------------------------------------------
 # Print summary
-#------------------------------------------------------------------------------------
-echo -e "\nSummary: "
-echo "   End date: ${end_date}"
-echo "   Total runs already run through end date: ${num_runs_already_done}"
-echo "   Total runs not yet there but are actively running: ${num_active_runs}"
-echo "   Total runs ready to submit: ${num_runs_ready_to_submit}"
-echo -e "\n   Sanity check total runs counted: $((num_runs_already_done + num_active_runs + num_runs_ready_to_submit))\n"
+#------------------------------------------------------
+echo ""
+echo "Summary for end date ${end_date}:"
+echo "  DONE:   ${num_done}"
+echo "  ACTIVE: ${num_active}"
+echo "  READY:  ${num_ready}"
+echo "  FAILED: ${num_failed}"
+echo "  Other (e.g. NO_CAP_RESTART): ${num_other}"
+echo "  Total:  $((num_done + num_active + num_ready + num_failed + num_other))"
 
-exit 0
+if (( num_too_long > 0 )); then
+    echo ""
+    echo "ERROR: ${num_too_long} READY runs need more than ${max_days} days. Check the arguments."
+    exit 1
+fi
