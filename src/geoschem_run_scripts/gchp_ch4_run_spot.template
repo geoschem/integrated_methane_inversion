@@ -1,0 +1,285 @@
+#!/bin/bash
+
+#SBATCH -c 1
+#SBATCH --requeue
+#SBATCH --open-mode=append
+
+# GCHP run script for spot instances, using standard GCHP restart files
+# (Restarts/GEOSChem.Restart.YYYYMMDD_HHMMz.c<N>.nc4). Used for Jacobian
+# runs when UseSpotRunScript is true in the IMI config.
+#
+# Usage, from the run directory:
+#   ./<run name>.run                         # run by the IMI (DoJacobian)
+#   sbatch -N <nodes> -n <cores> -p <partition> -t <time> <run name>.run [<end_date> <max_days>]
+#
+# Nodes, cores, partition and time are not set here. The IMI sets them in
+# its job array, or pass them to sbatch as above.
+#
+# The run stops at END_DATE in CAP.rc or after Run_Duration in
+# setCommonRunSettings.sh, whichever comes first. Passing <end_date> and
+# <max_days> sets these two values in those files, and they stay set for
+# later runs. max_days is a safety limit in case of a typo in the end date.
+#
+# At the start of every job, the start date is taken from file cap_restart,
+# unless Restarts/ has a newer restart file (named GEOSChem.Restart.* or
+# gcchem_internal_checkpoint.*). GCHP code updates cap_restart only when
+# a run finishes, so after an interruption or failure the newest mid-run
+# checkpoint is used, and this script updates cap_restart to match.
+#
+# To rerun from an earlier date, delete the later restart files in addition to
+# resetting cap_restart. A restart file for that date must exist in Restarts/.
+#
+# Output files dated on or after the start date used by this job (after any
+# update of cap_restart above) are deleted, since they may be incomplete,
+# and are rewritten by this run. Earlier output is complete and is kept.
+#
+# If the spot instance is reclaimed, Slurm requeues the job (--requeue)
+# and it continues from the newest checkpoint as above.
+#
+# The result of each job is appended to file job_status as DONE or FAILED.
+
+# Exit if a command fails, including inside functions
+set -eE
+
+# Write FAILED to job_status if a command fails
+record_failure() {
+    echo "FAILED $(date) job ${SLURM_JOB_ID} at line $1 of ${id}.run" >> job_status
+}
+trap 'record_failure ${LINENO}' ERR
+
+echo -e "\nJob ${SLURM_JOB_ID} started at $(date)"
+echo "Times this job has been requeued: ${SLURM_RESTART_COUNT:-0}"
+if command -v ec2-metadata >/dev/null 2>&1; then
+    echo "Using AWS $(ec2-metadata -t)"
+fi
+
+#==============================================================================
+# Run settings
+#==============================================================================
+
+# Run ID for the log file name: the run directory name, e.g. <RunName>_0001
+id=$(basename "$PWD")
+
+# Grid resolution, used in restart file names
+N=$(grep "CS_RES=" setCommonRunSettings.sh | cut -c 8- | xargs)
+
+# Set end date and maximum duration if passed
+if [[ $# -eq 2 ]]; then
+    sed -i -E "s|(END_DATE:[[:space:]]*)[0-9]{8}|\1${1}|" CAP.rc
+    new_dur=$(printf "%08d 000000" "$2")
+    sed -i "s|\(Run_Duration=\"\)[^\"]*|\1${new_dur}|" setCommonRunSettings.sh
+    echo "Maximum duration [days]: $2"
+elif [[ $# -ne 0 ]]; then
+    echo "Usage: sbatch ${id}.run [<end_date YYYYMMDD> <max_days>]"
+    exit 1
+fi
+end_date=$(awk '/^END_DATE:/ {print $2}' CAP.rc)
+echo "End date: ${end_date}"
+
+#==============================================================================
+# Find the start date and the restart file
+#==============================================================================
+
+# Function to rename GCHP mid-run checkpoints to standard restart names:
+#   Restarts/gcchem_internal_checkpoint.YYYYMMDD_HHMMz.nc4
+#   -> Restarts/GEOSChem.Restart.YYYYMMDD_HHMMz.c<N>.nc4
+# GCHP also writes a checkpoint at the run start time. It duplicates the
+# restart the run started from, so it is deleted instead.
+# Argument: run start time as YYYYMMDD_HHMM
+rename_checkpoints() {
+    local start_stamp=$1
+    local file stamp
+    for file in Restarts/gcchem_internal_checkpoint.*z.nc4; do
+        [[ -e "${file}" ]] || continue
+        stamp=${file#Restarts/gcchem_internal_checkpoint.}
+        stamp=${stamp%z.nc4}
+        if [[ "${stamp}" == "${start_stamp}" ]]; then
+            rm -f "${file}"
+        else
+            mv -f "${file}" "Restarts/GEOSChem.Restart.${stamp}z.c${N}.nc4"
+            echo "Renamed ${file} to GEOSChem.Restart.${stamp}z.c${N}.nc4"
+        fi
+    done
+}
+
+if [[ ! -f cap_restart ]]; then
+    echo "ERROR: cap_restart does not exist. Create it with the start date, format YYYYMMDD HHMMSS."
+    exit 1
+fi
+read -r cap_date cap_time < cap_restart
+cap_stamp="${cap_date}_${cap_time:0:4}"
+echo "Date in cap_restart: ${cap_stamp}"
+
+# GCHP updates cap_restart only when a run finishes. If the previous job was
+# interrupted, it may have left mid-run checkpoints later than cap_restart,
+# either not yet renamed or already renamed by a job that failed.
+# If so, start from the newest one.
+newest=$(ls -1 Restarts/gcchem_internal_checkpoint.*z.nc4 \
+               Restarts/GEOSChem.Restart.*z.c${N}.nc4 2>/dev/null \
+         | grep -oE '[0-9]{8}_[0-9]{4}' | sort | tail -n 1)
+if [[ -n "${newest}" && "${newest}" > "${cap_stamp}" ]]; then
+    echo "${newest:0:8} ${newest:9:4}00" > cap_restart
+    echo "Updated cap_restart to newest mid-run checkpoint ${newest}"
+fi
+rename_checkpoints "${cap_stamp}"
+
+# If the previous job finished but stopped before renaming its final
+# checkpoint, rename it now. Otherwise it is incomplete, so delete it.
+read -r start_date start_time < cap_restart
+start_stamp="${start_date}_${start_time:0:4}"
+restart_file=Restarts/GEOSChem.Restart.${start_stamp}z.c${N}.nc4
+if [[ -f Restarts/gcchem_internal_checkpoint && ! -e ${restart_file} ]]; then
+    mv Restarts/gcchem_internal_checkpoint ${restart_file}
+    echo "Renamed final checkpoint of previous job to ${restart_file}"
+fi
+rm -f Restarts/gcchem_internal_checkpoint
+
+# removeLocalRestarts.sh keeps all Jan 1 restarts, the first restart,
+# the newest restart, and the one before it
+if [[ -x removeLocalRestarts.sh ]]; then
+    ./removeLocalRestarts.sh
+fi
+
+echo "Start date that will be used: ${start_stamp}"
+if [[ ! "${start_date}" < "${end_date}" ]]; then
+    echo "Start date is not before end date ${end_date}. Nothing to run."
+    echo "DONE $(date) job ${SLURM_JOB_ID}: already at end date ${end_date}" >> job_status
+    exit 0
+fi
+
+#==============================================================================
+# Delete output files that this run will rewrite
+#==============================================================================
+
+# Output files are named GEOSChem.<collection>.YYYYMMDD_HHMMz.nc4. Files
+# dated before the start date are complete and are kept.
+for file in OutputDir/*.nc4; do
+    [[ -e "${file}" ]] || continue
+    if [[ "${file}" =~ \.([0-9]{8})_[0-9]{4}z\.nc4$ ]]; then
+        file_date=${BASH_REMATCH[1]}
+        if [[ ! "${file_date}" < "${start_date}" ]]; then
+            rm -f "${file}"
+        fi
+    fi
+done
+
+#==============================================================================
+# Set up GCHP log, config files, restart link and environment
+#==============================================================================
+
+# All requeued jobs with the same end date write to the same log
+log=${id}.ends_${end_date}.log
+echo -e "\n===> Job ${SLURM_JOB_ID} started at $(date)" >> ${log}
+echo "Times this job has been requeued: ${SLURM_RESTART_COUNT:-0}" >> ${log}
+echo "Start date ${start_stamp}, end date ${end_date}" >> ${log}
+if command -v ec2-metadata >/dev/null 2>&1; then
+    echo "Using AWS $(ec2-metadata -t)" >> ${log}
+fi
+
+source setCommonRunSettings.sh >> ${log}
+source setRestartLink.sh >> ${log}
+if [[ -f gchp.env ]]; then
+    source gchp.env >> ${log}
+else
+    echo "gchp.env not found. Assuming environment is already loaded." >> ${log}
+fi
+source checkRunSettings.sh >> ${log}
+
+#==============================================================================
+# Set up for executing GCHP
+#==============================================================================
+
+# Cannon-specific setting to get around connection issues at high # cores
+# Keeping it for AWS just in case
+export OMPI_MCL_btl=openib
+
+# Run GCHP and evenly distribute tasks across nodes
+NX=$( grep NX GCHP.rc | awk '{print $2}' )
+NY=$( grep NY GCHP.rc | awk '{print $2}' )
+coreCount=$(( ${NX} * ${NY} ))
+planeCount=$(( ${coreCount} / ${SLURM_NNODES} ))
+if [[ $(( ${coreCount} % ${SLURM_NNODES} )) > 0 ]]; then
+    planeCount=$(( ${planeCount} + 1 ))
+fi
+
+# Turn off exit on error so the script can finish if GCHP exits early
+set +e
+trap - ERR
+
+#==============================================================================
+# Set up clean handling of spot interruption
+#==============================================================================
+
+handle_spot_interruption() {
+    echo -e "\n==================================================" | tee -a "${log}"
+    echo "SPOT INTERRUPTION NOTICE RECEIVED AT $(date)" | tee -a "${log}"
+    echo "Job ${SLURM_JOB_ID} is saving state and terminating..." | tee -a "${log}"
+    echo "==================================================" | tee -a "${log}"
+
+    # Forward SIGTERM to srun and wait for GCHP/MPI to shut down
+    if [ -n "$SRUN_PID" ] && kill -0 "$SRUN_PID" 2>/dev/null; then
+        echo "Sending SIGTERM to srun process (${SRUN_PID})..." | tee -a "${log}"
+        kill -TERM "$SRUN_PID" 2>/dev/null
+        wait "$SRUN_PID" 2>/dev/null
+    fi
+
+    echo "Flushing disk buffers..." | tee -a "${log}"
+    sync
+
+    # Checkpoints are renamed by the requeued job when it starts
+    echo "Requeueing job ${SLURM_JOB_ID} at $(date)" | tee -a "${log}"
+    scontrol requeue "${SLURM_JOB_ID}"
+    exit 0
+}
+
+trap 'handle_spot_interruption' SIGTERM SIGINT SIGUSR2
+
+#==============================================================================
+# Run the model
+#==============================================================================
+
+echo -e '\n===> Executing GCHP at' `date` >> ${log}
+echo 'Executing GCHP at' `date`
+
+srun -n ${coreCount} -N ${SLURM_NNODES} -m plane=${planeCount} --mpi=pmix ./gchp >> "${log}" 2>&1 &
+SRUN_PID=$!
+wait $SRUN_PID
+SRUN_EXIT_CODE=$?
+
+trap - SIGTERM SIGINT SIGUSR2
+echo "===> GCHP exited with code ${SRUN_EXIT_CODE} at $(date)" >> ${log}
+echo "GCHP exited with code ${SRUN_EXIT_CODE} at $(date)"
+
+# Turn exit on error back on
+set -eE
+trap 'record_failure ${LINENO}' ERR
+
+#==============================================================================
+# Rename checkpoints and check that the run advanced
+#==============================================================================
+
+# Rename mid-run checkpoints even if GCHP failed, so the next job can use them
+rename_checkpoints "${start_stamp}"
+
+# GCHP updates cap_restart only if the run finished
+read -r new_date new_time < cap_restart
+new_stamp="${new_date}_${new_time:0:4}"
+if [[ "${new_stamp}" == "${start_stamp}" ]]; then
+    echo "ERROR: GCHP did not finish (exit code ${SRUN_EXIT_CODE}). See ${log}" | tee -a ${log}
+    echo "FAILED $(date) job ${SLURM_JOB_ID}: GCHP did not finish, see ${log}" >> job_status
+    rm -f Restarts/gcchem_internal_checkpoint
+    exit 1
+fi
+if [[ ${SRUN_EXIT_CODE} -ne 0 ]]; then
+    echo "WARNING: cap_restart advanced but GCHP exit code was ${SRUN_EXIT_CODE}" | tee -a ${log}
+fi
+
+# Rename the final checkpoint and point the restart link at it
+mv -f Restarts/gcchem_internal_checkpoint Restarts/GEOSChem.Restart.${new_stamp}z.c${N}.nc4
+source setRestartLink.sh >> ${log}
+echo "Final restart: Restarts/GEOSChem.Restart.${new_stamp}z.c${N}.nc4" >> ${log}
+
+echo "===> Run ended at $(date)" >> ${log}
+echo "DONE $(date) job ${SLURM_JOB_ID}: reached ${new_stamp}" >> job_status
+
+exit 0

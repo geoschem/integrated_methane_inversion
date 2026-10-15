@@ -24,6 +24,12 @@ TOTAL_CORES: 48
 NUM_NODES: 1
 NUM_CORES_PER_NODE: 48
 
+## Use the GCHP run script for AWS spot instances for Jacobian runs
+## (src/geoschem_run_scripts/gchp_ch4_run_spot.template). It uses standard
+## GCHP restart names, restarts from the newest checkpoint after a spot
+## interruption, and can also be submitted directly with sbatch.
+UseSpotRunScript: true
+
 ## Period of interest
 StartDate: 20250101
 EndDate: 20250104
@@ -200,7 +206,7 @@ DoPosterior: false
 ##
 ## Where the filesystem exports its own deletes (FSx with a DELETED autoexport
 ##  policy), this is all that is needed to shrink the archive too.
-#PruneOutputDir: true
+PruneOutputDir: true
 
 ## IMI preview
 ##   NOTE: RunSetup must be true to run preview

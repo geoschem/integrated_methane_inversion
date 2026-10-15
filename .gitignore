@@ -1,5 +1,7 @@
 GEOS-Chem
 GCClassic
+GCHP
+configs_*/
 docs/build/
 .DS_STORE
 src/inversion_scripts/__pycache__
