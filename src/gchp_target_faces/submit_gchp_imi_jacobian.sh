@@ -6,7 +6,18 @@
 #   ./submit_gchp_imi_jacobian.sh <end_date YYYYMMDD> <max_days>
 #
 # Each run is submitted from its own directory as
-#   sbatch -p ${run_partition} -t ${run_time} -J <run dir name> gchp_ch4_run_spot.run <end_date> <max_days>
+#
+#   sbatch -p ${run_partition} \
+#          -t ${run_time} \
+#          -N <NUM_NODES> \
+#          -n <TOTAL_CORES> \
+#          -J <run dir name> \
+#          <run dir name>.run <end_date> <max_days>
+#
+# NUM_NODES and TOTAL_CORES are read from the base IMI config. The IMI
+# makes <run dir name>.run in each run directory from
+# src/geoschem_run_scripts/gchp_ch4_run_spot.template.
+#
 # To limit how many jobs run at once, set the maximum number of nodes for
 # the partition in the cluster config.
 

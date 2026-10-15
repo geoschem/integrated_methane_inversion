@@ -23,8 +23,8 @@ setup_partition=ondem4cpu # Put partition name here
 face_cores=4
 face_time=0-0:30
 
-# For Jacobian runs. These override the #SBATCH lines in
-# gchp.run. The number of cores is set by TOTAL_CORES in the IMI config.
+# For Jacobian runs. These override the #SBATCH lines in the run script
+# template. The number of cores is set by TOTAL_CORES in the IMI config.
 run_partition=spot-24or48
 run_time=0-2:00
 
@@ -44,9 +44,6 @@ prune_output=false
 #--------------------------------------------------------------------------
 fsx_dir="${HOME}/fsx"
 test_dir="${fsx_dir}/${test_name}"
-#util_dir="${fsx_dir}/output/util" # My S3 bucket is fsx/output
-#imi_dir="${HOME}/integrated_methane_inversion"
-# Directory of these scripts, and the IMI directory two levels above it
 util_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 imi_dir="$(cd "${util_dir}/../.." && pwd)"
 
@@ -54,7 +51,7 @@ template_config="${imi_dir}/config-gchp-imi.yml"   # base config, edit by hand
 config_dir="configs_${test_name}"                  # relative to imi_dir
 mapping_file="${util_dir}/target_coords_num-sv.csv"
 
-# Files linked into each template_run (until gchp.run is in the IMI repo)
+# Files linked into each template_run
 env_file="${imi_dir}/gchp.env"
 cleanup_restarts_script="${util_dir}/removeLocalRestarts.sh"
 

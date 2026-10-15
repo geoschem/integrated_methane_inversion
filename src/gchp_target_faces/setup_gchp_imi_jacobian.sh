@@ -139,6 +139,7 @@ echo "Environment:"
 show_config_keys CondaEnv CondaFile GEOSChemEnv
 echo "Switches (stage switches are set by setup_face.sh):"
 show_config_keys RunSetup DisableRun0000 KalmanMode \
+                 PruneOutputDir SetupJacobian \
                  SetupSpinupRun SetupInversion SetupPosteriorRun \
                  DoHemcoPriorEmis RegridHemcoPriorEmis DoSpinup \
                  DoJacobian ReDoJacobian DoSatelliteDiagnostics \
@@ -148,6 +149,8 @@ echo "Set per face by this script (from gchp_imi_common.sh):"
 echo "  RunName, TARGET_LON, TARGET_LAT  from ${mapping_file}"
 echo "  OutputPath:                 ${test_dir}"
 echo "  NumJacobianTracers:         ${max_num_tracers}"
+echo "  UseSpotRunScript:           true"
+echo "  PruneOutputDir (inversion): ${prune_output}  (prune_output in gchp_imi_common.sh)"
 echo "  StateVectorFile:            ${test_dir}/<face>/StateVector.nc"
 echo "  Target faces:               ${start_face} to ${num_faces}"
 echo ""
