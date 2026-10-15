@@ -152,6 +152,14 @@ optional_rules: Dict[str, Rule] = {
     "PriorErrorBCs": ANY,  # list[float]
     "PriorErrorBufferElements": ANY,  # list[float]
     "PriorErrorOH": ANY,  # list[float]
+    # Off-diagonal observation error covariance (So) settings; all optional (code supplies defaults)
+    "OffDiagonalObsCov": bool,
+    "OffDiagonalObsCovA1": float,
+    "OffDiagonalObsCovL1": float,
+    "OffDiagonalObsCovA2": float,
+    "OffDiagonalObsCovL2": float,
+    "OffDiagonalObsCovTemporalRho": float,
+    "OffDiagonalObsCovCutoffKm": float,
 }
 
 # -------------------- CONDITIONAL REQUIREMENTS -------------------------

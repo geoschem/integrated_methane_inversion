@@ -5,15 +5,34 @@
 #       path_to_state_vector_file: path to state vector netcdf file
 #       jacobian_sf: (optional) path to numpy array of scale factors for jacobian
 
+import os
 import sys
 from itertools import product
 import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
-from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
+from src.inversion_scripts.so_operator import compute_so_normal_equations
 from src.utilities.config_utils import load_config
+
+
+def _load_obs_metadata():
+    """Per-observation lat/lon/dates for the off-diagonal So, written by merge_partial_k as
+    obs_metadata.npz (row-aligned with the merged K, in the inversion cwd). Returns
+    (lat, lon, dates), or (None, None, None) if unavailable (-> diagonal So)."""
+    if not os.path.exists("obs_metadata.npz"):
+        return None, None, None
+    try:
+        with np.load("obs_metadata.npz", allow_pickle=True) as d:
+            if "lat" in d.files and "lon" in d.files:
+                lat = np.asarray(d["lat"], dtype=float).flatten()
+                lon = np.asarray(d["lon"], dtype=float).flatten()
+                dates = d["dates"] if "dates" in d.files else None
+                return lat, lon, dates
+    except Exception:
+        pass
+    return None, None, None
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -133,6 +152,27 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             sa_oh_vals,
         )
     )
+
+    # Off-diagonal observation error covariance (two-exponential spatial correlation + optional
+    # adjacent-day temporal correlation). Diagonal So by default; the shared operator applies it below.
+    obs_lat = obs_lon = obs_dates = None
+    so_corr_params = None
+    if config.get("OffDiagonalObsCov", False):
+        obs_lat, obs_lon, obs_dates = _load_obs_metadata()
+        if obs_lat is not None:
+            L2 = float(config.get("OffDiagonalObsCovL2", 398.0))
+            so_corr_params = {
+                "form": "two_exponential",
+                "corr_amplitude1": float(config.get("OffDiagonalObsCovA1", 0.385)),
+                "corr_length1_km": float(config.get("OffDiagonalObsCovL1", 26.0)),
+                "corr_amplitude2": float(config.get("OffDiagonalObsCovA2", 0.459)),
+                "corr_length2_km": L2,
+                "corr_cutoff_km": float(config.get("OffDiagonalObsCovCutoffKm", 3.0 * L2)),
+                "temporal_rho": float(config.get("OffDiagonalObsCovTemporalRho", 0.0)),
+            }
+        else:
+            print("  OffDiagonalObsCov set but obs_metadata.npz unavailable; using diagonal So.")
+
     for gamma, sa, so_key, sa_bc, sa_buffer, sa_oh in combinations:
         # params dict to store hyperparameters
         params = {
@@ -183,8 +223,20 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # get the So matrix
         so = so_dict[so_key]
 
-        # Create inverted So matrix
-        Soinv = spdiags(1 / so, 0, m, m)
+        # So-weighted normal-equation products, computed once: M = K^T So^-1 K and
+        # v_so = K^T So^-1 (y - ybkg). So is either the per-observation diagonal or, when
+        # OffDiagonalObsCov is set, the two-exponential off-diagonal model applied exactly by the
+        # shared day-blocked operator. The iteration below uses the chain-rule scaling K' = K diag(d),
+        # so K'^T So^-1 K' = diag(d) M diag(d) -- no per-iteration So^-1 solve is needed.
+        M, v_so, _ = compute_so_normal_equations(
+            K_full,
+            np.asarray(y_ybkg_diff).flatten(),
+            so,
+            obs_lat,
+            obs_lon,
+            obs_dates,
+            so_corr_params,
+        )
 
         lnsa_val = np.log(sa)
 
@@ -249,25 +301,24 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         print("Status: Iterating to calculate ln(xn)")
         while xn_iteration_pct_diff >= convergence_threshold:
 
-            # we need to transform lnxn to xn to calculate K_prime
+            # transform lnxn to xn (used below for the chain-rule scaling d and the forward model)
             xn = np.concatenate(
                 (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]),
                 axis=0,
             )
-            # K_prime is the updated jacobian using the new xn from the previous iteration
-            K_prime = np.concatenate(
-                (K_ROI * xn[:-num_normal_elems].T, K_normal), axis=1
-            )
+            # Chain-rule column scaling of K' = K diag(d): d = [xn_ROI, 1...1] (normal elements linear)
+            d = np.concatenate(
+                (xn[:-num_normal_elems], np.ones((num_normal_elems, 1))), axis=0
+            ).flatten()
 
-            # commonly used term for term1 and term3
-            gamma_K_prime_transpose_Soinv = gamma * K_prime.T @ Soinv
-
-            # Compute the next xn_update
-            term1 = gamma_K_prime_transpose_Soinv @ K_prime
+            # Compute the next xn_update from the precomputed So-weighted M, v_so:
+            # term1 = gamma K'^T So^-1 K' = gamma diag(d) M diag(d)
+            term1 = gamma * (d[:, None] * M * d[None, :])
             term2 = (1 + kappa) * invlnsa_constraint
             inv_term = np.linalg.inv(term1 + term2)
 
-            term3 = gamma_K_prime_transpose_Soinv @ (y_ybkg_diff - K_full @ xn)
+            # term3 = gamma K'^T So^-1 (y_ybkg_diff - K@xn) = gamma diag(d) (v_so - M xn)
+            term3 = gamma * d[:, None] * (v_so[:, None] - M @ xn)
             term4 = invlnsa_constraint @ (lnxn - lnxa)
 
             # put it all together to calculate lnxn_update
@@ -289,13 +340,16 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]), axis=0
         )
 
-        # Calculate averaging kernel and degrees of freedom for signal
-        K_primeT_so = gamma * np.transpose(K_prime) @ Soinv
+        # Calculate averaging kernel and degrees of freedom for signal.
+        # At convergence gamma K'^T So^-1 K' = gamma diag(d) M diag(d) (same d as the final iterate).
+        d = np.concatenate(
+            (xn[:-num_normal_elems], np.ones((num_normal_elems, 1))), axis=0
+        ).flatten()
+        gamma_KprimeT_Soinv_Kprime = gamma * (d[:, None] * M * d[None, :])
         # posterior error covariance matrix (uses unweighted Sa)
-        lns = np.linalg.inv(K_primeT_so @ K_prime + invlnsa)
+        lns = np.linalg.inv(gamma_KprimeT_Soinv_Kprime + invlnsa)
         # Averaging kernel (uses unweighted Sa)
-        G = lns @ K_primeT_so
-        ak = G @ K_prime
+        ak = lns @ gamma_KprimeT_Soinv_Kprime
 
         # Calculate posterior mean xhat
         dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
