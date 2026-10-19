@@ -144,9 +144,6 @@ run_period() {
     ##  Submit all Jacobian simulations OR submit only the Prior simulation
     ##=======================================================================
 
-    # Refresh the per-task ReDoJacobian skip check to use this period's EndDate. 
-    sed -i -E "s/^yyyymmdd=[0-9]{8}/yyyymmdd=${EndDate_i}/" "${JacobianRunsDir}/run_jacobian_simulations.sh"
-
     # Refresh nElements in this period's run_inversion.sh based on the
     # actual number of elements - can be less than NumberOfElements
     # if native cells run out before all requested cluster slots are filled.

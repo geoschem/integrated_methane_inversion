@@ -79,7 +79,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4), 
         lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     )
-    num_buffer_elems = state_vector_labels.max().item() - interior.max().item()
+    num_buffer_elems = int(state_vector_labels.max().item() - interior.max().item())
 
     num_normal_elems = num_buffer_elems + BC_element_num + OH_element_num
     ds = np.load("full_jacobian_K.npz")
@@ -345,7 +345,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     )
 
     # Filter ensemble members to only members with Ja between 0.5 and 2
-    filter_ens_members = True  # set to False to turn off filtering
+    filter_ens_members = False  # set to False to turn off filtering
     include_ens_members = [
         i for i, Ja in enumerate(results_dict["Ja_normalized"]) if 0.5 <= Ja <= 2.0
     ]
