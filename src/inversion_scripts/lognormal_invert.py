@@ -10,7 +10,7 @@ from itertools import product
 import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
-from scipy.sparse import spdiags
+#from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
 from src.utilities.config_utils import load_config
@@ -54,6 +54,10 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
     y = np.array(ds["obs_satellite"])
     ds = np.load("gc_bkgd.npz")
     ybkg = np.array(ds["gc_bkgd"])
+    ds = np.load("full_jacobian_K.npz")
+    K_full = ds['K']
+    K_full *= 1e9
+    del ds
 
     # We only solve using lognormal errors for state vector elements
     # within the domain of interest, not the buffer elements, the
@@ -79,11 +83,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4), 
         lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
     )
-    num_buffer_elems = state_vector_labels.max().item() - interior.max().item()
+    num_buffer_elems = int(state_vector_labels.max().item() - interior.max().item())
 
     num_normal_elems = num_buffer_elems + BC_element_num + OH_element_num
-    ds = np.load("full_jacobian_K.npz")
-    K_temp = np.array(ds["K"]) * 1e9
 
     # Apply scaling matrix if using precomputed Jacobian
     if jacobian_sf is not None:
@@ -93,9 +95,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             scale_factors = np.append(
                 scale_factors, np.ones(BC_element_num + OH_element_num)
             )
-        reps = K_temp.shape[0]
-        scaling_matrix = np.tile(scale_factors, (reps, 1))
-        K_temp *= scaling_matrix
+        K_full *= scale_factors # broadcasts over rows
 
     # Define Sa, gamma, So, and Sa_bc values to iterate through
     prior_errors = ensure_float_list(config["PriorError"])
@@ -111,13 +111,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
     # Calculate the difference between tropomi and the background
     # simulation, which has no emissions
-    y_ybkg_diff = y - ybkg
-    ybkg, y, y_ybkg_diff = (
-        np.swapaxes(ybkg, 0, 1),
-        np.swapaxes(y, 0, 1),
-        np.swapaxes(y_ybkg_diff, 0, 1),
-    )
 
+    y_ybkg_diff = np.swapaxes(y-ybkg, 0, 1)
     # fixed kappa of 10 following Chen et al., 2022 https://doi.org/10.5194/acp-22-10809-2022
     kappa = 10
 
@@ -145,19 +140,15 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         }
         # The levenberg-marquardt method assumes that the prior emissions is
         # the median prior emissions, but typically priors are the mean emission.
-        # To account for this we convert xa to a median. This can be done by
-        # scaling the lognormal part of K by 1/exp((lnsa**2)/2).
+        # To account for this we convert xa to a median.
         # Here, we calculate this scaling factor
         mean_to_median = 1 / np.exp((np.log(float(sa)) ** 2) / 2)
 
-        # split K based on whether we are solving for lognormal or normal elements
-        # K_ROI is the matrix for the lognormal elements (the region of interest)
-        # the lognormal part of K gets scaled by mean_to_median to convert to median
-        K_ROI = K_temp[:, :-num_normal_elems]
-        K_normal = K_temp[:, -num_normal_elems:]
-        K_full = np.concatenate((K_ROI, K_normal), axis=1)
-
-        m, n = np.shape(K_ROI)
+        # m is obs dimension
+        # N is state vector dimension
+        # n is number of state vector elements minus normal elements
+        m, N = K_full.shape
+        n = N - num_normal_elems
 
         # Create base xa and lnxa matrices
         # Note: the resulting xa vector has lognormal elements until the
@@ -182,13 +173,9 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # get the So matrix
         so = so_dict[so_key]
 
-        # Create inverted So matrix
-        Soinv = spdiags(1 / so, 0, m, m)
-
-        lnsa_val = np.log(sa)
-
         # Create lnSa matrix
         # lnsa = lnsa_val**2 * np.ones((n, 1))
+        lnsa_val = np.log(sa)
         lnsa = lnsa_val**2 * np.ones((n, 1))
 
         # For the buffer elems, BCs, and OH elements
@@ -236,6 +223,30 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # start with arbitrary value for xn_iteration_pct_diff above .05%
         xn_iteration_pct_diff = 1
 
+        # precompute static matrices
+        # Soinv is diagonal and K_prime = K_full @ diag(d), so every large product
+        # in the loop reduces to KT_Soinv_K = K^T So^-1 K
+        # and KT_Soinv_ybgdiff = K^T So^-1 (y - ybkg)
+        print('precomputing static matrices')
+        invso_vals = 1.0 / so 
+        KT_Soinv_K = np.zeros((N,N))
+        KT_Soinv_ybgdiff = np.zeros((N, 1))
+        # chunk size for loading matrices. Larger for more speed 
+        # but needs more memory.
+        chunk = 50000
+        for idx_chunk in range(0, m, chunk): # iterate over rows of K and y to load it
+            next_chunk = min(idx_chunk + chunk, m)
+            Kc = K_full[idx_chunk: next_chunk].astype(np.float64)
+            yc = y_ybkg_diff[idx_chunk: next_chunk].astype(np.float64)
+            SoinvKc = Kc * invso_vals[idx_chunk: next_chunk, None]
+            KT_Soinv_K += Kc.T @ SoinvKc
+            KT_Soinv_ybgdiff += SoinvKc.T @ yc
+            print(f'\r{(next_chunk / m)*100:0.0f}%   ', end = '')
+        print()
+        del Kc, yc, SoinvKc
+
+
+
         # Iterate for calculation of ln(xn) until convergence threshold is met (5e-3)
         # We decompose eqn 2 from chen et al into 4 terms
         # term 1: gamma*K'.T@inv(So)@K'
@@ -249,77 +260,71 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
 
         # Initializing the mean of xn
         xnmean = np.concatenate(
-            (np.exp(lnxn[:-num_normal_elems]) / mean_to_median, lnxn[-num_normal_elems:]),
+            (np.exp(lnxn[:n]) / mean_to_median, lnxn[n:]),
             axis=0,
-        )   
-    
+        )  
+
         while xn_iteration_pct_diff >= convergence_threshold:
 
-            # K_prime is the updated jacobian using the new xnmean from the previous iteration
-            K_prime = np.concatenate(
-                (K_ROI * xnmean[:-num_normal_elems].T, K_normal), axis=1
-            )
 
-            # commonly used term for term1 and term3
-            gamma_K_prime_transpose_Soinv = gamma * K_prime.T @ Soinv
+            # for scaling KT_Soinv_K, need ones for normal elems so those don't get changed
+            xnmean_scale = np.concatenate((xnmean[:n], np.ones((num_normal_elems, 1))))
+            KprimeT_Soinv_Kprime = xnmean_scale * KT_Soinv_K * xnmean_scale.T        
 
             # Compute the next xn_update
-            term1 = gamma_K_prime_transpose_Soinv @ K_prime
+            term1 = gamma * KprimeT_Soinv_Kprime
             term2 = (1 + kappa) * invlnsa_constraint
-            inv_term = np.linalg.inv(term1 + term2)
 
             # here xn and K need to be the mean
-            term3 = gamma_K_prime_transpose_Soinv @ (y_ybkg_diff - K_full @ xnmean)
+            term3 = gamma * xnmean_scale * (KT_Soinv_ybgdiff - KT_Soinv_K @ xnmean)
+
             # here lnxn and lnxa are the median
             term4 = invlnsa_constraint @ (lnxn - lnxa)
 
             # put it all together to calculate lnxn_update
-            lnxn_update = lnxn + inv_term @ (term3 - term4)
+            lnxn_update = lnxn + np.linalg.solve(term1 + term2, term3 - term4)
 
             # Check for convergence
             xn_iteration_pct_diff = max(
                 abs(
-                    np.exp(lnxn_update[:-num_normal_elems])
-                    - np.exp(lnxn[:-num_normal_elems])
+                    np.exp(lnxn_update[:n])
+                    - np.exp(lnxn[:n])
                 )
-                / np.exp(lnxn[:-num_normal_elems])
+                / np.exp(lnxn[:n])
             )
 
             lnxn = lnxn_update
 
-            # Calculate averaging kernel and degrees of freedom for signal
-            K_primeT_so = gamma * np.transpose(K_prime) @ Soinv
             # posterior error covariance matrix (uses unweighted Sa)
-            lns = np.linalg.inv(K_primeT_so @ K_prime + invlnsa)
+            lns = np.linalg.inv(gamma * KprimeT_Soinv_Kprime + invlnsa)
+            dlns = np.diag(lns[:n, :n])
 
             # Calculate posterior mean xhat
-            dlns = np.diag(lns[:-num_normal_elems, :-num_normal_elems])
             # this xn is the median returned by the inversion
             # needed for \hat x following Hancock et al. 2025, Eq. 6            
             xn = np.concatenate(
-                (np.exp(lnxn[:-num_normal_elems]), lnxn[-num_normal_elems:]), axis=0
+                (np.exp(lnxn[:n]), lnxn[n:]), axis=0
             )
             # Based on Hancock et al. 2025, Eq. 6, but without the median-mean scale for the prior
             xnmean = np.concatenate(
                 (
-                    xn[:-num_normal_elems]
-                    * np.expand_dims(np.exp(dlns * (0.5)), axis=1),
-                    xn[-num_normal_elems:],
+                    xn[:n] * np.exp(dlns / 2)[:,None],
+                    xn[n:],
                 )
             )
 
         print("Status: Done Iterating")
 
         # Averaging kernel (uses unweighted Sa)
-        G = lns @ K_primeT_so
-        ak = G @ K_prime
+        # A = lns @ (gamma K_prime^T Soinv) @ K_prime = gamma * lns @ (K_prime^T Soinv K_prime)
+        ak = gamma * lns @ KprimeT_Soinv_Kprime
 
         # Calculate Ja diagnostic only for domain of interest (ignoring buffer and BC elements)
         # Ja diagnostic is useful for determining regurlarization parameter (gamma)
         Ja = (
-            np.transpose(lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
-            @ invlnsa[:-num_normal_elems, :-num_normal_elems]
-            @ (lnxn[:-num_normal_elems] - lnxa[:-num_normal_elems])
+            np.transpose(lnxn[:n] - lnxa[:n])
+            @ invlnsa[:n, :n]
+            @ (lnxn[:n] - lnxa[:n])
         )
 
         print(
