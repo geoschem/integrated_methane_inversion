@@ -129,7 +129,12 @@ ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/Permi
 ## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
 ## - PriorErrorBCs is in ppb
 ## - PriorErrorBufferElements is only used if LognormalErrors is true
+## - SoftplusErrors enforces positivity on the normal inversion via a smooth softplus constraint
+##   (SoftplusScale sets its smoothing, 0.1 ~ ReLU). Mutually exclusive with LognormalErrors; both false
+##   runs the standard normal (Gaussian) inversion.
 LognormalErrors: false
+SoftplusErrors: false
+SoftplusScale: 0.1
 PriorError: [0.5]
 PriorErrorBCs: [10.0]
 PriorErrorBufferElements: [0.5]
