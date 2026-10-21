@@ -61,9 +61,9 @@ cd "${imi_dir}"
 # Step 3: Download prior emissions (needed to create Jacobian run dirs)
 #--------------------------------------------------------------------------
 echo "setup_face.sh: Downloading prior emissions"
-aws s3 cp "${dandan_s3_out}/${face_name}/hemco_prior_emis/OutputDir/" \
+aws s3 sync "${dandan_s3_out}/${face_name}/hemco_prior_emis/OutputDir/" \
     "${face_dir}/hemco_prior_emis/OutputDir/" \
-    --recursive --exclude "*" --include "${prior_emis_pattern}"
+    --exclude "*" --include "${prior_emis_pattern}"
 if ! ls "${face_dir}/hemco_prior_emis/OutputDir/"GEOSChem.Emissions.* >/dev/null 2>&1; then
     echo "ERROR: No prior emissions downloaded matching ${prior_emis_pattern}"
     echo "FAILED $(date): no prior emissions downloaded" >> "${status_file}"
