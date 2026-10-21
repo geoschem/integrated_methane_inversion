@@ -586,15 +586,18 @@ def create_ESMF_regridding_weights(TROPOMI, filename, sat_ind, CSgridDir, gridsp
     
     # check if regridding weights file exists
     #   to debug, just comment out stdout and stderr
+    # NOTE: Under Slurm, request PMIx explicitly. Open MPI programs started
+    # with srun cannot start without it on clusters where it is not
+    # Slurm's default (MpiDefault in slurm.conf).
     if not os.path.exists(os.path.join(CSgridDir, regrid_weight_fpath)):
         ncores = int(os.environ.get("SLURM_NTASKS", "1"))
         print(f"Running ESMF_RegridWeightGen for {date}...")
         if "SLURM_JOB_ID" in os.environ:
-            LAUNCHER = "srun"
+            LAUNCHER = ["srun", "--mpi=pmix"]
         else:
-            LAUNCHER = "mpirun"
-        subprocess.run([
-            LAUNCHER, "-n", str(ncores),
+            LAUNCHER = ["mpirun"]
+        subprocess.run(LAUNCHER + [
+            "-n", str(ncores),
             "ESMF_RegridWeightGen",
             "-s", SCRIP_grid_fpath,
             "-d", gridspec_path,

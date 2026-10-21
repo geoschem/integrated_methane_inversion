@@ -104,12 +104,9 @@ make_face_config() {
     set_config "${face_config}" StateVectorFile    "\"${test_dir}/${face_name}/StateVector.nc\""
 }
 
-
 #--------------------------------------------------------------------------
-# Show settings for review and ask the user whether to proceed
-#--------------------------------------------------------------------------
-
 # Function to print each key's value from the base config, or NOT FOUND if missing
+#--------------------------------------------------------------------------
 show_config_keys() {
     local key line
     for key in "$@"; do
@@ -122,8 +119,10 @@ show_config_keys() {
     done
 }
 
-# Now show the user what is in the IMI config and ask them to review it
+#--------------------------------------------------------------------------
+# Show the user what is in the IMI config and ask them to review it
 # Allow them to stop if it is not what they want.
+#--------------------------------------------------------------------------
 echo "=============================================================================="
 echo "Review settings in base IMI config: ${template_config}"
 echo "=============================================================================="
@@ -139,7 +138,7 @@ echo "Environment:"
 show_config_keys CondaEnv CondaFile GEOSChemEnv
 echo "Switches (stage switches are set by setup_face.sh):"
 show_config_keys RunSetup DisableRun0000 KalmanMode \
-                 PruneOutputDir SetupJacobian \
+                 PruneOutputDir SetupJacobianRuns \
                  SetupSpinupRun SetupInversion SetupPosteriorRun \
                  DoHemcoPriorEmis RegridHemcoPriorEmis DoSpinup \
                  DoJacobian ReDoJacobian DoSatelliteDiagnostics \

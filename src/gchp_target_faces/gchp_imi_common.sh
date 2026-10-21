@@ -6,10 +6,10 @@
 #--------------------------------------------------------------------------
 # Test settings
 #--------------------------------------------------------------------------
-test_name=test_single_face # Regional_1day_beta_test
+test_name=test_2_faces # Regional_1day_beta_test
 target_prefix=Global_1yr_2025_C36S10
 start_face=1
-num_faces=1         # For all faces use 220
+num_faces=2         # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -34,6 +34,10 @@ run_time=0-2:00
 # waits for it.
 #--------------------------------------------------------------------------
 max_parallel_inversions=5
+
+# Partition for satellite diagnostics and the inversion stage. Its nodes
+# must have more memory than InversionMemory in the IMI config.
+inversion_partition=vcpus16
 
 # Delete Jacobian run output already used by satellite diagnostics and the
 # inversion stage (true or false). Keep false until pruning has been checked.
