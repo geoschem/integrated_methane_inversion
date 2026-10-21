@@ -964,7 +964,7 @@ def calculate_area_in_km(coordinate_list):
     return abs(poly_area) * 1e-6
 
 
-def calculate_superobservation_error(sO, p):
+def calculate_tropomi_superobservation_error(sO, p):
     """
     Returns the estimated observational error accounting for superobservations.
     Using eqn (5) from Chen et al., 2023, https://doi.org/10.5194/egusphere-2022-1504

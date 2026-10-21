@@ -129,12 +129,15 @@ ShapeFile: "/home/ubuntu/integrated_methane_inversion/resources/shapefiles/Permi
 ## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
 ## - PriorErrorBCs is in ppb
 ## - PriorErrorBufferElements is only used if LognormalErrors is true
+## - BCBias is the bias applied to the optimized boundary condition "scale factors" 
+##   - Example: MethaneSAT observations have a bias of +3ppb relative to the TROPOMI boundary conditions
 LognormalErrors: false
 PriorError: [0.5]
 PriorErrorBCs: [10.0]
 PriorErrorBufferElements: [0.5]
 ObsError: [15]
 Gamma: [1.0]
+BCBias: 0 # in ppb
 PrecomputedJacobian: false
 OffDiagonalPriorCov: false
 LengthScalePriorCov: 25  ## in km, only used if OffDiagonalPriorCov is true

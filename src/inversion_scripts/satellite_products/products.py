@@ -20,6 +20,7 @@ from src.inversion_scripts.satellite_products.base import (
     SuperobservationResult,
 )
 from src.inversion_scripts.utils import (
+    calculate_tropomi_superobservation_error,
     filter_MSAT,
     filter_blended,
     filter_tropomi,
@@ -169,6 +170,35 @@ class TropomiFamilyProduct(SatelliteProduct):
             )
             grid_shape = (len(gc_lat_lon["lat"]), len(gc_lat_lon["lon"]))
         return SuperobservationResult(observations, grid_shape)
+
+    def superobservation_error(self, obs_err: float, obs_GC: np.ndarray) -> np.ndarray:
+        """
+        Compute the superobservation error for the given observations. 
+        Returns a 1D array of the diagonal entries of the covariance matrix
+        """
+        # weight obs_err based on the observation count to prevent overfitting
+        # Note: weighting function defined by Zichong Chen for his
+        # middle east inversions. May need to be tuned based on region.
+        # From Chen et al. 2023:
+        # "Satellite quantification of methane emissions and oil/gas methane
+        # intensities from individual countries in the Middle East and North
+        # Africa: implications for climate action"
+        s_superO_1 = calculate_tropomi_superobservation_error(obs_err, 1)
+        s_superO_p = np.array(
+            [
+                calculate_tropomi_superobservation_error(obs_err, p) if p >= 1 else s_superO_1
+                for p in obs_GC[:, 4]
+            ]
+        )
+        # Define observational errors (diagonal entries of S_o matrix)
+        obs_error = np.power(obs_err, 2)
+        gP = s_superO_p**2 / s_superO_1**2
+        # scale error variance by gP
+        obs_error = gP * obs_error
+
+        # check to make sure obs_err isn't negative, set 1 as default value
+        obs_error = [obs if obs > 0 else 1 for obs in obs_error]
+        return np.asarray(obs_error, dtype=float)
 
     def preview(self, request: ObservationRequest) -> dict | None:
         result = self.read_and_filter(request)
