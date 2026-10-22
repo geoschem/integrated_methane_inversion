@@ -46,13 +46,23 @@ prune_output=false
 #--------------------------------------------------------------------------
 # Directories and files
 #--------------------------------------------------------------------------
-fsx_dir="${HOME}/fsx"
-test_dir="${fsx_dir}/${test_name}"
+# Directory with the target face directories
+test_dir="${HOME}/fsx/${test_name}"
+#test_dir=/fsx_output/output # Dandan's setting
+
 util_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 imi_dir="$(cd "${util_dir}/../.." && pwd)"
 
 template_config="${imi_dir}/config-gchp-imi.yml"   # base config, edit by hand
-config_dir="configs_${test_name}"                  # relative to imi_dir
+
+# Face configs, in this directory relative to imi_dir. Configs made by
+# setup_gchp_imi_jacobian.sh are named config_<face name>.yml ("full").
+# Use "short" for names like config_T001.yml.
+config_dir="configs_${test_name}"
+config_name_style=full
+#config_dir="configs_C36S10" # Dandan's setting
+#config_name_style=short
+
 mapping_file="${util_dir}/target_coords_num-sv.csv"
 
 # Files linked into each template_run
@@ -74,6 +84,16 @@ gchp_branch=feature/improved_14.7.1_for_gchp_imi
 # Return the directory name for a target face number, e.g. 7 -> ..._T007
 face_name_for() {
     printf "%s_T%03d" "${target_prefix}" "$1"
+}
+
+# Return the config file for a face, relative to imi_dir
+# Argument: face name, e.g. Global_1yr_2025_C36S10_T001
+config_for() {
+    if [[ "${config_name_style}" == short ]]; then
+        echo "${config_dir}/config_${1##*_}.yml"
+    else
+        echo "${config_dir}/config_${1}.yml"
+    fi
 }
 
 # Set one key in an IMI config file, e.g. change DoJacobian to true.
