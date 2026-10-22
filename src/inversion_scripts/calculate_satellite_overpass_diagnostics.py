@@ -737,6 +737,54 @@ def sample_baserun_file_type(
 
 
 # ---------------------------------------------------------------------------
+# Helper: get expected overpass files
+# ---------------------------------------------------------------------------
+def expected_overpass_paths(
+    JacobianRunDirs,
+    RunName,
+    run_i,
+    date_str,
+    overpass_tag,
+    DisableRun0000=False,
+):
+    """Return the overpass files one Jacobian run should have for one date.
+
+    Used both to skip work that is already done and to find dates whose
+    files are missing, so the two can never disagree.
+    """
+    output_dir = os.path.join(
+        JacobianRunDirs,
+        f"{RunName}_{run_i:04d}",
+        "OverpassDiagnostics",
+    )
+
+    # The base run (0000, or 0001 when DisableRun0000) also samples 3D fields
+    if DisableRun0000 and run_i == 1:
+        file_prefixes = [
+            "GEOSChem.BaseSpeciesConc",
+            "GEOSChem.StateMetLevEdge",
+        ]
+    elif run_i == 0:
+        file_prefixes = [
+            "GEOSChem.SpeciesConc",
+            "GEOSChem.StateMetLevEdge",
+        ]
+    else:
+        file_prefixes = []
+
+    # Every perturbation run has CH4 columns
+    if run_i != 0:
+        file_prefixes.append("GEOSChem.CH4col")
+
+    return [
+        os.path.join(
+            output_dir,
+            f"{file_prefix}.overpass.{date_str}_{overpass_tag}.nc4",
+        )
+        for file_prefix in file_prefixes
+    ]
+
+# ---------------------------------------------------------------------------
 # Helper: process a single (day, run) pair
 # ---------------------------------------------------------------------------
 def process_run_day(
@@ -805,30 +853,14 @@ def process_run_day(
             "GEOSChem.StateMetLevEdge",
         ]
 
-    expected_outputs = []
-
-    if do_sample_base_3d:
-        expected_outputs.extend(
-            os.path.join(
-                output_dir,
-                (
-                    f"{file_prefix}.overpass."
-                    f"{date_str}_{overpass_tag}.nc4"
-                ),
-            )
-            for file_prefix in baserun_file_types
-        )
-
-    if run_i != 0:
-        expected_outputs.append(
-            os.path.join(
-                output_dir,
-                (
-                    f"GEOSChem.CH4col.overpass."
-                    f"{date_str}_{overpass_tag}.nc4"
-                ),
-            )
-        )
+    expected_outputs = expected_overpass_paths(
+        JacobianRunDirs,
+        RunName,
+        run_i,
+        date_str,
+        overpass_tag,
+        DisableRun0000,
+    )
 
     if expected_outputs and all(
         os.path.isfile(fpath)
@@ -1140,6 +1172,73 @@ def calculate_satellite_overpass_diagnostics(
     start, end, date_list, shared_end_date = build_date_list(config)
     StartDate = str(config["StartDate"])
 
+    Jacobian_RunDir_list = [
+        name
+        for name in os.listdir(JacobianRunDirs)
+        if os.path.isdir(os.path.join(JacobianRunDirs, name))
+    ]
+
+    run_indices = sorted(
+        run_i
+        for run_i in (
+            int(name.rsplit("_", 1)[1])
+            for name in Jacobian_RunDir_list
+            if name.startswith(f"{RunName}_")
+            and name.rsplit("_", 1)[1].isdigit()
+        )
+        if run_i >= start_run_num
+    )
+
+    if not run_indices:
+        raise FileNotFoundError(
+            f"No Jacobian run directories matching {RunName}_#### found in "
+            f"{JacobianRunDirs}"
+        )
+
+    print(
+        f"Processing {len(run_indices)} Jacobian run(s): "
+        f"{run_indices[0]:04d}..{run_indices[-1]:04d}"
+    )
+
+    # The marker says the dates before date_list are done. Check that their
+    # files are all there, and remake the dates that have files missing,
+    # e.g. files deleted because they were incomplete. This prevents deleted
+    # files from never being remade and the next marker covering them.
+    # If a date's OutputDir inputs were already pruned, remaking it stops
+    # with an error instead of writing a marker over missing files.
+    overpass_tag = config["OverpassTime"].replace(":", "")
+    local_start = start - timedelta(days=1)
+    if date_list:
+        first_new = datetime.strptime(date_list[0], "%Y%m%d")
+    else:
+        first_new = local_end_exclusive_for(shared_end_date, end)
+    covered_dates = [
+        (local_start + timedelta(days=i)).strftime("%Y%m%d")
+        for i in range((first_new - local_start).days)
+    ]
+    redo_dates = [
+        date_str
+        for date_str in covered_dates
+        if not all(
+            os.path.isfile(fpath)
+            for run_i in run_indices
+            for fpath in expected_overpass_paths(
+                JacobianRunDirs,
+                RunName,
+                run_i,
+                date_str,
+                overpass_tag,
+                DisableRun0000,
+            )
+        )
+    ]
+    if redo_dates:
+        print(
+            f"Remaking {len(redo_dates)} date(s) the marker covers but with "
+            f"overpass files missing: {', '.join(redo_dates)}"
+        )
+        date_list = sorted(redo_dates + date_list)
+
     if not date_list:
         existing = read_stage_marker(
             os.path.join(OutputPath, RunName),
@@ -1180,34 +1279,6 @@ def calculate_satellite_overpass_diagnostics(
     ) = get_grid_info(
         overpass_ds,
         config["UseGCHP"],
-    )
-
-    Jacobian_RunDir_list = [
-        name
-        for name in os.listdir(JacobianRunDirs)
-        if os.path.isdir(os.path.join(JacobianRunDirs, name))
-    ]
-
-    run_indices = sorted(
-        run_i
-        for run_i in (
-            int(name.rsplit("_", 1)[1])
-            for name in Jacobian_RunDir_list
-            if name.startswith(f"{RunName}_")
-            and name.rsplit("_", 1)[1].isdigit()
-        )
-        if run_i >= start_run_num
-    )
-
-    if not run_indices:
-        raise FileNotFoundError(
-            f"No Jacobian run directories matching {RunName}_#### found in "
-            f"{JacobianRunDirs}"
-        )
-
-    print(
-        f"Processing {len(run_indices)} Jacobian run(s): "
-        f"{run_indices[0]:04d}..{run_indices[-1]:04d}"
     )
 
     pert_simulations_dict = build_pert_simulations_dict(
