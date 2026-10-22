@@ -24,6 +24,12 @@ is_valid_nc() {
     return 0
 }
 
+fail() {   # usage: fail <code> <message>
+    echo "$2"
+    echo "Error Status: $1" > "${RUNDIR}/.error_status_file.txt"
+    exit "$1"
+}
+
 ### Run directory
 RUNDIR=$(pwd -P)
 
@@ -50,48 +56,99 @@ if test -f "$FILE"; then
     exit 1
 fi
 
+yyyymmdd={EndDate}
+start_yyyymmdd={StartDate}
+
+cd "${RUNDIR}/{RunName}_${xstr}" || fail 1 "Cannot cd to run dir for jacobian simulation: ${xstr}"
+
 if {ReDoJacobian}; then
 
-    cd ${RUNDIR}/{RunName}_${xstr}
-
-    # check for last conc file
-    # it has 24 timestep
-    # check if it is valid and has 24 entries of time
-    yyyymmdd={EndDate}
+    # Check if last conc file is complete (has 24 timesteps)
+    # if yes, exit as sim ran fully
     last_date=$(date -d "${yyyymmdd} -1 day" +%Y%m%d)
     LastConcFile="GEOSChem.SpeciesConc.${last_date}_0000z.nc4"
-
     if is_valid_nc "OutputDir/$LastConcFile"; then
         echo "Not re-running jacobian simulation: ${xstr}"
         exit 0
-    else
-        ### Run GEOS-Chem in the directory corresponding to the cluster Id
-        echo "Re-running jacobian simulation: ${xstr}"
-        ./{RunName}_${xstr}.run
-        # save the exit code of the jacobian simulation cmd
-        retVal=$?
     fi
-else
-    ### Run GEOS-Chem in the directory corresponding to the cluster Id
-    cd  ${RUNDIR}/{RunName}_${xstr}
-    ./{RunName}_${xstr}.run
 
-    # save the exit code of the jacobian simulation cmd
-    retVal=$?
+    # Find the latest usable restart in [start, end)
+    RestartDate=""
+    RestartTime=""
+    RestartPath=""
+    
+    # looping over restarts, newest first
+    for f in $(ls -1 Restarts/GEOSChem.Restart.????????_????z.nc4 2>/dev/null | sort -r); do
+        rst=$(basename "$f")
+        d=$(echo "$rst" | cut -d. -f3 | cut -d_ -f1)
+        t=$(echo "$rst" | cut -d. -f3 | cut -d_ -f2 | cut -dz -f1)
+
+	# skip if restart is before start date or after end date
+        if [ "$d" -lt "$start_yyyymmdd" ] || [ "$d" -ge "$yyyymmdd" ]; then
+            continue
+        fi
+
+	# skips restarts that are incomplete (from killed runs)
+        if ! ncks -m "$f" > /dev/null 2>&1; then
+            echo "skipping unreadable restart file: ${rst}"
+            continue
+        fi
+
+	# loop exits on first success
+        RestartDate=$d
+        RestartTime="${t}00"
+        RestartPath=$f
+        break
+    done
+
+    ## Handling when restart is found and is NOT start-date (true redo case) 
+    if [ -n "$RestartDate" ] && [ "$RestartDate" != "$start_yyyymmdd" ]; then
+	
+	# look for backup geoschem and hemco config files, create one if it doesn't exist
+	# preserves original settings when restarting several times
+        [ -f geoschem_config.yml.orig ] || cp -p geoschem_config.yml geoschem_config.yml.orig
+        [ -f HEMCO_Config.rc.orig ]     || cp -p HEMCO_Config.rc HEMCO_Config.rc.orig
+
+	# replacing start date in geoschem_config
+        sed -i -E "s/^([[:space:]]*start_date:[[:space:]]*\[)[0-9]{8}(,[[:space:]]*)[0-9]+(\])/\1${RestartDate}\2${RestartTime}\3/" geoschem_config.yml
+        
+	# checking restart replace worked (nothing strange in formatting)
+	check=$(grep -E '^[[:space:]]*start_date:' geoschem_config.yml | grep -oE '[0-9]{8}' | head -1)
+        [ "$check" = "$RestartDate" ] || fail 1 "Failed to set start_date for jacobian simulation: ${xstr}"
+
+        # Match the HEMCO restart variable prefix to what the file actually contains
+        if ncdump -h "$RestartPath" | grep -q 'SpeciesRst_'; then
+            prefix=SpeciesRst_
+            sed -i '/GEOSChem\.Restart/ s/SpeciesBC_/SpeciesRst_/g' HEMCO_Config.rc
+        else
+            prefix=SpeciesBC_
+            sed -i '/GEOSChem\.Restart/ s/SpeciesRst_/SpeciesBC_/g' HEMCO_Config.rc
+        fi
+
+	# checking replace worked
+        grep 'GEOSChem\.Restart' HEMCO_Config.rc | grep -q "$prefix" \
+            || fail 1 "Failed to set restart prefix in HEMCO_Config.rc for jacobian simulation: ${xstr}"
+
+        echo "Resuming jacobian simulation: ${xstr} from ${RestartDate} (was ${start_yyyymmdd}), restart prefix ${prefix}"
+    else
+	## Handling when no restart is found or restart = startdate
+    	# Resets to the original geoschem and hemco config state (a clean run)
+        [ -f geoschem_config.yml.orig ] && cp -p geoschem_config.yml.orig geoschem_config.yml
+        [ -f HEMCO_Config.rc.orig ]     && cp -p HEMCO_Config.rc.orig HEMCO_Config.rc
+        echo "No mid-run restart for jacobian simulation: ${xstr}; running from ${start_yyyymmdd}"
+    fi
 fi
 
-# Check whether the jacobian finished successfully. If not, write to a hidden file.
-# The presence of the .error_status_file.txt indicates whether an error ocurred.
-# This is needed because scripts that set off sbatch jobs have no knowledge of
-# whether the job finished successfully.
-if [ $retVal -ne 0 ]; then
-    rm -f .error_status_file.txt
-    echo "Error Status: $retVal" > ../.error_status_file.txt
+### Run GEOS-Chem in the directory corresponding to the cluster Id
+echo "Running jacobian simulation: ${xstr}"
+./{RunName}_${xstr}.run
+retVal=$?
+
+if [ "$retVal" -ne 0 ]; then
     echo "jacobian simulation: ${xstr} exited with error code: $retVal"
     echo "Check the log file in the ${RUNDIR}/{RunName}_${xstr} directory for more details."
-    exit $retVal
+    fail "$retVal" "Error Status: $retVal"
 fi
 
 echo "finished jacobian simulation: ${xstr}"
-
 exit 0
