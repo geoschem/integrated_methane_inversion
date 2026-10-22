@@ -83,8 +83,9 @@ echo "End date: ${end_date}"
 # Function to rename GCHP mid-run checkpoints to standard restart names:
 #   Restarts/gcchem_internal_checkpoint.YYYYMMDD_HHMMz.nc4
 #   -> Restarts/GEOSChem.Restart.YYYYMMDD_HHMMz.c<N>.nc4
-# GCHP also writes a checkpoint at the run start time. It duplicates the
-# restart the run started from, so it is deleted instead.
+# GCHP also writes a checkpoint at the run start time. If the restart the
+# run started from already has the standard name, the checkpoint is a duplicate
+# and is deleted. Otherwise it is the only copy and is renamed.
 # Argument: run start time as YYYYMMDD_HHMM
 rename_checkpoints() {
     local start_stamp=$1
@@ -93,7 +94,8 @@ rename_checkpoints() {
         [[ -e "${file}" ]] || continue
         stamp=${file#Restarts/gcchem_internal_checkpoint.}
         stamp=${stamp%z.nc4}
-        if [[ "${stamp}" == "${start_stamp}" ]]; then
+        if [[ "${stamp}" == "${start_stamp}" && \
+              -e "Restarts/GEOSChem.Restart.${stamp}z.c${N}.nc4" ]]; then
             rm -f "${file}"
         else
             mv -f "${file}" "Restarts/GEOSChem.Restart.${stamp}z.c${N}.nc4"
