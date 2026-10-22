@@ -25,7 +25,7 @@ source "${SLURM_SUBMIT_DIR:-$(dirname "$0")}/gchp_imi_common.sh"
 
 face_name=$1
 face_dir="${test_dir}/${face_name}"
-config="${config_dir}/config_${face_name}.yml"   # relative to imi_dir
+config=$(config_for "${face_name}")   # relative to imi_dir
 status_file="${face_dir}/setup_status"
 
 mkdir -p "${face_dir}"

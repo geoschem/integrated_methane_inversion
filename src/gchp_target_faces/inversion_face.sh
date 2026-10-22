@@ -7,6 +7,7 @@
 #      No posterior is calculated.
 #   3. If prune_output is true in gchp_imi_common.sh, delete Jacobian run
 #      output that both stages are done with
+#   4. Checks that the outputs are complete; DONE is written only if so
 #
 # Run by run_gchp_imi_inversion.sh on the head node. Usage:
 #   bash inversion_face.sh <face_name> <segment_end YYYYMMDD>
@@ -41,7 +42,7 @@ fi
 face_name=$1
 segment_end=$2
 face_dir="${test_dir}/${face_name}"
-config="${config_dir}/config_${face_name}.yml"   # relative to imi_dir
+config=$(config_for "${face_name}")   # relative to imi_dir
 status_file="${face_dir}/inversion_status"
 
 if [[ ! -d "${face_dir}" ]]; then
@@ -109,5 +110,18 @@ set_config "${config}" InvSchedulerPartition     "\"${inversion_partition}\""
 set_config "${config}" ArchiveJacobiansOnly      true
 set_config "${config}" PruneOutputDir            "${prune_output}"
 ./run_imi.sh "${config}"
+
+#--------------------------------------------------------------------------
+# Step 3: Check that the outputs are complete before recording DONE in the
+# status file. This runs prune_outputdir.py without --execute and so deletes
+# nothing. It checks that both stages' markers agree, every run has every
+# overpass file, and every .pkl in the manifest exists, and exits with
+# code 2 if not.
+#--------------------------------------------------------------------------
+echo "inversion_face.sh: Checking outputs"
+conda_env=$(grep "^CondaEnv:" "${config}" | awk '{print $2}' | tr -d '"')
+if ! conda run -n "${conda_env}" python src/utilities/prune_outputdir.py "${config}"; then
+    fail "Output check failed for segment end ${segment_end}. See the log above."
+fi
 
 echo "DONE ${segment_end} $(date)" >> "${status_file}"

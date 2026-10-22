@@ -91,7 +91,7 @@ make_face_config() {
     local face_name=$1
     local lon=$2
     local lat=$3
-    local face_config="${imi_dir}/${config_dir}/config_${face_name}.yml"
+    local face_config="${imi_dir}/$(config_for "${face_name}")"
 
     cp "${template_config}" "${face_config}"
     set_config "${face_config}" RunName            "\"${face_name}\""
