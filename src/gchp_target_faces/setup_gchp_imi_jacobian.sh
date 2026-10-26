@@ -51,6 +51,15 @@ start_from_scratch=true
 # Make sure the other utility scripts are located where this script is run
 cd "$(dirname "$0")"
 source ./gchp_imi_common.sh
+
+# Never delete directories that were not made for this test, e.g. runs
+# and configs set up elsewhere.
+if [[ "${start_from_scratch}" == "true" ]] && \
+   [[ "$(basename "${test_dir}")" != "${test_name}" || "${config_dir}" != "configs_${test_name}" ]]; then
+    echo "ERROR: start_from_scratch would delete ${test_dir} and ${imi_dir}/${config_dir}, which are not named after test ${test_name}. Stopping."
+    exit 1
+fi
+
 if [[ -z "${setup_partition}" ]]; then
     echo "ERROR: Set slurm partition name in file gchp_imi_common.sh. This will be used to setup directories for all target faces except the first, which will be done on the head node."
     exit 1

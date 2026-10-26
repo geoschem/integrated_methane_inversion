@@ -58,10 +58,10 @@ template_config="${imi_dir}/config-gchp-imi.yml"   # base config, edit by hand
 # Face configs, in this directory relative to imi_dir. Configs made by
 # setup_gchp_imi_jacobian.sh are named config_<face name>.yml ("full").
 # Use "short" for names like config_T001.yml.
-#config_dir="configs_${test_name}"
-#config_name_style=full
-config_dir="configs_C36S10" # Dandan's setting
-config_name_style=short
+config_dir="configs_${test_name}"
+config_name_style=full
+#config_dir="configs_C36S10" # Dandan's setting
+#config_name_style=short
 
 mapping_file="${util_dir}/target_coords_num-sv.csv"
 
