@@ -152,7 +152,7 @@ SetupPosteriorRun: false
 DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: false
+ContinueIncompleteJacobians: false
 DoInversion: false
 DoPosterior: false
 
@@ -225,7 +225,7 @@ PerturbValueBCs: 10.0
 HourlySpecies: true
 
 ## Write restart files during jacobian simulations?
-## This enables ReDoJacobians to start up in the middle of a run rather than 
+## This enables ContinueIncompleteJacobians to start up in the middle of a run rather than 
 ## from the beginning
 ## This only applies to non-GCHP runs; GCHP requires restarts
 ## Disabling this saves disk space

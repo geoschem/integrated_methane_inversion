@@ -299,7 +299,7 @@ These settings turn on/off (``true`` / ``false``) different steps for running th
      - Boolean to run a spin-up simulation to generate a new restart file for initializing species concentrations in the Jacobian simulations.
    * - ``DoJacobian``
      - Boolean to run the reference and sensitivity forward model simulations.
-   * - ``ReDoJacobian``
+   * - ``ContinueIncompleteJacobians``
      - Boolean to only re-run sensitivity simulations that have not yet completed successfully. This is useful for resuming an interrupted inversion. ``false`` will re-run all sensitivity simulations.
    * - ``DoInversion``
      - Boolean to run the inverse analysis code.
@@ -390,7 +390,7 @@ These settings are intended for advanced users who wish to modify additional GEO
    * - ``HourlySpecies``
      - Boolean to save out hourly diagnostics from GEOS-Chem. This output is used in satellite operators via post-processing. Default value is ``true``.
    * - ``WriteRestarts``
-     - Boolean to write out restart files during jacobian simulations. This enables ReDoJacobians to start up in the middle of an incomplete run rather than from the beginning. This setting only applies to non-GCHP runs as GCHP requires restarts. This setting defaults to on and can be disabled to save disk space during runs. 
+     - Boolean to write out restart files during jacobian simulations. This enables ContinueIncompleteJacobians to start up in the middle of an incomplete run rather than from the beginning. This setting only applies to non-GCHP runs as GCHP requires restarts. This setting defaults to on and can be disabled to save disk space during runs. 
    * - ``PLANEFLIGHT``
      - Boolean to save out the planeflight diagnostic in GEOS-Chem. This output may be used to compare GEOS-Chem against planeflight data. The path to those data must be specified in geoschem_config.yml. See the `planeflight diagnostic <https://geos-chem.readthedocs.io/en/latest/gcclassic-user-guide/planeflight.html#planeflight-diagnostic>`_ documentation for details. Default value is ``false``.
    * - ``DoObsPack``

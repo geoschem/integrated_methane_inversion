@@ -70,7 +70,7 @@ config_required: Dict[str, Rule] = {
     "SetupPosteriorRun": bool,
     "DoHemcoPriorEmis": bool,
     "DoSpinup": bool,
-    "ReDoJacobian": bool,
+    "ContinueIncompleteJacobians": bool,
     "DoJacobian": bool,
     "DoInversion": bool,
     "DoPosterior": bool,

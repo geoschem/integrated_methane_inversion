@@ -61,7 +61,7 @@ start_yyyymmdd={StartDate}
 
 cd "${RUNDIR}/{RunName}_${xstr}" || fail 1 "Cannot cd to run dir for jacobian simulation: ${xstr}"
 
-if {ReDoJacobian}; then
+if {ContinueIncompleteJacobians}; then
 
     # Check if last conc file is complete (has 24 timesteps)
     # if yes, exit as sim ran fully

@@ -537,7 +537,7 @@ run_jacobian() {
         -e "s:{StartDate}:${StartDate}:g" \
         -e "s:{EndDate}:${EndDate}:g" \
         -e "s:{UseGCHP}:${UseGCHP}:g" \
-        -e "s:{ReDoJacobian}:${ReDoJacobian}:g" jacobian_runs/run_jacobian_simulations.sh
+        -e "s:{ContinueIncompleteJacobians}:${ContinueIncompleteJacobians}:g" jacobian_runs/run_jacobian_simulations.sh
     if [[ "$SchedulerType" == "PBS" ]]; then
         sed -i "/pwd -P/a \
 source ${InversionPath}/${GEOSChemEnv}\\

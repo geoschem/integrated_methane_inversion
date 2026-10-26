@@ -149,7 +149,7 @@ SetupPosteriorRun: false
 DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: false
+ContinueIncompleteJacobians: false
 DoInversion: false
 DoPosterior: false
 
