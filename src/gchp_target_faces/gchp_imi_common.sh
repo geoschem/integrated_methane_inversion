@@ -6,10 +6,10 @@
 #--------------------------------------------------------------------------
 # Test settings
 #--------------------------------------------------------------------------
-test_name=test_2_faces # Regional_1day_beta_test
+test_name=test_5_faces # Regional_1day_beta_test
 target_prefix=Global_1yr_2025_C36S10
 start_face=1
-num_faces=2         # For all faces use 220
+num_faces=5         # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -41,7 +41,7 @@ inversion_partition=vcpus16
 
 # Delete Jacobian run output already used by satellite diagnostics and the
 # inversion stage (true or false). Keep false until pruning has been checked.
-prune_output=false
+prune_output=true
 
 #--------------------------------------------------------------------------
 # Directories and files
@@ -58,10 +58,10 @@ template_config="${imi_dir}/config-gchp-imi.yml"   # base config, edit by hand
 # Face configs, in this directory relative to imi_dir. Configs made by
 # setup_gchp_imi_jacobian.sh are named config_<face name>.yml ("full").
 # Use "short" for names like config_T001.yml.
-config_dir="configs_${test_name}"
-config_name_style=full
-#config_dir="configs_C36S10" # Dandan's setting
-#config_name_style=short
+#config_dir="configs_${test_name}"
+#config_name_style=full
+config_dir="configs_C36S10" # Dandan's setting
+config_name_style=short
 
 mapping_file="${util_dir}/target_coords_num-sv.csv"
 
@@ -71,7 +71,7 @@ cleanup_restarts_script="${util_dir}/removeLocalRestarts.sh"
 
 # Inputs downloaded from S3
 dandan_s3_out="s3://dzhang-imi-gchp-output/output"
-prior_emis_pattern="GEOSChem.Emissions.2025010*"   # must cover StartDate to EndDate
+prior_emis_pattern="GEOSChem.Emissions.202501*"   # must cover StartDate to EndDate
 
 # Repository branches to use (you must manually check these out!)
 imi_branch=feature/gchp_14.7.1+bug_fixes_and_improvements
