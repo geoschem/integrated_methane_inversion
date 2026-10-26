@@ -20,10 +20,6 @@
 # Jacobian runs, and never remakes a .pkl file it has already made. A .pkl
 # made with a shorter EndDate would miss observations near the segment end.
 #
-# The last segment should end one day after EndDate. Otherwise the overpass
-# diagnostics for the last day are missing values (NaN) for the western
-# hemisphere, where 13:30 local time is already the next UTC day.
-#
 # run_imi.sh submits each processing job itself (sbatch -W), using
 # InvSchedulerPartition, InversionCPUs, InversionMemory and InversionTime
 # from the IMI config, and waits for it to finish.
@@ -76,14 +72,8 @@ fi
 end_date=$(grep "^EndDate:" "${config}" | awk '{print $2}' | tr -d '"')
 if [[ ! "${segment_end}" =~ ^[0-9]{8}$ ]] || ! date -d "${segment_end}" >/dev/null 2>&1; then
     fail "Segment end '${segment_end}' is not a valid date YYYYMMDD"
-elif [[ "${segment_end}" > "$(date -d "${end_date} +1 day" +%Y%m%d)" ]]; then
-    fail "Segment end ${segment_end} is more than one day after EndDate ${end_date} in ${config}"
-fi
-
-# Do not allow segment end to be final EndDate since it would cause the last day
-# to be marked with NaN in it, and later segment runs would not fix it.
-if [[ "${segment_end}" == "${end_date}" ]]; then
-    fail "Segment end equals EndDate ${end_date}. End the last segment one day later, $(date -d "${end_date} +1 day" +%Y%m%d), so the last day's overpass diagnostics are complete."
+elif [[ "${segment_end}" > "${end_date}" ]]; then
+    fail "Segment end ${segment_end} is after EndDate ${end_date} in ${config}"
 fi
 
 active=$(active_run_dirs)
