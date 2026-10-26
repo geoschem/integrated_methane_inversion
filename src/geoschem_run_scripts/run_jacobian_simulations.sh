@@ -56,7 +56,7 @@ if test -f "$FILE"; then
     exit 1
 fi
 
-yyyymmdd={EndDate}
+end_yyyymmdd={EndDate}
 start_yyyymmdd={StartDate}
 
 cd "${RUNDIR}/{RunName}_${xstr}" || fail 1 "Cannot cd to run dir for jacobian simulation: ${xstr}"
@@ -65,7 +65,7 @@ if {ReDoJacobian}; then
 
     # Check if last conc file is complete (has 24 timesteps)
     # if yes, exit as sim ran fully
-    last_date=$(date -d "${yyyymmdd} -1 day" +%Y%m%d)
+    last_date=$(date -d "${end_yyyymmdd} -1 day" +%Y%m%d)
     LastConcFile="GEOSChem.SpeciesConc.${last_date}_0000z.nc4"
     if is_valid_nc "OutputDir/$LastConcFile"; then
         echo "Not re-running jacobian simulation: ${xstr}"
@@ -84,7 +84,7 @@ if {ReDoJacobian}; then
         t=$(echo "$rst" | cut -d. -f3 | cut -d_ -f2 | cut -dz -f1)
 
 	# skip if restart is before start date or after end date
-        if [ "$d" -lt "$start_yyyymmdd" ] || [ "$d" -ge "$yyyymmdd" ]; then
+        if [ "$d" -lt "$start_yyyymmdd" ] || [ "$d" -ge "$end_yyyymmdd" ]; then
             continue
         fi
 
