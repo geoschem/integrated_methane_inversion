@@ -16,6 +16,15 @@ run_preview() {
         run_hemco_prior_emis
     fi
 
+    # Make sure the HEMCO standalone run was successful before continuing
+    hemco_log="${RunDirs}/hemco_prior_emis/HEMCO_sa.log"
+    hemco_last_line="$(tail -n 1 "$hemco_log" 2>/dev/null | tr -d '\r')"
+    if [[ "$hemco_last_line" != "$hemco_finished_message" ]]; then
+        printf "\nERROR: HEMCO prior-emissions run did not finish successfully.\n" >&2
+        printf "Examine the log file at %s\n" "$hemco_log" >&2
+        imi_failed $LINENO preview.sh
+    fi
+
     # Make the preview directory
     runDir="preview"
     mkdir -p -v ${RunDirs}/${runDir}
