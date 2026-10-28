@@ -283,10 +283,10 @@ AIRS: false
 OutputPath: "/home/ec2-user/fsx/output//single_tests_N200_3day_C36S10"
 
 ## Path to GEOS-Chem input data
-DataPath: "/home/ec2-user/fsx/input/ExtData"
+DataPath: "/home/ec2-user/fsx/dzhang-imi-gchp/ExtData"
 
 ## Path to TROPOMI Data
-DataPathTROPOMI: "/home/ec2-user/fsx/input/blended-tropomi"
+DataPathTROPOMI: "/home/ec2-user/fsx/dzhang-imi-gchp/blended-tropomi"
 
 ## Conda environment file
 ## See envs/README to create the Conda environment specified below
@@ -303,11 +303,11 @@ RestartDownload: false
 
 ## Path to initial GEOS-Chem restart file + prefix
 ##   ("YYYYMMDD_0000z.nc4" will be appended)
-RestartFilePrefix: "/home/ec2-user/fsx/input/blended-boundary-conditions/v2025-12/GEOSChem.BoundaryConditions."
+RestartFilePrefix: "/home/ec2-user/fsx/dzhang-imi-gchp/blended-boundary-conditions/v2025-12/GEOSChem.BoundaryConditions."
 
 ## Path to GEOS-Chem boundary condition files (for regional simulations)
 ## BCversion will be appended to the end of this path. ${BCpath}/${BCversion}
-BCpath: "/home/ec2-user/fsx/input/blended-boundary-conditions"
+BCpath: "/home/ec2-user/fsx/dzhang-imi-gchp/blended-boundary-conditions"
 BCversion: "v2025-12"
 
 ## Options to download missing GEOS-Chem input data from AWS S3
