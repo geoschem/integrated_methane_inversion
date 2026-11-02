@@ -200,7 +200,10 @@ setup_template() {
         # Modify the METDIR for 0.125x0.15625 simulation
         elif [ "$Res" = "0.125x0.15625" ]; then
            sed -i -e "s:GEOS_0.25x0.3125_NA:GEOS_0.25x0.3125_${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125
-           sed -i -e "s:GEOS_0.125x0.15625_NA:GEOS_0.125x0.15625_${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125
+           sed -i -e "s:GEOS_0.125x0.15625_NA:GEOS_0.125x0.15625_${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125 
+           sed -i -e "s:025x03125\.NA:025x03125\.${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125 
+           sed -i -e "s:0125x015625\.NA:0125x015625\.${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125
+           sed -i -e "s:\$RES.NA:\$RES.${RegionID}:g" HEMCO_Config.rc.gmao_metfields_0125
 	fi
    fi
 
