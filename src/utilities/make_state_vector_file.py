@@ -163,10 +163,16 @@ def make_state_vector_file(
         buffer_min_lat = deg_lat * 4
         buffer_min_lon = deg_lon * 4
 
+    # Calculate the buffer degrees that would exist using the rings
+    buffer_lat = buffer_rings * deg_lat
+    buffer_lon = buffer_rings * deg_lon
+
     # set the buffer degrees to the maximum to ensure
     # that the buffer is at least the minimum (4 extra grid cells on each side)
-    buffer_deg_lat = buffer_rings * deg_lat + buffer_min_lat
-    buffer_deg_lon = buffer_rings * deg_lon + buffer_min_lon
+    buffer_deg_lat = max(buffer_lat, buffer_min_lat)
+    buffer_deg_lon = max(buffer_lon, buffer_min_lon)
+    # buffer_deg_lat = buffer_rings * deg_lat + buffer_min_lat
+    # buffer_deg_lon = buffer_rings * deg_lon + buffer_min_lon
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
