@@ -1,9 +1,14 @@
 #!/bin/bash
 
-# Run satellite diagnostics and the IMI inversion stage for all target
+# Manually run satellite diagnostics and the IMI inversion stage for all target
 # faces set in gchp_imi_common.sh, for one segment, max_parallel_inversions
 # faces at a time. See inversion_face.sh for what is done for each face.
 #
+# Not needed when using run_segments.sh, which submits and runs the
+# inversion stage itself. Do not use while run_segments.sh is running. If
+# run_segments.sh fails for whatever reason, you can then use this to
+# run the inversion stage by hand. Faces with the stage already done are skipped.
+
 # Run this after all Jacobian runs have reached the segment end
 # (check_gchp_imi_jacobian.sh shows all runs DONE). It waits for all faces
 # to finish, so run it on the head node inside tmux:

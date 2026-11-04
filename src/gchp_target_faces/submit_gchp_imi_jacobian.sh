@@ -1,9 +1,14 @@
 #!/bin/bash
 
-# Submit Jacobian runs that have not reached the end date and have no job in
-# the Slurm queue. Runs check_gchp_imi_jacobian.sh first, then asks whether
-# to continue and how many runs to submit. Usage:
+# Manually submit all Jacobian runs that have not reached the end date and have
+# no job in the Slurm queue. Runs check_gchp_imi_jacobian.sh first, then asks
+# whether to continue and how many runs to submit. Usage:
 #   ./submit_gchp_imi_jacobian.sh <end_date YYYYMMDD> <max_days>
+#
+# Not needed when using run_segments.sh, which submits runs and runs the
+# inversion stage itself. Do not use while run_segments.sh is running. If
+# run_segments.sh fails for whatever reason, you can then use this to submit
+# jacobian runs by hand. Faces with the runs already done are skipped.
 #
 # Each run is submitted from its own directory as
 #
@@ -63,10 +68,6 @@ echo -e "\n$(date): end date ${end_date}, max days ${max_days}, max runs ${max_r
 # Loop over target faces and their Jacobian runs and submit
 #------------------------------------------------------
 
-# Nodes and cores for each run, from the base IMI config
-run_nodes=$(grep "^NUM_NODES:" "${template_config}" | awk '{print $2}')
-run_cores=$(grep "^TOTAL_CORES:" "${template_config}" | awk '{print $2}')
-
 # Read the queue again in case it changed while answering the questions
 active=$(active_run_dirs)
 num_submitted=0
@@ -82,11 +83,7 @@ for ((i_face=start_face; i_face<=num_faces; i_face++)); do
         status=$(run_status "${run_dir}" "${end_date}" "${active}")
         if [[ "${status}" == READY || ( "${status}" == FAILED && "${retry_failed}" == true ) ]]; then
             run_name=$(basename "${run_dir}")
-	    msg=$(cd "${run_dir}" && sbatch -p "${run_partition}" \
-					    -t "${run_time}" \
-					    -N "${run_nodes}" \
-					    -n "${run_cores}" \
-					    -J "${run_name}" "${run_name}.run" "${end_date}" "${max_days}")
+            msg=$(submit_run "${run_dir}" "${end_date}" "${max_days}")
             echo "  ${run_name} (${status}): ${msg}" | tee -a "${log_file}"
             num_submitted=$((num_submitted + 1))
         fi
