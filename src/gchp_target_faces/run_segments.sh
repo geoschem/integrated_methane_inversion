@@ -10,17 +10,27 @@
 #   ./run_segments.sh 20250106 2
 # runs segments ending 20250103, 20250105 and 20250106.
 #
-# For each segment:
-#   1. Submit every Jacobian run that has not reached the segment end
-#   2. Wait until every run has reached it, checking every poll_minutes.
-#      Runs that fail, or stop before the segment end, are resubmitted once.
-#   3. Run the inversion stage for the segment (run_gchp_imi_inversion.sh),
-#      including pruning if prune_output is true
+# Within a segment, faces are started in order of face number, but only
+# while the space they will need fits under fsx_max_use_percent of FSx
+# (see "Storage" in gchp_imi_common.sh). Every poll_minutes it checks each
+# face:
+#   - Not started: submit its Jacobian runs if its space fits. Faces are
+#     never started out of order.
+#   - Runs going: wait. Runs that failed, or stopped before the segment end,
+#     are resubmitted once.
+#   - All runs at the segment end: run its inversion stage (inversion_face.sh,
+#     up to max_parallel_inversions faces at a time), which prunes its
+#     Jacobian run output if prune_output is true. That frees its space for
+#     the next faces.
+# The next segment starts only when every face has finished this one. Then
+# met fields and exported products that are no longer needed are released
+# from FSx (they stay in S3), if release_met and release_products are true.
 #
-# It stops before starting the next segment if runs still have not reached
-# the segment end after one resubmission, or if the inversion stage of any
-# face is not DONE. Fix the cause and run it again with the same arguments:
-# it continues after the last segment that every face has completed.
+# If something fails (runs fail again after one resubmission, an inversion
+# stage is not DONE, or a face cannot fit even on its own), no more faces
+# are started; it waits for running inversion stages to end, then stops.
+# Fix the cause and run it again with the same arguments: it continues from
+# where things stand, after the last segment that every face completed.
 #
 # target_end must not be after EndDate in the base IMI config. EndDate stays
 # the end of the full inversion period.
@@ -28,11 +38,12 @@
 # Progress is written to the screen and to <test_dir>/logs/run_segments.log.
 
 set -e
+shopt -s nullglob
 cd "$(dirname "$0")"
 source ./gchp_imi_common.sh
 
 #--------------------------------------------------------------------------
-# Check arguments
+# Check arguments and settings
 #--------------------------------------------------------------------------
 if [[ $# -ne 2 ]]; then
     echo "Usage: $0 <target_end YYYYMMDD> <segment_days>"
@@ -74,17 +85,30 @@ days_between() {
     echo $(( ( $(date -d "$2" +%s) - $(date -d "$1" +%s) ) / 86400 ))
 }
 
-# Function to list the Jacobian run directories of all faces, one per line
-all_run_dirs() {
-    local i_face face_name run_dir
-    for ((i_face=start_face; i_face<=num_faces; i_face++)); do
-        face_name=$(face_name_for ${i_face})
-        for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
-            if [[ -d "${run_dir}" ]]; then
-                echo "${run_dir}"
-            fi
-        done
+# Function to print the dates from one date to another, inclusive, one per line
+# Arguments: first date, last date (YYYYMMDD)
+dates_from_to() {
+    local d=$1
+    while [[ ! "${d}" > "$2" ]]; do
+        echo "${d}"
+        d=$(date -d "${d} +1 days" +%Y%m%d)
     done
+}
+
+# Function to print a size in bytes as GB, for the log
+# Argument: bytes
+gb() {
+    awk -v b="$1" 'BEGIN { printf "%.0f GB", b / 1e9 }'
+}
+
+# Function to test whether a face's inversion stage is DONE for a segment
+# end (or a later one)
+# Arguments: face name, segment end
+face_done() {
+    local done_date
+    done_date=$(grep "^DONE" "${test_dir}/$1/inversion_status" 2>/dev/null \
+                | tail -n 1 | awk '{print $2}')
+    [[ -n "${done_date}" && ! "${done_date}" < "$2" ]]
 }
 
 # Function to print the last segment end for which the inversion stage of
@@ -106,26 +130,39 @@ last_done_segment() {
     echo "${oldest}"
 }
 
-# Function to submit every run that is READY for the segment end, and also
-# every FAILED run if the second argument is true
-# Arguments: segment end, true or false
-submit_segment() {
-    local seg_end=$1
-    local retry_failed=$2
-    local active run_dir status start days msg
-    local num_submitted=0
+# Function to print the space, in bytes, a face still needs on FSx in this
+# segment: its hourly output at the peak (segment days plus the day kept
+# from the previous segment) and the restarts written during the segment,
+# minus the hourly output it has already written. Never less than zero.
+# Argument: face number
+face_space_needed() {
+    local face_name num_sv written
+    face_name=$(face_name_for "$1")
+    num_sv=$(num_sv_for "$1")
+    written=$(du -sbc "${test_dir}/${face_name}/jacobian_runs/"*/OutputDir 2>/dev/null \
+              | tail -n 1 | cut -f1)
+    awk -v n="${num_sv}" -v d="${segment_days}" -v o="${gb_per_element_day}" \
+        -v r="${gb_per_element_restart}" -v f="${storage_safety_factor}" \
+        -v w="${written:-0}" \
+        'BEGIN { need = n * (o * (d + 1) + r * d) * f * 1e9 - w
+                 printf "%.0f", (need > 0 ? need : 0) }'
+}
 
-    if ! active=$(active_run_dirs); then
-        log "ERROR: squeue failed, so active runs are unknown. Nothing submitted."
-        return 1
-    fi
+# Function to submit the runs of one face that have not reached the segment
+# end. Each run gets exactly the days it needs to reach it.
+# Arguments: face name, segment end, true to also resubmit FAILED runs,
+#            output of active_run_dirs
+submit_face() {
+    local face_name=$1
+    local seg_end=$2
+    local retry_failed=$3
+    local active=$4
+    local run_dir status start days msg
 
-    while read -r run_dir; do
-        [[ -n "${run_dir}" ]] || continue
+    for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
+        [[ -d "${run_dir}" ]] || continue
         status=$(run_status "${run_dir}" "${seg_end}" "${active}")
         if [[ "${status}" == READY || ( "${status}" == FAILED && "${retry_failed}" == true ) ]]; then
-            # The run's maximum days is exactly what it needs to reach the
-            # segment end, since this script works out the dates itself
             start=$(cut -c 1-8 "${run_dir}/cap_restart")
             days=$(days_between "${start}" "${seg_end}")
             if ! msg=$(submit_run "${run_dir}" "${seg_end}" "${days}"); then
@@ -133,22 +170,90 @@ submit_segment() {
                 return 1
             fi
             log "  $(basename "${run_dir}") (${status}): ${msg}"
-            num_submitted=$((num_submitted + 1))
         fi
-    done <<< "$(all_run_dirs)"
-
-    log "Submitted ${num_submitted} run(s) to ${seg_end}"
+    done
 }
 
-# Function to wait until every run has reached the segment end. Runs that
-# failed, or stopped before the segment end, are resubmitted once.
-# Returns 1 if runs still have not reached it after that.
+# Function to release files that are safely in S3: archived, not changed
+# since, and not already released. This frees their space on FSx; they are
+# loaded back from S3 if anything reads them. Files not exported yet are
+# left for a later segment.
+# Arguments: label for the log, then the files
+release_archived() {
+    local label=$1
+    shift
+    local states releasable num_releasable num_waiting
+
+    if (( $# == 0 )); then
+        return 0
+    fi
+    states=$(printf '%s\0' "$@" | xargs -0 lfs hsm_state 2>/dev/null || true)
+    releasable=$(grep " archived" <<< "${states}" | grep -v -e " released" -e "dirty" \
+                 | sed 's/: (0x[0-9a-fA-F]*).*//' || true)
+    num_releasable=$(grep -c . <<< "${releasable}" || true)
+    num_waiting=$(grep -v " archived" <<< "${states}" | grep -c . || true)
+
+    if (( num_releasable > 0 )); then
+        if ! tr '\n' '\0' <<< "${releasable}" | xargs -0 sudo -n lfs hsm_release; then
+            log "  WARNING: releasing ${label} failed. Check that sudo works without a password."
+            return 0
+        fi
+    fi
+    log "  ${label}: released ${num_releasable}, ${num_waiting} not exported to S3 yet"
+}
+
+# Function to release met fields and exported products no longer needed,
+# for dates from 3 segments back up to 2 days before the segment end
+# (later dates may still be read). Earlier dates were handled before.
 # Argument: segment end
-wait_for_runs() {
+release_after_segment() {
     local seg_end=$1
-    local resubmitted=false
-    local seen_before=false
-    local active run_dir status num_done num_active num_redo num_other
+    local first last d files
+
+    last=$(date -d "${seg_end} -2 days" +%Y%m%d)
+    first=$(date -d "${seg_end} -$((3 * segment_days + 2)) days" +%Y%m%d)
+    if [[ "${first}" < "${start_date}" ]]; then
+        first=$(date -d "${start_date} -1 days" +%Y%m%d)
+    fi
+    if [[ "${last}" < "${first}" ]]; then
+        return 0
+    fi
+    log "Releasing files dated ${first} to ${last} that are no longer needed on FSx"
+
+    if [[ "${release_met}" == true ]]; then
+        files=()
+        for d in $(dates_from_to "${first}" "${last}"); do
+            files+=( "${met_dir}/${d:0:4}/${d:4:2}/GEOSFP.${d}."* )
+        done
+        release_archived "met fields" "${files[@]}"
+    fi
+
+    if [[ "${release_products}" == true ]]; then
+        files=()
+        for d in $(dates_from_to "${first}" "${last}"); do
+            files+=( "${test_dir}"/*/jacobian_runs/*/OverpassDiagnostics/*.overpass."${d}"_*.nc4 )
+            files+=( "${test_dir}"/*/inversion/data_converted/*__"${d}"T*.pkl )
+        done
+        release_archived "overpass and .pkl files" "${files[@]}"
+    fi
+}
+
+#--------------------------------------------------------------------------
+# Function to run one segment for all faces. Returns 1 if something failed.
+# Arguments: segment start (last segment end every face completed),
+#            segment end
+#--------------------------------------------------------------------------
+run_segment() {
+    local seg_start=$1
+    local seg_end=$2
+    local -a inversion_pid=()   # by face number: PID of its inversion stage
+    local -a started=()         # by face number: true once its runs were submitted
+    local -a resubmitted=()     # by face number: true once runs were resubmitted
+    local -a seen_stopped=()    # by face number: true if runs were stopped at the last check
+    local failed=false
+    local i_face face_name active fs_size fs_used limit reserved need
+    local blocked num_done num_inversion num_running num_waiting num_inv_now
+    local run_dir status run_done run_active run_stopped run_progressed
 
     while true; do
         if ! active=$(active_run_dirs); then
@@ -156,43 +261,149 @@ wait_for_runs() {
             sleep $((poll_minutes * 60))
             continue
         fi
+        read -r fs_size fs_used < <(df -B1 --output=size,used "${test_dir}" | tail -n 1)
+        limit=$(( fs_size / 100 * fsx_max_use_percent ))
 
-        num_done=0; num_active=0; num_redo=0; num_other=0
-        while read -r run_dir; do
-            [[ -n "${run_dir}" ]] || continue
-            status=$(run_status "${run_dir}" "${seg_end}" "${active}")
-            case "${status}" in
-                DONE)         num_done=$((num_done + 1)) ;;
-                ACTIVE)       num_active=$((num_active + 1)) ;;
-                READY|FAILED) num_redo=$((num_redo + 1)) ;;
-                *)            num_other=$((num_other + 1)) ;;
-            esac
-        done <<< "$(all_run_dirs)"
+        # Inversion stages still running
+        num_inv_now=0
+        for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+            if [[ -n "${inversion_pid[i_face]}" ]] && kill -0 "${inversion_pid[i_face]}" 2>/dev/null; then
+                num_inv_now=$((num_inv_now + 1))
+            fi
+        done
 
-        log "Runs for ${seg_end}: ${num_done} DONE, ${num_active} ACTIVE, ${num_redo} failed or not finished, ${num_other} other"
+        reserved=0
+        blocked=false
+        num_done=0; num_inversion=0; num_running=0; num_waiting=0
 
-        if (( num_other > 0 )); then
-            log "ERROR: ${num_other} run(s) have no cap_restart. See ./check_gchp_imi_jacobian.sh ${seg_end} ${segment_days}"
-            return 1
-        elif (( num_active > 0 )); then
-            seen_before=false
-            sleep $((poll_minutes * 60))
-        elif (( num_redo == 0 )); then
+        for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+            face_name=$(face_name_for ${i_face})
+
+            # Finished this segment
+            if face_done "${face_name}" "${seg_end}"; then
+                if [[ -n "${inversion_pid[i_face]}" ]]; then
+                    wait "${inversion_pid[i_face]}" || true
+                    inversion_pid[i_face]=""
+                    log "${face_name}: inversion stage DONE"
+                fi
+                num_done=$((num_done + 1))
+                continue
+            fi
+
+            # Inversion stage running, or just ended
+            if [[ -n "${inversion_pid[i_face]}" ]]; then
+                if kill -0 "${inversion_pid[i_face]}" 2>/dev/null; then
+                    num_inversion=$((num_inversion + 1))
+                    reserved=$(( reserved + $(face_space_needed ${i_face}) ))
+                    continue
+                fi
+                wait "${inversion_pid[i_face]}" || true
+                inversion_pid[i_face]=""
+                if face_done "${face_name}" "${seg_end}"; then
+                    log "${face_name}: inversion stage DONE"
+                    num_done=$((num_done + 1))
+                else
+                    log "ERROR: ${face_name}: inversion stage not DONE. See ${test_dir}/logs/inversion_${face_name}.${seg_end}.log"
+                    failed=true
+                fi
+                continue
+            fi
+
+            # State of the face's Jacobian runs
+            run_done=0; run_active=0; run_stopped=0; run_progressed=false
+            for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
+                [[ -d "${run_dir}" ]] || continue
+                status=$(run_status "${run_dir}" "${seg_end}" "${active}")
+                case "${status}" in
+                    DONE)   run_done=$((run_done + 1)) ;;
+                    ACTIVE) run_active=$((run_active + 1)) ;;
+                    *)      run_stopped=$((run_stopped + 1)) ;;
+                esac
+                if [[ -f "${run_dir}/cap_restart" && "$(cut -c 1-8 "${run_dir}/cap_restart")" > "${seg_start}" ]]; then
+                    run_progressed=true
+                fi
+            done
+
+            # All runs at the segment end: start its inversion stage
+            if (( run_active == 0 && run_stopped == 0 && run_done > 0 )); then
+                num_inversion=$((num_inversion + 1))
+                reserved=$(( reserved + $(face_space_needed ${i_face}) ))
+                if pgrep -f "inversion_face.sh ${face_name} ${seg_end}" >/dev/null; then
+                    # Still running from an earlier run of this script that
+                    # was stopped. Never start a second one for the same face.
+                    continue
+                fi
+                if [[ "${failed}" == false ]] && (( num_inv_now < max_parallel_inversions )); then
+                    log "${face_name}: all runs reached ${seg_end}; starting its inversion stage"
+                    bash inversion_face.sh "${face_name}" "${seg_end}" \
+                        > "${test_dir}/logs/inversion_${face_name}.${seg_end}.log" 2>&1 &
+                    inversion_pid[i_face]=$!
+                    num_inv_now=$((num_inv_now + 1))
+                fi
+                continue
+            fi
+
+            # Started: runs going, or some stopped before the segment end.
+            # A face counts as started if this script submitted it, or (after
+            # a restart of this script) if any of its runs is in the queue or
+            # has moved past the segment start.
+            if (( run_active > 0 )) || [[ "${run_progressed}" == true || "${started[i_face]}" == true ]]; then
+                num_running=$((num_running + 1))
+                reserved=$(( reserved + $(face_space_needed ${i_face}) ))
+                if (( run_active > 0 || run_stopped == 0 )); then
+                    seen_stopped[i_face]=false
+                elif [[ "${seen_stopped[i_face]}" != true ]]; then
+                    # A requeued job can briefly be missing from the queue.
+                    # Check once more before resubmitting, so a run never
+                    # gets two jobs.
+                    seen_stopped[i_face]=true
+                elif [[ "${resubmitted[i_face]}" == true ]]; then
+                    log "ERROR: ${face_name}: ${run_stopped} run(s) did not reach ${seg_end} after one resubmission. See ./check_gchp_imi_jacobian.sh ${seg_end} ${segment_days}"
+                    failed=true
+                elif [[ "${failed}" == false ]]; then
+                    log "${face_name}: resubmitting ${run_stopped} run(s) that failed or did not finish"
+                    submit_face "${face_name}" "${seg_end}" true "${active}" || failed=true
+                    resubmitted[i_face]=true
+                    seen_stopped[i_face]=false
+                fi
+                continue
+            fi
+
+            # Not started yet. Start it only if its space fits, in face order.
+            num_waiting=$((num_waiting + 1))
+            if [[ "${blocked}" == true || "${failed}" == true ]]; then
+                continue
+            fi
+            need=$(face_space_needed ${i_face})
+            if (( fs_used + reserved + need <= limit )); then
+                log "${face_name}: starting its Jacobian runs (needs about $(gb ${need}))"
+                started[i_face]=true
+                # FAILED runs are included: they failed before this script
+                # started, e.g. in an earlier attempt at this segment
+                if submit_face "${face_name}" "${seg_end}" true "${active}"; then
+                    reserved=$(( reserved + need ))
+                    num_waiting=$((num_waiting - 1))
+                    num_running=$((num_running + 1))
+                else
+                    failed=true
+                fi
+            else
+                blocked=true
+                if (( reserved == 0 )); then
+                    log "ERROR: ${face_name} needs about $(gb ${need}), but only $(gb $(( limit - fs_used ))) is free under ${fsx_max_use_percent}% of FSx even with no other face running. Use shorter segments or a larger FSx."
+                    failed=true
+                fi
+            fi
+        done
+
+        if (( num_done == num_faces - start_face + 1 )); then
             return 0
-        elif [[ "${seen_before}" == false ]]; then
-            # A requeued job can briefly be missing from the queue. Check
-            # once more before resubmitting, so a run never gets two jobs.
-            seen_before=true
-            sleep $((poll_minutes * 60))
-        elif [[ "${resubmitted}" == true ]]; then
-            log "ERROR: ${num_redo} run(s) did not reach ${seg_end} after one resubmission. See ./check_gchp_imi_jacobian.sh ${seg_end} ${segment_days}"
-            return 1
-        else
-            log "Resubmitting ${num_redo} run(s) that failed or did not finish"
-            submit_segment "${seg_end}" true || return 1
-            resubmitted=true
-            seen_before=false
         fi
+        if [[ "${failed}" == true ]] && (( num_inv_now == 0 )); then
+            return 1
+        fi
+        log "Segment ${seg_end}: ${num_done} done, ${num_inversion} in inversion stage, ${num_running} running, ${num_waiting} waiting; FSx $(gb ${fs_used}) used, $(gb ${reserved}) reserved, limit $(gb ${limit})"
+        sleep $((poll_minutes * 60))
     done
 }
 
@@ -200,6 +411,14 @@ wait_for_runs() {
 # Run segments until every face is DONE through the target end
 #--------------------------------------------------------------------------
 log "Running ${segment_days}-day segments to ${target_end} for faces ${start_face} to ${num_faces}"
+if [[ "${prune_output}" != true ]]; then
+    log "WARNING: prune_output is not true, so no space is freed after each face. Faces will stop fitting on FSx."
+fi
+if [[ "${release_met}" == true || "${release_products}" == true ]] && ! sudo -n true 2>/dev/null; then
+    log "WARNING: sudo needs a password, so files cannot be released from FSx. Releasing is turned off."
+    release_met=false
+    release_products=false
+fi
 
 while true; do
     last_done=$(last_done_segment)
@@ -214,25 +433,11 @@ while true; do
     fi
     log "=== Segment ending ${seg_end} ==="
 
-    # 1. Submit the Jacobian runs
-    if ! submit_segment "${seg_end}" false; then
+    if ! run_segment "${last_done}" "${seg_end}"; then
         log "Stopped. Fix the problem and run again with the same arguments."
         exit 1
     fi
+    log "Every face is DONE through ${seg_end}"
 
-    # 2. Wait for all runs to reach the segment end
-    if ! wait_for_runs "${seg_end}"; then
-        log "Stopped. Fix the problem and run again with the same arguments."
-        exit 1
-    fi
-
-    # 3. Run the inversion stage, then check every face is DONE
-    log "All runs reached ${seg_end}. Running the inversion stage."
-    ./run_gchp_imi_inversion.sh "${seg_end}" >> "${log_file}" 2>&1 || true
-    if [[ "$(last_done_segment)" < "${seg_end}" ]]; then
-        log "ERROR: The inversion stage is not DONE for every face. See the end of ${log_file} and each face's inversion_status."
-        log "Stopped. Fix the problem and run again with the same arguments."
-        exit 1
-    fi
-    log "Inversion stage DONE for every face through ${seg_end}"
+    release_after_segment "${seg_end}"
 done
