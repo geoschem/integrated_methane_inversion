@@ -97,6 +97,7 @@ run_inversion() {
         -c $InvCPU \
         -t $InvTime \
         -p $InvPartition \
+        -J "inversion_${RunName}" \
         --export=ALL,HDF5_USE_FILE_LOCKING=FALSE \
         -W run_inversion.sh $FirstSimSwitch
     

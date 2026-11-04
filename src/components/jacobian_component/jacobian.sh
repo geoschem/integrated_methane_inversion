@@ -841,7 +841,7 @@ calculate_overpass_diagnostics() {
             -t "$InvTime" \
             -p "$InvPartition" \
             --export=ALL,HDF5_USE_FILE_LOCKING=FALSE \
-            -J "overpass_diag" \
+            -J "overpass_diag_${RunName}" \
             -o "$overpass_log" \
             -W \
             --wrap "python ${InversionPath}/src/inversion_scripts/calculate_satellite_overpass_diagnostics.py ${ConfigPath} ${nElements} ${InvCPU}" || rc=$?
