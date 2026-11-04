@@ -106,11 +106,11 @@ set_config "${config}" PruneOutputDir            "${prune_output}"
 # status file. This runs prune_outputdir.py without --execute and so deletes
 # nothing. It checks that both stages' markers agree, every run has every
 # overpass file, and every .pkl in the manifest exists, and exits with
-# code 2 if not.
+# code 2 if not. It avoids writing to log to reduce number of files.
 #--------------------------------------------------------------------------
 echo "inversion_face.sh: Checking outputs"
 conda_env=$(grep "^CondaEnv:" "${config}" | awk '{print $2}' | tr -d '"')
-if ! conda run -n "${conda_env}" python src/utilities/prune_outputdir.py "${config}"; then
+if ! conda run -n "${conda_env}" python src/utilities/prune_outputdir.py "${config}" --log none; then
     fail "Output check failed for segment end ${segment_end}. See the log above."
 fi
 
