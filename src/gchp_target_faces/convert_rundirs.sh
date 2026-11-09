@@ -1,20 +1,30 @@
 #!/bin/bash
 
-# One-time conversion of Jacobian run directories that were set up and run
-# with the IMI's standard GCHP run script (gchp_ch4_run.template), e.g. by
-# Dandan's scripts, so they can be continued with these scripts and the spot
-# run script (gchp_ch4_run_spot.template).
+# One-time conversion of target face directories set up and run on another
+# cluster with the IMI's standard GCHP run script (gchp_ch4_run.template),
+# e.g. Dandan's runs, so they can be continued here with these scripts and
+# the spot run script (gchp_ch4_run_spot.template).
 #
 # Usage:
 #   ./convert_rundirs.sh            # dry run: print what would change
 #   ./convert_rundirs.sh --apply    # make the changes
 #
-# For the faces set in gchp_imi_common.sh (test_dir, config_dir,
-# config_name_style, start_face, num_faces), this:
-#   1. Checks that it is safe to convert (see below), and changes nothing
-#      if any check fails
-#   2. Sets UseSpotRunScript to true in each face config
-#   3. In each Jacobian run directory:
+# Works on the faces set in gchp_imi_common.sh (test_dir, config_dir,
+# config_name_style, start_face, num_faces). Copy the face directories into
+# test_dir first; never convert the only copy. The paths of the other
+# cluster are set below under "Paths on the other cluster".
+#
+# For each face, this:
+#   1. Checks that it is safe to convert, and changes nothing if any check
+#      fails (see "Before running" below)
+#   2. Turns files that hold a link target back into links. Links copied
+#      through S3 can come back as small files containing the target path.
+#   3. Points links and paths in HEMCO_Config.rc, rundir_vars.txt,
+#      submit_jacobian_simulations_array.sh and the face config to this
+#      cluster's paths
+#   4. Puts the face config in config_dir if it is not there yet, using the
+#      copy the IMI saved in the face directory, with UseSpotRunScript true
+#   5. In each Jacobian run directory:
 #      a. Renames dated checkpoints
 #           Restarts/gcchem_internal_checkpoint.YYYYMMDD_HHMMz.nc4
 #         to standard restart names
@@ -24,25 +34,41 @@
 #         with the spot run script
 #      d. Links gchp.env and removeLocalRestarts.sh
 #      e. Appends a CONVERTED line to job_status
+#   6. Records how far its inversion stage got, from its inversion and
+#      overpass markers, as a DONE line in inversion_status, so
+#      run_segments.sh continues from there
+#   7. Reports links that still point to nothing, and dates of hourly
+#      output missing that the next inversion stage will need
 #
 # Before running with --apply:
-#   - Remove cron jobs that rename checkpoints or submit runs in these
-#     directories. This script stops if crontab still runs
-#     rename_final_checkpoints or submit_lagging_jacobian_runs.
-#   - Cancel all jobs for these run directories. This script stops if any
-#     are in the Slurm queue.
+#   - Cancel all jobs for these run directories, and stop anything else
+#     that submits jobs or renames checkpoints in them (e.g. cron jobs).
+#     This script stops if a job is in the Slurm queue or crontab still
+#     runs rename_final_checkpoints or submit_lagging_jacobian_runs.
 #   - Rename undated final checkpoints (Restarts/gcchem_internal_checkpoint),
 #     e.g. with rename_final_checkpoints.sh --apply, which dates them from
 #     the run logs. This script stops if any are left.
 #   - Check in the dry run that StartDate and EndDate in the face configs
 #     are the full inversion period.
 #
-# Run directories already converted (CONVERTED in job_status) are skipped,
+# Faces whose runs are all converted (CONVERTED in job_status) are skipped,
 # so this can be rerun.
 
 set -e
+shopt -s nullglob
 cd "$(dirname "$0")"
 source ./gchp_imi_common.sh
+
+#--------------------------------------------------------------------------
+# Paths on the other cluster, and what they are on this cluster
+#--------------------------------------------------------------------------
+old_output_dir=/fsx_output/output     # its OutputPath  -> test_dir
+old_imi_dir=/fsx_output/imi-gchp      # its IMI clone   -> imi_dir
+old_input_dir=/fsx_input              # its input data  -> new_input_dir
+new_input_dir="${HOME}/fsx/dzhang-imi-gchp"
+
+# Text files that contain paths and are read by GCHP, HEMCO or the IMI
+path_files="HEMCO_Config.rc rundir_vars.txt submit_jacobian_simulations_array.sh"
 
 if [[ $# -eq 1 && "$1" == "--apply" ]]; then
     apply=true
@@ -60,8 +86,80 @@ applying() {
     [[ "${apply}" == true ]]
 }
 
+# Function to print a path with the other cluster's locations replaced by
+# this cluster's
+# Argument: path
+map_path() {
+    local p=$1
+    p=${p/#${old_output_dir}/${test_dir}}
+    p=${p/#${old_imi_dir}/${imi_dir}}
+    p=${p/#${old_input_dir}/${new_input_dir}}
+    echo "${p}"
+}
+
+# Function to replace the other cluster's paths with this cluster's in a
+# text file
+# Argument: file
+map_paths_in_file() {
+    sed -i -e "s|${old_output_dir}|${test_dir}|g" \
+           -e "s|${old_imi_dir}|${imi_dir}|g" \
+           -e "s|${old_input_dir}|${new_input_dir}|g" "$1"
+}
+
+# Function to test whether a file holds a link target: a small one-line
+# text file whose content starts with /
+# Argument: file
+is_link_file() {
+    [[ -f "$1" && ! -L "$1" ]] || return 1
+    (( $(wc -c < "$1") < 4096 )) || return 1
+    (( $(wc -l < "$1") <= 1 )) || return 1
+    grep -Iq . "$1" || return 1
+    [[ "$(head -c 1 "$1")" == / ]]
+}
+
+# Function to list the files of a face that hold a link target, skipping
+# model output and inversion products
+# Argument: face directory
+link_files_of() {
+    local file
+    while IFS= read -r file; do
+        if is_link_file "${file}"; then
+            echo "${file}"
+        fi
+    done < <(find "$1" -type f -size -4k -not -path '*/OutputDir/*' \
+             -not -path '*/OverpassDiagnostics/*' -not -path '*/inversion/*')
+}
+
+# Function to print the segment end the face's inversion stage completed,
+# from its inversion and overpass markers (the earlier of the two), or
+# nothing if it has none
+# Argument: face directory
+marker_date() {
+    local inv ovp
+    inv=$(ls "$1"/inversion_complete.*_S* 2>/dev/null | head -n 1)
+    ovp=$(ls "$1"/overpass_complete.*_S* 2>/dev/null | head -n 1)
+    inv=${inv##*_S}
+    ovp=${ovp##*_S}
+    if [[ -n "${inv}" && -n "${ovp}" && "${ovp}" < "${inv}" ]]; then
+        echo "${ovp}"
+    else
+        echo "${inv}"
+    fi
+}
+
+# Function to print the dates from one date to the day before another,
+# one per line
+# Arguments: first date, end date (YYYYMMDD, not included)
+dates_before() {
+    local d=$1
+    while [[ "${d}" < "$2" ]]; do
+        echo "${d}"
+        d=$(date -d "${d} +1 days" +%Y%m%d)
+    done
+}
+
 if applying; then
-    echo "Converting run directories in ${test_dir}"
+    echo "Converting face directories in ${test_dir}"
 else
     echo "DRY RUN: showing what would change in ${test_dir}. Nothing is changed."
 fi
@@ -85,6 +183,9 @@ fi
 if [[ ! -f "${spot_template}" ]]; then
     problem "Spot run script ${spot_template} does not exist"
 fi
+if [[ ! -d "${new_input_dir}" ]]; then
+    problem "Input data directory ${new_input_dir} does not exist"
+fi
 
 # Config paths are relative to imi_dir
 cd "${imi_dir}"
@@ -94,21 +195,26 @@ for ((i_face=start_face; i_face<=num_faces; i_face++)); do
     face_name=$(face_name_for ${i_face})
     face_dir="${test_dir}/${face_name}"
     config=$(config_for "${face_name}")
+    face_copy="${face_dir}/config_${face_name}.yml"
 
     if [[ ! -d "${face_dir}/jacobian_runs" ]]; then
         problem "${face_dir}/jacobian_runs does not exist"
         continue
     fi
-    if [[ ! -f "${config}" ]]; then
-        problem "Config file ${imi_dir}/${config} does not exist"
+    if [[ -f "${config}" ]]; then
+        source_config=${config}
+    elif [[ -f "${face_copy}" ]]; then
+        source_config=${face_copy}
+    else
+        problem "No config: neither ${imi_dir}/${config} nor ${face_copy} exists"
         continue
     fi
 
-    output_path=$(grep "^OutputPath:" "${config}" | awk '{print $2}' | tr -d '"')
-    if [[ "${output_path%/}" != "${test_dir}" ]]; then
-        problem "OutputPath in ${config} is ${output_path}, not ${test_dir}"
+    output_path=$(grep "^OutputPath:" "${source_config}" | awk '{print $2}' | tr -d '"')
+    if [[ "$(map_path "${output_path%/}")" != "${test_dir}" ]]; then
+        problem "OutputPath in ${source_config} is ${output_path}, which is neither ${test_dir} nor ${old_output_dir}"
     fi
-    periods="${periods}$(grep -E "^(StartDate|EndDate):" "${config}" | tr '\n' ' ')"$'\n'
+    periods="${periods}$(grep -E "^(StartDate|EndDate):" "${source_config}" | tr '\n' ' ')"$'\n'
 
     for run_dir in "${face_dir}/jacobian_runs/${face_name}_"*; do
         [[ -d "${run_dir}" ]] || continue
@@ -207,13 +313,66 @@ convert_run_dir() {
 #--------------------------------------------------------------------------
 # Pass 2: convert each face
 #--------------------------------------------------------------------------
+num_broken=0
+num_missing_days=0
 for ((i_face=start_face; i_face<=num_faces; i_face++)); do
     face_name=$(face_name_for ${i_face})
+    face_dir="${test_dir}/${face_name}"
+    status_file="${face_dir}/inversion_status"
     cd "${imi_dir}"
     config=$(config_for "${face_name}")
     echo "${face_name}:"
 
-    # The key may be missing in configs made before it existed
+    # 2. Turn files that hold a link target back into links
+    num_links=0
+    while IFS= read -r file; do
+        [[ -n "${file}" ]] || continue
+        target=$(map_path "$(head -n 1 "${file}")")
+        if (( num_links < 5 )); then
+            echo "  link ${file#${face_dir}/} -> ${target}"
+        fi
+        num_links=$((num_links + 1))
+        if applying; then
+            ln -nsf "${target}" "${file}"
+        fi
+    done <<< "$(link_files_of "${face_dir}")"
+    if (( num_links > 5 )); then
+        echo "  ... and $((num_links - 5)) more files turned back into links"
+    fi
+
+    # Links that already are links but point to the other cluster
+    while IFS= read -r file; do
+        [[ -n "${file}" ]] || continue
+        target=$(readlink "${file}")
+        if [[ "$(map_path "${target}")" != "${target}" ]]; then
+            echo "  relink ${file#${face_dir}/} -> $(map_path "${target}")"
+            if applying; then
+                ln -nsf "$(map_path "${target}")" "${file}"
+            fi
+        fi
+    done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*')"
+
+    # 3. Paths in text files
+    for name in ${path_files} "config_${face_name}.yml"; do
+        while IFS= read -r file; do
+            [[ -n "${file}" ]] || continue
+            if grep -qE "${old_output_dir}|${old_imi_dir}|${old_input_dir}" "${file}"; then
+                echo "  paths in ${file#${face_dir}/}"
+                if applying; then
+                    map_paths_in_file "${file}"
+                fi
+            fi
+        done <<< "$(find "${face_dir}" -name "${name}" -type f -not -path '*/OutputDir/*')"
+    done
+
+    # 4. Face config
+    if [[ ! -f "${config}" ]]; then
+        echo "  copy config_${face_name}.yml from the face directory to ${config}"
+        if applying; then
+            mkdir -p "$(dirname "${config}")"
+            cp "${face_dir}/config_${face_name}.yml" "${config}"
+        fi
+    fi
     echo "  set UseSpotRunScript: true in ${config}"
     if applying; then
         if grep -q "^UseSpotRunScript:" "${config}"; then
@@ -223,14 +382,67 @@ for ((i_face=start_face; i_face<=num_faces; i_face++)); do
         fi
     fi
 
-    for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
+    # 5. Jacobian run directories
+    for run_dir in "${face_dir}/jacobian_runs/${face_name}_"*; do
         [[ -d "${run_dir}" ]] || continue
         convert_run_dir "${run_dir}"
     done
+
+    # 6. How far its inversion stage got
+    done_date=$(marker_date "${face_dir}")
+    if [[ -z "${done_date}" ]]; then
+        echo "  no inversion marker: run_segments.sh will start this face from StartDate"
+    elif grep -q "^DONE" "${status_file}" 2>/dev/null; then
+        echo "  inversion_status already has a DONE line; not changed"
+    else
+        echo "  inversion stage done through ${done_date} (from its markers): record in inversion_status"
+        if applying; then
+            echo "DONE ${done_date} $(date): converted, from inversion and overpass markers" >> "${status_file}"
+        fi
+    fi
+
+    # 7. Checks. Links still pointing to nothing (after --apply)
+    if applying; then
+        while IFS= read -r file; do
+            [[ -n "${file}" ]] || continue
+            echo "  WARNING: link points to nothing: ${file#${face_dir}/} -> $(readlink "${file}")"
+            num_broken=$((num_broken + 1))
+        done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*' ! -exec test -e {} \; -print)"
+    fi
+
+    # Hourly output the next inversion stage will read: from the day before
+    # the marker date up to each run's newest restart
+    if [[ -n "${done_date}" ]]; then
+        first_needed=$(date -d "${done_date} -1 days" +%Y%m%d)
+        for run_dir in "${face_dir}/jacobian_runs/${face_name}_"*; do
+            [[ -d "${run_dir}" ]] || continue
+            newest=$(ls -1 "${run_dir}"/Restarts/gcchem_internal_checkpoint.*z.nc4 \
+                           "${run_dir}"/Restarts/GEOSChem.Restart.*z.c*.nc4 2>/dev/null \
+                     | grep -oE '[0-9]{8}_[0-9]{4}' | sort | tail -n 1 | cut -c 1-8)
+            [[ -n "${newest}" ]] || continue
+            missing=""
+            for d in $(dates_before "${first_needed}" "${newest}"); do
+                files=( "${run_dir}"/OutputDir/GEOSChem.*SpeciesConc.${d}_0000z.nc4 )
+                if (( ${#files[@]} == 0 )); then
+                    missing="${missing} ${d}"
+                fi
+            done
+            if [[ -n "${missing}" ]]; then
+                echo "  WARNING: $(basename "${run_dir}") has no hourly output for:${missing}"
+                num_missing_days=$((num_missing_days + 1))
+            fi
+        done
+    fi
 done
 
 echo ""
+if (( num_missing_days > 0 )); then
+    echo "WARNING: ${num_missing_days} run(s) are missing hourly output the next inversion stage needs. Copy it from the original output, or the inversion stage will fail."
+fi
 if applying; then
+    if (( num_broken > 0 )); then
+        echo "WARNING: ${num_broken} link(s) point to nothing. Check the paths at the top of this script."
+    fi
     echo "Done. Check the runs with: ./check_gchp_imi_jacobian.sh <segment end> <max days>"
 else
     echo "Dry run done. Nothing was changed. Run with --apply to make these changes."

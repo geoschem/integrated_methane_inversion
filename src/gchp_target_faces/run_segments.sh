@@ -148,6 +148,22 @@ face_space_needed() {
                  printf "%.0f", (need > 0 ? need : 0) }'
 }
 
+# Function to print how many Jacobian and inversion-stage jobs are running,
+# starting (node booting) and pending in Slurm, for the status line.
+# Jacobian jobs are named <face>_NNNN; inversion-stage jobs are named
+# overpass_<face> and inversion_<face>.
+job_counts() {
+    squeue -h -u "${USER}" -o "%j %T" 2>/dev/null | awk -v p="${target_prefix}" '
+        { kind = "" }
+        $1 ~ "^" p "_T[0-9]+_[0-9]+$"                { kind = "jac" }
+        $1 ~ "^(overpass|inversion)_" p "_T[0-9]+$"  { kind = "inv" }
+        kind != "" && ($2 == "RUNNING" || $2 == "COMPLETING") { run[kind]++ }
+        kind != "" && $2 == "CONFIGURING"                      { cf[kind]++ }
+        kind != "" && $2 == "PENDING"                          { pd[kind]++ }
+        END { printf "Jacobian jobs %d running, %d starting, %d pending; inversion jobs %d running, %d starting, %d pending",
+              run["jac"], cf["jac"], pd["jac"], run["inv"], cf["inv"], pd["inv"] }'
+}
+
 # Function to submit the runs of one face that have not reached the segment
 # end. Each run gets exactly the days it needs to reach it.
 # Arguments: face name, segment end, true to also resubmit FAILED runs,
@@ -182,8 +198,8 @@ submit_face() {
 release_archived() {
     local label=$1
     shift
-    local states releasable num_releasable num_waiting
-
+    local states releasable num_releasable num_waiting failures num_failed
+    
     if (( $# == 0 )); then
         return 0
     fi
@@ -193,13 +209,20 @@ release_archived() {
     num_releasable=$(grep -c . <<< "${releasable}" || true)
     num_waiting=$(grep -v " archived" <<< "${states}" | grep -c . || true)
 
+    # Release each file separately, so a file that cannot be released does
+    # not stop the others. Use one sudo call per batch of files to be fast.
+    failures=""
     if (( num_releasable > 0 )); then
-        if ! tr '\n' '\0' <<< "${releasable}" | xargs -0 sudo -n lfs hsm_release; then
-            log "  WARNING: releasing ${label} failed. Check that sudo works without a password."
-            return 0
-        fi
+        failures=$(tr '\n' '\0' <<< "${releasable}" \
+            | xargs -0 sudo -n bash -c 'for f; do lfs hsm_release "$f" 2>&1 >/dev/null || echo "$f: could not release"; done' _ \
+            || true)
     fi
-    log "  ${label}: released ${num_releasable}, ${num_waiting} not exported to S3 yet"
+    num_failed=$(grep -c . <<< "${failures}" || true)
+    if (( num_failed > 0 )); then
+        log "  WARNING: ${num_failed} ${label} could not be released. The first few:"
+        head -n 5 <<< "${failures}" | while read -r line; do log "    ${line}"; done
+    fi
+    log "  ${label}: released $(( num_releasable - num_failed )), ${num_failed} failed, ${num_waiting} not exported to S3 yet"
 }
 
 # Function to release met fields and exported products no longer needed,
@@ -253,7 +276,7 @@ run_segment() {
     local failed=false
     local i_face face_name active fs_size fs_used limit reserved need
     local blocked num_done num_inversion num_running num_waiting num_inv_now
-    local run_dir status run_done run_active run_stopped run_progressed
+    local run_dir status run_done run_active run_stopped
 
     while true; do
         if ! active=$(active_run_dirs); then
@@ -310,7 +333,7 @@ run_segment() {
             fi
 
             # State of the face's Jacobian runs
-            run_done=0; run_active=0; run_stopped=0; run_progressed=false
+            run_done=0; run_active=0; run_stopped=0
             for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
                 [[ -d "${run_dir}" ]] || continue
                 status=$(run_status "${run_dir}" "${seg_end}" "${active}")
@@ -319,9 +342,6 @@ run_segment() {
                     ACTIVE) run_active=$((run_active + 1)) ;;
                     *)      run_stopped=$((run_stopped + 1)) ;;
                 esac
-                if [[ -f "${run_dir}/cap_restart" && "$(cut -c 1-8 "${run_dir}/cap_restart")" > "${seg_start}" ]]; then
-                    run_progressed=true
-                fi
             done
 
             # All runs at the segment end: start its inversion stage
@@ -344,10 +364,10 @@ run_segment() {
             fi
 
             # Started: runs going, or some stopped before the segment end.
-            # A face counts as started if this script submitted it, or (after
-            # a restart of this script) if any of its runs is in the queue or
-            # has moved past the segment start.
-            if (( run_active > 0 )) || [[ "${run_progressed}" == true || "${started[i_face]}" == true ]]; then
+            # A face counts as started if this script submitted it, or any
+            # of its runs is in the queue. After a restart of this script,
+            # a face with stopped runs is simply started again.
+            if (( run_active > 0 )) || [[ "${started[i_face]}" == true ]]; then
                 num_running=$((num_running + 1))
                 reserved=$(( reserved + $(face_space_needed ${i_face}) ))
                 if (( run_active > 0 || run_stopped == 0 )); then
@@ -402,7 +422,7 @@ run_segment() {
         if [[ "${failed}" == true ]] && (( num_inv_now == 0 )); then
             return 1
         fi
-        log "Segment ${seg_end}: ${num_done} done, ${num_inversion} in inversion stage, ${num_running} running, ${num_waiting} waiting; FSx $(gb ${fs_used}) used, $(gb ${reserved}) reserved, limit $(gb ${limit})"
+        log "Segment ${seg_end}: ${num_done} done, ${num_inversion} in inversion stage, ${num_running} running, ${num_waiting} waiting; FSx $(gb ${fs_used}) used, $(gb ${reserved}) reserved, limit $(gb ${limit}); $(job_counts)"
         sleep $((poll_minutes * 60))
     done
 }

@@ -6,10 +6,10 @@
 #--------------------------------------------------------------------------
 # Test settings
 #--------------------------------------------------------------------------
-test_name=test3day
+test_name=dandan_prev_run
 target_prefix=Global_1yr_2025_C36S10 # Do not change
 start_face=1
-num_faces=20         # For all faces use 220
+num_faces=3         # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -58,15 +58,15 @@ storage_safety_factor=1.1
 
 # Release files from FSx that are safely in S3, to free space. They are
 # loaded back from S3 if anything reads them. Needs sudo without a password.
-release_met=true        # met fields every face is done with
-release_products=true   # overpass and .pkl files, once exported to S3
+release_met=true         # met fields every face is done with
+release_products=false   # overpass and .pkl files, once exported to S3
 met_dir="${HOME}/fsx/dzhang-imi-gchp/ExtData/GEOS_0.25x0.3125/GEOS_FP"
 
 #--------------------------------------------------------------------------
 # Directories and files
 #--------------------------------------------------------------------------
 # Directory with the target face directories. 'output' must be an export DRA.
-test_dir="${HOME}/fsx/output/${test_name}"
+test_dir="${HOME}/fsx/${test_name}"
 
 util_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 imi_dir="$(cd "${util_dir}/../.." && pwd)"
@@ -82,8 +82,6 @@ run_cores=$(grep "^TOTAL_CORES:" "${template_config}" | awk '{print $2}')
 # Use "short" for names like config_T001.yml.
 config_dir="configs_${test_name}"
 config_name_style=full
-#config_dir="configs_C36S10" # Dandan's setting
-#config_name_style=short
 
 mapping_file="${util_dir}/target_coords_num-sv.csv"
 

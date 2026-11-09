@@ -61,6 +61,7 @@ if [[ ! "${max_runs}" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
+mkdir -p "${test_dir}/logs"
 log_file="${test_dir}/logs/submit.log"
 echo -e "\n$(date): end date ${end_date}, max days ${max_days}, max runs ${max_runs}, retry failed ${retry_failed}" >> "${log_file}"
 
