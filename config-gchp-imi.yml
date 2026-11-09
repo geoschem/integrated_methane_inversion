@@ -32,7 +32,7 @@ UseSpotRunScript: false
 
 ## Period of interest
 StartDate: 20250101
-EndDate: 20250110
+EndDate: 20260101
 SpinupMonths: 1
 Checkpoint_Freq: 240000
 
