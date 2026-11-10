@@ -151,7 +151,7 @@ SetupPosteriorRun: false
 DoHemcoPriorEmis: true
 DoSpinup: false
 DoJacobian: false
-ReDoJacobian: false
+ContinueIncompleteJacobians: false
 DoInversion: false
 DoPosterior: false
 
@@ -223,6 +223,13 @@ PerturbValueBCs: 10.0
 ## For use in satellite operators via post-processing -- required for TROPOMI
 ## inversions
 HourlySpecies: true
+
+## Write restart files during jacobian simulations?
+## This enables ContinueIncompleteJacobians to start up in the middle of a run rather than 
+## from the beginning
+## This only applies to non-GCHP runs; GCHP requires restarts
+## Disabling this saves disk space
+WriteRestarts: true
 
 ## IMI validation
 ## Turn on ObsPack diagnostic in GEOS-Chem?

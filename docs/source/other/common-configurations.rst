@@ -24,7 +24,7 @@ compute the prior emissions with a HEMCO standalone run, run the preview, and th
     DoHemcoPriorEmis: true
     DoSpinup: false
     DoJacobian: false
-    ReDoJacobian: true
+    ContinueIncompleteJacobians: true
     DoInversion: false
     DoPosterior: false
 
@@ -63,7 +63,7 @@ generating the state vector file. ::
     DoHemcoPriorEmis: false
     DoSpinup: true
     DoJacobian: true
-    ReDoJacobian: true
+    ContinueIncompleteJacobians: true
     DoInversion: true
     DoPosterior: true
 
@@ -136,7 +136,7 @@ freedom for signal (DOFS) to cancel the inversion; if the expected DOFS are belo
     DoHemcoPriorEmis: true
     DoSpinup: true
     DoJacobian: true
-    ReDoJacobian: true
+    ContinueIncompleteJacobians: true
     DoInversion: true
     DoPosterior: true
 
@@ -166,7 +166,7 @@ Modifying prior emission estimates
     DoHemcoPriorEmis: false
     DoSpinup: false
     DoJacobian: false
-    ReDoJacobian: false
+    ContinueIncompleteJacobians: false
     DoInversion: false
     DoPosterior: false
 
@@ -193,7 +193,7 @@ run the preview without setting up the template run directory. ::
     DoHemcoPriorEmis: true
     DoSpinup: false
     DoJacobian: false
-    ReDoJacobian: false
+    ContinueIncompleteJacobians: false
     DoInversion: false
     DoPosterior: false
 
