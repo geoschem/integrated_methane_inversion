@@ -115,7 +115,8 @@ face_done() {
 # every face is DONE, or StartDate if a face has none
 last_done_segment() {
     local i_face face_name done_date oldest=""
-    for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+    end_face=$(( start_face + num_faces - 1 ))
+    for ((i_face=start_face; i_face<=end_face; i_face++)); do
         face_name=$(face_name_for ${i_face})
         done_date=$(grep "^DONE" "${test_dir}/${face_name}/inversion_status" 2>/dev/null \
                     | tail -n 1 | awk '{print $2}')
@@ -289,7 +290,8 @@ run_segment() {
 
         # Inversion stages still running
         num_inv_now=0
-        for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+	end_face=$(( start_face + num_faces - 1 ))
+        for ((i_face=start_face; i_face<=end_face; i_face++)); do
             if [[ -n "${inversion_pid[i_face]}" ]] && kill -0 "${inversion_pid[i_face]}" 2>/dev/null; then
                 num_inv_now=$((num_inv_now + 1))
             fi
@@ -299,7 +301,7 @@ run_segment() {
         blocked=false
         num_done=0; num_inversion=0; num_running=0; num_waiting=0
 
-        for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+        for ((i_face=start_face; i_face<=end_face; i_face++)); do
             face_name=$(face_name_for ${i_face})
 
             # Finished this segment
@@ -430,7 +432,8 @@ run_segment() {
 #--------------------------------------------------------------------------
 # Run segments until every face is DONE through the target end
 #--------------------------------------------------------------------------
-log "Running ${segment_days}-day segments to ${target_end} for faces ${start_face} to ${num_faces}"
+end_face=$(( start_face + end_face - 1 ))
+log "Running ${segment_days}-day segments to ${target_end} for faces ${start_face} to ${end_face}"
 if [[ "${prune_output}" != true ]]; then
     log "WARNING: prune_output is not true, so no space is freed after each face. Faces will stop fitting on FSx."
 fi

@@ -46,7 +46,8 @@ active=$(active_run_dirs)
 num_done=0; num_active=0; num_ready=0; num_failed=0; num_other=0; num_too_long=0
 
 echo "Status of Jacobian runs in ${test_dir}, end date ${end_date}:"
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+end_face=$(( start_face + num_faces - 1 ))
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
         [[ -d "${run_dir}" ]] || continue
