@@ -22,8 +22,13 @@
 #   3. Points links and paths in HEMCO_Config.rc, rundir_vars.txt,
 #      submit_jacobian_simulations_array.sh and the face config to this
 #      cluster's paths
-#   4. Puts the face config in config_dir if it is not there yet, using the
-#      copy the IMI saved in the face directory, with UseSpotRunScript true
+#   4. Makes the face config in config_dir from the base config
+#      (template_config), so it has every key the current IMI and these
+#      scripts need and this cluster's settings. Only the face-specific
+#      values (face_keys below) are taken from the face's own config, i.e.
+#      the copy the IMI saved in the face directory. A face config in
+#      config_dir that already has every key of the base config is kept.
+#      OutputPath is set to test_dir and UseSpotRunScript to true.
 #   5. In each Jacobian run directory:
 #      a. Renames dated checkpoints
 #           Restarts/gcchem_internal_checkpoint.YYYYMMDD_HHMMz.nc4
@@ -49,7 +54,8 @@
 #     e.g. with rename_final_checkpoints.sh --apply, which dates them from
 #     the run logs. This script stops if any are left.
 #   - Check in the dry run that StartDate and EndDate in the face configs
-#     are the full inversion period.
+#     are the full inversion period. They must match the base config, since
+#     the face configs are made from it.
 #
 # Faces whose runs are all converted (CONVERTED in job_status) are skipped,
 # so this can be rerun.
@@ -69,6 +75,10 @@ new_input_dir="${HOME}/fsx/dzhang-imi-gchp"
 
 # Text files that contain paths and are read by GCHP, HEMCO or the IMI
 path_files="HEMCO_Config.rc rundir_vars.txt submit_jacobian_simulations_array.sh"
+
+# Config keys taken from the face's own config. Everything else comes from
+# the base config.
+face_keys="RunName TARGET_LON TARGET_LAT StateVectorFile NumJacobianTracers CreateAutomaticRectilinearStateVectorFile"
 
 if [[ $# -eq 1 && "$1" == "--apply" ]]; then
     apply=true
@@ -135,15 +145,49 @@ link_files_of() {
 # nothing if it has none
 # Argument: face directory
 marker_date() {
+    local inv_files=( "$1"/inversion_complete.*_S* )
+    local ovp_files=( "$1"/overpass_complete.*_S* )
     local inv ovp
-    inv=$(ls "$1"/inversion_complete.*_S* 2>/dev/null | head -n 1)
-    ovp=$(ls "$1"/overpass_complete.*_S* 2>/dev/null | head -n 1)
-    inv=${inv##*_S}
-    ovp=${ovp##*_S}
+    inv=${inv_files[0]##*_S}
+    ovp=${ovp_files[0]##*_S}
     if [[ -n "${inv}" && -n "${ovp}" && "${ovp}" < "${inv}" ]]; then
         echo "${ovp}"
     else
         echo "${inv}"
+    fi
+}
+
+# Function to test whether a config has every key the base config has
+# Argument: config
+has_all_keys() {
+    [[ -z "$(comm -23 <(grep -oE '^[A-Za-z0-9_]+:' "${template_config}" | sort -u) \
+                      <(grep -oE '^[A-Za-z0-9_]+:' "$1" | sort -u))" ]]
+}
+
+# Function to make a face config from the base config, with the
+# face-specific values (face_keys) from the face's own config
+# Arguments: face's own config, new config (may be the same file)
+make_face_config_from() {
+    local saved key value
+    saved=$(mktemp)
+    cp "$1" "${saved}"
+    cp "${template_config}" "$2"
+    for key in ${face_keys}; do
+        value=$(grep "^${key}:" "${saved}" | head -n 1 | cut -d: -f2- | sed 's/^ *//')
+        set_config "$2" "${key}" "${value}"
+    done
+    rm -f "${saved}"
+    set_config "$2" OutputPath "\"${test_dir}\""
+    map_paths_in_file "$2"
+}
+
+# Function to print the newest restart date and time (YYYYMMDD_HHMM) in a
+# Restarts directory, under either restart name, or nothing if there is none
+# Argument: Restarts directory
+newest_restart() {
+    local files=( "$1"/gcchem_internal_checkpoint.*z.nc4 "$1"/GEOSChem.Restart.*z.c*.nc4 )
+    if (( ${#files[@]} > 0 )); then
+        printf '%s\n' "${files[@]##*/}" | grep -oE '[0-9]{8}_[0-9]{4}' | sort | tail -n 1
     fi
 }
 
@@ -191,7 +235,8 @@ fi
 cd "${imi_dir}"
 active=$(active_run_dirs)
 periods=""
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+end_face=$(( start_face + num_faces - 1 ))
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     face_dir="${test_dir}/${face_name}"
     config=$(config_for "${face_name}")
@@ -215,6 +260,16 @@ for ((i_face=start_face; i_face<=num_faces; i_face++)); do
         problem "OutputPath in ${source_config} is ${output_path}, which is neither ${test_dir} nor ${old_output_dir}"
     fi
     periods="${periods}$(grep -E "^(StartDate|EndDate):" "${source_config}" | tr '\n' ' ')"$'\n'
+    for key in StartDate EndDate; do
+        if [[ "$(grep "^${key}:" "${source_config}")" != "$(grep "^${key}:" "${template_config}")" ]]; then
+            problem "${key} in ${source_config} differs from the base config ${template_config}. The face config is made from the base config, so they must match."
+        fi
+    done
+    for key in ${face_keys}; do
+        if ! grep -q "^${key}:" "${source_config}"; then
+            problem "${source_config} has no ${key}"
+        fi
+    done
 
     for run_dir in "${face_dir}/jacobian_runs/${face_name}_"*; do
         [[ -d "${run_dir}" ]] || continue
@@ -273,9 +328,7 @@ convert_run_dir() {
     done
 
     # b. Set cap_restart to the newest restart date, under either name
-    newest=$(ls -1 Restarts/gcchem_internal_checkpoint.*z.nc4 \
-                   Restarts/GEOSChem.Restart.*z.c${N}.nc4 2>/dev/null \
-             | grep -oE '[0-9]{8}_[0-9]{4}' | sort | tail -n 1)
+    newest=$(newest_restart Restarts)
     if [[ -z "${newest}" ]]; then
         echo "    WARNING: no restart files found; cap_restart not changed"
     else
@@ -315,7 +368,7 @@ convert_run_dir() {
 #--------------------------------------------------------------------------
 num_broken=0
 num_missing_days=0
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     face_dir="${test_dir}/${face_name}"
     status_file="${face_dir}/inversion_status"
@@ -365,21 +418,27 @@ for ((i_face=start_face; i_face<=num_faces; i_face++)); do
         done <<< "$(find "${face_dir}" -name "${name}" -type f -not -path '*/OutputDir/*')"
     done
 
-    # 4. Face config
-    if [[ ! -f "${config}" ]]; then
-        echo "  copy config_${face_name}.yml from the face directory to ${config}"
+    # 4. Face config, made from the base config unless already complete
+    if [[ -f "${config}" ]] && has_all_keys "${config}"; then
+        echo "  ${config} has every key of the base config; kept"
+    else
+        if [[ -f "${config}" ]]; then
+            face_config=${config}
+        else
+            face_config="${face_dir}/config_${face_name}.yml"
+        fi
+        echo "  make ${config} from the base config, with these values from ${face_config}:"
+        for key in ${face_keys}; do
+            echo "    $(grep "^${key}:" "${face_config}" | head -n 1)"
+        done
         if applying; then
             mkdir -p "$(dirname "${config}")"
-            cp "${face_dir}/config_${face_name}.yml" "${config}"
+            make_face_config_from "${face_config}" "${config}"
         fi
     fi
     echo "  set UseSpotRunScript: true in ${config}"
     if applying; then
-        if grep -q "^UseSpotRunScript:" "${config}"; then
-            set_config "${config}" UseSpotRunScript true
-        else
-            echo "UseSpotRunScript: true" >> "${config}"
-        fi
+        set_config "${config}" UseSpotRunScript true
     fi
 
     # 5. Jacobian run directories
@@ -416,9 +475,7 @@ for ((i_face=start_face; i_face<=num_faces; i_face++)); do
         first_needed=$(date -d "${done_date} -1 days" +%Y%m%d)
         for run_dir in "${face_dir}/jacobian_runs/${face_name}_"*; do
             [[ -d "${run_dir}" ]] || continue
-            newest=$(ls -1 "${run_dir}"/Restarts/gcchem_internal_checkpoint.*z.nc4 \
-                           "${run_dir}"/Restarts/GEOSChem.Restart.*z.c*.nc4 2>/dev/null \
-                     | grep -oE '[0-9]{8}_[0-9]{4}' | sort | tail -n 1 | cut -c 1-8)
+            newest=$(newest_restart "${run_dir}/Restarts" | cut -c 1-8)
             [[ -n "${newest}" ]] || continue
             missing=""
             for d in $(dates_before "${first_needed}" "${newest}"); do
