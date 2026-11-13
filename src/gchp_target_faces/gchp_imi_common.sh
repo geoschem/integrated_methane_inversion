@@ -6,10 +6,10 @@
 #--------------------------------------------------------------------------
 # Test settings
 #--------------------------------------------------------------------------
-test_name=dandan_prev_run
+test_name=dzhang_s3_output_cleanup
 target_prefix=Global_1yr_2025_C36S10 # Do not change
 start_face=1
-num_faces=3         # For all faces use 220
+num_faces=3       # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -36,7 +36,7 @@ poll_minutes=10
 # submits the processing job with the Inv* settings in the IMI config and
 # waits for it.
 #--------------------------------------------------------------------------
-max_parallel_inversions=5
+max_parallel_inversions=220
 
 # Partition for satellite diagnostics and the inversion stage. Its nodes
 # must have more memory than InversionMemory in the IMI config.
@@ -51,7 +51,7 @@ prune_output=true
 # Storage on FSx, for run_segments.sh. Within a segment, faces are started
 # only while the space they will need fits under fsx_max_use_percent of FSx.
 #--------------------------------------------------------------------------
-fsx_max_use_percent=50         # Ultimately want to use 90
+fsx_max_use_percent=90         # Ultimately want to use 90
 gb_per_element_day=0.055       # hourly Jacobian run output
 gb_per_element_restart=0.0048  # one restart file
 storage_safety_factor=1.1
@@ -60,13 +60,15 @@ storage_safety_factor=1.1
 # loaded back from S3 if anything reads them. Needs sudo without a password.
 release_met=true         # met fields every face is done with
 release_products=false   # overpass and .pkl files, once exported to S3
+release_done_faces=true  # restarts, hourly output and products of faces done with a segment
 met_dir="${HOME}/fsx/dzhang-imi-gchp/ExtData/GEOS_0.25x0.3125/GEOS_FP"
 
 #--------------------------------------------------------------------------
 # Directories and files
 #--------------------------------------------------------------------------
-# Directory with the target face directories. 'output' must be an export DRA.
-test_dir="${HOME}/fsx/${test_name}"
+# Directory with the target face directories. 'output' must be an export DRA
+# with new/changed/delete enabled
+test_dir="${HOME}/fsx/dzhang-imi-gchp-output/output"
 
 util_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 imi_dir="$(cd "${util_dir}/../.." && pwd)"
