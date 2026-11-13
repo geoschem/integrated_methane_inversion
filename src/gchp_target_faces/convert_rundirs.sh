@@ -35,10 +35,14 @@
 #         to standard restart names
 #           Restarts/GEOSChem.Restart.YYYYMMDD_HHMMz.c<N>.nc4
 #      b. Sets cap_restart to the date of the newest restart file
-#      c. Keeps the old run script as <run name>.run.old and replaces it
+#      c. Sets Checkpoint_Freq in setCommonRunSettings.sh to the one in the
+#         base config (e.g. 240000: a checkpoint every 24 hours), with
+#         Midrun_Checkpoint=ON, as in runs set up with the base config. The
+#         run script applies it at the start of every job.
+#      d. Keeps the old run script as <run name>.run.old and replaces it
 #         with the spot run script
-#      d. Links gchp.env and removeLocalRestarts.sh
-#      e. Appends a CONVERTED line to job_status
+#      e. Links gchp.env and removeLocalRestarts.sh
+#      f. Appends a CONVERTED line to job_status
 #   6. Records how far its inversion stage got, from its inversion and
 #      overpass markers, as a DONE line in inversion_status, so
 #      run_segments.sh continues from there
@@ -101,6 +105,9 @@ else
 fi
 
 spot_template="${imi_dir}/src/geoschem_run_scripts/gchp_ch4_run_spot.template"
+
+# Checkpoint frequency of the base config (HHMMSS, whole hours), for every run
+checkpoint_freq=$(grep "^Checkpoint_Freq:" "${template_config}" | awk '{print $2}' | tr -d '"')
 
 # Function to test whether changes are being made (--apply) or not
 applying() {
@@ -258,6 +265,9 @@ fi
 if [[ ! -d "${new_input_dir}" ]]; then
     problem "Input data directory ${new_input_dir} does not exist"
 fi
+if [[ ! "${checkpoint_freq}" =~ ^[0-9]+0000$ ]]; then
+    problem "Checkpoint_Freq in ${template_config} is '${checkpoint_freq}', not whole hours HHMMSS (e.g. 240000)"
+fi
 
 # Config paths are relative to imi_dir
 cd "${imi_dir}"
@@ -373,7 +383,21 @@ convert_run_dir() {
         fi
     fi
 
-    # c. Replace the run script, keeping the old one
+    # c. Checkpoint frequency of the base config, with mid-run checkpoints on
+    old_freq=$(grep "^Checkpoint_Freq=" setCommonRunSettings.sh | cut -d= -f2)
+    old_midrun=$(grep "^Midrun_Checkpoint=" setCommonRunSettings.sh | cut -d= -f2)
+    if [[ -z "${old_freq}" || -z "${old_midrun}" ]]; then
+        echo "    WARNING: no Checkpoint_Freq or Midrun_Checkpoint in setCommonRunSettings.sh; not changed"
+    elif [[ "${old_freq}" != "${checkpoint_freq}" || "${old_midrun}" != ON ]]; then
+        echo "    Checkpoint_Freq: ${old_freq} -> ${checkpoint_freq}, Midrun_Checkpoint: ${old_midrun} -> ON"
+        if applying; then
+            backup_file "${face_dir}" "${run_dir}/setCommonRunSettings.sh"
+            sed -i -e "s/^Checkpoint_Freq=.*/Checkpoint_Freq=${checkpoint_freq}/" \
+                   -e "s/^Midrun_Checkpoint=.*/Midrun_Checkpoint=ON/" setCommonRunSettings.sh
+        fi
+    fi
+
+    # d. Replace the run script, keeping the old one
     echo "    replace ${run_name}.run with the spot run script (old one kept as ${run_name}.run.old)"
     if applying; then
         backup_file "${face_dir}" "${run_dir}/${run_name}.run"
@@ -384,7 +408,7 @@ convert_run_dir() {
         chmod 755 "${run_name}.run"
     fi
 
-    # d. Link the environment file and the restart cleanup script
+    # e. Link the environment file and the restart cleanup script
     echo "    link gchp.env and removeLocalRestarts.sh"
     if applying; then
         backup_file "${face_dir}" "${run_dir}/gchp.env"
@@ -393,7 +417,7 @@ convert_run_dir() {
         ln -nsf "${cleanup_restarts_script}" removeLocalRestarts.sh
     fi
 
-    # e. Record the conversion
+    # f. Record the conversion
     if applying; then
         backup_file "${face_dir}" "${run_dir}/job_status"
         echo "CONVERTED $(date): cap_restart set to ${new_cap:-unchanged}" >> job_status
