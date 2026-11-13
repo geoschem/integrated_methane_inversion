@@ -45,6 +45,14 @@
 #   7. Reports links that still point to nothing, and dates of hourly
 #      output missing that the next inversion stage will need
 #
+# Before changing or replacing a file in a face directory, it copies the
+# original to <face>/conversion_backup/<same relative path> (links are
+# copied as links), unless a copy is already there, so a rerun never
+# overwrites the originals. Renamed checkpoints are not copied (they are
+# large); their old and new names are listed in conversion_backup/renamed.txt.
+# To undo the conversion of a face, copy the files back and rename the
+# checkpoints back.
+#
 # Before running with --apply:
 #   - Cancel all jobs for these run directories, and stop anything else
 #     that submits jobs or renames checkpoints in them (e.g. cron jobs).
@@ -72,6 +80,9 @@ old_output_dir=/fsx_output/output     # its OutputPath  -> test_dir
 old_imi_dir=/fsx_output/imi-gchp      # its IMI clone   -> imi_dir
 old_input_dir=/fsx_input              # its input data  -> new_input_dir
 new_input_dir="${HOME}/fsx/dzhang-imi-gchp"
+
+# Folder in each face directory with the originals of the files changed
+backup_name=conversion_backup
 
 # Text files that contain paths and are read by GCHP, HEMCO or the IMI
 path_files="HEMCO_Config.rc rundir_vars.txt submit_jacobian_simulations_array.sh"
@@ -107,6 +118,22 @@ map_path() {
     echo "${p}"
 }
 
+# Function to keep the original of a file in a face directory before it is
+# changed or replaced: copies it to <face>/conversion_backup/<relative
+# path>, as a link if it is a link. Does nothing if the file does not exist
+# or a copy is already there, so the first original is kept.
+# Arguments: face directory, file (absolute path)
+backup_file() {
+    local face_dir=$1
+    local file=$2
+    local copy="${face_dir}/${backup_name}/${file#${face_dir}/}"
+    if [[ ! -e "${file}" && ! -L "${file}" ]] || [[ -e "${copy}" || -L "${copy}" ]]; then
+        return 0
+    fi
+    mkdir -p "$(dirname "${copy}")"
+    cp -P -p "${file}" "${copy}"
+}
+
 # Function to replace the other cluster's paths with this cluster's in a
 # text file
 # Argument: file
@@ -137,7 +164,8 @@ link_files_of() {
             echo "${file}"
         fi
     done < <(find "$1" -type f -size -4k -not -path '*/OutputDir/*' \
-             -not -path '*/OverpassDiagnostics/*' -not -path '*/inversion/*')
+             -not -path '*/OverpassDiagnostics/*' -not -path '*/inversion/*' \
+             -not -path "*/${backup_name}/*")
 }
 
 # Function to print the segment end the face's inversion stage completed,
@@ -293,10 +321,11 @@ fi
 #--------------------------------------------------------------------------
 # Function to convert one Jacobian run directory. Without --apply it only
 # prints what it would change.
-# Argument: run directory
+# Arguments: run directory, face directory
 #--------------------------------------------------------------------------
 convert_run_dir() {
     local run_dir=$1
+    local face_dir=$2
     local run_name file stamp new newest old_cap new_cap N
 
     run_name=$(basename "${run_dir}")
@@ -323,6 +352,9 @@ convert_run_dir() {
         fi
         echo "    rename ${file} -> ${new}"
         if applying; then
+            mkdir -p "${face_dir}/${backup_name}"
+            echo "${run_dir#${face_dir}/}/${file} -> ${run_dir#${face_dir}/}/${new}" \
+                >> "${face_dir}/${backup_name}/renamed.txt"
             mv "${file}" "${new}"
         fi
     done
@@ -336,6 +368,7 @@ convert_run_dir() {
         new_cap="${newest:0:8} ${newest:9:4}00"
         echo "    cap_restart: ${old_cap} -> ${new_cap}"
         if applying; then
+            backup_file "${face_dir}" "${run_dir}/cap_restart"
             echo "${new_cap}" > cap_restart
         fi
     fi
@@ -343,6 +376,7 @@ convert_run_dir() {
     # c. Replace the run script, keeping the old one
     echo "    replace ${run_name}.run with the spot run script (old one kept as ${run_name}.run.old)"
     if applying; then
+        backup_file "${face_dir}" "${run_dir}/${run_name}.run"
         if [[ -f "${run_name}.run" && ! -e "${run_name}.run.old" ]]; then
             mv "${run_name}.run" "${run_name}.run.old"
         fi
@@ -353,12 +387,15 @@ convert_run_dir() {
     # d. Link the environment file and the restart cleanup script
     echo "    link gchp.env and removeLocalRestarts.sh"
     if applying; then
+        backup_file "${face_dir}" "${run_dir}/gchp.env"
+        backup_file "${face_dir}" "${run_dir}/removeLocalRestarts.sh"
         ln -nsf "${env_file}" gchp.env
         ln -nsf "${cleanup_restarts_script}" removeLocalRestarts.sh
     fi
 
     # e. Record the conversion
     if applying; then
+        backup_file "${face_dir}" "${run_dir}/job_status"
         echo "CONVERTED $(date): cap_restart set to ${new_cap:-unchanged}" >> job_status
     fi
 }
@@ -375,6 +412,7 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
     cd "${imi_dir}"
     config=$(config_for "${face_name}")
     echo "${face_name}:"
+    echo "  originals of changed files are kept in ${backup_name}/"
 
     # 2. Turn files that hold a link target back into links
     num_links=0
@@ -386,6 +424,7 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
         fi
         num_links=$((num_links + 1))
         if applying; then
+            backup_file "${face_dir}" "${file}"
             ln -nsf "${target}" "${file}"
         fi
     done <<< "$(link_files_of "${face_dir}")"
@@ -400,10 +439,11 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
         if [[ "$(map_path "${target}")" != "${target}" ]]; then
             echo "  relink ${file#${face_dir}/} -> $(map_path "${target}")"
             if applying; then
+                backup_file "${face_dir}" "${file}"
                 ln -nsf "$(map_path "${target}")" "${file}"
             fi
         fi
-    done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*')"
+    done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*' -not -path "*/${backup_name}/*")"
 
     # 3. Paths in text files
     for name in ${path_files} "config_${face_name}.yml"; do
@@ -412,10 +452,12 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
             if grep -qE "${old_output_dir}|${old_imi_dir}|${old_input_dir}" "${file}"; then
                 echo "  paths in ${file#${face_dir}/}"
                 if applying; then
+                    backup_file "${face_dir}" "${file}"
                     map_paths_in_file "${file}"
                 fi
             fi
-        done <<< "$(find "${face_dir}" -name "${name}" -type f -not -path '*/OutputDir/*')"
+        done <<< "$(find "${face_dir}" -name "${name}" -type f -not -path '*/OutputDir/*' \
+                    -not -path "*/${backup_name}/*")"
     done
 
     # 4. Face config, made from the base config unless already complete
@@ -444,7 +486,7 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
     # 5. Jacobian run directories
     for run_dir in "${face_dir}/jacobian_runs/${face_name}_"*; do
         [[ -d "${run_dir}" ]] || continue
-        convert_run_dir "${run_dir}"
+        convert_run_dir "${run_dir}" "${face_dir}"
     done
 
     # 6. How far its inversion stage got
@@ -456,6 +498,7 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
     else
         echo "  inversion stage done through ${done_date} (from its markers): record in inversion_status"
         if applying; then
+            backup_file "${face_dir}" "${status_file}"
             echo "DONE ${done_date} $(date): converted, from inversion and overpass markers" >> "${status_file}"
         fi
     fi
@@ -466,7 +509,8 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
             [[ -n "${file}" ]] || continue
             echo "  WARNING: link points to nothing: ${file#${face_dir}/} -> $(readlink "${file}")"
             num_broken=$((num_broken + 1))
-        done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*' ! -exec test -e {} \; -print)"
+        done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*' -not -path "*/${backup_name}/*" \
+                    ! -exec test -e {} \; -print)"
     fi
 
     # Hourly output the next inversion stage will read: from the day before
