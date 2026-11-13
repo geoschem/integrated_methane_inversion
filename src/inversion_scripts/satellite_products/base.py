@@ -63,6 +63,14 @@ class SatelliteProduct(ABC):
     ) -> SuperobservationResult | None:
         """Create canonical IMI superobservations for one raw file."""
 
+    def superobservation_error(self, obs_err: float, obs_GC: np.ndarray) -> np.ndarray:
+        """
+        Compute the superobservation error for the given observations. 
+        By default, we assume a diagonal covariance matrix. 
+        Returns a 1D array of the diagonal entries (which are the squared observation errors)
+        """
+        return np.full(obs_GC.shape[0], obs_err**2, dtype=float)
+
     @abstractmethod
     def preview(self, request: ObservationRequest) -> dict | None:
         """Return product-neutral fields used by the IMI preview.

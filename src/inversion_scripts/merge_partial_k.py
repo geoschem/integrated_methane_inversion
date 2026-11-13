@@ -6,7 +6,7 @@ import xarray as xr
 from pathlib import Path
 from src.inversion_scripts.utils import (
     load_obj,
-    calculate_superobservation_error,
+    calculate_tropomi_superobservation_error,
     ensure_float_list,
     map_files_to_reference,
 )
@@ -16,10 +16,10 @@ from src.utilities.config_utils import load_config
 def calc_so(obs_error, obs_GC):
     """Calculate the superobservation error for each observation given the observation error"""
     # calculate superobservation error
-    s_superO_1 = calculate_superobservation_error(obs_error, 1)
+    s_superO_1 = calculate_tropomi_superobservation_error(obs_error, 1)
     s_superO_p = np.array(
         [
-            calculate_superobservation_error(obs_error, p) if p >= 1 else s_superO_1
+            calculate_tropomi_superobservation_error(obs_error, p) if p >= 1 else s_superO_1
             for p in obs_GC[:, 4]
         ]
     )
@@ -117,6 +117,7 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
 
         for obs_err in obs_errs:
             key = f"so_{obs_err}"
+            # TODO: should we update this to be based on the satellite product's superobservation error calculation?
             obs_error = calc_so(obs_err, obs_GC)
             so_dict[key][i] = obs_error
 
