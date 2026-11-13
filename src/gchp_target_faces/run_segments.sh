@@ -22,6 +22,11 @@
 #     up to max_parallel_inversions faces at a time), which prunes its
 #     Jacobian run output if prune_output is true. That frees its space for
 #     the next faces.
+#   - Inversion stage DONE: if release_done_faces is true, release its large
+#     files that are safely in S3 (restarts, the hourly output kept for the
+#     next inversion stage, overpass and .pkl files), so the next faces can
+#     use the space. Files not exported yet are tried again at the next
+#     check. They are loaded back from S3 when the next segment reads them.
 # The next segment starts only when every face has finished this one. Then
 # met fields and exported products that are no longer needed are released
 # from FSx (they stay in S3), if release_met and release_products are true.
@@ -134,13 +139,15 @@ last_done_segment() {
 # Function to print the space, in bytes, a face still needs on FSx in this
 # segment: its hourly output at the peak (segment days plus the day kept
 # from the previous segment) and the restarts written during the segment,
-# minus the hourly output it has already written. Never less than zero.
+# minus the hourly output already taking space on FSx. Files released, or
+# not loaded from S3 yet, take no space and are not subtracted: they take
+# space again when read. Never less than zero.
 # Argument: face number
 face_space_needed() {
     local face_name num_sv written
     face_name=$(face_name_for "$1")
     num_sv=$(num_sv_for "$1")
-    written=$(du -sbc "${test_dir}/${face_name}/jacobian_runs/"*/OutputDir 2>/dev/null \
+    written=$(du -sc --block-size=1 "${test_dir}/${face_name}/jacobian_runs/"*/OutputDir 2>/dev/null \
               | tail -n 1 | cut -f1)
     awk -v n="${num_sv}" -v d="${segment_days}" -v o="${gb_per_element_day}" \
         -v r="${gb_per_element_restart}" -v f="${storage_safety_factor}" \
@@ -194,13 +201,16 @@ submit_face() {
 # Function to release files that are safely in S3: archived, not changed
 # since, and not already released. This frees their space on FSx; they are
 # loaded back from S3 if anything reads them. Files not exported yet are
-# left for a later segment.
-# Arguments: label for the log, then the files
+# left for later. Sets num_released, num_release_failed and
+# num_release_waiting for the caller.
+# Arguments: label for the log (empty: log only if something was released
+#            or failed), then the files
 release_archived() {
     local label=$1
     shift
     local states releasable num_releasable num_waiting failures num_failed
-    
+
+    num_released=0; num_release_failed=0; num_release_waiting=0
     if (( $# == 0 )); then
         return 0
     fi
@@ -215,15 +225,46 @@ release_archived() {
     failures=""
     if (( num_releasable > 0 )); then
         failures=$(tr '\n' '\0' <<< "${releasable}" \
-            | xargs -0 sudo -n bash -c 'for f; do lfs hsm_release "$f" 2>&1 >/dev/null || echo "$f: could not release"; done' _ \
+            | xargs -0 sudo -n bash -c 'for f; do err=$(lfs hsm_release "$f" 2>&1) || echo "$f: could not release: $(echo ${err})"; done' _ \
             || true)
     fi
-    num_failed=$(grep -c . <<< "${failures}" || true)
+    num_failed=$(grep -c ": could not release" <<< "${failures}" || true)
+    num_released=$(( num_releasable - num_failed ))
+    num_release_failed=${num_failed}
+    num_release_waiting=${num_waiting}
     if (( num_failed > 0 )); then
-        log "  WARNING: ${num_failed} ${label} could not be released. The first few:"
+        log "  WARNING: ${num_failed} ${label:-files} could not be released. The first few:"
         head -n 5 <<< "${failures}" | while read -r line; do log "    ${line}"; done
     fi
-    log "  ${label}: released $(( num_releasable - num_failed )), ${num_failed} failed, ${num_waiting} not exported to S3 yet"
+    if [[ -n "${label}" ]]; then
+        log "  ${label}: released ${num_released}, ${num_failed} failed, ${num_waiting} not exported to S3 yet"
+    fi
+}
+
+# Function to release the large files of a face whose inversion stage is
+# DONE for the segment: restarts, hourly output, overpass and .pkl files.
+# Only regular files over 1 MB: small files free no space, and every job
+# reading them would wait for them to load. Links are never followed.
+# Returns 0 once nothing is left that still needs exporting.
+# Argument: face name
+release_face() {
+    local face_dir="${test_dir}/$1"
+    local -a dirs files
+    local file
+    dirs=( "${face_dir}"/jacobian_runs/*/Restarts "${face_dir}"/jacobian_runs/*/OutputDir
+           "${face_dir}"/jacobian_runs/*/OverpassDiagnostics "${face_dir}"/inversion/data_converted )
+    if (( ${#dirs[@]} == 0 )); then
+        return 0
+    fi
+    files=()
+    while IFS= read -r file; do
+        files+=( "${file}" )
+    done < <(find "${dirs[@]}" -maxdepth 1 -type f -size +1M 2>/dev/null)
+    release_archived "" "${files[@]}"
+    if (( num_released > 0 )); then
+        log "$1: released ${num_released} files from FSx, ${num_release_waiting} not exported to S3 yet"
+    fi
+    (( num_release_waiting == 0 ))
 }
 
 # Function to release met fields and exported products no longer needed,
@@ -274,6 +315,7 @@ run_segment() {
     local -a started=()         # by face number: true once its runs were submitted
     local -a resubmitted=()     # by face number: true once runs were resubmitted
     local -a seen_stopped=()    # by face number: true if runs were stopped at the last check
+    local -a face_released=()   # by face number: true once its large files were released
     local failed=false
     local i_face face_name active fs_size fs_used limit reserved need
     local blocked num_done num_inversion num_running num_waiting num_inv_now
@@ -310,6 +352,13 @@ run_segment() {
                     wait "${inversion_pid[i_face]}" || true
                     inversion_pid[i_face]=""
                     log "${face_name}: inversion stage DONE"
+                fi
+                # Free its space for the faces still to run this segment.
+                # Tried again at each check until every file is in S3.
+                if [[ "${release_done_faces}" == true && "${face_released[i_face]}" != true ]]; then
+                    if release_face "${face_name}"; then
+                        face_released[i_face]=true
+                    fi
                 fi
                 num_done=$((num_done + 1))
                 continue
@@ -437,10 +486,12 @@ log "Running ${segment_days}-day segments to ${target_end} for faces ${start_fac
 if [[ "${prune_output}" != true ]]; then
     log "WARNING: prune_output is not true, so no space is freed after each face. Faces will stop fitting on FSx."
 fi
-if [[ "${release_met}" == true || "${release_products}" == true ]] && ! sudo -n true 2>/dev/null; then
+if [[ "${release_met}" == true || "${release_products}" == true || "${release_done_faces}" == true ]] \
+        && ! sudo -n true 2>/dev/null; then
     log "WARNING: sudo needs a password, so files cannot be released from FSx. Releasing is turned off."
     release_met=false
     release_products=false
+    release_done_faces=false
 fi
 
 while true; do
