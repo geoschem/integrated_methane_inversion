@@ -46,7 +46,7 @@ set -e
 
 # If starting from scratch is true, the directory with all target faces will be
 # completely replaced from scratch
-start_from_scratch=true
+start_from_scratch=false
 
 # Make sure the other utility scripts are located where this script is run
 cd "$(dirname "$0")"
