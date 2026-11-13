@@ -21,6 +21,7 @@
 set -e
 cd "$(dirname "$0")"
 source ./gchp_imi_common.sh
+end_face=$(( start_face + num_faces - 1 ))
 
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 <segment_end YYYYMMDD>"
@@ -41,12 +42,12 @@ last_status() {
 }
 
 mkdir -p "${test_dir}/logs"
-echo "Processing faces ${start_face} to ${num_faces} through ${segment_end}, ${max_parallel_inversions} at a time"
+echo "Processing faces ${start_face} to ${end_face} through ${segment_end}, ${max_parallel_inversions} at a time"
 
 #-----------------------------------
 # Loop over target faces
 #-----------------------------------
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     if [[ "$(last_status "${face_name}")" == "DONE ${segment_end} "* ]]; then
         echo "  ${face_name}: already DONE for ${segment_end}, skipping"
@@ -69,7 +70,7 @@ done
 wait
 echo ""
 echo "Done. Status of each face:"
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     echo "  ${face_name}: $(last_status "${face_name}")"
 done

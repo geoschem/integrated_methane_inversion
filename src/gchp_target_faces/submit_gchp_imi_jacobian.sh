@@ -36,6 +36,7 @@ if [[ $# -ne 2 ]]; then
 fi
 end_date=$1
 max_days=$2
+end_face=$(( start_face + num_faces - 1 ))
 
 #------------------------------------------------------
 # Check status first. This stops if the arguments are bad.
@@ -72,7 +73,7 @@ echo -e "\n$(date): end date ${end_date}, max days ${max_days}, max runs ${max_r
 # Read the queue again in case it changed while answering the questions
 active=$(active_run_dirs)
 num_submitted=0
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     for run_dir in "${test_dir}/${face_name}/jacobian_runs/${face_name}_"*; do
         [[ -d "${run_dir}" ]] || continue

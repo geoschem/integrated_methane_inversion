@@ -52,6 +52,9 @@ start_from_scratch=true
 cd "$(dirname "$0")"
 source ./gchp_imi_common.sh
 
+# Get end_face from the values of start_face and num_faces in gchp_imi_common.sh
+end_face=$(( start_face + num_faces - 1 ))
+
 # Never delete directories that were not made for this test, e.g. runs
 # and configs set up elsewhere.
 if [[ "${start_from_scratch}" == "true" ]] && \
@@ -160,7 +163,7 @@ echo "  NumJacobianTracers:         ${max_num_tracers}"
 echo "  UseSpotRunScript:           true"
 echo "  PruneOutputDir (inversion): ${prune_output}  (prune_output in gchp_imi_common.sh)"
 echo "  StateVectorFile:            ${test_dir}/<face>/StateVector.nc"
-echo "  Target faces:               ${start_face} to ${num_faces}"
+echo "  Target faces:               ${start_face} to ${end_face}"
 echo ""
 echo "Downloads and Slurm:"
 echo "  S3 source:                  ${dandan_s3_out}"
@@ -189,7 +192,7 @@ mkdir -p "${test_dir}/logs" "${imi_dir}/${config_dir}"
 #--------------------------------------------------------------------------
 # Make one config file per target face
 #--------------------------------------------------------------------------
-for ((i_face=start_face; i_face<=num_faces; i_face++)); do
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
     file_row=$((1 + i_face))
     csv_line=$(sed -n "${file_row}p" "${mapping_file}")
     IFS=',' read -r target_lon target_lat num_sv <<< "${csv_line}"
@@ -226,7 +229,7 @@ echo "setup_gchp_imi_jacobian.sh: All GCHP executables found. Submitting the rem
 # Now that GCHP is built, setup directories for the remaining target faces
 # by submitting one batch job per target face
 #--------------------------------------------------------------------------
-for ((i_face=start_face+1; i_face<=num_faces; i_face++)); do
+for ((i_face=start_face+1; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     sbatch -p "${setup_partition}" \
 	   -c "${face_cores}" \
