@@ -31,6 +31,13 @@ run_time=0-2:00
 # How often run_segments.sh checks on the runs, in minutes
 poll_minutes=10
 
+# How many segments a face may get ahead of the slowest face in
+# run_segments.sh. A face that finishes a segment starts its next one right
+# away, instead of waiting for every face to finish, so nodes are not left
+# idle. Each segment of lead keeps more met fields on FSx (about 16 GB per
+# day of lead). 0: all faces move together, segment by segment.
+max_segments_ahead=2
+
 #--------------------------------------------------------------------------
 # Inversion stage. Each face runs run_imi.sh on the head node, which
 # submits the processing job with the Inv* settings in the IMI config and
