@@ -9,7 +9,7 @@
 test_name=dzhang_s3_output_cleanup
 target_prefix=Global_1yr_2025_C36S10 # Do not change
 start_face=1
-num_faces=3       # For all faces use 220
+num_faces=15       # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -90,6 +90,12 @@ mapping_file="${util_dir}/target_coords_num-sv.csv"
 # Files linked into each template_run
 env_file="${imi_dir}/gchp.env"
 cleanup_restarts_script="${util_dir}/removeLocalRestarts.sh"
+
+# Run script of every Jacobian run. Each run directory has its own copy,
+# <run name>.run, which submit_run replaces with this template whenever they
+# differ, so a change to the template reaches every run at its next
+# submission. Jobs already submitted keep the script they were submitted with.
+spot_run_template="${imi_dir}/src/geoschem_run_scripts/gchp_ch4_run_spot.template"
 
 # Inputs downloaded from S3
 dandan_s3_out="s3://dzhang-imi-gchp-output/output"
@@ -180,14 +186,23 @@ run_status() {
 }
 
 # Submit one Jacobian run to an end date, from its own directory, and
-# print the sbatch message
+# print the sbatch message. First makes its run script a copy of the current
+# spot_run_template, if it is not already. A link is replaced by a copy, so
+# that nothing writing to the run script can write into the template.
 # Arguments: run directory, end date YYYYMMDD, maximum days
 submit_run() {
     local run_dir=$1
     local end_date=$2
     local max_days=$3
-    local run_name
+    local run_name script
     run_name=$(basename "${run_dir}")
+    script="${run_dir}/${run_name}.run"
+    if [[ -L "${script}" ]] || ! cmp -s "${spot_run_template}" "${script}"; then
+        rm -f "${script}"
+        cp "${spot_run_template}" "${script}" || return 1
+        chmod 755 "${script}"
+        echo -n "run script updated from ${spot_run_template##*/}; "
+    fi
     (cd "${run_dir}" && sbatch -p "${run_partition}" -t "${run_time}" \
         -N "${run_nodes}" -n "${run_cores}" \
         -J "${run_name}" "${run_name}.run" "${end_date}" "${max_days}")
