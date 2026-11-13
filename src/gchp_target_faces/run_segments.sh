@@ -418,7 +418,7 @@ run_segment() {
             fi
         done
 
-        if (( num_done == num_faces - start_face + 1 )); then
+        if (( num_done == num_faces )); then
             return 0
         fi
         if [[ "${failed}" == true ]] && (( num_inv_now == 0 )); then
@@ -432,7 +432,7 @@ run_segment() {
 #--------------------------------------------------------------------------
 # Run segments until every face is DONE through the target end
 #--------------------------------------------------------------------------
-end_face=$(( start_face + end_face - 1 ))
+end_face=$(( start_face + num_faces - 1 ))
 log "Running ${segment_days}-day segments to ${target_end} for faces ${start_face} to ${end_face}"
 if [[ "${prune_output}" != true ]]; then
     log "WARNING: prune_output is not true, so no space is freed after each face. Faces will stop fitting on FSx."
