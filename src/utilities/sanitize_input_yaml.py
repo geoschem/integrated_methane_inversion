@@ -152,6 +152,9 @@ optional_rules: Dict[str, Rule] = {
     "PriorErrorBCs": ANY,  # list[float]
     "PriorErrorBufferElements": ANY,  # list[float]
     "PriorErrorOH": ANY,  # list[float]
+    # Softplus positivity option (analytical path)
+    "SoftplusErrors": bool,
+    "SoftplusScale": float,
 }
 
 # -------------------- CONDITIONAL REQUIREMENTS -------------------------
@@ -324,6 +327,14 @@ def validate_config(cfg: Dict[str, Any]) -> Tuple[bool, List[str]]:
     ):
         if cfg["StartDate"] > cfg["EndDate"]:
             errors.append("StartDate must be <= EndDate (yyyymmdd integers).")
+
+    # SoftplusErrors and LognormalErrors are mutually exclusive (both false = the normal inversion).
+    if _truthy_for_condition(cfg.get("SoftplusErrors", False)) and _truthy_for_condition(
+        cfg.get("LognormalErrors", False)
+    ):
+        errors.append(
+            "SoftplusErrors and LognormalErrors cannot both be true; set at most one."
+        )
 
     return (len(errors) == 0, errors)
 
