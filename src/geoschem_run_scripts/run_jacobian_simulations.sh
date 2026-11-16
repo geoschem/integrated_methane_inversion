@@ -78,7 +78,7 @@ if {ContinueIncompleteJacobians}; then
     RestartPath=""
     
     # looping over restarts, newest first
-    for f in $(ls -1 Restarts/GEOSChem.Restart.????????_????z.nc4 2>/dev/null | sort -r); do
+    for f in $(ls -1 Restarts/GEOSChem.Restart.????????_????z.nc4 | sort -r); do
         rst=$(basename "$f")
         d=$(echo "$rst" | cut -d. -f3 | cut -d_ -f1)
         t=$(echo "$rst" | cut -d. -f3 | cut -d_ -f2 | cut -dz -f1)
@@ -117,13 +117,15 @@ if {ContinueIncompleteJacobians}; then
         [ "$check" = "$RestartDate" ] || fail 1 "Failed to set start_date for jacobian simulation: ${xstr}"
 
         # Match the HEMCO restart variable prefix to what the file actually contains
-        if ncdump -h "$RestartPath" | grep -q 'SpeciesRst_'; then
+	if ncdump -h "$RestartPath" | grep -q 'SpeciesRst_'; then
             prefix=SpeciesRst_
             sed -i '/GEOSChem\.Restart/ s/SpeciesBC_/SpeciesRst_/g' HEMCO_Config.rc
-        else
-            prefix=SpeciesBC_
-            sed -i '/GEOSChem\.Restart/ s/SpeciesRst_/SpeciesBC_/g' HEMCO_Config.rc
-        fi
+        elif ncdump -h "$RestartPath" | grep -q 'SpeciesBC_'; then
+    	    prefix=SpeciesBC_
+            sed -i '/GEOSChem\.Restart/ s/SpeciesRst_/SpeciesBC_/g' HEMCO_Config.rc 
+    	else
+            fail 1 "Jacobian simulation ${xstr}: ${rst} has neither SpeciesRst_CH4 nor SpeciesBC_CH4. Exiting."
+	fi
 
 	# checking replace worked
         grep 'GEOSChem\.Restart' HEMCO_Config.rc | grep -q "$prefix" \
