@@ -14,6 +14,12 @@
 # test_dir first; never convert the only copy. The paths of the other
 # cluster are set below under "Paths on the other cluster".
 #
+# If test_dir is in a folder linked to S3, files not on FSx yet are loaded
+# from S3 the first time they are read, which is slow one file at a time.
+# So it first reads the small files it needs (under 1 MB, outside hourly
+# output and products) of every face, load_parallel at a time. This only
+# reads files, in a dry run too; files already on FSx are read quickly.
+#
 # For each face, this:
 #   1. Checks that it is safe to convert, and changes nothing if any check
 #      fails (see "Before running" below)
@@ -98,6 +104,9 @@ gchp_bin_dir="${imi_dir}/GCHP/build/bin"
 
 # Folder in each face directory with the originals of the files changed
 backup_name=conversion_backup
+
+# How many files to load from S3 at a time (see the top of this script)
+load_parallel=32
 
 # Text files that contain paths and are read by GCHP, HEMCO or the IMI
 path_files="HEMCO_Config.rc rundir_vars.txt submit_jacobian_simulations_array.sh"
@@ -309,6 +318,23 @@ cd "${imi_dir}"
 active=$(active_run_dirs)
 periods=""
 end_face=$(( start_face + num_faces - 1 ))
+
+# Load the small files of every face from S3 first, many at a time, so that
+# reading them below is fast
+load_dirs=()
+for ((i_face=start_face; i_face<=end_face; i_face++)); do
+    if [[ -d "${test_dir}/$(face_name_for ${i_face})" ]]; then
+        load_dirs+=( "${test_dir}/$(face_name_for ${i_face})" )
+    fi
+done
+if (( ${#load_dirs[@]} > 0 )); then
+    echo "Loading the small files of ${#load_dirs[@]} face(s) from S3 if not on FSx yet, ${load_parallel} at a time..."
+    load_start=$(date +%s)
+    find "${load_dirs[@]}" \( -name OutputDir -o -name OverpassDiagnostics -o -name inversion \
+                             -o -name "${backup_name}" \) -prune -o -type f -size -1M -print0 \
+        | xargs -0 -r -P "${load_parallel}" -n 20 cat > /dev/null || true
+    echo "  done in $(( $(date +%s) - load_start )) s"
+fi
 for ((i_face=start_face; i_face<=end_face; i_face++)); do
     face_name=$(face_name_for ${i_face})
     face_dir="${test_dir}/${face_name}"
