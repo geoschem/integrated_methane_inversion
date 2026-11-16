@@ -5,15 +5,34 @@
 #       path_to_state_vector_file: path to state vector netcdf file
 #       jacobian_sf: (optional) path to numpy array of scale factors for jacobian
 
+import os
 import sys
 from itertools import product
 import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
-#from scipy.sparse import spdiags
 from src.inversion_scripts.utils import ensure_float_list
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
+from src.inversion_scripts.so_operator import compute_so_normal_equations
 from src.utilities.config_utils import load_config
+
+
+def _load_obs_metadata():
+    """Per-observation lat/lon/dates for the off-diagonal So, written by merge_partial_k as
+    obs_metadata.npz (row-aligned with the merged K, in the inversion cwd). Returns
+    (lat, lon, dates), or (None, None, None) if unavailable (-> diagonal So)."""
+    if not os.path.exists("obs_metadata.npz"):
+        return None, None, None
+    try:
+        with np.load("obs_metadata.npz", allow_pickle=True) as d:
+            if "lat" in d.files and "lon" in d.files:
+                lat = np.asarray(d["lat"], dtype=float).flatten()
+                lon = np.asarray(d["lon"], dtype=float).flatten()
+                dates = d["dates"] if "dates" in d.files else None
+                return lat, lon, dates
+    except Exception:
+        pass
+    return None, None, None
 
 
 def lognormal_invert(config, state_vector_filepath, jacobian_sf):
@@ -128,6 +147,27 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
             sa_oh_vals,
         )
     )
+
+    # Off-diagonal observation error covariance (two-exponential spatial correlation + optional
+    # adjacent-day temporal correlation). Diagonal So by default; the shared operator applies it below.
+    obs_lat = obs_lon = obs_dates = None
+    so_corr_params = None
+    if config.get("OffDiagonalObsCov", False):
+        obs_lat, obs_lon, obs_dates = _load_obs_metadata()
+        if obs_lat is not None:
+            L2 = float(config.get("OffDiagonalObsCovL2", 398.0))
+            so_corr_params = {
+                "form": "two_exponential",
+                "corr_amplitude1": float(config.get("OffDiagonalObsCovA1", 0.385)),
+                "corr_length1_km": float(config.get("OffDiagonalObsCovL1", 26.0)),
+                "corr_amplitude2": float(config.get("OffDiagonalObsCovA2", 0.459)),
+                "corr_length2_km": L2,
+                "corr_cutoff_km": float(config.get("OffDiagonalObsCovCutoffKm", 3.0 * L2)),
+                "temporal_rho": float(config.get("OffDiagonalObsCovTemporalRho", 0.0)),
+            }
+        else:
+            print("  OffDiagonalObsCov set but obs_metadata.npz unavailable; using diagonal So.")
+
     for gamma, sa, so_key, sa_bc, sa_buffer, sa_oh in combinations:
         # params dict to store hyperparameters
         params = {
@@ -223,27 +263,33 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         # start with arbitrary value for xn_iteration_pct_diff above .05%
         xn_iteration_pct_diff = 1
 
-        # precompute static matrices
-        # Soinv is diagonal and K_prime = K_full @ diag(d), so every large product
-        # in the loop reduces to KT_Soinv_K = K^T So^-1 K
-        # and KT_Soinv_ybgdiff = K^T So^-1 (y - ybkg)
+        # precompute static matrices: M = K^T So^-1 K and v = K^T So^-1 (y - ybkg), computed once.
+        # The iteration below scales by d = xnmean, so K'^T So^-1 K' = diag(d) M diag(d) and no
+        # per-iteration So^-1 solve is needed. Diagonal So accumulates in chunks (memory-light); the
+        # off-diagonal two-exponential model is applied exactly by the shared day-blocked operator.
         print('precomputing static matrices')
-        invso_vals = 1.0 / so 
-        KT_Soinv_K = np.zeros((N,N))
-        KT_Soinv_ybgdiff = np.zeros((N, 1))
-        # chunk size for loading matrices. Larger for more speed 
-        # but needs more memory.
-        chunk = 50000
-        for idx_chunk in range(0, m, chunk): # iterate over rows of K and y to load it
-            next_chunk = min(idx_chunk + chunk, m)
-            Kc = K_full[idx_chunk: next_chunk].astype(np.float64)
-            yc = y_ybkg_diff[idx_chunk: next_chunk].astype(np.float64)
-            SoinvKc = Kc * invso_vals[idx_chunk: next_chunk, None]
-            KT_Soinv_K += Kc.T @ SoinvKc
-            KT_Soinv_ybgdiff += SoinvKc.T @ yc
-            print(f'\r{(next_chunk / m)*100:0.0f}%   ', end = '')
-        print()
-        del Kc, yc, SoinvKc
+        if so_corr_params is not None:
+            KT_Soinv_K, v_so, _ = compute_so_normal_equations(
+                K_full, np.asarray(y_ybkg_diff).flatten(), so,
+                obs_lat, obs_lon, obs_dates, so_corr_params,
+            )
+            KT_Soinv_ybgdiff = np.asarray(v_so).reshape(N, 1)
+        else:
+            invso_vals = 1.0 / so
+            KT_Soinv_K = np.zeros((N, N))
+            KT_Soinv_ybgdiff = np.zeros((N, 1))
+            # chunk size for loading matrices. Larger for more speed but needs more memory.
+            chunk = 50000
+            for idx_chunk in range(0, m, chunk):  # iterate over rows of K and y to load it
+                next_chunk = min(idx_chunk + chunk, m)
+                Kc = K_full[idx_chunk: next_chunk].astype(np.float64)
+                yc = y_ybkg_diff[idx_chunk: next_chunk].astype(np.float64)
+                SoinvKc = Kc * invso_vals[idx_chunk: next_chunk, None]
+                KT_Soinv_K += Kc.T @ SoinvKc
+                KT_Soinv_ybgdiff += SoinvKc.T @ yc
+                print(f'\r{(next_chunk / m)*100:0.0f}%   ', end='')
+            print()
+            del Kc, yc, SoinvKc
 
 
 

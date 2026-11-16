@@ -11,6 +11,7 @@ from src.inversion_scripts.utils import (
     map_files_to_reference,
 )
 from src.utilities.config_utils import load_config
+from src.inversion_scripts.satellite_products import get_satellite_product
 
 
 def calc_so(obs_error, obs_GC):
@@ -35,7 +36,7 @@ def calc_so(obs_error, obs_GC):
 from functools import partial
 print = partial(print, flush = True)
 
-def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
+def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K, satellite_product):
     """
     Description:
         This function is used to generate the full jacobian matrix (K), observations (y),
@@ -68,7 +69,12 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
     satellite_list = [None for i in range(len(files))]
     geos_prior_list = [None for i in range(len(files))]
     K_list = [None for i in range(len(files))]
-    
+    # Per-observation lon/lat and overpass date (YYYYMMDD), aligned with the merged K rows and
+    # written as obs_metadata.npz for the off-diagonal So day-blocked solve.
+    lon_list = [None for i in range(len(files))]
+    lat_list = [None for i in range(len(files))]
+    dates_list = [None for i in range(len(files))]
+
     # If using precomputed jacobian, get the mappings to reference jacobian files
     if precomp_K:
         ref_dir = satdat_dir.replace("data_converted", "data_converted_reference")
@@ -115,6 +121,13 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
         # add K_temp to K_list
         K_list[i] = K_temp
 
+        # per-observation lon/lat and overpass date (YYYYMMDD), using the satellite product's own
+        # filename parser so it works for every product (TROPOMI, MSAT, ...), as invert.py does
+        lon_list[i] = np.asarray(obs_GC[:, 2], dtype=np.float32)
+        lat_list[i] = np.asarray(obs_GC[:, 3], dtype=np.float32)
+        date_val = str(np.datetime64(satellite_product.observation_date(f), "D")).replace("-", "")
+        dates_list[i] = np.repeat(date_val, obs_GC.shape[0])
+
         for obs_err in obs_errs:
             key = f"so_{obs_err}"
             obs_error = calc_so(obs_err, obs_GC)
@@ -125,11 +138,15 @@ def merge_partial_k(satdat_dir, lat_bounds, lon_bounds, obs_errs, precomp_K):
     satellite = np.concatenate(satellite_list, axis=0)
     for k,v in so_dict.items():
         so_dict[k] = np.concatenate(v, axis=0)
+    # lon/lat/dates are populated alongside K_list, so they share its row order and None pattern
+    lon = np.concatenate(lon_list, axis=0)
+    lat = np.concatenate(lat_list, axis=0)
+    dates = np.concatenate(dates_list, axis=0)
 
     gc_prior = np.asmatrix(geos_prior)
     obs_satellite = np.asmatrix(satellite)
 
-    return gc_prior, obs_satellite, K, so_dict
+    return gc_prior, obs_satellite, K, so_dict, {"lon": lon, "lat": lat, "dates": dates}
 
 
 if __name__ == "__main__":
@@ -141,6 +158,7 @@ if __name__ == "__main__":
 
     # Load config file
     config = load_config(config_path)
+    satellite_product = get_satellite_product(config["SatelliteProduct"])
 
     # Ensure obs_error is a list of floats
     obs_errors = ensure_float_list(config["ObsError"])
@@ -156,11 +174,13 @@ if __name__ == "__main__":
         lat_bounds = [-90, 90]
 
     # Paths to GEOS/satellite data
-    gc_bkgd, obs_satellite, jacobian_K, so_dict = merge_partial_k(
-        satdat_dir, lat_bounds, lon_bounds, obs_errors, precomputed_jacobian
+    gc_bkgd, obs_satellite, jacobian_K, so_dict, obs_metadata = merge_partial_k(
+        satdat_dir, lat_bounds, lon_bounds, obs_errors, precomputed_jacobian, satellite_product
     )
 
     np.savez("full_jacobian_K.npz", K=jacobian_K)
     np.savez("obs_satellite.npz", obs_satellite=obs_satellite)
     np.savez("gc_bkgd.npz", gc_bkgd=gc_bkgd)
     np.savez("so_super.npz", **so_dict)
+    # Per-observation lon/lat/dates for the lognormal off-diagonal So day-blocked solve.
+    np.savez("obs_metadata.npz", **obs_metadata)
