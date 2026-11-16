@@ -6,7 +6,6 @@
 #SBATCH --mail-type=END
 #SBATCH -o "imi_output.log"
 #SBATCH --open-mode=append
-#SBATCH -t 0-02:00
 
 ## Uncomment to use PBS
 ###PBS -l nodes=1,ncpus=1
