@@ -21,7 +21,9 @@
 #      through S3 can come back as small files containing the target path.
 #   3. Points links and paths in HEMCO_Config.rc, rundir_vars.txt,
 #      submit_jacobian_simulations_array.sh and the face config to this
-#      cluster's paths
+#      cluster's paths. Faces whose last IMI step ran on another cluster
+#      (e.g. Harvard's) have its OutputPath in their saved config; that path
+#      is mapped to test_dir too (other_old_output_dirs below).
 #   4. Makes the face config in config_dir from the base config
 #      (template_config), so it has every key the current IMI and these
 #      scripts need and this cluster's settings. Only the face-specific
@@ -41,7 +43,9 @@
 #         run script applies it at the start of every job.
 #      d. Keeps the old run script as <run name>.run.old and replaces it
 #         with the spot run script
-#      e. Links gchp.env and removeLocalRestarts.sh
+#      e. Links gchp to the executable of the same name (gchp.<N> or
+#         gchp.default) in this IMI's GCHP build, never to one built
+#         elsewhere, and links gchp.env and removeLocalRestarts.sh
 #      f. Appends a CONVERTED line to job_status
 #   6. Records how far its inversion stage got, from its inversion and
 #      overpass markers, as a DONE line in inversion_status, so
@@ -85,6 +89,13 @@ old_imi_dir=/fsx_output/imi-gchp      # its IMI clone   -> imi_dir
 old_input_dir=/fsx_input              # its input data  -> new_input_dir
 new_input_dir="${HOME}/fsx/dzhang-imi-gchp"
 
+# OutputPaths of other clusters where some faces' last IMI step ran (only
+# their saved configs hold these), separated by spaces -> test_dir
+other_old_output_dirs="/n/holylfs06/LABS/jacob_lab2/Lab/dzhang8/process-imi-aws/output"
+
+# GCHP executables every converted run is linked to
+gchp_bin_dir="${imi_dir}/GCHP/build/bin"
+
 # Folder in each face directory with the originals of the files changed
 backup_name=conversion_backup
 
@@ -119,7 +130,11 @@ applying() {
 # Argument: path
 map_path() {
     local p=$1
+    local d
     p=${p/#${old_output_dir}/${test_dir}}
+    for d in ${other_old_output_dirs}; do
+        p=${p/#${d}/${test_dir}}
+    done
     p=${p/#${old_imi_dir}/${imi_dir}}
     p=${p/#${old_input_dir}/${new_input_dir}}
     echo "${p}"
@@ -145,9 +160,13 @@ backup_file() {
 # text file
 # Argument: file
 map_paths_in_file() {
+    local d
     sed -i -e "s|${old_output_dir}|${test_dir}|g" \
            -e "s|${old_imi_dir}|${imi_dir}|g" \
            -e "s|${old_input_dir}|${new_input_dir}|g" "$1"
+    for d in ${other_old_output_dirs}; do
+        sed -i -e "s|${d}|${test_dir}|g" "$1"
+    done
 }
 
 # Function to test whether a file holds a link target: a small one-line
@@ -173,6 +192,22 @@ link_files_of() {
     done < <(find "$1" -type f -size -4k -not -path '*/OutputDir/*' \
              -not -path '*/OverpassDiagnostics/*' -not -path '*/inversion/*' \
              -not -path "*/${backup_name}/*")
+}
+
+# Function to print the name of the GCHP executable a run uses
+# (gchp.<N> or gchp.default), from its gchp link or a file holding the link
+# target. Returns 1 if gchp is neither.
+# Argument: run directory
+gchp_name_of() {
+    local target
+    if [[ -L "$1/gchp" ]]; then
+        target=$(readlink "$1/gchp")
+    elif is_link_file "$1/gchp"; then
+        target=$(head -n 1 "$1/gchp")
+    else
+        return 1
+    fi
+    basename "${target}"
 }
 
 # Function to print the segment end the face's inversion stage completed,
@@ -295,7 +330,7 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
 
     output_path=$(grep "^OutputPath:" "${source_config}" | awk '{print $2}' | tr -d '"')
     if [[ "$(map_path "${output_path%/}")" != "${test_dir}" ]]; then
-        problem "OutputPath in ${source_config} is ${output_path}, which is neither ${test_dir} nor ${old_output_dir}"
+        problem "OutputPath in ${source_config} is ${output_path}, which is not ${test_dir}, ${old_output_dir} or one of other_old_output_dirs (${other_old_output_dirs})"
     fi
     periods="${periods}$(grep -E "^(StartDate|EndDate):" "${source_config}" | tr '\n' ' ')"$'\n'
     for key in StartDate EndDate; do
@@ -316,6 +351,11 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
         fi
         if [[ -e "${run_dir}/Restarts/gcchem_internal_checkpoint" ]]; then
             problem "$(basename "${run_dir}") has an undated checkpoint Restarts/gcchem_internal_checkpoint. Date it first (rename_final_checkpoints.sh --apply)."
+        fi
+        if ! gchp_name=$(gchp_name_of "${run_dir}"); then
+            problem "$(basename "${run_dir}")/gchp is not a link, so which executable it needs is unknown. Link it to the right one in ${gchp_bin_dir} first."
+        elif [[ ! -x "${gchp_bin_dir}/${gchp_name}" ]]; then
+            problem "$(basename "${run_dir}") uses ${gchp_name}, which is not in ${gchp_bin_dir}"
         fi
     done
 done
@@ -408,9 +448,13 @@ convert_run_dir() {
         chmod 755 "${run_name}.run"
     fi
 
-    # e. Link the environment file and the restart cleanup script
-    echo "    link gchp.env and removeLocalRestarts.sh"
+    # e. Link the executable of the same name in this IMI's GCHP build, the
+    #    environment file and the restart cleanup script
+    gchp_target="${gchp_bin_dir}/$(gchp_name_of .)"
+    echo "    link gchp -> ${gchp_target}, and gchp.env and removeLocalRestarts.sh"
     if applying; then
+        backup_file "${face_dir}" "${run_dir}/gchp"
+        ln -nsf "${gchp_target}" gchp
         backup_file "${face_dir}" "${run_dir}/gchp.env"
         backup_file "${face_dir}" "${run_dir}/removeLocalRestarts.sh"
         ln -nsf "${env_file}" gchp.env
@@ -473,7 +517,7 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
     for name in ${path_files} "config_${face_name}.yml"; do
         while IFS= read -r file; do
             [[ -n "${file}" ]] || continue
-            if grep -qE "${old_output_dir}|${old_imi_dir}|${old_input_dir}" "${file}"; then
+            if grep -qE "${old_output_dir}|${old_imi_dir}|${old_input_dir}${other_old_output_dirs:+|${other_old_output_dirs// /|}}" "${file}"; then
                 echo "  paths in ${file#${face_dir}/}"
                 if applying; then
                     backup_file "${face_dir}" "${file}"
