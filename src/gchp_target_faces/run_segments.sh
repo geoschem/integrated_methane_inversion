@@ -341,6 +341,20 @@ if [[ "${release_met}" == true || "${release_products}" == true || "${release_do
     release_done_faces=false
 fi
 
+# Release the large files of faces in test_dir that this run does not work
+# on (other face ranges, or earlier tests), so these faces can use the space.
+# Done once at the start. Files not exported to S3 yet are left on FSx.
+if [[ "${release_done_faces}" == true ]]; then
+    for face_dir in "${test_dir}/${target_prefix}"_T[0-9][0-9][0-9]; do
+        [[ -d "${face_dir}" ]] || continue
+        face_name=$(basename "${face_dir}")
+        i_face=$(( 10#${face_name##*_T} ))
+        if (( i_face < start_face || i_face > end_face )); then
+            release_face "${face_name}" || true
+        fi
+    done
+fi
+
 declare -a seg_end_of=()      # by face number: segment end it is working on
 declare -a done_of=()         # by face number: date its inversion stage is DONE through
 declare -a inversion_pid=()   # by face number: PID of its inversion stage

@@ -8,8 +8,8 @@
 #--------------------------------------------------------------------------
 test_name=dzhang_s3_output_cleanup
 target_prefix=Global_1yr_2025_C36S10 # Do not change
-start_face=1
-num_faces=15       # For all faces use 220
+start_face=11
+num_faces=20       # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -66,7 +66,7 @@ storage_safety_factor=1.1
 # Release files from FSx that are safely in S3, to free space. They are
 # loaded back from S3 if anything reads them. Needs sudo without a password.
 release_met=true         # met fields every face is done with
-release_products=false   # overpass and .pkl files, once exported to S3
+release_products=true    # overpass and .pkl files, once exported to S3
 release_done_faces=true  # restarts, hourly output and products of faces done with a segment
 met_dir="${HOME}/fsx/dzhang-imi-gchp/ExtData/GEOS_0.25x0.3125/GEOS_FP"
 

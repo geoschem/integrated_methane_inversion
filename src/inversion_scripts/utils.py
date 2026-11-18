@@ -59,11 +59,10 @@ def get_shared_end_date(
     #filename_regex = re.compile(
     #    r"^gcchem_internal_checkpoint\.(\d{8})_0000z\.nc4$"
     #)
-
+    latest_dates = []
     for run_dir in run_dirs:
         restart_dir = os.path.join(run_dir, "Restarts")
         checkpoint_dates = []
-        latest_dates = []
         if os.path.isdir(restart_dir):
             for name in os.listdir(restart_dir):
                 match = CHECKPOINT_FILE_RE.match(name)
