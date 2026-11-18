@@ -1,0 +1,29 @@
+List of Developers for the Integrated Methane Inversion, GOOPy, Related Software
+(Last updated: 17 Nov 2026)
+===============================================================================
+
+BALASUS, Nicholas
+BARAY, Sabour
+BINIETOGLOU, Ioannis
+CHATZIMICHELAKIS, Stefanos
+DOGNIAUX, Matthieu
+DOWNS, William
+EAST, James
+ESTRADA, Lucas
+HANCOCK, Sarah
+HE, Megan
+IVATT, Peter
+JACOB, Daniel
+LUNDGREN, Lizzie
+MAASAKKERS, J. D. (Bram)
+MCDONALD, Helena
+MURRAY, Lee
+NESSER, Hannah
+RAUTELA, Vedant
+SULPRIZIO, Melissa
+THOMAS, John
+VARON, Daniel
+WANG, Xiaolin
+YANTOSCA, Bob
+ZHANG, Dandan
+
