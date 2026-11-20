@@ -597,14 +597,16 @@ for ((i_face=start_face; i_face<=end_face; i_face++)); do
         fi
     fi
 
-    # 7. Checks. Links still pointing to nothing (after --apply)
+    # 7. Checks. Links still pointing to nothing (after --apply). Skips
+    #    gchp_restart.nc4, which the run script points to the restart in
+    #    cap_restart at the start of every job.
     if applying; then
         while IFS= read -r file; do
             [[ -n "${file}" ]] || continue
             echo "  WARNING: link points to nothing: ${file#${face_dir}/} -> $(readlink "${file}")"
             num_broken=$((num_broken + 1))
         done <<< "$(find "${face_dir}" -type l -not -path '*/OutputDir/*' -not -path "*/${backup_name}/*" \
-                    ! -exec test -e {} \; -print)"
+                    -not -name gchp_restart.nc4 ! -exec test -e {} \; -print)"
     fi
 
     # Hourly output the next inversion stage will read: from the day before
