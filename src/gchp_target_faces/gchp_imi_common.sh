@@ -6,10 +6,20 @@
 #--------------------------------------------------------------------------
 # Test settings
 #--------------------------------------------------------------------------
+
+# Directory with the target face directories. 'output' must be an export DRA
+# with new/changed/delete enabled
+test_dir="${HOME}/fsx/dzhang-imi-gchp-output/output"
+
+# Name of this test. Face configs are kept in <imi_dir>/configs_<test_name>.
+# setup_gchp_imi_jacobian.sh with start_from_scratch=true deletes test_dir
+# only if its folder name is test_name, so faces set up elsewhere (as in
+# test_dir above) are never deleted.
 test_name=dzhang_s3_output_cleanup
-target_prefix=Global_1yr_2025_C36S10 # Do not change
-start_face=11
-num_faces=20       # For all faces use 220
+
+target_prefix=Global_1yr_2025_C36S10 # Do not change!
+start_face=1
+num_faces=220      # For all faces use 220
 max_num_tracers=200 # Do not change!
 
 #--------------------------------------------------------------------------
@@ -73,10 +83,6 @@ met_dir="${HOME}/fsx/dzhang-imi-gchp/ExtData/GEOS_0.25x0.3125/GEOS_FP"
 #--------------------------------------------------------------------------
 # Directories and files
 #--------------------------------------------------------------------------
-# Directory with the target face directories. 'output' must be an export DRA
-# with new/changed/delete enabled
-test_dir="${HOME}/fsx/dzhang-imi-gchp-output/output"
-
 util_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 imi_dir="$(cd "${util_dir}/../.." && pwd)"
 
