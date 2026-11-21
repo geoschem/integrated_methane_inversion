@@ -9,7 +9,7 @@ geopy==2.4.0
 h5netcdf==1.3.0
 h5py==3.9.0
 ipython==8.15.0
-jupyterlab==4.5.10
+jupyterlab==4.5.11
 mat73==0.62
 matplotlib==3.7.2
 netCDF4==1.6.4
@@ -17,7 +17,7 @@ numpy==1.24.4
 pandas==2.1.0
 pickleshare==0.7.5
 Pillow==12.3.0
-pip==26.1.2
+pip==26.2
 pyproj==3.6.0
 pyshp==2.3.1
 pytest==9.0.3
