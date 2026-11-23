@@ -126,11 +126,11 @@ ShapeFile: "resources/shapefiles/tmp.shp"
 ## - If lognormal PriorError is the geometric standard deviation (e.g. 2 = factor of 2 uncertainty)
 ## - PriorErrorOH is a relative fraction (e.g. 0.1 = 10%)
 ## - PriorErrorBCs is in ppb
-## - PriorErrorBufferElements is only used if LognormalErrors is true
+## - PriorErrorBufferElements is a relative fraction (e.g., 2 = 200%)
 LognormalErrors: false
 PriorError: [0.5]
 PriorErrorBCs: [10.0]
-PriorErrorBufferElements: [0.5]
+PriorErrorBufferElements: [2]
 ObsError: [15]
 Gamma: [1.0]
 PrecomputedJacobian: false
