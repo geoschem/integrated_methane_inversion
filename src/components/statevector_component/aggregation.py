@@ -521,10 +521,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     # Identify the last element of the region of interest
     nStateOrig = orig_sv["StateVector"].max().values
-    last_ROI_element = int(orig_sv["StateVector"].isel(
-        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
-        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
-    ).max())
+    last_ROI_element = orig_sv.attrs["number_roi_elements"]
     nBufferClusters = nStateOrig - last_ROI_element
     desired_num_labels = int(config["NumberOfElements"] - nBufferClusters)
 
