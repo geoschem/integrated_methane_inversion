@@ -163,16 +163,10 @@ def make_state_vector_file(
         buffer_min_lat = deg_lat * 4
         buffer_min_lon = deg_lon * 4
 
-    # Calculate the buffer degrees that would exist using the rings
-    buffer_lat = buffer_rings * deg_lat
-    buffer_lon = buffer_rings * deg_lon
-
     # set the buffer degrees to the maximum to ensure
     # that the buffer is at least the minimum (4 extra grid cells on each side)
-    buffer_deg_lat = max(buffer_lat, buffer_min_lat)
-    buffer_deg_lon = max(buffer_lon, buffer_min_lon)
-    # buffer_deg_lat = buffer_rings * deg_lat + buffer_min_lat
-    # buffer_deg_lon = buffer_rings * deg_lon + buffer_min_lon
+    buffer_deg_lat = buffer_rings * deg_lat + buffer_min_lat
+    buffer_deg_lon = buffer_rings * deg_lon + buffer_min_lon
 
     # Load land cover data and HEMCO diagnostics
     lc = xr.load_dataset(land_cover_pth)
@@ -297,6 +291,9 @@ def make_state_vector_file(
         1, statevector.isnull().sum() + 1
     )[::-1]
 
+    # Get the number of elements within the region of interest
+    n_roi = int(statevector.max())
+
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
     if is_regional:
@@ -334,6 +331,7 @@ def make_state_vector_file(
                                             long_name='Time', calendar='standard')
         ds_statevector['corner_lats'] = gridds['corner_lats']
         ds_statevector['corner_lons'] = gridds['corner_lons']
+        ds_statevector.attrs["number_roi_elements"] = n_roi
         
         if STRETCH_GRID:
             ds_statevector.attrs['STRETCH_FACTOR'] = np.float32(STRETCH_FACTOR)
@@ -354,6 +352,7 @@ def make_state_vector_file(
         ds_statevector.StateVector.attrs["units"] = "none"
         ds_statevector.StateVector.attrs["missing_value"] = -9999
         ds_statevector.StateVector.attrs["_FillValue"] = -9999
+        ds_statevector.attrs["number_roi_elements"] = n_roi
 
     # Save
     if save_pth is not None:
