@@ -7,6 +7,7 @@ import numpy as np
 import warnings
 from src.utilities.config_utils import load_config
 
+from src.inversion_scripts.utils import get_last_roi_element
 from src.inversion_scripts.point_sources import get_point_source_coordinates
 from src.inversion_scripts.imi_preview import (
     estimate_averaging_kernel,
@@ -521,7 +522,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     # Identify the last element of the region of interest
     nStateOrig = orig_sv["StateVector"].max().values
-    last_ROI_element = orig_sv.attrs["number_roi_elements"]
+    last_ROI_element = get_last_roi_element(orig_sv, config)
     nBufferClusters = nStateOrig - last_ROI_element
     desired_num_labels = int(config["NumberOfElements"] - nBufferClusters)
 
@@ -731,6 +732,7 @@ def update_sv_clusters(config, flat_sensi, orig_sv):
 
     # format state vector metadata
     new_sv.StateVector.attrs["units"] = "none"
+    new_sv.attrs["number_roi_elements"] = int(labels.max())
     new_sv.StateVector.encoding["_FillValue"] = -9999
     new_sv.StateVector.encoding["missing_value"] = -9999
 
