@@ -6,6 +6,7 @@ from src.inversion_scripts.utils import (
     sum_total_emissions,
     get_posterior_emissions,
     get_period_mean_emissions,
+    get_last_roi_element,
 )
 from src.utilities.config_utils import load_config
 
@@ -41,7 +42,7 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     else:
         areas = hemco_diags["AREA"]
     state_vector_labels = statevector["StateVector"]
-    last_ROI_element = statevector.attrs["number_roi_elements"]
+    last_ROI_element = get_last_roi_element(statevector, config)
     mask = state_vector_labels <= last_ROI_element
 
     # Emissions
