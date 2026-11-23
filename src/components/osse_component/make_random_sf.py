@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 from src.utilities.config_utils import load_config
+from src.inversion_scripts.utils import get_last_roi_element
 
 
 def make_random_sf(state_vector_path, config):
@@ -18,7 +19,7 @@ def make_random_sf(state_vector_path, config):
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
-    last_ROI_element = state_vector.attrs["number_roi_elements"]
+    last_ROI_element = get_last_roi_element(state_vector, config)
     mask = state_vector_labels <= last_ROI_element
     scale_factor = state_vector.rename({"StateVector": "ScaleFactor"})
     scale_factor["ScaleFactor"].attrs["units"] = "1"
