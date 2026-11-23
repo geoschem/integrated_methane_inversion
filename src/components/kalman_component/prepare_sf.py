@@ -52,7 +52,7 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor, species
     else:
         areas = original_emis_ds["AREA"]
     state_vector_labels = statevector["StateVector"]
-    last_ROI_element = get_last_roi_element(statevector, config)
+    last_ROI_element = get_last_roi_element(statevector, config["BufferRings"])
     mask = state_vector_labels <= last_ROI_element
 
     # Initialize unit scale factors

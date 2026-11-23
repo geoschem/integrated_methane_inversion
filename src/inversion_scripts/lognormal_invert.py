@@ -79,7 +79,7 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         int(state_vector_labels.max().item()) + BC_element_num + OH_element_num
     )
 
-    last_ROI_element = get_last_roi_element(state_vector, config)
+    last_ROI_element = get_last_roi_element(state_vector, config["BufferRings"])
     interior = state_vector_labels.where(state_vector_labels <= last_ROI_element)
     num_buffer_elems = int(state_vector_labels.max().item() - interior.max().item())
 

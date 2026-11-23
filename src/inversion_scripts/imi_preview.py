@@ -108,7 +108,7 @@ def imi_preview(
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
-    last_ROI_element = get_last_roi_element(state_vector, config)
+    last_ROI_element = get_last_roi_element(state_vector, config["BufferRings"])
 
     if config['UseGCHP']:
         basedir = os.path.expandvars(
@@ -657,7 +657,7 @@ def estimate_averaging_kernel(
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
-    last_ROI_element = get_last_roi_element(state_vector, config)
+    last_ROI_element = get_last_roi_element(state_vector, config["BufferRings"])
 
     # Whether to use observations over water?
     use_water_obs = config["UseWaterObs"] if "UseWaterObs" in config.keys() else False

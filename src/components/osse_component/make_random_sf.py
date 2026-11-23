@@ -19,7 +19,7 @@ def make_random_sf(state_vector_path, config):
     state_vector_labels = state_vector["StateVector"]
 
     # Identify the last element of the region of interest
-    last_ROI_element = get_last_roi_element(state_vector, config)
+    last_ROI_element = get_last_roi_element(state_vector, config["BufferRings"])
     mask = state_vector_labels <= last_ROI_element
     scale_factor = state_vector.rename({"StateVector": "ScaleFactor"})
     scale_factor["ScaleFactor"].attrs["units"] = "1"

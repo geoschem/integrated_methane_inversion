@@ -1739,16 +1739,18 @@ def map_files_to_reference(
     return mapping
 
 
-def get_last_roi_element(sv_ds, config):
+def get_last_roi_element(sv_ds, buffer_rings):
     if "number_roi_elements" in sv_ds.attrs:
         return int(sv_ds.attrs["number_roi_elements"])
-    R = config["BufferRings"]
     warnings.warn(
         "State vector file has no 'number_roi_elements' attribute; inferring "
-        f"the last ROI element by trimming BufferRings + 4 = {R + 4} cells "
+        f"the last ROI element by trimming BufferRings + 4 = {buffer_rings + 4} cells "
         "from every edge. This is incorrect for irregular (shapefile) regions."
         " Regenerate the state vector file to fix this.",
         UserWarning,
         stacklevel=2,
     )
-    return int(sv_ds["StateVector"].isel(lat=slice(R + 4, -R - 4), lon=slice(R + 4, -R - 4)).max())
+    return int(sv_ds["StateVector"].isel(
+        lat=slice(buffer_rings + 4, -buffer_rings - 4), 
+        lon=slice(buffer_rings + 4, -buffer_rings - 4)
+    ).max())
