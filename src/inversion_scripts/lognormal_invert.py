@@ -11,7 +11,7 @@ import numpy as np
 import xarray as xr
 from netCDF4 import Dataset
 #from scipy.sparse import spdiags
-from src.inversion_scripts.utils import ensure_float_list
+from src.inversion_scripts.utils import ensure_float_list, get_last_roi_element
 from src.inversion_scripts.make_gridded_posterior import make_gridded_posterior
 from src.utilities.config_utils import load_config
 
@@ -79,10 +79,8 @@ def lognormal_invert(config, state_vector_filepath, jacobian_sf):
         int(state_vector_labels.max().item()) + BC_element_num + OH_element_num
     )
 
-    interior = state_vector_labels.isel(
-        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4), 
-        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
-    )
+    last_ROI_element = get_last_roi_element(state_vector, config)
+    interior = state_vector_labels.where(state_vector_labels <= last_ROI_element)
     num_buffer_elems = int(state_vector_labels.max().item() - interior.max().item())
 
     num_normal_elems = num_buffer_elems + BC_element_num + OH_element_num
