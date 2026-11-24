@@ -42,7 +42,8 @@ def print_posterior_emissions(config_path, period_number, base_directory):
     else:
         areas = hemco_diags["AREA"]
     state_vector_labels = statevector["StateVector"]
-    last_ROI_element = get_last_roi_element(statevector, config["BufferRings"])
+    buffer_rings = config["BufferRings"] if config["isRegional"] else 0
+    last_ROI_element = get_last_roi_element(statevector, buffer_rings)
     mask = state_vector_labels <= last_ROI_element
 
     # Emissions
