@@ -15,6 +15,7 @@ from src.inversion_scripts.utils import (
     get_mean_emissions,
     update_prior_error_for_OptimizeSoil,
     map_files_to_reference,
+    get_last_roi_element,
 )
 from src.utilities.config_utils import load_config
 from src.inversion_scripts.satellite_products import get_satellite_product
@@ -45,6 +46,8 @@ def align_obs_rows_with_reference(obs_GC, obs_GC_ref):
 def get_prior_sigma_vector(
     n_elements,
     prior_err,
+    prior_err_buffer,
+    buffer_rings,
     OptimizeSoil=False,
     prior_ds=None,
     StateVectorFile=None,
@@ -56,6 +59,13 @@ def get_prior_sigma_vector(
             prior_ds, prior_err, StateVectorFile, n_elements
         )
         sigma[: len(prior_err_new)] = prior_err_new
+    # Define larger uncertainties on the buffer rings
+    if buffer_rings > 0:
+        state_vector = xr.load_dataset(StateVectorFile)
+        n_roi = get_last_roi_element(state_vector, buffer_rings)
+        n_tot = int(np.nanmax(state_vector["StateVector"]))
+        sigma[n_roi:n_tot] = prior_err_buffer
+
     return sigma
 
 
@@ -72,6 +82,8 @@ def get_expected_state_vector_ids(StateVectorFile):
 def build_prior_covariance(
     n_elements,
     prior_err,
+    prior_err_buffer,
+    buffer_rings,
     OptimizeSoil=False,
     prior_ds=None,
     StateVectorFile=None,
@@ -121,6 +133,8 @@ def build_prior_covariance(
         sigma_prebuilt = get_prior_sigma_vector(
             Sa_prebuilt_elems,
             prior_err,
+            prior_err_buffer,
+            buffer_rings,
             OptimizeSoil=OptimizeSoil,
             prior_ds=prior_ds,
             StateVectorFile=StateVectorFile,
@@ -137,6 +151,8 @@ def build_prior_covariance(
     sigma = get_prior_sigma_vector(
         n_elements,
         prior_err,
+        prior_err_buffer,
+        buffer_rings,
         OptimizeSoil=OptimizeSoil,
         prior_ds=prior_ds,
         StateVectorFile=StateVectorFile,
@@ -199,11 +215,13 @@ def do_inversion(
     lon_max,
     lat_min,
     lat_max,
+    buffer_rings,
     prior_err=0.5,
     obs_err=15,
     gamma=0.25,
     res="0.25x0.3125",
     jacobian_sf=None,
+    prior_err_buffer=2,
     prior_err_bc=0.0,
     prior_err_oh=0.0,
     is_Regional=True,
@@ -228,8 +246,9 @@ def do_inversion(
         gamma        [float] : Regularization parameter (default 0.25)
         res          [str]   : Resolution string from config.yml (default '0.25x0.3125')
         jacobian_sf  [str]   : Path to Jacobian scale factors file if using precomputed K
-        prior_err_bc [float] : Prior error standard deviation (default 0.0)
-        prior_err_oh [float] : Prior error standard deviation (default 0.0)
+        prior_err_buffer [float] : Prior error standard deviation on buffer elements (default 2.0)
+        prior_err_bc [float] : Prior error standard deviation on BCs (default 0.0)
+        prior_err_oh [float] : Prior error standard deviation on OH (default 0.0)
         is_Regional  [bool]  : Is this a regional simulation?
         OptimizeSoil [bool]  : Optimize soil sink?
         prior_ds     [xr.Dataset]: prior emission dataset
@@ -453,6 +472,8 @@ def do_inversion(
     Sa, Sa_constraint, use_full_prior_covariance = build_prior_covariance(
         n_elements,
         prior_err,
+        prior_err_buffer,
+        buffer_rings,
         OptimizeSoil=OptimizeSoil,
         prior_ds=prior_ds,
         StateVectorFile=StateVectorFile,
@@ -541,11 +562,13 @@ def do_inversion_ensemble(
     lon_max,
     lat_min,
     lat_max,
+    buffer_rings,
     prior_errs,
     obs_errs,
     gammas,
     res,
     jacobian_sf,
+    prior_errs_buffer,
     prior_errs_bc,
     prior_errs_oh,
     is_Regional,
@@ -558,7 +581,7 @@ def do_inversion_ensemble(
     Run series of inversions with hyperparameter vectors and save out the results.
     """
     hyperparam_ensemble = list(
-        product(prior_errs, obs_errs, gammas, prior_errs_bc, prior_errs_oh)
+        product(prior_errs, obs_errs, gammas, prior_errs_buffer, prior_errs_bc, prior_errs_oh)
     )
 
     results_dict = {
@@ -572,18 +595,21 @@ def do_inversion_ensemble(
         "prior_err": [],
         "obs_err": [],
         "gamma": [],
+        "prior_err_buffer": [],
         "prior_err_bc": [],
         "prior_err_oh": [],
     }
     for member in hyperparam_ensemble:
-        prior_err, obs_err, gamma, prior_err_bc, prior_err_oh = member
+        prior_err, obs_err, gamma, prior_err_buffer, prior_err_bc, prior_err_oh = member
         params = {
             "prior_err": prior_err,
             "obs_err": obs_err,
             "gamma": gamma,
+            "prior_err_buffer": prior_err_buffer,
             "prior_err_bc": prior_err_bc,
             "prior_err_oh": prior_err_oh,
         }
+
         xhat, delta_optimized, KTinvSoK, KTinvSoyKxA, S_post, A, Ja_normalized = (
             do_inversion(
                 n_elements,
@@ -592,11 +618,13 @@ def do_inversion_ensemble(
                 lon_max,
                 lat_min,
                 lat_max,
+                buffer_rings,
                 prior_err,
                 obs_err,
                 gamma,
                 res,
                 jacobian_sf,
+                prior_err_buffer,
                 prior_err_bc,
                 prior_err_oh,
                 is_Regional,
@@ -672,6 +700,8 @@ def do_inversion_ensemble(
     dataset.obs_err.attrs["units"] = "ppb"
     dataset.gamma.attrs["long_name"] = "Regularization parameter"
     dataset.gamma.attrs["units"] = "1"
+    dataset.prior_err_buffer.attrs["long_name"] = "Prior error for buffer elements"
+    dataset.prior_err_buffer.attrs["units"] = "1"
     dataset.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
     dataset.prior_err_bc.attrs["units"] = "ppb"
     dataset.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
@@ -700,6 +730,8 @@ def do_inversion_ensemble(
     dataset_mean.obs_err.attrs["units"] = "ppb"
     dataset_mean.gamma.attrs["long_name"] = "Regularization parameter"
     dataset_mean.gamma.attrs["units"] = "1"
+    dataset_mean.prior_err_buffer.attrs["long_name"] = "Prior error for buffer elements"
+    dataset_mean.prior_err_buffer.attrs["units"] = "1"
     dataset_mean.prior_err_bc.attrs["long_name"] = "Prior error for BC elements"
     dataset_mean.prior_err_bc.attrs["units"] = "ppb"
     dataset_mean.prior_err_oh.attrs["long_name"] = "Prior error for OH elements"
@@ -738,6 +770,10 @@ if __name__ == "__main__":
     prior_err = ensure_float_list(config["PriorError"])
     obs_err = ensure_float_list(config["ObsError"])
     gamma = ensure_float_list(config["Gamma"])
+
+    # If regional, set the prior error on the buffer clusters
+    prior_err_buffer = ensure_float_list(config["PriorErrorBufferElements"])
+    buffer_rings = int(config["BufferRings"]) if is_Regional else 0
 
     # 0.0 if not optimizing BCs or OH
     prior_err_BC = config["PriorErrorBCs"] if config["OptimizeBCs"] else 0.0
@@ -782,11 +818,13 @@ if __name__ == "__main__":
         lon_max,
         lat_min,
         lat_max,
+        buffer_rings,
         prior_err,
         obs_err,
         gamma,
         res,
         jacobian_sf,
+        prior_err_buffer,
         prior_err_BC,
         prior_err_OH,
         is_Regional,
@@ -802,9 +840,9 @@ if __name__ == "__main__":
         out_ds.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
         out_ds.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
         
-        out_ds_default.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
-        out_ds_default.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
-        out_ds_default.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
+        out_ds_mean.attrs['STRETCH_FACTOR'] = np.float32(config['STRETCH_FACTOR'])
+        out_ds_mean.attrs['TARGET_LAT'] = np.float32(config['TARGET_LAT'])
+        out_ds_mean.attrs['TARGET_LON'] = np.float32(config['TARGET_LON'])
     # Save the results of the ensemble inversion
     out_ds.to_netcdf(
         output_path.replace(".nc", "_ensemble.nc"),

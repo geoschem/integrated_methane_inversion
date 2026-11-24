@@ -173,6 +173,7 @@ conditional_dict: Dict[str, List[str]] = {
     "S3Upload": ["S3UploadPath", "S3UploadFiles"],
     "OptimizeBCs": ["PerturbValueBCs", "PriorErrorBCs"],
     "LognormalErrors": ["PriorErrorBufferElements"],
+    "isRegional": ["PriorErrorBufferElements"],
     "OptimizeOH": ["PerturbValueOH", "PriorErrorOH"],
     "EnableOSSE": ["DoOSSE", "ObsErrorOSSE", "CreateAutomaticScaleFactorFileOSSE"],
     "CreateAutomaticScaleFactorFileOSSE": ["EmisPerturbationOSSE"],

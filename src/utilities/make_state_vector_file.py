@@ -291,6 +291,9 @@ def make_state_vector_file(
         1, statevector.isnull().sum() + 1
     )[::-1]
 
+    # Get the number of elements within the region of interest
+    n_roi = int(statevector.max())
+
     # Assign buffer pixels (the remaining 0's) to state vector
     # -------------------------------------------------------------------------
     if is_regional:
@@ -328,6 +331,7 @@ def make_state_vector_file(
                                             long_name='Time', calendar='standard')
         ds_statevector['corner_lats'] = gridds['corner_lats']
         ds_statevector['corner_lons'] = gridds['corner_lons']
+        ds_statevector.attrs["number_roi_elements"] = n_roi
         
         if STRETCH_GRID:
             ds_statevector.attrs['STRETCH_FACTOR'] = np.float32(STRETCH_FACTOR)
@@ -348,6 +352,7 @@ def make_state_vector_file(
         ds_statevector.StateVector.attrs["units"] = "none"
         ds_statevector.StateVector.attrs["missing_value"] = -9999
         ds_statevector.StateVector.attrs["_FillValue"] = -9999
+        ds_statevector.attrs["number_roi_elements"] = n_roi
 
     # Save
     if save_pth is not None:

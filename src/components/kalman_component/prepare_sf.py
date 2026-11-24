@@ -4,7 +4,7 @@ import os
 import sys
 import numpy as np
 from src.inversion_scripts.utils import sum_total_emissions, get_posterior_emissions
-from src.inversion_scripts.utils import get_period_mean_emissions
+from src.inversion_scripts.utils import get_period_mean_emissions, get_last_roi_element
 from src.utilities.config_utils import load_config
 
 
@@ -52,10 +52,8 @@ def prepare_sf(config_path, period_number, base_directory, nudge_factor, species
     else:
         areas = original_emis_ds["AREA"]
     state_vector_labels = statevector["StateVector"]
-    last_ROI_element = int(state_vector_labels.isel(
-        lat=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4),
-        lon=slice(config["BufferRings"] + 4, -config["BufferRings"] - 4)
-    ).max())
+    buffer_rings = config["BufferRings"] if config["isRegional"] else 0
+    last_ROI_element = get_last_roi_element(statevector, buffer_rings)
     mask = state_vector_labels <= last_ROI_element
 
     # Initialize unit scale factors
